@@ -7,33 +7,33 @@ order: 10
 description: >-
   How an idle service stays quiet on its database: adaptive probe cadence for
   the durable signal tail, the backlog-age duty and the lifecycle monitor,
-  contention damping in duty election, and the two passive meters that show
-  the footprint.
+  why duty election stays cheap while contended, and the two passive meters
+  that show the footprint.
 tags: 'workers, idle, polling, backoff, duty-election, probes, metrics'
 codeReferences:
   - src/Whizbang.Core/Workers/AdaptiveIdleBackoff.cs
-  - src/Whizbang.Core/Startup/DutyContentionBackoff.cs
   - src/Whizbang.Core/Observability/ProbeCadenceMetrics.cs
   - src/Whizbang.Core/Observability/InstanceLivenessMetrics.cs
   - src/Whizbang.Core/Observability/BacklogAgeWorker.cs
   - src/Whizbang.Data.Postgres/Notifications/PgDurableSignalTailWorker.cs
-  - src/Whizbang.Data.Postgres/Notifications/PgDutyElector.cs
+  - src/Whizbang.Data.Postgres/Notifications/PgRoleElector.cs
   - src/Whizbang.Data.Postgres/Notifications/PgInstanceLifecycleMonitor.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/AdaptiveIdleBackoffTests.cs
-  - tests/Whizbang.Core.Tests/Startup/DutyContentionBackoffTests.cs
   - tests/Whizbang.Core.Tests/Observability/ProbeCadenceMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/BacklogAgeCadenceTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgDurableSignalTailWorkerCadenceTests.cs
-  - tests/Whizbang.Data.EFCore.Postgres.Tests/DutyElectionContentionBackoffTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleAssignmentSqlTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/DutyHolderWorkerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CommitOrderStamperRoleTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgInstanceLifecycleMonitorUnitTests.cs
 ---
 
 # Idle footprint
 
-A service with an empty queue should be close to silent on its database. Every periodic probe in Whizbang has a doorbell or a signal as its fast path; the poll behind it is a safety net, and a safety net can afford to relax while nothing is happening. This page describes the controls that make the probes back off when idle, how duty election stops re-asking a question whose answer cannot have changed, and the two meters that show the resulting footprint.
+A service with an empty queue should be close to silent on its database. Every periodic probe in Whizbang has a doorbell or a signal as its fast path; the poll behind it is a safety net, and a safety net can afford to relax while nothing is happening. This page describes the controls that make the probes back off when idle, why duty election stays cheap while another instance holds a duty, and the two meters that show the resulting footprint.
 
-The problem this solves: an idle fleet of several instances was measured issuing tens of statements per second against a shared database from fixed-cadence probes alone (the durable signal tail scan, estimated depth counts, advisory-lock retries in duty election). None of that traffic did anything. Each probe kept its cadence whether or not the previous tick had found work.
+The problem this solves: an idle fleet of several instances was measured issuing tens of statements per second against a shared database from fixed-cadence probes alone (the durable signal tail scan, estimated depth counts, and, in earlier releases, advisory-lock retries in duty election). None of that traffic did anything. Each probe kept its cadence whether or not the previous tick had found work.
 
 ## One cadence controller: `AdaptiveIdleBackoff`
 
@@ -92,37 +92,29 @@ With the default 30 s polling fallback, an idle durable signal tail runs 2, 4, 8
 
 The instance lifecycle monitor relaxes too, but under its own rule rather than this controller, because its cadence has to track how close any peer is to the liveness threshold: 5 s while any heartbeat row is past half the stale threshold, otherwise a sixth of the threshold clamped between 5 s and 30 s. See [Instance liveness](./instance-liveness.md#the-lifecycle-monitor-asks-the-two-signal-predicate). {verified: PgInstanceLifecycleMonitorUnitTests.ComputeTickInterval_FleetFresh_RelaxesToASixthOfTheThresholdAsync, PgInstanceLifecycleMonitorUnitTests.ComputeTickInterval_SomeoneHalfwayToTheThreshold_TicksFastAsync}
 
-## Duty election stops re-asking: `DutyContentionBackoff`
+## Duty election stays cheap while contended {#duty-election}
 
-Exclusive duties (`migrator`, `maintainer`, and the rest) are won through `IDutyElector` by taking a session advisory lock. Several callers retry on a tight loop by design, because a leader duty must fail over quickly when its holder dies. On an idle fleet that turned into a steady stream of `pg_try_advisory_lock` round trips that could never succeed while the holder was healthy.
+Exclusive duties (`migrator`, `maintainer`, and the rest) are won through `IDutyElector`, and every duty is a [role assignment](/v1.0.0/operations/startup/capabilities-and-duties#role-assignment-the-default). Asking for a duty another instance holds costs one statement that reads the role row and writes nothing, so a contended attempt is cheap without any damping of its own.
 
-`DutyContentionBackoff` damps that without changing the callers. After an attempt comes back **contended** (another instance holds the duty), the elector opens a suppression window for that duty; while the window is open, further attempts for the same duty are answered from memory as `Contended`, with a detail string that says how long the window has left and how many contended attempts preceded it. Consecutive contentions double the window from a 2 s floor up to a ceiling, and a grant, a refusal that is not contention, or an unavailable coordination connection resets the window and the streak.
+| Choice | Reason | Verified |
+|---|---|---|
+| A vote for a duty with a live holder answers `contended` from a read of the role row, without the vote lock, and writes nothing (the candidacy row is written only when it is stale or the version changed). | A non-holder that asks again learns the same answer for the price of a read. | {verified: RoleAssignmentSqlTests.Elect_WhileAnotherHoldsALiveLease_IsContended_AndWritesNothingAsync} |
+| The holder loop votes for every duty it does not hold in one statement per pass, once per renew interval (5 s by default). | One round trip per pass whatever the number of duties. | {verified: DutyHolderWorkerTests.APass_VotesForEveryRoleItDoesNotHold_InOneCallAsync} |
+| A waiter is woken by the holder's release announcement (`wh_role_released`), not by polling faster. | A hand-off is noticed at once while the poll stays slow. | {verified: DutyHolderWorkerTests.TheHostedLoop_PassesOnItsInterval_WakesOnARelease_AndReleasesOnStopAsync, CommitOrderStamperRoleTests.AWaitingNonHolder_IsWokenByTheRolesRelease_NotItsRetryIntervalAsync} |
 
-{verified: DutyContentionBackoffTests.RecordContended_OpensAWindowOfTheFloorAsync, DutyContentionBackoffTests.ConsecutiveContentions_DoubleTheWindowUpToTheCeilingAsync, DutyContentionBackoffTests.Reset_ClosesTheWindowAndForgetsTheStreakAsync, DutyContentionBackoffTests.WindowEnd_IsNotSuppressedAsync}
-
-In `PgDutyElector`:
-
-- Windows are kept **per duty**; contention on one duty never delays an attempt at another.
-- The ceiling is `WhizbangNotificationOptions.PollingFallbackInterval` (at least the 2 s floor), which is already the bound on how long any doorbell-less recovery may take on the host. No new option is introduced.
-- `IsBackingOff(duty, out remaining)` is the public seam for callers and tests that want to know whether the next attempt would reach the database.
-- Every suppressed attempt is counted on `whizbang.probes.suppressed_duty_attempts{duty}` and logged at Debug.
-
-{verified: DutyElectionContentionBackoffTests.SecondAttemptInsideTheWindow_IsAnsweredFromMemoryAsync, DutyElectionContentionBackoffTests.WindowExpiry_ReachesTheDatabaseAgainAndDoublesOnContinuedContentionAsync, DutyElectionContentionBackoffTests.Windows_AreKeptPerDutyAsync, DutyElectionContentionBackoffTests.ContentionBackoffCeiling_IsThePollingFallbackIntervalAsync, DutyElectionContentionBackoffTests.IsBackingOff_UnknownDuty_IsFalseAsync}
-
-**The trade-off, stated plainly.** A holder that releases its duty inside a window is not noticed until the window ends, so failover after a holder's death is at most one polling fallback interval slower than the caller's own cadence. A dead holder releases its session lock server-side, and the window that was open when it died is the last one; the next real attempt wins and closes the window. {verified: DutyElectionContentionBackoffTests.HolderReleases_TheNextRealAttemptWinsAndClosesTheWindowAsync}
+Earlier releases held a host's own duties, and the commit-order stamper's leadership, on session advisory locks and damped the retries with a per-duty suppression window (`DutyContentionBackoff`, counted on `whizbang.probes.suppressed_duty_attempts`). Both are gone with the session-lock elector (#2044): a contended vote is already a read, so there is nothing to suppress.
 
 ## Two passive meters
 
-Both meters use [passive counters](/v1.0.0/operations/observability/metrics#passive-counters), so every series exists at zero from construction and a fleet that never suppressed anything shows zeros rather than missing instruments. Both are registered in Core with `TryAddSingleton`, and every worker takes them as optional constructor parameters, so a host that does not register metrics runs exactly as before.
+Both meters use [passive counters](/v1.0.0/operations/observability/metrics#passive-counters), so every series exists at zero from construction and a quiet fleet shows zeros rather than missing instruments. Both are registered in Core with `TryAddSingleton`, and every worker takes them as optional constructor parameters, so a host that does not register metrics runs exactly as before.
 
 ### `Whizbang.Probes` (`ProbeCadenceMetrics`)
 
 | Metric | Tags | Meaning |
 |---|---|---|
 | `whizbang.probes.ticks` | `probe` in {`durable-signal-tail`, `instance-lifecycle`, `backlog-age`}, `outcome` in {`work`, `idle`} | One increment per probe tick. The `idle` series are the service's idle footprint; on an empty queue they should grow slowly. Every known probe's two series are touched at zero from construction. |
-| `whizbang.probes.suppressed_duty_attempts` | `duty` | Duty attempts answered from memory while a contention window was open, so no lock round trip was made. |
 
-{verified: ProbeCadenceMetricsTests.KnownProbes_HaveBothOutcomeSeriesAtZeroFromConstructionAsync, ProbeCadenceMetricsTests.RecordTick_IncrementsTheSeriesForTheOutcomeAsync, ProbeCadenceMetricsTests.SuppressedDutyAttempts_AreCountedPerDutyAsync, ProbeCadenceMetricsTests.Meter_IsNamedForTheProbeDomainAsync}
+{verified: ProbeCadenceMetricsTests.KnownProbes_HaveBothOutcomeSeriesAtZeroFromConstructionAsync, ProbeCadenceMetricsTests.RecordTick_IncrementsTheSeriesForTheOutcomeAsync, ProbeCadenceMetricsTests.Meter_IsNamedForTheProbeDomainAsync}
 
 ### `Whizbang.Liveness` (`InstanceLivenessMetrics`)
 
@@ -130,13 +122,13 @@ Both meters use [passive counters](/v1.0.0/operations/observability/metrics#pass
 
 ## Expected idle statement rate
 
-Per instance, excluding the heartbeat itself and with default options: one durable signal tail scan per 30 s, one lifecycle scan per 25 s, duty probes bounded by one per 30 s per duty, and the backlog-age peek only on the admin plane. Well under one statement per second.
+Per instance, excluding the heartbeat itself and with default options: one durable signal tail scan per 30 s, one lifecycle scan per 25 s, one holder-loop vote per renew interval (5 s) covering every duty not held, a non-holder stamper's vote every `LeaderElectionRetry` (1.5 s), each a read while another instance holds the duty, and the backlog-age peek only on the admin plane. Under one statement per second.
 
 ## What stays as follow-up
 
 Three periodic sources were left on their fixed cadence in this pass and are worth the same treatment:
 
-- `PgCommitOrderStamperWorker`'s non-holder leader-election retry takes its own `pg_try_advisory_lock` on its own lock and does not go through `PgDutyElector`, so the contention damping above does not reach it.
+- `PgCommitOrderStamperWorker`'s non-holder votes for the `commit-stamper` role every `LeaderElectionRetry` (1.5 s). Each vote is a read while the role is held, and a release wakes the waiter at once, but the cadence does not relax while idle.
 - `TableStatisticsCollector`'s estimated depth counts (30 s).
 - `ScheduleWorker`'s 5 s backstop poll.
 

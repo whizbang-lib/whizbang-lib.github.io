@@ -648,9 +648,8 @@ Passive counters for the periodic probes that make up a service's idle footprint
 | Metric Name | Type | Description |
 |-------------|------|-------------|
 | `whizbang.probes.ticks` | Counter\<long\> | Probe ticks by worker and outcome; tags `probe` (`durable-signal-tail`, `instance-lifecycle`, `backlog-age`) and `outcome` (`work`, `idle`). Both series of every known probe are touched at zero from construction |
-| `whizbang.probes.suppressed_duty_attempts` | Counter\<long\> | Duty attempts answered from memory while a contention window was open, so no lock round trip was made; tagged by `duty` |
 
-{verified: ProbeCadenceMetricsTests.KnownProbes_HaveBothOutcomeSeriesAtZeroFromConstructionAsync, ProbeCadenceMetricsTests.RecordTick_IncrementsTheSeriesForTheOutcomeAsync, ProbeCadenceMetricsTests.SuppressedDutyAttempts_AreCountedPerDutyAsync, ProbeCadenceMetricsTests.Meter_IsNamedForTheProbeDomainAsync}
+{verified: ProbeCadenceMetricsTests.KnownProbes_HaveBothOutcomeSeriesAtZeroFromConstructionAsync, ProbeCadenceMetricsTests.RecordTick_IncrementsTheSeriesForTheOutcomeAsync, ProbeCadenceMetricsTests.Meter_IsNamedForTheProbeDomainAsync}
 
 ## Whizbang.DeadLetters {#dead-letters}
 
