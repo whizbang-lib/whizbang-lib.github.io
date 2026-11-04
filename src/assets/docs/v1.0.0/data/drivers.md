@@ -19,6 +19,17 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperCoordinatorSchema.cs
   - src/Whizbang.Data.Dapper.Postgres/PostgresSchemaInitializer.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.RetentionSweeps.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.TableMaintenance.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.FleetAndCatalog.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.Coalesce.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperStreamIntegrityRefusal.cs
+  - src/Whizbang.Data.Postgres/CoordinatorRetentionSql.cs
+  - src/Whizbang.Data.Postgres/TableMaintenanceSql.cs
+  - src/Whizbang.Data.Postgres/CoordinatorFleetSql.cs
+  - src/Whizbang.Data.Postgres/CoordinatorCatalogSql.cs
+  - src/Whizbang.Data.Postgres/CoalesceSql.cs
+  - src/Whizbang.Data.Postgres/OrphanedLifecycleEventsSql.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreDriverSelectorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreExtensionsTests.cs
@@ -28,6 +39,13 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperCoordinatorSchemaTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMaintenanceStepNamedSchemaTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperNamedSchemaRegistrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkCoordinatorDriverParityTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperRetentionSweepTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperTableMaintenanceTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperFleetRecoveryTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperLifecycleAndCatalogTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperCoalesceTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamIntegrityRefusalTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -237,13 +255,93 @@ tables (or another service's), and the reconcile step claimed and reconciled in 
 first, such as the session user's own schema ahead of a `Search Path` of `"$user", orders`.
 :::
 
+### What the Dapper work coordinator supports {#dapper-coordinator-parity}
+
+{verified: WorkCoordinatorDriverParityTests.EveryDefaultBodiedMember_IsImplementedByDapper_OrAllowListedWithAReasonAsync, WorkCoordinatorDriverParityTests.TheAllowList_HoldsOnlyMembersDapperServesAtTheDefault_EachWithAReasonAsync, WorkCoordinatorDriverParityTests.EveryDefaultBodiedMember_IsImplementedByEFCoreAsync}
+
+Many work-coordinator operations have a default that answers as if the store had nothing to do: an empty list, zero, or
+`unsupported`. That default exists for engines without the primitive. A driver that serves it for an operation a
+feature depends on runs the feature and does nothing, silently. That is the one outcome the drivers do not allow.
+
+The rule, enforced by a test that reads every operation with a default from the interface, so a new one cannot slip
+past it:
+
+- **Every operation is implemented by the Dapper coordinator with the EF Core contract**, or
+- **it is on an explicit allow-list with the reason it is not**, and a feature that depends on it is
+  [refused at startup](#what-dapper-refuses-at-startup) when its configuration turns it on.
+
+The test also fails when the allow-list names an operation Dapper now implements, so the list cannot go stale, and it
+checks that the EF Core coordinator implements every operation.
+
+Both coordinators run the same SQL: each statement lives once in the shared Postgres package and is qualified with the
+coordinator's schema, so the drivers cannot drift. On the Dapper driver that covers:
+
+| Area | What runs on Dapper |
+|------|---------------------|
+| Retention and storage | The offload-claim ledger and its sweep, the settled apply-path fold, the [ancient ephemeral pointer prune](../fundamentals/events/ephemeral-events.md), ephemeral reclassification and per-type grace, the lifecycle-completion cleanup, the exhausted orphan reap, [row retention](../fundamentals/perspectives/row-retention.md#dapper-driver) and the [prefix truncate](../fundamentals/events/event-streams.md#prefix-truncate-on-every-data-layer) |
+| Table maintenance | The rewrite queue and its measurements, the bloat estimate and the approximate measurement, `VACUUM (FULL)`, external and pg_squeeze rewrites, the work-table vacuum, and the queue-index survey, drop and rebuild |
+| Recovery and fleet | The stuck-row sentinels, the release of unprocessed inbox rows and unstarted leases, the service backlog the housekeeping gate reads, the broker dead-letter import, and the standby and eviction handshake |
+| Type registry, lifecycle and cursors | The type-definition catalog, its lineage and its reconcile claim, the lifecycle completion marker and the startup orphan reconciliation, the cursor batch and rewind reads, the ephemeral snapshot targets, and the local service id |
+| Coalescing | The pending groups, a group's singles, the fold and the deadline release |
+
+The Dapper driver creates its schema on the application connection, so the role that runs the coordinator normally owns
+the tables. There is no separate schema-initialization connection: a table maintenance statement on a table that role
+does not own is reported and not run, exactly as the EF Core coordinator does when no `-init` connection is configured.
+
+{verified: DapperRetentionSweepTests.PruneAncientEphemeralPointers_DisabledByDefault_ThenPrunesAllButTheNewestAsync, DapperTableMaintenanceTests.UnderARoleThatOwnsNoTable_NothingIsVacuumedRewrittenOrRebuilt_AndEachIsReportedAsync, DapperFleetRecoveryTests.ReleaseUnstartedLeases_ReturnsTheInstancesUnstartedRowsOfTheStreamsAsync, DapperLifecycleAndCatalogTests.OrphanedLifecycles_AreFoundUntilTheirCompletionIsRecordedAsync, DapperCoalesceTests.CompleteFold_StoresTheCompositeAndCompletesTheSinglesTogetherAsync}
+
+:::updated
+Before this release the Dapper coordinator left every one of these operations at its inert default. A retention setting such
+as the pointer prune or the lifecycle-completion window was accepted and removed nothing, the maintenance cycle found
+nothing to rewrite or vacuum, a coalesced message was parked and never shipped, and the startup lifecycle reconciliation
+never replayed anything.
+:::
+
+### What the Dapper driver refuses at startup {#what-dapper-refuses-at-startup}
+
+{verified: DapperStreamIntegrityRefusalTests.AHostThatConfiguresNothing_StartsWithEveryIntegritySwitchOffAsync, DapperStreamIntegrityRefusalTests.ASwitchConfiguredOn_RefusesTheHost_NamingTheFeatureTheKeyAndTheReasonAsync, DapperStreamIntegrityRefusalTests.AutoRepair_RefusesTheHostAsync, DapperStreamIntegrityRefusalTests.TheRefusal_IsCheckedAtHostStartAsync}
+
+[Stream integrity](../resilience/stream-integrity.md) (checkpoints, gap detection, the digest audit and its epochs,
+the paced repair drain, subscription-growth backfill and auto-repair) runs on the EF Core driver only. Its coordinator
+operations are the ones left on the Dapper allow-list, because that code is being reworked.
+
+So on a Dapper host every integrity switch defaults to **off**, where the EF Core driver ships several of them on, and a
+host whose configuration turns one on fails at start through the standard options pipeline (`IValidateOptions` with
+`ValidateOnStart`), with an error that names the feature, the key and the reason:
+
+| Setting | Feature refused | Supported value on Dapper |
+|---------|-----------------|---------------------------|
+| `Whizbang:StreamIntegrity:CheckpointsEnabled` | Continuity checkpoints | `false` |
+| `Whizbang:StreamIntegrity:GapDetectionEnabled` | Gap detection | `false` |
+| `Whizbang:StreamIntegrity:AuditEnabled` | The scheduled digest audit | `false` |
+| `Whizbang:StreamIntegrity:EpochClosureEnabled` | Digest epoch closure | `false` |
+| `Whizbang:StreamIntegrity:RepairDrainEnabled` | The paced repair drain | `false` |
+| `Whizbang:StreamIntegrity:BackfillOnSubscriptionGrowth` | Subscription-growth backfill (a redelivery of a new type's history) | `false` |
+| `Whizbang:StreamIntegrity:RepairMode` | Auto-repair | `ReportOnly` |
+
+```text{title="A Dapper host asked for integrity checkpoints" description="The start-time refusal names the key, the feature and why" category="Configuration" difficulty="BEGINNER" tags=["Data", "Dapper", "Stream Integrity", "Startup"] tests=["DapperStreamIntegrityRefusalTests.ASwitchConfiguredOn_RefusesTheHost_NamingTheFeatureTheKeyAndTheReasonAsync"]}
+Whizbang:StreamIntegrity:CheckpointsEnabled is true, which turns on stream integrity checkpoints, but the Dapper driver
+refuses it: stream integrity runs on the EF Core driver only; on the Dapper driver its coordinator operations are not
+implemented, so the feature would do nothing. Set it to false, or use the EF Core driver.
+```
+
+The switches are read from configuration, so the result does not depend on whether `AddWhizbangPostgres` or
+`AddWhizbangWorkers` is registered first. A value set in code with `services.Configure<StreamIntegrityOptions>(...)`
+after both registrations is checked the same way.
+
+:::breaking
+A Dapper host that configured nothing starts as before, with integrity off. A Dapper host whose configuration turns an
+integrity switch on, which did nothing on this driver, now fails at start until the switch is removed or set as the
+table shows.
+:::
+
 ## Choosing a Driver
 
 | Driver | Backend | Use case |
 |--------|---------|----------|
 | `.WithDriver.Postgres` | PostgreSQL via EF Core | Production |
 | `.WithDriver.InMemory` | EF Core InMemory provider | Unit/integration tests, prototyping |
-| `AddWhizbangPostgres(...)` | PostgreSQL via Dapper | Raw-SQL persistence without EF Core |
+| `AddWhizbangPostgres(...)` | PostgreSQL via Dapper | Raw-SQL persistence without EF Core; stream integrity is [refused](#what-dapper-refuses-at-startup) |
 
 ## Best Practices
 

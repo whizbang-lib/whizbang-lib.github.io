@@ -154,6 +154,12 @@ A default that mutates data unasked is not a default a consumer can trust out of
 
 ---
 
+:::note
+Stream integrity runs on the EF Core driver only. On the Dapper driver every integrity switch defaults to off, and a
+host whose configuration turns one on is refused at startup: see
+[What the Dapper driver refuses at startup](../data/drivers.md#what-dapper-refuses-at-startup).
+:::
+
 ## Goals
 
 1. **Repair** — an origin can re-deliver any subset of its persisted events to the wire, and
@@ -1494,8 +1500,9 @@ The table needs no retention in maintenance: the drain deletes every delivery it
 
 Recording a delivery that nothing will drain would lose it, so integrity work runs inline, where it arrives, as it did
 before, in three cases: the host has no drain registered, there is no work coordinator in scope, or the coordinator
-cannot record deliveries (a store without `wh_integrity_deliveries`, such as the Dapper coordinator, reports the
-queue as unsupported).
+cannot record deliveries (a store without `wh_integrity_deliveries` reports the queue as unsupported). The Dapper
+driver never gets here: stream integrity is off on Dapper and refused at startup when configured on (see
+[What the Dapper driver refuses at startup](../data/drivers.md#what-dapper-refuses-at-startup)).
 
 ### The idle gate, one budget per requester {#integrity-idle-gate}
 
