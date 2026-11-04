@@ -12,3 +12,4 @@ Whizbang:PostgresExtensions                   # configuration-reference#unknown-
 Whizbang:Transports:<transport>:MessageProcessing:InboxBatchSize      # configuration-reference#unknown-keys lists it as a removed key (#1536); the startup check names Whizbang:Workers:InboxBatch:MaxSize
 Whizbang:Transports:<transport>:MessageProcessing:InboxBatchSlideMs   # configuration-reference#unknown-keys lists it as a removed key (#1536); the startup check names Whizbang:Workers:InboxBatch:SlidingWindow
 Whizbang:Transports:<transport>:MessageProcessing:InboxBatchMaxWaitMs # configuration-reference#unknown-keys lists it as a removed key (#1536); the startup check names Whizbang:Workers:InboxBatch:MaxWait
+Whizbang:StandbyWatcher:RequesterLivenessWindow  # configuration-reference#removed-keys and rolling-upgrades list it as a removed key (#2027); the startup check names Whizbang:Workers:Heartbeat:IntervalSeconds

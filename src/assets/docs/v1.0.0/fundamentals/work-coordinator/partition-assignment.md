@@ -21,7 +21,10 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/231_StartupStageRecord.sql
   - src/Whizbang.Data.Postgres/Migrations/278_OneWriterOfTheInstancePhase.sql
   - src/Whizbang.Data.Postgres/Migrations/300_AnIneligibleCallerClaimsNothing.sql
+  - src/Whizbang.Data.Postgres/Migrations/316_OneDurableInstanceRecord.sql
+  - src/Whizbang.Data.Postgres/Migrations/317_EveryReaderJudgesLivenessByTheRule.sql
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/LivenessRuleReadersSqlTests.cs
   - tests/Whizbang.Partitioning.Tests/PartitionAssignerTests.cs
   - tests/Whizbang.Partitioning.Tests/PartitionAssignmentCacheTests.cs
   - tests/Whizbang.Core.Component.Tests/PartitionAssignerWorkerLoopTests.cs
@@ -39,12 +42,12 @@ testReferences:
 
 Unowned work is spread across instances by partition: an instance of rank `r` among `n` takes the
 partitions where `partition_number % n = r`. Something has to decide `r` and `n`. Without an
-assigner, every claim ranks the instances it believes are alive (a fresh heartbeat row, or a direct
-instance holding its alive-lock) and eligible for work (see [Claim loop](claim-loop.md#ranking-who-counts-as-alive)). When that
+assigner, every claim ranks the instances [the liveness rule](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule)
+calls alive and that are eligible for work (see [Claim loop](claim-loop.md#ranking-who-counts-as-alive)). When that
 belief is wrong, the shares overlap. Two situations make it wrong for everyone at once:
 
 - a database pause lets every heartbeat go stale together;
-- a connection pooler hides the application names that would otherwise show an instance as live.
+- a fleet behind a connection pooler holds no alive-locks, so its heartbeats alone speak for it, and a slow database delays them all.
 
 Each instance then ranks itself alone and claims every partition. Overlap never causes double
 processing (stream leases and row locks give each stream one owner), but it wastes acquisitions and
@@ -73,21 +76,20 @@ and its assigner with `SELECT * FROM wh_read_partition_assignment();`. In code, 
 **Election.** Every instance runs `PartitionAssignerWorker` and votes for the `partition-assigner`
 role. The holder leads; the others vote again each renewal interval.
 
-**Liveness, by connection mode.** Each instance records at registration how it reaches the database:
+**Liveness is the rule's answer.** The assigner keeps no window of its own. It reads its candidates from
+`wh_partition_assignment_candidates()`, which reports, for every registered instance that is not evicted, its
+connection mode, whether its alive-lock is held, the age of its heartbeat and, since migration 317, `is_live`: whether
+[the liveness rule](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule) calls it live. The assigner reads
+`PartitionAssignmentCandidate.IsLive` and judges nothing itself; the lock and the heartbeat's age are carried for
+diagnostics only. So a direct instance holding its alive-lock is live, a direct instance whose lock is released is live
+for one beat, and an instance behind a transaction pooler is live inside the window it declares from its own cadence,
+exactly as the claim, the reap and every other reader judge it. {verified: PartitionAssignerTests.IsLive_IsTheRulesAnswer_WhateverTheLockOrTheHeartbeatAsync, LivenessRuleReadersSqlTests.Candidates_ReportWhetherTheRuleCallsEachLiveAsync, PartitionAssignmentSqlTests.Candidates_ADirectInstanceHoldingItsAliveLock_ReportsTheLockAsync, PartitionAssignmentSqlTests.Candidates_APooledInstance_IsNeverJudgedByALockAsync, PartitionAssignmentSqlTests.Candidates_AnEvictedInstance_IsLeftOutAsync, AliveLockLivenessSqlTests.Candidates_ADirectInstanceWhoseLockIsReleased_ReportsNoLockAsync}
 
-- `direct`: a dedicated direct connection that holds the instance's session alive-lock. The lock is
-  authoritative: held, the instance is live. Without the lock, the heartbeat decides, over
-  `DirectHeartbeatWindow` (default 180 s, three of the slow beats a lock holder makes).
-- `pooled`: pooled connections only, so no lock or application name can be seen. The heartbeat
-  decides, over `PooledHeartbeatWindow` (default 90 s).
-
-This is the assigner's form of the [liveness rule](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule)
-every reader applies. The assigner reads its candidates from `wh_partition_assignment_candidates()`, which
-reports, for every registered instance that is not evicted, its connection mode, whether its alive-lock is
-held and the age of its heartbeat. Since migration 204 the lock column comes from
-`wh_direct_alive_lock_holders()`, the same definition `claim_work` ranks by, so it is only ever true for a
-direct instance: a pooled instance's lock is never consulted. A direct instance whose lock is released is
-judged by its heartbeat on the assigner's next tick. {verified: PartitionAssignmentSqlTests.Candidates_ADirectInstanceHoldingItsAliveLock_ReportsTheLockAsync, PartitionAssignmentSqlTests.Candidates_APooledInstance_IsNeverJudgedByALockAsync, PartitionAssignmentSqlTests.Candidates_AnEvictedInstance_IsLeftOutAsync, AliveLockLivenessSqlTests.Candidates_ADirectInstanceWhoseLockIsReleased_ReportsNoLockAsync}
+**Why the assigner has no windows.** It used to judge the candidates itself, with `DirectHeartbeatWindow` (180 s) for a
+direct instance without its lock and `PooledHeartbeatWindow` (90 s) for a pooled one. Those were a second definition of
+alive beside the claim's: the assigner could publish a member the claim and the reap already called dead, or leave out
+one they still counted. With the rule's answer on every candidate, the published membership and every claimer's own
+ranking agree. Both options are removed.
 
 **Candidates are only instances eligible for work.** Alive is not the same as ready. Since migration
 229, `wh_partition_assignment_candidates()` lists an instance only when it is
@@ -95,8 +97,8 @@ judged by its heartbeat on the assigner's next tick. {verified: PartitionAssignm
 lifecycle phase is `AcceptingCommands` or `Running`, or it records no phase at all (an older build).
 A starting instance (still connecting or migrating), a paused one, one standing by and a draining one
 are alive but are not candidates, so the assigner never gives them a share. Their partitions go to
-the eligible instances on the next publish. The assigner applies its liveness windows only to the
-candidates, so a member is both alive and eligible. {verified: WorkEligibilitySqlTests.Candidates_ALiveInstanceInMigrating_IsLeftOutAsync, WorkEligibilitySqlTests.Candidates_AnInstanceThatReachesAcceptingCommands_BecomesACandidateAsync, WorkEligibilitySqlTests.Candidates_ADrainingInstanceWithAFreshHeartbeat_IsLeftOutAtOnceAsync, WorkEligibilitySqlTests.Candidates_AnOlderInstanceThatRecordsNoPhase_IsStillACandidateAsync, AliveVersusEligibleE2ETests.AnInstanceHeldInStartup_IsAliveButNeverACandidateNorRanked_WhileAReadyPeerTakesAllWorkAsync}
+the eligible instances on the next publish. The assigner keeps only the candidates the rule calls
+live, so a member is both alive and eligible. {verified: WorkEligibilitySqlTests.Candidates_ALiveInstanceInMigrating_IsLeftOutAsync, WorkEligibilitySqlTests.Candidates_AnInstanceThatReachesAcceptingCommands_BecomesACandidateAsync, WorkEligibilitySqlTests.Candidates_ADrainingInstanceWithAFreshHeartbeat_IsLeftOutAtOnceAsync, WorkEligibilitySqlTests.Candidates_AnOlderInstanceThatRecordsNoPhase_IsStillACandidateAsync, AliveVersusEligibleE2ETests.AnInstanceHeldInStartup_IsAliveButNeverACandidateNorRanked_WhileAReadyPeerTakesAllWorkAsync}
 
 **Since migration 231 the recorded startup stage decides too.** An instance that records a
 [startup stage](/v1.0.0/operations/startup/startup-status#startup-stages) is eligible only at stage 60
@@ -131,8 +133,8 @@ assignment with no members. A claimer that presents it finds itself absent and
 claiming never stops for want of a member. A claimer whose own row is not eligible is the exception: since migration
 300 it claims nothing at all, member or not ([why](claim-loop.md#ineligible-caller-claims-nothing)). {verified: PartitionAssignerTests.LiveMembers_WithNoCandidateAtAll_IsEmptyAsync, PartitionAssignmentSqlTests.ClaimWork_WhenNotAMemberOfTheCurrentAssignment_RanksItselfWithoutANoticeAsync}
 
-**Publishing.** Each tick of its tenure (one per role renewal interval) the assigner judges the
-registered instances and publishes when the live set changes: an alive-lock gained or lost, a
+**Publishing.** Each tick of its tenure (one per role renewal interval) the assigner reads the
+rule's answer for each registered instance and publishes when the live set changes: an alive-lock gained or lost, a
 heartbeat gone stale or fresh. It also publishes when its tenure has not published yet, and on a
 slow backstop (`RepublishInterval`, default 5 minutes).
 
@@ -186,10 +188,11 @@ query instead of adding to it, so a claim with the assignment costs no more than
 | Option | Default | Meaning |
 |---|---|---|
 | `Enabled` | `true` | Elect an assigner and use its assignment. Takes effect where role assignment is enabled. |
-| `PooledHeartbeatWindow` | 90 s | How long a pooled instance's heartbeat counts it as live. |
-| `DirectHeartbeatWindow` | 180 s | How long a direct instance's heartbeat counts it as live while its lock is not held. |
 | `AssignmentLease` | 90 s | How long an assignment holds without renewal. Must exceed 60 s, the slow heartbeat cadence. |
 | `RepublishInterval` | 5 min | The backstop: republish at least this often. |
+
+`PooledHeartbeatWindow` and `DirectHeartbeatWindow` are removed ([#2027](https://github.com/whizbang-lib/whizbang/issues/2027)): liveness is [the liveness rule](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule), and an instance's window is the one it declares from its own heartbeat cadence. Code that set them deletes the assignment; `Validate` no longer checks them.
+{verified: PartitionAssignerTests.Validate_TheDefaults_PassAsync, PartitionAssignerTests.IsLive_IsTheRulesAnswer_WhateverTheLockOrTheHeartbeatAsync}
 
 ```csharp{title="Tune the partition assigner" description="Shorten the backstop republish interval" category="Configuration" difficulty="INTERMEDIATE" tags=["Work coordinator", "Partition assignment", "Options"] tests=["PartitionAssignerTests.Validate_TheDefaults_PassAsync"]}
 services.Configure<PartitionAssignerOptions>(options => {
@@ -207,7 +210,7 @@ Every transition has a public event, for diagnostics and for tests that wait on 
 ## Related
 
 - [Claim loop](claim-loop.md)
-- [Instance liveness](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule): the liveness rule and `wh_direct_alive_lock_holders`.
+- [Instance liveness](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule): the one liveness rule the candidates carry.
 - [Alive versus eligible for work](/v1.0.0/fundamentals/workers/instance-liveness#alive-versus-eligible): the two tests side by side.
 - [Notifications and pgbouncer](notifications-and-pgbouncer.md)
 - [Commit sequence](commit-sequence.md): the commit-order stamper is elected the same way.

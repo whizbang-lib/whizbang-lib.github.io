@@ -189,6 +189,7 @@ Removed keys the library declares:
 | `Whizbang:Transports:<transport>:MessageProcessing:InboxBatchSize` | `Whizbang:Workers:InboxBatch:MaxSize`. See [sliding window options](#sliding-window-options) |
 | `Whizbang:Transports:<transport>:MessageProcessing:InboxBatchSlideMs` | `Whizbang:Workers:InboxBatch:SlidingWindow` |
 | `Whizbang:Transports:<transport>:MessageProcessing:InboxBatchMaxWaitMs` | `Whizbang:Workers:InboxBatch:MaxWait` |
+| `Whizbang:StandbyWatcher:RequesterLivenessWindow` | `Whizbang:Workers:Heartbeat:IntervalSeconds`: the standby watcher keeps no window of its own; [the liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule) judges the requester by the window it declares from its heartbeat cadence. See [Rolling Upgrades](../startup/rolling-upgrades#the-standby-handshake) |
 
 ## Quick Map
 
@@ -202,6 +203,7 @@ Removed keys the library declares:
 | `Whizbang:WorkCoordinatorGate` | `WorkCoordinatorGateOptions` | Automatic (worker pipeline); a Postgres driver's `MaxInFlightCommands` fills `MaxConcurrent` when the section leaves it unset |
 | `Whizbang:ServiceName` (falls back to `ServiceName`) | — (string) | Automatic |
 | `Whizbang:ShowBanner` | — (bool) | Automatic |
+| `Whizbang:Application:Version`, `Whizbang:Application:DeployNumber` | none (read once, when the application version is first resolved) | Automatic (worker pipeline); see [Application version](#application-version) |
 | `ConnectionStrings:*` | — (strings, naming conventions below) | Automatic |
 | `ConnectionPool:*` | — (generated DbContext registration) | Automatic |
 | `Whizbang:BodyOffload` | `MessageBodyOffloadOptions` (every key) | Automatic (`AddWhizbangBodyOffload()`, which every provider helper calls) |
@@ -344,6 +346,37 @@ Bound when any capability provider registers (both Postgres drivers do), so the 
 |-----|------|---------|----------------------|---------|
 | `Whizbang:ServiceName` | `string` | assembly name | `Whizbang__ServiceName` | Logical service name used for instance registration and subscriptions; falls back to root-level `ServiceName`, then the entry assembly name |
 | `Whizbang:ShowBanner` | `bool` | `true` | `Whizbang__ShowBanner` | Print the ASCII banner at startup (the version log line always prints). The one key for the banner: it overrides `WhizbangCoreOptions.ShowBanner` set in code; there is no `Whizbang:Core:ShowBanner` |
+
+### Application version {#application-version}
+{verified: ApplicationVersionTests.FromConfiguration_ReadsTheExplicitVersionAsync, ApplicationVersionTests.FromConfiguration_ReadsTheDeployNumberAsync, ApplicationVersionTests.FromConfiguration_NothingConfigured_UsesTheEntryAssemblyAsync, ApplicationVersionTests.Resolve_BothAnExplicitVersionAndADeployNumber_FailsLoudlyAsync, ApplicationVersionTests.CompareTo_AnUnknownVersion_NeverOrdersAsync}
+
+The version of the application built on Whizbang, recorded on every instance row beside the library version and in the
+migration ledger. See [Both versions](../startup/startup-status#both-versions).
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `Whizbang:Application:Version` | `string` (SemVer) | unset | `Whizbang__Application__Version` | The application version, as the host knows it. Recorded in SemVer form, build metadata dropped |
+| `Whizbang:Application:DeployNumber` | `long` (0 or more) | unset | `Whizbang__Application__DeployNumber` | A monotonic deploy number, for a pipeline that has a build counter rather than a release version. Recorded as `deploy:<n>` |
+
+Precedence: a key the host sets wins; otherwise the entry assembly's informational version when it reads as SemVer;
+otherwise the version is **unknown** (`NULL` on the instance row, `unknown` in the ledger). An unknown version never
+orders against anything, so it never stands another instance down; a SemVer version and a deploy number never order
+against each other either.
+
+**Setting both keys fails startup**, and so does a `Version` that is not SemVer or a `DeployNumber` that is negative or
+not a whole number. A host that states its version explicitly is told at once that it stated it wrong, rather than
+being recorded as unknown. A blank `Version` is no override.
+{verified: ApplicationVersionTests.Resolve_AnExplicitVersionThatIsNotSemVer_FailsLoudlyAsync, ApplicationVersionTests.Resolve_ANegativeDeployNumber_FailsLoudlyAsync, ApplicationVersionTests.FromConfiguration_ADeployNumberThatIsNotANumber_FailsLoudlyAsync, ApplicationVersionTests.Resolve_ABlankExplicitVersion_IsNotAnOverrideAsync}
+
+```json{title="Supply the application version" description="Set one of the two keys; setting both fails startup." category="Configuration" difficulty="BEGINNER" tags=["Configuration", "Versioning", "Startup"] tests=["ApplicationVersionTests.FromConfiguration_ReadsTheExplicitVersionAsync", "ApplicationVersionTests.Resolve_BothAnExplicitVersionAndADeployNumber_FailsLoudlyAsync"]}
+{
+  "Whizbang": {
+    "Application": {
+      "Version": "2.4.0"
+    }
+  }
+}
+```
 
 ### ConnectionStrings Conventions
 
@@ -748,7 +781,6 @@ Cadences for the rolling-upgrade standby handshake. **Configure:** bound automat
 |----------|------|---------|----------------------|---------|
 | `PollInterval` | `TimeSpan` | `00:00:05` | `Whizbang__StandbyWatcher__PollInterval` | How often the watcher checks for an active standby request |
 | `ObsolescenceInterval` | `TimeSpan` | `00:01:00` | `Whizbang__StandbyWatcher__ObsolescenceInterval` | How often a serving instance re-assesses its verdict against the ledger |
-| `RequesterLivenessWindow` | `TimeSpan` | `00:00:30` | `Whizbang__StandbyWatcher__RequesterLivenessWindow` | How stale the requester's heartbeat may be before its request is void. A requester holding its alive-lock is alive whatever its heartbeat's age |
 
 ### WhizbangHealthOptions
 

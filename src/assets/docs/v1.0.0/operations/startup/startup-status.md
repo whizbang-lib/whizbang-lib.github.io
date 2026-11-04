@@ -222,6 +222,8 @@ Preflight on every database, fresh or current:
 | `startup_stage_entered_at` | `TIMESTAMPTZ` | When the stage was entered, by the database's clock; progress keeps it |
 | `lifecycle_phase` | `TEXT` | The stage's phase, or a [pause or stand-by](#pause-and-standby) recorded with the stage |
 | `library_version` | `TEXT` | The library version the instance runs; a write without one keeps the recorded value |
+| `application_version` | `TEXT` | The version of the application the instance runs (migration 316): SemVer text, `deploy:<n>` for a host-supplied deploy number, `NULL` when unknown. Recorded at registration, like `library_version`; see [Both versions](#both-versions) |
+| `liveness_window_seconds` | `INTEGER` | How old the instance's heartbeat may get before [the liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule) calls it not live, declared by the instance from its own cadence (migration 316); a beat without one keeps the recorded value, and `NULL` (an older build) is judged by 30 s |
 
 The recorder returns whether the row was written, which is `false` for an instance that has no row yet. Writing a
 transition is not a heartbeat: it never touches `last_heartbeat_at`. Progress within a stage keeps
@@ -237,6 +239,42 @@ A stage entered before the instance's row exists is held and written when the in
 fails (from registration on, only when the database cannot be reached in time) or does not answer within 5 seconds is
 held until the next accepted heartbeat; it is never thrown into startup.
 {verified: StartupStageReporterTests.Enter_BeforeTheInstanceRegisters_HoldsTheStage_AndWritesNothingAsync, StartupStageReporterTests.AWriteThatFails_IsHeld_AndWrittenOnTheNextRegistrationSignalAsync, StartupStageReporterTests.AWriteThatDoesNotAnswer_IsAbandonedAfterItsBudget_AndHeldAsync}
+
+#### Both versions {#both-versions}
+{verified: ApplicationVersionTests.Resolve_AnExplicitVersion_OverridesTheEntryAssemblyAsync, ApplicationVersionTests.Resolve_ADeployNumber_OverridesTheEntryAssemblyAsync, ApplicationVersionTests.Resolve_EntryInformationalVersionThatIsSemVer_IsTheVersionAsync, ApplicationVersionTests.Resolve_EntryVersionThatIsNotSemVer_IsUnknownAsync, ApplicationVersionTests.Resolve_BothAnExplicitVersionAndADeployNumber_FailsLoudlyAsync}
+
+Every instance row records **two** versions: the library version (`library_version`) and the version of the
+application built on it (`application_version`). Either can be what a rollout changes, so the record keeps both, and
+the [migration ledger](../infrastructure/migrations#version-auditing) records the same application version beside the
+library version of whoever migrated.
+
+The application version is resolved once per process, in this order:
+
+1. **A version the host supplies.** `Whizbang:Application:Version` (SemVer) or `Whizbang:Application:DeployNumber` (a
+   monotonic whole number, recorded as `deploy:<n>`). Set at most one; see the
+   [configuration reference](../configuration/configuration-reference#application-version).
+2. **The entry assembly's informational version**, when it reads as SemVer (build metadata is dropped).
+3. **Otherwise unknown**: the row records `NULL`.
+
+```bash{title="Supply the application version" description="A host that knows its own release names it; a pipeline with only a build counter supplies a deploy number instead. Setting both fails startup." category="Configuration" difficulty="BEGINNER" tags=["Startup", "Versioning", "Configuration"] tests=["ApplicationVersionTests.FromConfiguration_ReadsTheExplicitVersionAsync", "ApplicationVersionTests.FromConfiguration_ReadsTheDeployNumberAsync", "ApplicationVersionRegistrationTests.TheRegistration_ResolvesFromConfigurationAsync"]}
+Whizbang__Application__Version=2.4.0
+# or, instead:
+Whizbang__Application__DeployNumber=418
+```
+
+The heartbeat and a [stood-down instance's](#stood-down) beat both record it, the same way as the library version:
+only as a registration (a row a beat inserts, a row that records none, or a new process under the same instance id),
+never over a recorded value. A host registers its own `IApplicationVersionProvider` to supply the version in code; the
+worker pipeline's registration leaves it in place.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A version the host supplies overrides the entry assembly's. | The host knows what it deployed; an entry assembly's version can be a default nobody sets. | {verified: ApplicationVersionTests.Resolve_AnExplicitVersion_OverridesTheEntryAssemblyAsync, ApplicationVersionTests.Resolve_ADeployNumber_OverridesTheEntryAssemblyAsync, ApplicationVersionRegistrationTests.AHostsOwnProvider_WinsAsync} |
+| Setting both keys, a `Version` that is not SemVer, or a `DeployNumber` that is negative or not a whole number fails startup. | A host that says what it runs explicitly is told at once that it said it wrong, never read as unknown. | {verified: ApplicationVersionTests.Resolve_BothAnExplicitVersionAndADeployNumber_FailsLoudlyAsync, ApplicationVersionTests.Resolve_AnExplicitVersionThatIsNotSemVer_FailsLoudlyAsync, ApplicationVersionTests.Resolve_ANegativeDeployNumber_FailsLoudlyAsync, ApplicationVersionTests.FromConfiguration_ADeployNumberThatIsNotANumber_FailsLoudlyAsync} |
+| An entry assembly version that is not SemVer, or none at all, is unknown. | A version that cannot be ordered must not pretend it can. | {verified: ApplicationVersionTests.Resolve_EntryVersionThatIsNotSemVer_IsUnknownAsync, ApplicationVersionTests.Resolve_NoEntryVersion_IsUnknownAsync} |
+| An unknown version never orders against anything, and a SemVer and a deploy number never order against each other. | An unknown version must never stand another instance down, or be stood down by the application version alone; two schemes say nothing about each other. | {verified: ApplicationVersionTests.CompareTo_AnUnknownVersion_NeverOrdersAsync, ApplicationVersionTests.CompareTo_DifferentSchemes_NeverOrderAsync, ApplicationVersionTests.CompareTo_TwoSemVers_OrderByPrecedenceAsync, ApplicationVersionTests.CompareTo_TwoDeployNumbers_OrderNumericallyAsync} |
+| The row records it at registration only, like the library version; an unknown version is sent as nothing. | One process runs one version; a beat that rewrote it could only bring back the races a registration-only write removed. | {verified: InstanceLivenessRuleSqlTests.Heartbeat_RecordsTheApplicationVersionOnlyAsARegistrationAsync, HeartbeatWorkerRequestFieldsTests.BuildRequest_CarriesTheApplicationVersionAsync, HeartbeatWorkerRequestFieldsTests.BuildRequest_AnUnknownApplicationVersion_IsNotRecordedAsync} |
+| The worker pipeline registers the version once per process, and a provider the host registered is kept. | Every writer (the heartbeat, the stand-down beat, the ledger) reads the same value. | {verified: ApplicationVersionRegistrationTests.TheCorePipeline_RegistersItAsync, ApplicationVersionRegistrationTests.AHostsOwnProvider_WinsAsync} |
 
 ### One writer of the phase {#one-writer-of-the-phase}
 
@@ -345,6 +383,12 @@ reason, which names the version the ledger records and the binary's own, and its
 write like any [stand-by](#pause-and-standby). It registers at once, keeps its row alive on the heartbeat interval
 until the host stops, and is never eligible for work. Elect, Migrate, Converge and Coordinate are never entered, and
 the schema-ready gate never opens, so readiness answers 503 while liveness stays healthy.
+
+Each of its beats declares the window [the liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule)
+judges it by, derived from the beat's own interval the way the heartbeat worker derives its own (three of its beats;
+the stand-down beat has no slow cadence), so it is never reaped between beats. Each beat also carries the
+[application version](#both-versions), recorded at registration.
+{verified: StartupStandDownTests.FromServices_BeatsOnTheHeartbeatCadence_AsTheRegisteredInstanceAsync}
 
 ```sql{title="Instances that stood down" description="Every instance held in Preflight because the schema is newer than its binary, with the reason" category="Operations" difficulty="BEGINNER" tags=["Startup","SQL","RollingUpgrades"] tests=["StartupStageSqlTests.Stages_ListEveryInstance_WithItsPositionMessageAndTimeInStageAsync","StartupStandDownTests.Record_StaysInPreflight_NamingTheReason_AndStandsByAsync"]}
 SELECT service_name, host_name, startup_stage_message, time_in_stage

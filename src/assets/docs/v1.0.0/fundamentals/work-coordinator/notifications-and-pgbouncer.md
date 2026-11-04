@@ -15,7 +15,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Notifications/PgRoleElector.cs
   - src/Whizbang.Data.Postgres/Migrations/143_NotifyStateNeverWaits.sql
   - src/Whizbang.Data.Postgres/Migrations/146_DoorbellsRingAfterCommit.sql
+  - src/Whizbang.Data.Postgres/Migrations/317_EveryReaderJudgesLivenessByTheRule.sql
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ListenLivenessSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DoorbellsRingAfterCommitSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AdvisoryLockReleaseTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgDutyElectorLockReleaseTests.cs
@@ -85,6 +87,26 @@ session running it does not hold the lock, which behind a pooler means the relea
 and the lock is still held where it was taken. That case is logged at Warning naming the lock and its key, so a
 leaked lock is visible instead of silently blocking the next holder.
 {verified: PgRoleElectorBridgeLockTests.ABridgeResolvedThroughAPooledKey_WarnsBeforeTakingTheSessionLockAsync, AdvisoryLockReleaseTests.ReleasingALockAnotherSessionHolds_ReturnsFalse_AndWarnsNamingTheLockAndKeyAsync, PgDutyElectorLockReleaseTests.AGrantWhoseLockWasGoneBeforeItsRelease_SaysSoAsync}
+
+### The LISTEN connection is not a heartbeat {#listen-as-heartbeat}
+{verified: ListenLivenessSqlTests.ClaimOrphanedOutbox_StaleHeartbeat_WithOnlyAConnectionNamedForIt_LeasesReclaimableAsync, ListenLivenessSqlTests.ClaimOrphanedInbox_StaleHeartbeat_WithOnlyAConnectionNamedForIt_LeasesReclaimableAsync, ListenLivenessSqlTests.ClaimOrphanedPerspectiveEvents_DeadInstanceRow_WithOnlyAConnectionNamedForIt_LeasesReclaimableAsync, ListenLivenessSqlTests.ClaimOrphanedOutbox_DirectOwnerHoldingItsAliveLock_LeasesNotReclaimedAsync}
+
+The direct connection carries the instance's name in its `application_name`. Earlier releases counted that as a
+liveness signal: the orphan claims (`claim_orphaned_outbox`, `claim_orphaned_inbox`,
+`claim_orphaned_perspective_events`) and `get_stream_events` treated a stream's owner as alive while a connection
+named for it appeared in `pg_stat_activity`, and the perspective orphan claim and `get_stream_events` treated any
+owner with a row at all as alive.
+
+Since migration 317 neither is a signal. Every one of those functions asks
+[the liveness rule](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule), and the rule reads exactly one thing
+from this connection: the alive-lock it takes at open. A direct owner holding that lock keeps its streams between slow
+beats, as the named connection used to ensure; an owner the rule calls dead loses them, whatever connection carries its
+name and whether or not the reap has removed its row yet.
+
+**Why.** Any session can set an `application_name`, and a connection outlives a hung process just as a lock does, so
+the name proved less than the lock and was a second, unbounded definition of alive. A row proves only that the reap has
+not run yet. One signal, read through one rule, means the orphan claims and the reap can no longer disagree about who
+owns a stream.
 
 ## The signaling gate
 
