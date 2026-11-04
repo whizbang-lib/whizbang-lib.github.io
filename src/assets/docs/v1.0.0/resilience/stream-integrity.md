@@ -9,6 +9,11 @@ tags: 'stream-integrity, anti-entropy, re-delivery, backfill, digest, manifest, 
 codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/214_AtMostOnceEventsCarryAFlag.sql
   - src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs
+  - src/Whizbang.Core/Messaging/IntegrityDomainOwnership.cs
+  - src/Whizbang.Core/Messaging/OriginReattribution.cs
+  - src/Whizbang.Core/Workers/OriginReattributionWorker.cs
+  - src/Whizbang.Core/Routing/OwnedNamespaceMatcher.cs
+  - src/Whizbang.Data.Postgres/Migrations/325_LocalLaneFollowsOwnership.sql
   - src/Whizbang.Core/Messaging/IntegrityAudit.cs
   - src/Whizbang.Core/Messaging/IntegrityGapTracker.cs
   - src/Whizbang.Core/Workers/IntegrityCheckpointWorker.cs
@@ -64,6 +69,14 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/320_RepairWaitsForItsAnswer.sql
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/Routing/OwnedNamespaceMatcherLocalLaneTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/IntegrityDomainOwnershipTests.cs
+  - tests/Whizbang.Core.Tests/Workers/IntegrityCheckpointOwnershipTests.cs
+  - tests/Whizbang.Core.Tests/Workers/SubscriptionExpansionTargetingTests.cs
+  - tests/Whizbang.Core.Tests/Workers/OriginReattributionWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OriginReattributionWorkerLoopTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityDomainClaimsSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/OriginReattributionSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AtMostOnceOccurrenceIntegrityTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/AuditLedgerRebuildTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AuditRebuildRequestReceptorTests.cs
@@ -2067,6 +2080,155 @@ adoption.
 The extra checks run only for a redelivery child whose id deduplication has already seen, by primary key and by
 the stream's version index; live delivery evaluates one flag.
 
+## The local lane follows ownership {#the-local-lane-follows-ownership}
+
+{verified: OwnedNamespaceMatcherLocalLaneTests.IsLocalEventType_NoOwnedDomains_EveryTypeIsLocalAsync, OwnedNamespaceMatcherLocalLaneTests.IsLocalEventType_TypeInAnOwnedNamespace_IsLocalAsync, OwnedNamespaceMatcherLocalLaneTests.IsLocalEventType_TypeOutsideEveryOwnedNamespace_IsNotLocalAsync, IntegrityCheckpointOwnershipTests.RunCheckpointOnce_OwnedDomainsRegistered_CountsOnlyOwnedTypesAsync, IntegrityCheckpointOwnershipTests.RunCheckpointOnce_NoOwnedDomains_AnnouncesNoneAndKeepsEveryBucketAsync, IntegrityManifestReceptorTests.RequestReceptor_OwnedDomainsRegistered_AdvertisesOnlyOwnedTypesAsync, RedeliveryRequestReceptorTests.Receptor_ShipsOnlyEventsOfOwnedTypes_AndPagesPastTheRestAsync}
+
+A service's **local lane** is the set of events it vouches for as their author: the events its checkpoints
+count, its manifests advertise and its redelivery ships under its own identity. It used to be every stored
+event with no origin recorded. A store that received other services' events before origins were recorded
+holds those events with no origin too, so it advertised them as its own, consumers counted them as surplus,
+it redelivered them under its own name, and every receiver refused them (the first hop names the real
+author, see [events this service authored](#pre-stamp-history-first-hop)). Repair never converged,
+because the side holding the misfiled copy was the side being asked.
+
+The local lane now follows registered ownership. An event whose type's namespace is not in
+`RoutingOptions.OwnedDomains` (the `OwnDomains(...)` declaration) is **never** local, whatever its origin
+column says:
+
+- **Checkpoints** count only owned types.
+- **Manifest answers** advertise only owned types; a store that holds only other services' types answers
+  nothing, as an origin with nothing to report does.
+- **Redelivery** ships only owned types (see [redelivery ships only what the origin wrote](#redelivery-ships-only-what-the-origin-wrote)).
+
+The namespace rule is the one routing already uses: a type is owned when its namespace equals an owned
+domain or is a child of one (the domain followed by a `.`), compared without case. It is one shared helper,
+`OwnedNamespaceMatcher`, used by the dispatcher, the receptor invoker, the transport consumer and stream
+integrity alike, so the lane and routing can never disagree about who owns a type.
+
+**A service with no owned domains registered keeps the earlier behavior exactly:** every stored event
+without an origin is still its own.
+
+### Ownership is exchanged on the checkpoint {#ownership-is-exchanged-on-the-checkpoint}
+
+{verified: IntegrityCheckpointOwnershipTests.RunCheckpointOnce_OwnedDomainsRegistered_AnnouncesThemOnTheCheckpointAsync, IntegrityCheckpointWireSerializationTests.IntegrityCheckpoint_CarriesTheOriginsOwnedDomainsAsync, IntegrityCheckpointWireSerializationTests.IntegrityCheckpoint_FromAnOlderOriginWithoutOwnedDomains_ReadsAsEmptyAsync, IntegrityCheckpointReceptorTests.Checkpoint_RecordsTheOriginsAnnouncedDomainsAsync, IntegrityCheckpointReceptorTests.Checkpoint_AContestedDomain_WarnsAndCountsOncePerPairAsync, IntegrityCheckpointReceptorTests.Checkpoint_ABucketOfATypeAnotherServiceOwns_IsNotVerifiedAgainstThisOriginAsync, IntegrityManifestReceptorTests.ManifestReceptor_DigestsOfATypeAnotherServiceOwns_AreNotComparedAsync, IntegrityDomainClaimsSqlTests.Record_AnAnnouncementReplacesTheOwnersClaimSetAsync, IntegrityDomainClaimsSqlTests.Record_ADomainAnotherOwnerClaims_ComesBackAsAConflictAsync, IntegrityDomainOwnershipTests.FindOwner_ADomainTwoServicesClaim_UsesNeitherAsync, IntegrityDomainOwnershipTests.FindOwner_NestedDomainsClaimedByDifferentServices_TheMostSpecificWinsAsync}
+
+Every service announces the domains it owns on the checkpoint it already sends each minute:
+`IntegrityCheckpoint.OwnedDomains`, trimmed and without a trailing dot. The field is additive. A
+checkpoint from an origin built before it reads as announcing no domains, and claims nothing.
+
+Each consumer keeps what it hears as **domain claims** (`wh_integrity_domain_claims`, migration 325):
+
+- An announcement **replaces** that origin's claim set. A domain it no longer announces is given up, and an
+  empty list gives up all of them.
+- Domains key without case. An announcement without a request topic keeps the request address already on
+  record, so a restart does not lose where to reach an owner.
+- Unchanged claims are not rewritten, so a checkpoint every minute per origin costs nothing on disk.
+
+The claims form a domain to owner map. The owner of a stored event type is the claim of the **most
+specific** domain containing its namespace. When **two owners claim one domain**, the consumer logs a
+Warning naming both (once per pair and domain), counts it on `ownership_conflicts`, and uses **neither**
+for that domain; a parent domain's claim does not stand in for it. The conflict lasts while both claims are
+on record, so fix it by correcting one service's `OwnDomains` declaration.
+
+The map is used for three things:
+
+1. **Re-attribution** of the store's own pre-origin history to its author (see [re-attribution](#re-attribution)).
+2. **Directing repair and backfill at the owner.** A consumer neither verifies a checkpoint bucket nor
+   compares a manifest digest against an origin when another service owns the type: an older origin still
+   advertising a type it received is not authoritative for it, and asking it for repair would only ship
+   events every receiver refuses. A pending gap recorded before the owner was known is dropped once it is.
+3. **Answering redelivery only for owned domains**, on the answering side, from the service's own
+   declaration.
+
+### One checkpoint copy per consumer {#one-checkpoint-copy-per-consumer}
+
+{verified: IntegrityCheckpointOwnershipTests.RunCheckpointOnce_OwnedDomainsRegistered_RidesOnlyTheOwnedTypesTopicsAsync, IntegrityCheckpointOwnershipTests.RunCheckpointOnce_OwnedDomainsWithNoCatalogType_FallsBackToTheDispatcherAsync, IntegrityCheckpointWorkerBranchCoverageTests.RunCheckpointOnce_RoutingOptionsRegistered_PassesOwnedDomainsCaseInsensitivelyToTheStrategyAsync}
+
+The checkpoint rides the origin's own event topics, one publish per distinct topic, because a
+namespace-routed control topic is one no consumer subscribes to. The topic set used to be every type in the
+window plus every type in the store's digest lane. Since that lane could include other services' types, a
+consumer subscribed to many topics received one copy of the same checkpoint per topic, about 25 a minute,
+each paying a broker delivery, deserialization and an inbox upsert before deduplication dropped it.
+
+With owned domains registered, the topic set is the topics of the **catalog event types the service owns**,
+read from the message-type catalog, not from a scan of the store. Under domain-topic routing that is one
+topic per owned domain, so each consumer of an owned topic gets the liveness beat once per owned domain it
+subscribes to. When no owned type resolves to a topic, the checkpoint still goes out through the dispatcher:
+the beat is never dropped. With no owned domains registered, the topic set is unchanged.
+
+### Redelivery ships only what the origin wrote {#redelivery-ships-only-what-the-origin-wrote}
+
+{verified: SelectRedeliveryEventsTests.Select_AuthoredBy_ShipsOnlyEventsTheAnsweringServiceWroteAsync, SelectRedeliveryEventsTests.Select_WithoutAuthoredBy_KeepsTheEarlierSelectionAsync, RedeliveryRequestReceptorTests.Receptor_AsksTheSelectionForEventsThisServiceAuthoredAsync, RedeliveryRequestReceptorTests.Receptor_ARequestThisServiceMadeItself_IsIgnoredAsync, RedeliveryRequestReceptorTests.Receptor_ShipsOnlyEventsOfOwnedTypes_AndPagesPastTheRestAsync, SubscriptionExpansionTargetingTests.Backfill_TypesWithAKnownOwner_AreAskedOfThatOwnerOnlyAsync, SubscriptionExpansionTargetingTests.Backfill_TypesWithNoUsableOwner_FallBackToOneBroadcastAsync, SubscriptionExpansionTargetingTests.Backfill_MixedOwnership_DirectsTheOwnedTypesAndBroadcastsTheRestAsync, SubscriptionExpansionTargetingTests.Backfill_AnOwnerThatIsThisService_IsNotAskedAsync}
+
+A redelivery bundle names the answering service as its origin, so it may carry only events that service
+wrote. Three rules make that hold:
+
+- **The selection filters by author.** `RedeliveryRequest.AuthoredBy` (set by the built-in receptor to its own
+  service name) selects only events with **no origin recorded** whose stored first hop names the answering
+  service, names no service (or the `Unknown` sentinel), or is absent. Names compare without case. An event
+  received from another service, whether it carries that origin or only a first hop naming it, is no longer
+  shipped; receivers refused it anyway. Without `AuthoredBy` the selection is unchanged.
+- **Only owned types are shipped**, page by page; a page of other services' types still advances the keyset,
+  so the owned events behind it are reached.
+- **An origin never answers its own request.** The subscription-growth backfill on a shared topic reaches its
+  sender too, and answering it re-shipped the sender's own store to itself. A request whose requester is this
+  service (compared without case) is ignored and counted on `redelivery_requests_ignored` with
+  `reason=own_request`.
+
+**The backfill asks the owner.** When the consumed-type set grows, the backfill no longer broadcasts one
+request every holder answers. Each new type whose owner is known from the domain claims, with a request
+address, is asked of that owner alone: one directed state-only request per owner, on the owner's request
+topic. Only the types with no usable owner (none known, an owner that announced no request address, or this
+service itself) fall back to the single broadcast, which the rules above keep cheap: in practice only the
+author answers.
+
+### Re-attribution {#re-attribution}
+
+{verified: OriginReattributionWorkerTests.Pass_HandsNonOwnedTypesToTheStoreWithTheirOwner_AndUnclaimedOnesAsUnattributedAsync, OriginReattributionWorkerTests.Pass_RunsBatchesUntilTheWalkCatchesUpAsync, OriginReattributionWorkerTests.Pass_StopsAtTheBatchesPerPassCapAsync, OriginReattributionWorkerTests.Pass_WithNoOwnedDomains_LeavesTheStoreAsItWasAsync, OriginReattributionWorkerTests.Pass_OnAnInstanceThatDoesNotHoldTheMaintainerDuty_DoesNothingAsync, OriginReattributionWorkerTests.Pass_OnABusyService_WaitsUntilMaxDeferral_ThenIsForcedThroughAsync, OriginReattributionSqlTests.Window_IsTheNextBatchByCommitSequence_WithTheTypesThatHaveNoOriginAsync, OriginReattributionSqlTests.Window_WithAChangedFingerprint_RewalksFromTheStartAsync, OriginReattributionSqlTests.Reattribute_ARowAnotherServiceOwns_TakesTheOwnerAsOrigin_AndItsDigestMovesLanesAsync, OriginReattributionSqlTests.Reattribute_AFirstHopNamingAThirdService_IsLeftAndCountedAsync, OriginReattributionSqlTests.Reattribute_ATypeWithNoKnownOwner_IsCountedAsUnattributedAndLeftAsync, OriginReattributionSqlTests.Reattribute_ReArmsTheOwnersLedgerBucketsTheRowsLandIn_AndNoOthersAsync, OriginReattributionSqlTests.Reattribute_IntoASealedLocalEpoch_RefoldsIt_AndAdvancesTheOriginGenerationAsync, OriginReattributionSqlTests.Reattribute_FromAStaleCursor_MovesNothingAndReportsNotAdvancedAsync, OriginReattributionWorkerLoopTests.ExecuteAsync_WhenAPassThrows_KeepsRunningPassesAsync, OriginReattributionWorkerLoopTests.ExecuteAsync_WhenDisabled_ParksWithoutWalkingAsync}
+
+Following ownership stops a store from vouching for other services' history, but the misfiled events are
+still in its local digest lane, and consumers' deficits for them still point at the wrong service.
+Re-attribution fixes the store's own bookkeeping: it gives each such event its real author as origin. It
+changes no event content.
+
+**Where and when.** `OriginReattributionWorker` runs on the instance holding the maintainer duty, under the
+housekeeping idle gate like the rest of integrity work (see [the idle gate](#integrity-idle-gate)): it waits
+while the service is busy and is forced through after `Whizbang:Housekeeping:MaxDeferral`. A pass runs every
+`ReattributionIntervalSeconds`, at most `MaxReattributionBatchesPerPass` batches of `ReattributionBatchSize`
+rows. It runs only when the service registered owned domains; with none, it does nothing.
+
+**The walk.** Each batch is the next rows after a durable cursor in commit-sequence order, a bounded range
+scan on the commit-sequence index, never a scan of the whole store. The batch's event types that carry no
+origin and are not owned here go to the store with their owner from the domain claims. The cursor moves by
+compare-and-swap, so a batch overtaken by another pass is discarded whole, and the walk resumes where it
+left off after a restart. When the claims map or this service's owned domains change (the **ownership
+fingerprint**), the walk starts again from the beginning, so history left unattributed reaches an owner
+learned later.
+
+**What each row gets.** For a row with no origin whose type another service owns:
+
+| The row | What happens | Counted on |
+| --- | --- | --- |
+| The owner is known, and the stored first hop names the owner, names no service, or is absent | The row takes the owner as its origin (the origin's commit sequence stays empty; a later redelivery from the owner fills it, see [history received before origins were recorded](#pre-stamp-history)). Its digest leaves the local lane for the owner's lane, sealed local epochs over it are refolded (advancing the [origin generation](#origin-generation), so consumers re-verify instead of alarming), and the owner's repair-ledger buckets it lands in, per stream and the type lane, have their unhealable and exhausted marks cleared and their attempts and pending answer reset. | `origins_reattributed` |
+| The owner is known, but the first hop names a third service | **Ownership is primary, the first hop only a cross-check:** the row is left as it was, and the batch logs a Warning with the count for an operator to inspect. | `reattribution_hop_disagreements` |
+| No owner is known (or the domain is contested) | Left as it was, and out of the local lane logically because the lane follows ownership. Each such type is logged once. It moves when an owner announces the domain. | `origins_unattributed` |
+
+Rows of types this service owns are never touched. An ephemeral or at-most-once row takes its owner as origin
+without touching any digest, because it folds into none.
+
+**Options.**
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `ReattributionEnabled` | `true` | Run re-attribution at all |
+| `ReattributionIntervalSeconds` | `60` | Seconds between passes; at least 1 |
+| `ReattributionBatchSize` | `5000` | Rows one batch scans; at least 1 |
+| `MaxReattributionBatchesPerPass` | `20` | The most batches one pass runs; at least 1 |
+
+All bound from `Whizbang:StreamIntegrity`; a bound below 1 fails at host start naming the key
+{verified: StreamIntegrityOptionsValidatorTests.Validate_AReattributionBoundBelowOne_FailsNamingTheKeyAsync}.
+
 ## Observability
 
 Everything the reconcile system does is visible on one meter: **`Whizbang.StreamIntegrity`**
@@ -2130,6 +2292,11 @@ maximum across its instances), never a sum.
 | `redelivery_events_shipped` | Events selected and shipped in redelivery bundles, as an origin. |
 | `origins_adopted` | Stored events whose empty origin columns a redelivery filled: [history received before origins were recorded](#pre-stamp-history), now verifiable. Rises while that history is redelivered once, then stops. |
 | `origins_refused` | Stored events with an empty origin that a redelivery did not adopt, because the event's first hop names another service than the bundle's origin: [events this service authored](#pre-stamp-history-first-hop) that the origin's store had filed as its own. Non-zero means an origin is redelivering events it did not author; the Warning logged once per bundle names it. |
+| `ownership_conflicts` (tag `domain`) | Domains two services claim on their checkpoints, once per contesting pair and domain; neither claimant is used. Non-zero means two services' `OwnDomains` declarations overlap. See [ownership is exchanged on the checkpoint](#ownership-is-exchanged-on-the-checkpoint). |
+| `redelivery_requests_ignored` (tag `reason`) | Redelivery requests an origin declined to answer: `own_request` (its own backfill broadcast came back to it). |
+| `origins_reattributed` | Stored events received before origins were recorded that [re-attribution](#re-attribution) gave their owner as origin. Rises while the walk covers that history, then stops. |
+| `origins_unattributed` | Stored events of a type this service does not own whose owner is not known. They move once an owner announces the domain. |
+| `reattribution_hop_disagreements` | Stored events re-attribution left because their first hop names a service other than the owner of their type. |
 | `deliveries_queued` (tag `type`) | Integrity deliveries recorded for the maintainer's drain. A copy already recorded is not counted again. See [integrity work runs on the maintainer](#integrity-work-runs-on-the-maintainer). |
 | `deliveries_processed` (tag `type`) | Integrity deliveries the drain handled. Falling behind `deliveries_queued` for long means the drain is deferred by the idle gate or bounded by `MaxIntegrityDeliveriesPerPass`. |
 | `deliveries_failed` (tag `type`) | Failed attempts at an integrity delivery, each retried after a backoff. |
