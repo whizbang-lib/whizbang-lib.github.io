@@ -23,6 +23,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/MultiStream/MultiStreamCommandRegistration.cs
   - src/Whizbang.Data.Postgres/Migrations/208_MultiStreamCommands.sql
   - src/Whizbang.Data.Postgres/Migrations/229_OnlyReadyInstancesAreEligibleForWork.sql
+  - src/Whizbang.Data.Postgres/Migrations/330_CoordinationOnTheSignalBus.sql
   - src/Whizbang.Core/Commands/System/RebuildPerspectiveStreamsCommand.cs
   - src/Whizbang.Core/Perspectives/RebuildPerspectiveStreamsHandler.cs
   - src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs
@@ -133,6 +134,12 @@ The intake validates the command and records the run. It runs no stream itself.
 | The same run id again (a redelivery, or the command recorded both before the outbox and after the inbox) | Recorded once; the repeat is logged and accepted |
 | No store registered | Refused (`InvalidOperationException`) |
 
+Recording a new run wakes every instance: `wh_record_multi_stream_run` publishes a `MultiStreamWorkSignal` through the
+[signal bus's SQL publish](../signal-bus/signal-bus#coordination-signals), which notifies `wh_multi_stream_work` with
+the run id, the channel and payload earlier releases use. It is a doorbell, so it is not recorded in the durable log:
+the worker's poll stands behind it. Recording the same run again records it once.
+{verified: MultiStreamCommandStoreSqlTests.RecordRunAsync_ANewRun_WakesEveryInstanceAsync, CoordinationSignalsSqlTests.RecordingAMultiStreamRun_RingsTheOlderChannelWithTheRunId_AndRecordsNothingAsync, MultiStreamCommandStoreSqlTests.RecordRunAsync_TheSameRunTwice_RecordsItOnceAndSaysSoAsync}
+
 ### Storage {#storage}
 
 The run and its streams are kept by the storage driver's `IMultiStreamCommandStore` (Postgres: migrations 208 and 213).
@@ -220,10 +227,12 @@ failed, pending, and when it completed.
 `MultiStreamCommandWorker` runs on every instance. A pass claims up to `BatchSize` of this instance's pending streams,
 works them, and records their outcomes. A pass runs:
 
-- when a new run is recorded (the store announces it on the `wh_multi_stream_work` channel, which every instance
-  listens to on its shared notification connection);
+- when a new run is recorded (the store announces it as a `MultiStreamWorkSignal`, and the worker hears it through
+  its subscription on the [signal bus](../signal-bus/signal-bus#coordination-signals); it owns no channel of its own);
 - immediately after a pass that claimed a full batch;
 - at least every `PollInterval`.
+
+{verified: MultiStreamCommandPostgresRegistrationTests.Subscriber_SubscribesTheWorkerToNewRunSignalsOnTheBusUntilStoppedAsync}
 
 It waits for the schema before its first pass, and a failed pass is logged and followed by the next. It does not run
 when disabled, when no store is registered, or when the service registered no multi-stream handlers.

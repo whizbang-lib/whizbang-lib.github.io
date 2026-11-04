@@ -76,34 +76,49 @@ about the same instance at the same moment.
 With gravity there is **one rule**, defined once in SQL, and every reader asks it through `wh_live_instance_ids()` or
 `wh_instance_is_live(id)` (see [Instance liveness](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule)). The
 copies were deleted. What keeps them deleted is a source guard, `CoordinationSourceGuardTests`, which fails when one
-of three mechanisms appears outside an allowlist:
+of these mechanisms appears outside an allowlist:
 
 | Mechanism | Where the guard looks | Ask instead |
 |---|---|---|
 | A raw notification channel (`LISTEN`, `NOTIFY`, `pg_notify`) | C# under `src`, and each SQL function's latest definition | The signal bus |
+| A subscription of its own to the shared notification connection (`INotifySubscription`, `ISharedNotifyConnection`) | C# under `src` | A typed signal on the bus (`ISignalBus.Subscribe`) |
+| A coordination channel's name (`wh_committed`, `wh_role_released`, `wh_partition_assignment`, `wh_multi_stream_work`) | C# under `src` | The typed coordination signal; only the bus's wire, `PgSignalWire.cs`, names the channel |
 | An advisory lock (any `pg_advisory_*` call in C#; a session lock in SQL) | The same | A role assignment with a lease and an epoch |
 | A liveness check (a comparison against `last_heartbeat_at` or `LastHeartbeatAt`, `is_instance_alive`, `pg_stat_activity`, `pg_locks`) | The same | The one liveness rule |
 
 The C# scan reads every source file under `src` with its comments removed. The SQL scan reads the migration corpus and
 judges only each function's **last** definition, the one a database runs, also without comments, so a history of old
 definitions and a comment that names `pg_stat_activity` are not offenders.
-{verified: CoordinationSourceGuardTests.NotifyAndListen_AppearOnlyInTheCoordinationFilesAsync, CoordinationSourceGuardTests.AdvisoryLocks_AppearOnlyInTheAllowlistedFilesAsync, CoordinationSourceGuardTests.LivenessChecks_AppearOnlyInTheAllowlistedFilesAsync, CoordinationSourceGuardTests.SqlLivenessChecks_AppearOnlyInTheRuleAndTheAllowlistedFunctionsAsync, CoordinationSourceGuardTests.SqlSessionAdvisoryLocks_AppearOnlyInTheAllowlistedFunctionsAsync, CoordinationSourceGuardTests.SqlNotifications_AppearOnlyInTheAllowlistedFunctionsAsync}
+{verified: CoordinationSourceGuardTests.NotifyAndListen_AppearOnlyInTheCoordinationFilesAsync, CoordinationSourceGuardTests.RawChannelSubscriptions_AppearOnlyInTheSignalBusFilesAsync, CoordinationSourceGuardTests.CoordinationChannels_AreNamedOnlyByTheBussWireAsync, CoordinationSourceGuardTests.AdvisoryLocks_AppearOnlyInTheAllowlistedFilesAsync, CoordinationSourceGuardTests.LivenessChecks_AppearOnlyInTheAllowlistedFilesAsync, CoordinationSourceGuardTests.SqlLivenessChecks_AppearOnlyInTheRuleAndTheAllowlistedFunctionsAsync, CoordinationSourceGuardTests.SqlSessionAdvisoryLocks_AppearOnlyInTheAllowlistedFunctionsAsync, CoordinationSourceGuardTests.SqlNotifications_AppearOnlyInTheAllowlistedFunctionsAsync}
 
 **Every allowlist entry states its reason.** A file or function is allowed because it *is* the mechanism (the rule
 itself, the lock half of the rule, the one LISTEN connection, the signal bus's transport), because it only displays or
 throttles and judges nothing (a status report showing how long ago an instance beat, a write throttle on the beat
 itself), or because it holds a lock for one statement or DDL pass, which is mutual exclusion and not a duty (the concurrent index
 drop, which cannot run in a transaction, holds the schema lock at session level for its three statements and nothing
-more). Entries marked `PENDING` are mechanisms the standard has not folded in yet, and each names the later part of the
-work that removes it (raw channels move to the signal bus). The advisory-lock duties were the first to go: since
-[#2044](https://github.com/whizbang-lib/whizbang/issues/2044) every duty is a role assignment, and their pending
-entries are gone.
+more).
 
-```csharp{title="An allowlist entry carries its reason" description="Each allowed file or SQL function maps to why it may use the mechanism; PENDING entries name the change that removes them." category="Testing" difficulty="INTERMEDIATE" tags=["Gravity", "Source guard", "Liveness", "Coordination"] tests=["CoordinationSourceGuardTests.SqlLivenessChecks_AppearOnlyInTheRuleAndTheAllowlistedFunctionsAsync", "CoordinationSourceGuardTests.AdvisoryLocks_AppearOnlyInTheAllowlistedFilesAsync", "CoordinationSourceGuardTests.EveryAllowlistEntry_StillMatchesAsync"]}
+**No entry is a debt.** While the standard was being folded in, entries marked `PENDING` named mechanisms still to
+move, each with the part of the work that would remove it. The advisory-lock duties went first: since
+[#2044](https://github.com/whizbang-lib/whizbang/issues/2044) every duty is a role assignment. The raw channels went
+last: since [#2046](https://github.com/whizbang-lib/whizbang/issues/2046) every coordination channel is a
+[signal on the bus](/v1.0.0/fundamentals/signal-bus/signal-bus#coordination-signals). In C#, only the shared
+connection and the bus's Postgres transport issue `NOTIFY` or `LISTEN`; only the bus's files subscribe to the shared
+connection; only `PgSignalWire.cs` names a coordination channel. In SQL, only `ring_doorbells`, the bus's after-commit
+doorbell ringer, and `wh_publish_signal`, the bus's publish, notify. Every pending entry is gone, and a check fails if
+any allowlist reason says `PENDING` again: an allowlist is a list of reasons, never of debts.
+{verified: CoordinationSourceGuardTests.NoAllowlistEntry_IsLeftPendingAsync, CoordinationSourceGuardTests.SqlNotifications_AppearOnlyInTheAllowlistedFunctionsAsync}
+
+```csharp{title="An allowlist entry carries its reason" description="Each allowed file or SQL function maps to why it may use the mechanism; no entry may be marked PENDING." category="Testing" difficulty="INTERMEDIATE" tags=["Gravity", "Source guard", "Liveness", "Coordination"] tests=["CoordinationSourceGuardTests.SqlLivenessChecks_AppearOnlyInTheRuleAndTheAllowlistedFunctionsAsync", "CoordinationSourceGuardTests.AdvisoryLocks_AppearOnlyInTheAllowlistedFilesAsync", "CoordinationSourceGuardTests.CoordinationChannels_AreNamedOnlyByTheBussWireAsync", "CoordinationSourceGuardTests.NoAllowlistEntry_IsLeftPendingAsync", "CoordinationSourceGuardTests.EveryAllowlistEntry_StillMatchesAsync"]}
 private static readonly Dictionary<string, string> _sqlLivenessAllowlist = new(StringComparer.Ordinal) {
   ["wh_instance_liveness"] = "THE liveness rule",
   ["wh_direct_alive_lock_holders"] = "the lock half of the rule",
   ["register_instance_heartbeat"] = "a write throttle on the beat itself; it judges no peer",
+};
+
+private static readonly Dictionary<string, string> _coordinationChannelAllowlist = new(StringComparer.Ordinal) {
+  ["src/Whizbang.Data.Postgres/Notifications/PgSignalWire.cs"] = "the signal bus's Postgres wire: which channel each "
+    + "coordination signal travels on, by the name an older release uses",
 };
 
 private static readonly Dictionary<string, string> _advisoryAllowlist = new(StringComparer.Ordinal) {
@@ -115,8 +130,9 @@ private static readonly Dictionary<string, string> _advisoryAllowlist = new(Stri
 **The allowlist only shrinks.** An entry whose file or function no longer uses the mechanism fails
 `EveryAllowlistEntry_StillMatchesAsync`, so a stale entry cannot linger as a pre-approved hole for the next author;
 the commit that removes the last use removes the entry with it. And a guard that reads nothing passes everything, so
-`TheScans_SeeTheMechanismsTheyGuardAsync` proves each scan finds what it exists to find: the LISTEN connection, a
-schema lock, the rule itself and a sample heartbeat comparison, while `claim_work`, which asks the rule, is not flagged.
+`TheScans_SeeTheMechanismsTheyGuardAsync` proves each scan finds what it exists to find: the LISTEN connection, the
+bus's SQL publish, the bus's transport as a subscriber, the bus's wire naming a channel, a sample old-style
+`pg_notify` and channel constant, a schema lock, the rule itself and a sample heartbeat comparison, while `claim_work`, which asks the rule, is not flagged.
 The SQL scan reads a function's last word: a function a later migration drops is not scanned, because no database
 runs it, and one dropped and then defined again is scanned by its new definition.
 {verified: CoordinationSourceGuardTests.EveryAllowlistEntry_StillMatchesAsync, CoordinationSourceGuardTests.TheScans_SeeTheMechanismsTheyGuardAsync}

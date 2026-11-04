@@ -17,6 +17,13 @@ codeReferences:
   - src/Whizbang.Core/Signals/SignalTarget.cs
   - src/Whizbang.Core/Signals/InstanceLifecycleSignals.cs
   - src/Whizbang.Core/Signals/WorkAvailableSignals.cs
+  - src/Whizbang.Core/Signals/CoordinationSignals.cs
+  - src/Whizbang.Core/Signals/IPayloadSignal.cs
+  - src/Whizbang.Core/Signals/ISignalTopicTransport.cs
+  - src/Whizbang.Data.Postgres/Notifications/PgSignalWire.cs
+  - src/Whizbang.Data.Postgres/Notifications/PostgresSignalTransport.cs
+  - src/Whizbang.Data.Postgres/Notifications/PgDurableSignalTailWorker.cs
+  - src/Whizbang.Data.Postgres/Migrations/330_CoordinationOnTheSignalBus.sql
   - src/Whizbang.Data.Postgres/Notifications/PgWorkAvailablePollSourceBase.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Signals/SignalBusProbeBackoffTests.cs
@@ -27,6 +34,10 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgDurableSignalRetentionIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/SignalPartitionCarryForwardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgWorkAvailablePollSourceSchemaGateTests.cs
+  - tests/Whizbang.Core.Tests/Signals/CoordinationSignalsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CoordinationSignalsSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresSignalTransportUnitTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/CoordinationSourceGuardTests.cs
 ---
 
 # System Signal Bus
@@ -45,7 +56,7 @@ belong to later phases (scheduling, destruction, rebalance, commit-order) are no
 
 ## Motivation
 
-Today the control plane uses `LISTEN`/`NOTIFY` in several *bespoke, per-use* wirings: an instance-routed work-availability channel (`wh_work_i_<id>`), a commit-order channel (`wh_committed`), and an app-facing pub/sub channel family (`wh_app_<topic>`). Each has its own producer, subscriber, and fallback logic. Cluster events — a partition **rebalance**, an instance **joining**, an instance **dying** — are handled implicitly inside individual workers rather than surfaced as first-class events that *any* subsystem (or the application developer) can react to.
+Before the bus, the control plane used `LISTEN`/`NOTIFY` in several *bespoke, per-use* wirings: an instance-routed work-availability channel (`wh_work_i_<id>`), a commit-order channel (`wh_committed`), a role-release channel (`wh_role_released`), a partition-assignment channel (`wh_partition_assignment`), a multi-stream run channel (`wh_multi_stream_work`), and an app-facing pub/sub channel family (`wh_app_<topic>`). Each had its own producer, subscriber, and fallback logic. Every one of them is now a signal on the bus (see [Coordination signals](#coordination-signals)). Cluster events (a partition **rebalance**, an instance **joining**, an instance **dying**) are handled implicitly inside individual workers rather than surfaced as first-class events that *any* subsystem (or the application developer) can react to.
 
 The Signal Bus makes that control plane **one typed, multicast bus**:
 
@@ -63,10 +74,10 @@ The bus builds directly on the mature `Whizbang.Core/Notifications` subsystem:
 | `NotifySubscriptionRegistry` | channel → subscribers multicast map | bus subscriber registry |
 | `IWorkNotificationListener` + `WorkSignalCategory` | category-typed multicast of work signals | typed `WorkAvailable` signals |
 | `INotifySignalingGate` | availability killswitch + reconnect | bus health + reconciliation trigger |
-| `IAppSignalChannel` (`wh_app_<topic>`) | app-facing string pub/sub | precedent for developer signals — now typed `ISignal` via the bus; the string channel stays for non-typed app messaging |
+| `IAppSignalChannel` (`wh_app_<topic>`) | app-facing string pub/sub | the bus itself: `SignalBus` implements `IAppSignalChannel`, and its Postgres transport carries each topic (see [App signals](../work-coordinator/app-signals)) |
 | `PgSharedNotifyConnection` | the **one direct connection per pod** (self-test probe, alive-lock) | bus Postgres transport |
 
-Signals are delivered on Postgres channels: `wh_work_i_<instance_id>` (instance-routed via `notify_instance_owners`, resolving stream → owner from `wh_active_streams.assigned_instance_id`), `wh_committed`, and `wh_app_<topic>`. Ownership is a **modulo-rank formula** over live instances — there is no separate partition-assignment table.
+Signals are delivered on Postgres channels: `wh_signal_broadcast`, `wh_work_i_<instance_id>` (instance-routed via `notify_instance_owners`, resolving stream → owner from `wh_active_streams.assigned_instance_id`), the four [coordination channels](#coordination-signals), and `wh_app_<topic>`. The bus's Postgres transport is the only subscriber to the shared connection, and apart from that connection's own self-test probe nothing else in the library issues `LISTEN`. Unowned work is spread across instances by partition, by the [partition assignment](../work-coordinator/partition-assignment) the elected assigner publishes.
 
 ## Design principles
 
@@ -198,6 +209,14 @@ Built-in control-plane signals (developers can add their own — see below).
 | `InstanceJoinedSignal` | `instance-joined` | broadcast | best-effort | heartbeat scan |
 | `InstanceLeavingSignal` | `instance-leaving` | broadcast | best-effort | heartbeat scan |
 | `InstanceDiedSignal` | `instance-died` | broadcast | **durable** | stale-instance cleanup |
+| `RoleReleasedSignal` | `role-released` | broadcast | **durable** | the holder loop's renew interval |
+| `PartitionAssignmentPublishedSignal` | `partition-assignment-published` | broadcast | **durable** | a claim that reports its copy stale |
+| `RowsCommittedSignal` | `committed` | broadcast | best-effort | the stamper's backstop tick |
+| `MultiStreamWorkSignal` | `multi-stream-work` | broadcast | best-effort | the multi-stream worker's poll |
+| `WorkOrphanedSignal` | `orphan` | targeted | best-effort | the claim loop's poll |
+| `DeadLetterReadySignal` | `deadletter` | targeted | best-effort | the dead-letter recovery worker's poll |
+
+The last six are the [coordination signals](#coordination-signals): the channels that used to be wired by hand.
 
 The three `Work…AvailableSignal` wire-names (`outbox` / `inbox` / `perspective`) are deliberately identical
 to the SQL payloads `notify_instance_owners` and the store procs already emit — so the existing work-wake
@@ -245,12 +264,15 @@ using var sub = signalBus.Subscribe<CacheInvalidated>(async _ => {
 });
 ```
 
-(The legacy string-topic `IAppSignalChannel` / `wh_app_<topic>` pub/sub remains for non-typed app messaging;
-the typed signal bus is the control-plane path.)
+The string-topic `IAppSignalChannel` (`wh_app_<topic>`) stays for non-typed app messaging, and it is the same
+bus: `SignalBus` implements it and hands each topic to every transport that carries topics
+(`ISignalTopicTransport`), so a topic travels on the same connection as the framework's own signals. See
+[App signals](../work-coordinator/app-signals).
+{verified: SignalBusAppTopicTests.Publish_HandsTheTopicToEveryTopicTransportAsync, SignalBusAppTopicTests.Subscribe_RegistersWithEveryTopicTransport_AndDisposingReleasesEachAsync}
 
 ## Reliability & the durable log (`wh_signals`)
 
-Durable-class signals (e.g. `InstanceDiedSignal`) are appended to **`wh_signals` (`wire_name`, `target_instance_id`) before the NOTIFY is emitted**, so the signal survives connection loss: each instance **tails the log from a persisted cursor** and re-delivers anything the fast-path NOTIFY dropped. Best-effort signals stay purely in-memory-fast (no row written). A **retention-sweep worker** trims the log once every instance's tail cursor has advanced past a row. Reconciliation reads the DB directly, so even a total NOTIFY outage degrades only to bounded-latency polling, never to lost work.
+Durable-class signals (e.g. `InstanceDiedSignal`) are appended to **`wh_signals` (`wire_name`, `target_instance_id`, and since migration 330 `payload`) before the NOTIFY is emitted**, so the signal survives connection loss: each instance **tails the log from a persisted cursor** and re-delivers anything the fast-path NOTIFY dropped. Best-effort signals stay purely in-memory-fast (no row written). A **retention-sweep worker** trims the log once every instance's tail cursor has advanced past a row. Reconciliation reads the DB directly, so even a total NOTIFY outage degrades only to bounded-latency polling, never to lost work.
 
 ### Retention {#retention}
 
@@ -272,6 +294,83 @@ then clears only the default partition. Before a day is dropped, the signals a *
 (an id past the slowest live instance's cursor) move into the current day, keeping their ids, so that instance's tail
 still delivers them, in order. An instance is live while it is registered; once the stale-instance reap removes a
 dead instance, its cursor holds nothing back. A moved signal starts a fresh `SignalRetention` window.
+
+## Coordination signals {#coordination-signals}
+
+Every channel instances coordinate on is a signal on the bus ([#2046](https://github.com/whizbang-lib/whizbang/issues/2046)).
+The bus alone issues `NOTIFY` and `LISTEN`: a feature publishes or subscribes a typed signal, and the bus's Postgres
+transport owns the wire. A coordination signal is one of two kinds:
+
+- **A decision** says something changed that the hearer must act on: a role was released, an assignment was
+  published. A decision is **durable**.
+- **A doorbell** says "go look", and a poll stands behind it. A doorbell is **best-effort**.
+
+| Channel (payload) | Publisher | Subscriber | Kind | Signal |
+|---|---|---|---|---|
+| `wh_role_released` (the role) | `wh_release_role` | [the holder loop](../../operations/startup/capabilities-and-duties#the-holder-loop), [the commit-order stamper](../work-coordinator/commit-sequence#leadership) | decision | `RoleReleasedSignal`, durable |
+| `wh_partition_assignment` (`epoch:revision`) | `wh_publish_partition_assignment` | [the claimers' assignment cache](../work-coordinator/partition-assignment#cost) | decision | `PartitionAssignmentPublishedSignal`, durable |
+| `wh_committed` (none) | the store procedures, after commit | [the commit-order stamper](../work-coordinator/commit-sequence) | doorbell; the stamper's backstop tick polls | `RowsCommittedSignal`, best-effort |
+| `wh_multi_stream_work` (the run id) | `wh_record_multi_stream_run` | [the multi-stream worker](../dispatcher/multi-stream-commands#worker) | doorbell; the worker polls | `MultiStreamWorkSignal`, best-effort |
+| `wh_work_i_<instance>` (`orphan`) | the reap, `cleanup_stale_instances` | the work listener | doorbell | `WorkOrphanedSignal`, best-effort |
+| `wh_work_i_<instance>` (`deadletter`) | the dead-letter insert trigger | the work listener | doorbell | `DeadLetterReadySignal`, best-effort |
+| `wh_work_i_<instance>` (`outbox`, `inbox`, `perspective`) | the doorbell queue | the work listener | doorbell | the `Work…AvailableSignal` types, best-effort |
+| `wh_app_<topic>` (yours) | application code | application code | pub/sub | [`IAppSignalChannel`](../work-coordinator/app-signals), which is the bus |
+
+A signal that carries a payload implements `IPayloadSignal<TSelf>`: it names the one fact its subscriber needs (which
+role, which version) and rebuilds itself from that text through its own static factory, so the transport and the tail
+need no reflection. It is still a doorbell in spirit: the payload names what changed, and the database stays the
+authority on what it now is.
+{verified: CoordinationSignalsTests.Decisions_AreDurableBroadcastsAsync, CoordinationSignalsTests.Doorbells_AreBestEffortAsync, CoordinationSignalsTests.PayloadSignals_CarryTheirPayloadBothWaysAsync, CoordinationSignalsTests.WireNames_AreRegisteredAsync, PostgresSignalTransportUnitTests.EveryPayloadSignal_HasAWireBindingAsync}
+
+### Decisions are durable {#coordination-durability}
+
+One SQL function publishes: `wh_publish_signal(channel, payload, durable_wire_name)`. It notifies the channel at
+commit and, for a decision, also records the signal and its payload in the durable log (`wh_signals`, whose `payload`
+column migration 330 adds), in the caller's transaction. The role release, the partition-assignment publish, the
+multi-stream run and the reap's orphan wake all call it, and the bus's Postgres transport calls it when C# publishes a
+coordination signal.
+
+| Behavior | Why | Verified by |
+|---|---|---|
+| A decision is recorded in `wh_signals` with its payload, in the same transaction as its `NOTIFY`. | A notification is lost if the hearer is disconnected at that moment. A decision recorded beside it can be replayed, and a hearer that missed a release would otherwise wait out a whole renew interval, or a stale assignment until its next claim. | {verified: CoordinationSignalsSqlTests.PublishSignal_ADecision_IsRecordedWithItsPayload_AndNotifiedAtCommitAsync, RoleAssignmentSqlTests.Release_IsRecordedDurably_SoAnInstanceThatMissedTheNotificationIsStillToldAsync, PartitionAssignmentSqlTests.Publish_ByTheRoleHolder_WritesTheAssignmentAndAnnouncesItAsync, CoordinationSignalsSqlTests.PublishingADecisionOnTheBus_RecordsIt_AndRingsTheOlderChannelAsync} |
+| Each instance's tail replays a decision it missed, payload included, as the typed signal. | The subscriber is told *what* changed (which role, which version), not only that something did, so it acts exactly as if the notification had arrived. | {verified: CoordinationSignalsSqlTests.TheTail_ReplaysAMissedDecision_WithItsPayloadAsync, CoordinationSignalsSqlTests.ADecision_OnOneInstancesBus_ReachesAnotherInstancesSubscriberAsync} |
+| A release, or a publish, that rolls back announces nothing and records nothing. | The record and the notification ride the caller's transaction; a decision that did not happen must not be heard. | {verified: CoordinationSignalsSqlTests.PublishSignal_InsideATransactionThatRollsBack_LeavesNoTraceAsync} |
+| A doorbell is notified and never recorded. | A poll stands behind every doorbell, so a lost one costs latency only. Recording it would add a write to the commit hot path; `ring_doorbells` is unchanged. | {verified: CoordinationSignalsSqlTests.PublishSignal_ADoorbell_IsNotifiedButNeverRecordedAsync, CoordinationSignalsSqlTests.PublishingADoorbellOnTheBus_RingsTheOlderChannel_AndRecordsNothingAsync, CoordinationSignalsSqlTests.RecordingAMultiStreamRun_RingsTheOlderChannelWithTheRunId_AndRecordsNothingAsync} |
+| Hearing a decision twice (the notification, then the tail's replay) is harmless. | Every subscriber treats a decision as a wake, not a command: a second release is one vacancy for the stamper, and an assignment version the cache already holds reads nothing. | {verified: PgCommitOrderStamperWorkerCoverageTests.TheBus_WakesTheStamperOnACommit_AndAWaiterOnItsRolesReleaseAsync, PartitionAssignmentCacheTests.OnPublished_ForTheVersionAlreadyHeld_ReadsNothingAsync} |
+| `wh_release_role`, `wh_publish_signal` and the `payload` column are in the bootstrap region; on a fresh database where `wh_signals` does not exist yet, the publish notifies without recording. | The role release is Preflight's (migration 184), so what it calls must exist when the bootstrap closure applies, before migration 065 creates the log, and until then there is nothing to record into. | {verified: MigrationBootstrapRegionsTests.TheBootstrapSubsetIsTheMigrationsStartupNeedsAsync} |
+
+### The wire did not change {#coordination-wire-names}
+
+Every channel name and payload is the one an older release uses: `wh_role_released` with the role,
+`wh_partition_assignment` with `epoch:revision`, `wh_multi_stream_work` with the run id, `wh_committed` with nothing,
+and `wh_work_i_<instance>` with `orphan` or `deadletter`. The bus's Postgres transport `LISTEN`s on each coordination
+channel by that name, and `PgSignalWire` is the one place in the library that names the four coordination channels. An older instance's
+listeners therefore hear this release's SQL, and this release's bus hears an older release's SQL, in both directions
+during a rolling deploy. An older instance's tail does not know the two new durable wire names
+(`role-released`, `partition-assignment-published`), skips them and advances its cursor past them; it never reads
+`payload`.
+{verified: PostgresSignalTransportUnitTests.StartAsync_ListensOnEachCoordinationChannel_ByTheNameAnOlderReleaseUsesAsync, PostgresSignalTransportUnitTests.ACoordinationChannel_DeliversItsTypedSignal_WithThePayloadAsync, PostgresSignalTransportUnitTests.TheWorkChannel_DeliversOrphanedWorkAndDeadLetters_AsSignalsAsync, AppSignalsOnTheBusIntegrationTests.AnOlderInstancesRawNotify_ReachesABusSubscriberAsync, CoordinationSourceGuardTests.CoordinationChannels_AreNamedOnlyByTheBussWireAsync}
+
+**Why no deprecation window.** Because nothing on the wire changed, a mixed fleet needs no period in which both old
+and new channels are spoken. The alternative, collapsing every coordination channel onto the bus's single broadcast
+channel (`wh_signal_broadcast`), would have needed one, and would have bought only cosmetic uniformity, so it was not
+done. The channels stay distinct; what changed is who owns them.
+
+A subscriber that throws is logged with the signal's wire name and the transport keeps delivering; one bad handler
+does not stop the shared connection's loop.
+{verified: PostgresSignalTransportUnitTests.ACoordinationChannel_WhoseSubscriberThrows_IsLoggedAndTheLoopContinuesAsync, PostgresSignalTransportUnitTests.ACoordinationChannel_WhoseDispatchThrowsSynchronously_IsLoggedAndTheLoopContinuesAsync}
+
+### What it costs {#coordination-cost}
+
+Measured on PostgreSQL 17 with 50 live instances, both on cold paths:
+
+| Path | Cost |
+|---|---|
+| The reap's orphan wake, per reap | about 38 µs, from about 7 µs (each live instance's wake goes through `wh_publish_signal`) |
+| A durable role release | about 4 µs (the `wh_signals` insert beside the `NOTIFY`) |
+
+The commit hot path is unchanged: doorbells are never recorded, and `ring_doorbells`, the after-commit ringer, is the
+same function.
 
 ## Hot-path constraints
 
@@ -377,7 +476,7 @@ The single-direct-connection-per-pod topology and the gated/adaptive intervals (
 
 ## Migration (unify-now)
 
-**Done for the work-wake path.** The `ClaimWorker` now **subscribes to the three `Work…AvailableSignal` types on the bus** instead of consuming raw `IWorkNotificationListener` categories. Because those signals' wire-names (`outbox` / `inbox` / `perspective`) are identical to the SQL payloads already emitted, **no SQL changed** — the existing `notify_instance_owners` NOTIFYs are simply *received as bus signals* now. The notification regression suite (`ClaimWorkerNotificationWakeIntegrationTests`, `NotifyInstanceOwnersSqlTests`, `SharedDirectConnectionCountRegressionTests`, `PgWorkNotificationListenerIntegrationTests`, `CommittedNotifyEmissionSqlTests`, and peers) was **greened first as a behavior lock** and stayed green through the migration. Remaining wirings (commit-order, app-signal) migrate onto `ISignalBus` incrementally with the same guardrail.
+**Done.** The `ClaimWorker` now **subscribes to the three `Work…AvailableSignal` types on the bus** instead of consuming raw `IWorkNotificationListener` categories. Because those signals' wire-names (`outbox` / `inbox` / `perspective`) are identical to the SQL payloads already emitted, **no SQL changed**: the existing `notify_instance_owners` NOTIFYs are simply *received as bus signals* now. The notification regression suite (`ClaimWorkerNotificationWakeIntegrationTests`, `NotifyInstanceOwnersSqlTests`, `SharedDirectConnectionCountRegressionTests`, `PgWorkNotificationListenerIntegrationTests`, `CommittedNotifyEmissionSqlTests`, and peers) was **greened first as a behavior lock** and stayed green through the migration. The remaining wirings (the commit-order doorbell, role release, partition assignment, multi-stream runs, the orphan and dead-letter wakes, and app topics) moved onto the bus in [#2046](https://github.com/whizbang-lib/whizbang/issues/2046), with the same guardrail and the same wire; see [Coordination signals](#coordination-signals).
 
 ## Related Documentation
 
