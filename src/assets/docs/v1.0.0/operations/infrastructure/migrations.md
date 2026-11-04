@@ -638,6 +638,15 @@ Five boundaries keep the sweep self-limiting:
 
 Log line to look for, one per re-run file: `re-running because the database's definition of <functions> does not match this file, its last word`. The Dapper-based `PostgresSchemaInitializer` does not yet run this sweep; only the EF Core initializer (generated from `DbContextSchemaExtensionTemplate`) does.
 
+#### The log line names only a file the sweep adds {#stale-sweep-names-only-what-it-adds}
+{verified: StartupMigrationStepsTests.AFreshDatabase_LogsNoReRunOfAFileThePassRunsAnywayAsync, StartupMigrationStepsTests.AFunctionMissingFromACurrentDatabase_IsTheOneReRunLoggedAsync, StartupMigrationStepsTests.AFailedStep_KeepsWhatCommitted_RecordsItsError_AndTheRetryResumesThereAsync}
+
+The line is written only for a file the sweep puts into the run. A file that is already in it, because it is new, its hash changed, or a pass that stopped part way has not reached it yet, is not named, even though its functions are missing: they are missing because the file has not run, not because a replay reverted them.
+
+Why: the comparison finds every function a file has not created yet. Before this rule, a fresh database logged one `re-running because ... (missing)` line for nearly every migration file, and a pass that failed and retried logged one for every file after the failure, each blaming a replay that never happened. Those lines read as evidence that particular files were being re-run on every attempt, when the pass was simply running files it had not finished. The sweep never changed which files ran in that case (they were in the run already); only the log was wrong.
+
+So the line now means one thing: this database held a function that a recorded, unchanged file should have given it, and the file is being re-run to put it back.
+
 ### The bootstrap closure is applied once per definition, never per start
 
 Before the election, every instance applies the bootstrap closure: the core tables and the regions
