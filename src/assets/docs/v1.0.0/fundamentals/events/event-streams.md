@@ -18,6 +18,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/212_CloseStreamReanchorsCursorsAndSnapshots.sql
   - src/Whizbang.Data.Postgres/Migrations/240_TruncateStreamPrefix.sql
   - src/Whizbang.Core/Lifecycle/StreamPrefixTruncator.cs
+  - src/Whizbang.Data.Postgres/StreamPrefixTruncateSql.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.PrefixTruncate.cs
+  - src/Whizbang.Data.Postgres/ScheduledPrefixTruncateReceptorRegistrar.cs
   - src/Whizbang.Core/Lifecycle/IStreamFinalizer.cs
   - src/Whizbang.Core/Attributes/TerminalEventAttribute.cs
   - src/Whizbang.Core/Messaging/StreamSealedException.cs
@@ -27,6 +30,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamCloseSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestTableSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamCloseCompanionTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamPrefixTruncateTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperScheduledPrefixTruncateTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PrefixTruncateDriverParityTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorDefaultsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamSealingSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamSealingTests.cs
@@ -332,7 +338,7 @@ The truncate is all or nothing. It returns one of these statuses:
 | `held` | An active destruction hold covers an event in the range. | Release or let the hold lapse; holds are deliberate decisions to keep data. |
 | `cursor_behind` | A perspective's cursor sits inside the range and that perspective has not yet applied the first surviving event. | Retry after it applies that event. |
 | `debug_skipped` | Debug mode is on; nothing is destroyed in debug mode. | Turn debug mode off outside local development. |
-| `unsupported` | The storage engine has no truncate primitive. | Use a Postgres-backed store. |
+| `unsupported` | The storage engine has no truncate primitive. Neither Postgres driver answers it; see [every data layer](#prefix-truncate-on-every-data-layer). | Use a Postgres-backed store. |
 
 {verified: StreamCloseSqlTests.CloseStream_ConsumptionGate_BlocksThenTruncatesAsync, StreamCloseSqlTests.CloseStream_NoCarryForward_RefusesTotalTruncationAsync, StreamCloseSqlTests.CloseStream_ActiveDestructionHoldInsideTheRange_IsRefused_ALapsedOneIsRemovedAsync, StreamCloseSqlTests.CloseStream_CursorBehindABoundaryEventItsPerspectiveStillOwes_IsRefusedAsync, StreamCloseSqlTests.CloseStream_DebugMode_SkippedAsync, WorkCoordinatorDefaultsTests.TruncateStreamPrefixAsync_WithoutProviderSupport_UsesInheritedDefaultAsync}
 
@@ -355,7 +361,32 @@ Until #1731 this operation was named `close_stream` / `CloseStreamAsync` (with `
 Before migration 263, `wh_truncate_stream_prefix` read audit records into the ranges it refolds and into its digest subtraction. A prefix holding only audit records therefore refolded sealed epochs and advanced the origin generation, so every consumer reset its seals and re-verified although no folded history had changed. Migration 263 applies the folds' exemption to both reads; nothing else about the truncate changes.
 :::
 
-The Dapper and EF Core schemas behave the same way.
+### The prefix truncate on every data layer {#prefix-truncate-on-every-data-layer}
+
+{verified: DapperStreamPrefixTruncateTests.Truncator_AHookToldProceed_SeesTheDetailActuallyTruncated_AndIsAnnouncedAsync, PrefixTruncateDriverParityTests.EveryMemberThePrefixTruncateCalls_IsImplementedByTheDriver_NotTheInterfaceDefaultAsync}
+
+The prefix truncate behaves the same on the Dapper and EF Core Postgres drivers: a discarding truncate, an archiving
+truncate, a [compaction](ephemeral-events#compaction) and a [scheduled truncate](ephemeral-events#scheduling-a-prefix-truncate)
+remove the same events, keep the same carry-forward and report the same statuses on both (#2043).
+
+:::updated
+Earlier releases implemented the truncate on the EF Core driver only. On the Dapper driver a truncate that did not
+archive through an [archive store](archive-store) consulted the destruction hook, ran the Pre destruction stages and any
+compaction handler, then answered `unsupported` and removed nothing, and a scheduled prefix truncate had no receptor to
+handle it.
+:::
+
+| Choice | Reason | Verified |
+|---|---|---|
+| Both drivers run the truncate, its targets, the archive read, the consuming-perspective lookup, the event version lookup and the apply-path fold from one shared copy of the SQL, qualified with each driver's schema. `wh_truncate_stream_prefix` itself already lives in the shared migrations. | One copy cannot drift. A second hand-written copy would sooner or later remove, archive or report a different range on one driver only. | {verified: DapperStreamPrefixTruncateTests.Truncate_ConsumptionGate_BlocksThenTruncatesAsync, DapperStreamPrefixTruncateTests.Truncate_Archive_WritesTheDetailToColdStorage_AndReadsItBackInVersionOrderAsync, StreamCloseSqlTests.CloseStream_ConsumptionGate_BlocksThenTruncatesAsync} |
+| Every coordinator member the prefix truncator and the stream compactor call is implemented by both drivers, never left at the interface's `unsupported` default, and a test fails the moment one is. | A destruction hook must never be told about a destruction that does not happen. A hook that exports or archives on Proceed would otherwise act for data that stays. | {verified: PrefixTruncateDriverParityTests.EveryMemberThePrefixTruncateCalls_IsImplementedByTheDriver_NotTheInterfaceDefaultAsync, DapperStreamPrefixTruncateTests.Truncator_AHookToldProceed_SeesTheDetailActuallyTruncated_AndIsAnnouncedAsync} |
+| The scheduled prefix truncate's receptor lives in the shared Postgres package, and both drivers register it. | It needs only the prefix truncator, so a copy per driver would be duplication, and a driver that forgot it would let a schedule fire and truncate nothing. | {verified: DapperScheduledPrefixTruncateTests.AFiredOccurrence_OnADapperHost_TruncatesTheStreamAsync, DapperScheduledPrefixTruncateTests.AddWhizbangPostgres_RegistersTheScheduledPrefixTruncate_ThroughBothOverloadsAsync} |
+
+Each Dapper test has a twin on the EF Core driver. Locked by
+[`DapperStreamPrefixTruncateTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamPrefixTruncateTests.cs),
+[`DapperScheduledPrefixTruncateTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.Dapper.Postgres.Tests/DapperScheduledPrefixTruncateTests.cs),
+[`PrefixTruncateDriverParityTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.EFCore.Postgres.Tests/PrefixTruncateDriverParityTests.cs)
+and [`StreamCloseSqlTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.EFCore.Postgres.Tests/StreamCloseSqlTests.cs).
 
 ## Sealing a Stream {#sealing-a-stream}
 

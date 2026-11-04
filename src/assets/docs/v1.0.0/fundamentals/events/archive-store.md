@@ -744,7 +744,7 @@ registered store. The truncator's destruction hook and destruction-stage recepto
 | A refusal keeps its name, and no PostDestruction hook fires. | Nothing was destroyed, so nothing is announced as destroyed. | {verified: StreamPrefixTruncatorArchiveStoreTests.ArchivingTruncate_TheStoreRefuses_TheRefusalKeepsItsName_AndNoPostHookFiresAsync} |
 | A discarding truncate still goes to the coordinator. | It keeps nothing, so it never reaches the archive. | {verified: StreamPrefixTruncatorArchiveStoreTests.DiscardingTruncate_GoesToTheCoordinator_EvenWithAStoreRegisteredAsync} |
 | With no store registered, an archiving truncate copies through the coordinator as it did before. | An engine without a store keeps working. | {verified: StreamPrefixTruncatorArchiveStoreTests.ArchivingTruncate_WithNoStoreRegistered_KeepsTheCoordinatorsCopyAsync} |
-| On the Dapper driver an archiving truncate now works. | The store is shared SQL, so the Dapper driver, whose coordinator never implemented the truncate, archives through it. | {verified: DapperArchiveStoreTests.AddWhizbangPostgres_RegistersTheTableArchiveStore_AndTheTruncateWritesThroughItAsync} |
+| On the Dapper driver an archiving truncate works. | The store is shared SQL, so the Dapper driver archives through it; its coordinator also runs the discarding truncate since #2043 (see [every data layer](event-streams#prefix-truncate-on-every-data-layer)). | {verified: DapperArchiveStoreTests.AddWhizbangPostgres_RegistersTheTableArchiveStore_AndTheTruncateWritesThroughItAsync} |
 
 ## The Azure Blob store {#the-azure-blob-store}
 

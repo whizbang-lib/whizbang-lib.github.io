@@ -570,11 +570,12 @@ The other places a destruction hook is consulted, by driver:
 | Ephemeral body reap (this page) | Hook honored | Hook honored (#2039) |
 | [Scheduled disposition](stream-end-of-life#scheduled-disposition) of a sealed or policy-picked stream: archive, delete, compact | Hook honored | Hook honored: the step is shared code that both drivers register {verified: StreamDispositionStepTests.AHookThatCancels_DefersForTheBackoff_AndOneThatDefers_MovesTheDueTimeToItsInstantAsync, DapperStreamDispositionTests.AddWhizbangPostgres_RegistersTheLedgerAndTheStep_AndTheStepArchivesASealedStreamOnceItsGraceHasPassedAsync} |
 | Prefix truncate that archives (through the [archive store](archive-store)) | Hook honored | Hook honored |
-| Prefix truncate that discards the detail (a delete, a [compaction](#compaction), a version-cap cut) | Hook honored | **Not supported.** The hook is consulted, then the Dapper coordinator answers `unsupported` and nothing is truncated {verified: WorkCoordinatorDefaultsTests.TruncateStreamPrefixAsync_WithoutProviderSupport_UsesInheritedDefaultAsync} |
-| [Scheduled prefix truncate](#scheduled-close) | Hook honored | **Not registered** on the Dapper driver |
+| Prefix truncate that discards the detail (a delete, a [compaction](#compaction), a version-cap cut) | Hook honored | Hook honored: the Dapper coordinator runs the same truncate SQL (#2043) {verified: DapperStreamPrefixTruncateTests.Truncator_AHookToldProceed_SeesTheDetailActuallyTruncated_AndIsAnnouncedAsync} |
+| [Scheduled prefix truncate](#scheduled-close) | Hook honored | Hook honored: both drivers register the receptor (#2043) {verified: DapperScheduledPrefixTruncateTests.AFiredOccurrence_OnADapperHost_TruncatesTheStreamAsync} |
 
-The last two rows are gaps in the Dapper driver's truncate support, not in its hook support: the truncate primitive
-itself is implemented by the EF Core driver only.
+Earlier releases left the last two rows unsupported on the Dapper driver: the hook was consulted, then the coordinator
+answered `unsupported` and nothing was truncated, and no receptor handled a scheduled truncate. See
+[the prefix truncate on every data layer](event-streams#prefix-truncate-on-every-data-layer).
 
 ## Compacting a stream {#compaction}
 
@@ -629,12 +630,12 @@ var def = PrefixTruncateSchedule.RecurringCron(
   "0 0 1 * *", Guid.NewGuid(), timeZone: "America/New_York");
 ```
 
-On the Postgres EF Core driver a built-in receptor handles each `ScheduledPrefixTruncate` by calling
+On either Postgres driver (EF Core or Dapper) a built-in receptor handles each `ScheduledPrefixTruncate` by calling
 `IStreamPrefixTruncator.TruncateAsync` with its values. It is registered at startup at the `LocalImmediateInline`,
 `PreOutboxInline` and `PostInboxInline` stages, so it runs whether the occurrence fires in this
 process or arrives from another service. With no `IStreamPrefixTruncator` registered it logs a warning and does
 nothing.
-{verified: ScheduledPrefixTruncateReceptorTests.Receptor_FiredOccurrence_CallsStreamPrefixTruncatorWithPayloadAsync, ScheduledPrefixTruncateReceptorTests.Registrar_RegistersReceptorAtThreeDefaultStagesAsync, ScheduledPrefixTruncateReceptorTests.Receptor_NoStreamPrefixTruncatorRegistered_IsInertAsync}
+{verified: ScheduledPrefixTruncateReceptorTests.Receptor_FiredOccurrence_CallsStreamPrefixTruncatorWithPayloadAsync, ScheduledPrefixTruncateReceptorTests.Registrar_RegistersReceptorAtThreeDefaultStagesAsync, ScheduledPrefixTruncateReceptorTests.Receptor_NoStreamPrefixTruncatorRegistered_IsInertAsync, DapperScheduledPrefixTruncateTests.AFiredOccurrence_OnADapperHost_TruncatesTheStreamAsync}
 
 | Choice | Reason | Verified |
 |---|---|---|
