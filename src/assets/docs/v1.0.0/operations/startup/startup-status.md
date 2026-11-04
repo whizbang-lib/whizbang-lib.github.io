@@ -62,6 +62,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageHostTests.cs
+  - tests/Whizbang.Core.Tests/Startup/StartupStageHostLifecycleTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HeartbeatPhaseOrderSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceTransitionSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RecordHeartbeatBackfillTests.cs
@@ -153,8 +154,8 @@ gaps, never a list position, so a stored value means the same thing in every rel
 | 50 | Coordinate | `Stage 5 of 7` | `Migrating` | the shared initializer, before the schema-ready gate opens |
 | 60 | Accept commands | `Stage 6 of 7` | `AcceptingCommands` | the lifecycle's AcceptingCommands transition |
 | 70 | Running | `Stage 7 of 7` | `Running` | the lifecycle's Running transition |
-| 80 | Draining | `Shutdown stage` | `Stopping` | the host lifecycle, before any worker stops |
-| 90 | Stopped | `Shutdown stage` | `Stopped` | the host lifecycle, once the host has stopped |
+| 80 | Draining | `Shutdown stage` | `Stopping` | the [run-control path](#shutdown-takes-the-run-control-path)'s stop, once the run permit is closed; on host shutdown, before any worker stops |
+| 90 | Stopped | `Shutdown stage` | `Stopped` | the run-control path, once the work in hand is finished and held work and roles are released; on host shutdown, still before any worker stops |
 
 {verified: StartupStagesTests.Values_AreTheFixedNumbersOnTheRow_WithGapsAsync, StartupStagesTests.Startup_IsTheSevenStartupStagesInOrderAsync, StartupStagesTests.EachStage_KeepsTheLifecyclePhaseItMapsToAsync, StartupStageReporterTests.Enter_EveryStartupStageInOrder_LogsEachLine_AndObservesEachOnceAsync}
 
@@ -171,14 +172,45 @@ Stage 4 of 7: Converge - analyzing new indexes and reconciling managed objects
 Stage 5 of 7: Coordinate - recomputing partitions before the schema-ready gate opens
 Stage 6 of 7: Accept commands - the schema is ready; commands are accepted while the read models catch up
 Stage 7 of 7: Running - reads and writes are served
-Shutdown stage: Draining - host stopping, finishing in-flight work
-Shutdown stage: Stopped - host stopped
+Shutdown stage: Draining - stopping, finishing in-flight work
+Shutdown stage: Stopped - stopped
 ```
 
 The pattern is `Stage X of 7: <name> - <message>` for a startup stage and `Shutdown stage: <name> - <message>` for
 Draining and Stopped. Stages only move forward: entering an earlier stage changes nothing. A new message within the
 current stage is progress: it logs the line again and keeps the stage's entry time. A skipped stage logs
 `skipped: <reason>` as its message.
+
+### Shutdown takes the run-control path {#shutdown-takes-the-run-control-path}
+
+When the host starts to stop, `StartupStageHostLifecycle.StoppingAsync` takes the
+[one run-control path](../../resilience/managed-resource-run-control#one-run-control-path) with the reason `Stop` and
+the host's stop token, before any hosted service stops. The path, not the host lifecycle, writes both shutdown stages:
+
+1. The run permit closes: no worker takes new work, and every transport consumer pauses its subscriptions.
+2. **Draining** is written with `stopping, finishing in-flight work`. The instance stops being eligible for work at
+   once, while its heartbeat is still fresh.
+3. The work in hand is finished, bounded by [`Whizbang:Lifecycle:HeldWorkTimeout`](../configuration/configuration-reference#whizbanglifecycleoptions)
+   (20 seconds by default) and by the host's stop token; the leased streams no drain has started are released, then
+   every role this instance holds.
+4. **Stopped** is written with `stopped`.
+
+Only then do the hosted services stop. `StoppedAsync` writes nothing, because the path has already confirmed the stop.
+{verified: StartupStageHostLifecycleTests.Stopping_TakesTheRunControlPathToStop_BoundedByTheHostsStopTokenAsync, WhizbangRunControllerTests.Halt_WithTheCallersBudgetAlreadySpent_StillClosesThePermitAndWritesBothPhasesAsync, WhizbangRunControllerTests.Halt_AReleaseThatBlocksUntilCanceled_IsCutShortByTheCallersToken_AndTheHaltCompletesAsync, StartupStageHostLifecycleTests.Stopped_WritesNothing_ThePathAlreadyConfirmedTheStopAsync, StartupStageHostTests.AGracefulStop_RecordsDraining_ThenStoppedAsync, StartupStageRunControlTests.APhaseThatIsAStage_EntersItAsync}
+
+**Why Stopped is written before the workers stop.** `Stopped` says the instance has finished: nothing is in hand and
+nothing is held. The path knows that once it has released the work and the roles; waiting for every hosted service to
+stop added nothing a peer could use and risked the write being cut off by the end of the host's stop budget.
+
+**Why the messages no longer say "host".** The killswitch's stop takes the same path and writes the same two stages, so
+the message describes the stop, not who asked for it.
+
+**Why the host's stop token bounds the path.** Releasing work and roles against an unreachable database could
+otherwise wait out each command's timeout and run past `HostOptions.ShutdownTimeout`, so the process would end before
+`Stopped` was written. The stop token bounds every step instead: a step it cuts short is logged and the path moves on,
+and what it did not release lapses to a peer. Both phases are written on a token of their own, so even a stop whose
+budget is already spent closes the permit, records Draining and Stopped, and never turns a graceful stop into an
+exception.
 
 ### Preflight's progress lines {#preflight-progress}
 {verified: SchemaInitializationStagesTests.TheBootstrapsWaitsAndFailure_AreProgressWithinPreflightAsync, SchemaInitializationStagesTests.Registering_IsTheLastStepOfPreflightAsync, StartupPreflightHostTests.TheInstanceRow_IsRegisteredAtTheEndOfPreflight_BeforeElectAsync}
@@ -379,8 +411,9 @@ schema, because older builds call them during a [rolling upgrade](rolling-upgrad
 
 An instance whose [Assess verdict](rolling-upgrades#standing-down) is `StandDown` (the schema is newer than its
 binary) never leaves Preflight. It records its stage as Preflight with the message `standing down: ` followed by the
-reason, which names the version the ledger records and the binary's own, and its phase as `StandingBy`, a phase-only
-write like any [stand-by](#pause-and-standby). It registers at once, keeps its row alive on the heartbeat interval
+reason, which names the version the ledger records and the binary's own, and its phase as `Pausing`, then `StandingBy`,
+each a phase-only write like any [stand-by](#pause-and-standby): the stand-down takes the
+[run-control path](rolling-upgrades#stand-down-takes-the-run-control-path), which writes both. It registers at once, keeps its row alive on the heartbeat interval
 until the host stops, and is never eligible for work. Elect, Migrate, Converge and Coordinate are never entered, and
 the schema-ready gate never opens, so readiness answers 503 while liveness stays healthy.
 
