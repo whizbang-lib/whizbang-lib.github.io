@@ -21,6 +21,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Notifications/CommitOrderStampSizerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgCommitOrderStamperWorkerIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreUpdateChurnSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CommitOrderStamperRoleTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PgCommitOrderStamperWorkerCoverageTests.cs
+  - tests/Whizbang.Core.Component.Tests/Notifications/PgCommitOrderStamperIterationDiagnosticsTests.cs
 ---
 
 # Commit Sequence & the Order Stamper
@@ -75,12 +78,12 @@ stamp](#held-back)).
 
 ## How stamping runs
 
-Every service instance hosts the stamper worker; a `pg_try_advisory_lock` elects one leader per
-service schema. The lock key is derived from `AdvisoryLockKey` plus the schema, the same way the
-duty lock is, so services that share one database in separate schemas each elect their own
-stamper. (Before 0.2604.0 the key was fixed per database: only one of those services got a leader,
-and the others' events became visible only after the unstamped-row grace window, several seconds
-per event.) The leader wakes from two sources:
+Every service instance hosts the stamper worker, and the leader is whichever instance holds the
+`commit-stamper` [role](../../operations/startup/capabilities-and-duties#role-assignment-the-default).
+The role table is per schema, so services that share one database in separate schemas each elect
+their own stamper. (Before 0.2604.0 the leader lock was fixed per database: only one of those
+services got a leader, and the others' events became visible only after the unstamped-row grace
+window, several seconds per event.) The leader wakes from two sources:
 
 - **`wh_committed` NOTIFY** — the event-store emit chains ring this channel at commit time,
   waking the leader sub-millisecond through the shared LISTEN connection.
@@ -101,6 +104,22 @@ partial index whether any row is unstamped first, a probe that costs nothing, an
 when the answer is yes. A wake that finds nothing raises `OnStampSkipped` rather than a stamp of
 zero, so a healthy idle stamper is visible as such.
 {verified: PgCommitOrderStamperWorkerIntegrationTests.Worker_NothingUnstamped_SkipsTheStampOnPollingTicksAsync}
+
+### The stamper leads only through the elector {#leadership}
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The stamper leads only through the registered duty elector. It takes no lock of its own (#2044). | Every duty is a role assignment, so the stamper's leadership has the same lease, epoch fence and takeover as every other duty, and nothing else to keep in step with it. | {verified: CommitOrderStamperRoleTests.TheRoleHolder_StampsUnderTheFence_AndIsTheOnlyLeaderAsync, PgCommitOrderStamperWorkerIntegrationTests.Worker_UnderAHostsOwnElector_LeadsThroughItsGrant_AndGivesItBackOnStopAsync, CoordinationSourceGuardTests.NoDuty_IsHeldByAnAdvisoryLockAnywhereAsync} |
+| Each stamp is one transaction that checks the holder's epoch (`wh_assert_role_epoch`) before it commits. A refused stamp rolls back, and the stamper stops leading. | A stamper that lost the role, paused or partitioned, cannot stamp alongside its successor. | {verified: CommitOrderStamperRoleTests.ALeaderThatLostTheRole_IsRefusedByTheFenceAtItsNextStamp_AndStopsLeadingAsync, CommitOrderStamperRoleTests.ALeaderWhoseRenewalIsRefused_StopsLeadingAsync} |
+| The stamping loop renews the role itself: each iteration verifies the grant, and the loop never sleeps longer than one renew interval. | A stamper that stops looping stops renewing, and its role goes to another instance. | {verified: CommitOrderStamperRoleTests.TheRoleHolder_StampsUnderTheFence_AndIsTheOnlyLeaderAsync} |
+| No direct connection is needed. Through a pooled connection the stamper logs no pooler warning. | No session state has to survive between statements, so a transaction pooler serves every stamp. | {verified: PgCommitOrderStamperIterationDiagnosticsTests.Startup_PooledFallback_NeedsNoDirectConnection_SoNoPooledWarningAsync} |
+| A non-holder votes again every `LeaderElectionRetry`, and at once when the role's release is announced. | A clean hand-off should not wait for a retry interval. | {verified: CommitOrderStamperRoleTests.AWaitingNonHolder_IsWokenByTheRolesRelease_NotItsRetryIntervalAsync} |
+| A newer-version instance asking for the role gets it after the stamp in progress. | The cooperative drain every duty follows. | {verified: CommitOrderStamperRoleTests.ALeaderAskedToDrain_ReleasesTheRole_AndTheNewerInstanceTakesItAsync} |
+| With no elector registered, the stamper logs a warning and does not stamp. | There is no role to hold and no lock to fall back to. The driver always registers an elector, so this is a host that left out the notification services. | {verified: PgCommitOrderStamperWorkerCoverageTests.ExecuteAsync_WithNoDutyElector_SaysSoAndEndsWithoutLeadingAsync} |
+
+A stamper that dies is replaced once its lease lapses or the
+[liveness rule](../workers/instance-liveness#liveness-rule) has its instance reaped; a clean stop
+releases the role, and a waiting instance takes it at once.
 
 ## The ordering fence is per-database
 
@@ -308,8 +327,9 @@ events never become visible to perspective fetches.
 ## Operational signals
 
 - A healthy system stamps within milliseconds of commit; sustained unstamped backlog with a
-  quiet stamper means the leader lock is stranded or the direct connection is routed through a
-  transaction-pooling proxy (see [Notifications and pgbouncer](notifications-and-pgbouncer)).
+  quiet stamper means no instance holds the `commit-stamper` role (the `roles` health component
+  says why) or the wake is missing, so stamping waits for the backstop tick (see
+  [Notifications and pgbouncer](notifications-and-pgbouncer)).
 - Persistent fenced retries point at a long-running write transaction **in the same database**
   — typically a handler holding its transaction across an external call. The retry loop bounds
   the damage to that transaction's own duration; fixing the handler removes it entirely.

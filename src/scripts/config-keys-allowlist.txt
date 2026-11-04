@@ -13,3 +13,6 @@ Whizbang:Transports:<transport>:MessageProcessing:InboxBatchSize      # configur
 Whizbang:Transports:<transport>:MessageProcessing:InboxBatchSlideMs   # configuration-reference#unknown-keys lists it as a removed key (#1536); the startup check names Whizbang:Workers:InboxBatch:SlidingWindow
 Whizbang:Transports:<transport>:MessageProcessing:InboxBatchMaxWaitMs # configuration-reference#unknown-keys lists it as a removed key (#1536); the startup check names Whizbang:Workers:InboxBatch:MaxWait
 Whizbang:StandbyWatcher:RequesterLivenessWindow  # configuration-reference#removed-keys and rolling-upgrades list it as a removed key (#2027); the startup check names Whizbang:Workers:Heartbeat:IntervalSeconds
+Whizbang:Database:RoleAssignment:Enabled                # configuration-reference#removed-keys lists it as a removed key (#2044): every duty is a role assignment
+Whizbang:Database:RoleAssignment:HoldLegacySessionLock  # configuration-reference#removed-keys lists it as a removed key (#2044): the legacy-lock bridge is gone
+Whizbang:Database:Stamper:AdvisoryLockKey               # configuration-reference#removed-keys lists it as a removed key (#2044): the stamper takes no lock of its own

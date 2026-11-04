@@ -518,11 +518,12 @@ Tombstones are bounded: `perform_maintenance` purges rows older than `instance_e
 
 ## Capabilities: won, recorded, and fenced
 
-A **capability** names what an instance may do; an exclusive one — `migrator`, `maintainer` — is a **duty**, held by one instance at a time. Capabilities are *won*, never assigned: an instance attempts the primitive (a session advisory lock on a dedicated direct connection, via `IDutyElector`), and the primitive grants or refuses. That keeps the failure path free — a dead instance's lock releases server-side as its session ends, with no timeout to tune, no split-brain window, and no durable "this one is the migrator" flag to orphan.
+A **capability** names what an instance may do; an exclusive one (`migrator`, `maintainer`) is a **duty**, held by one instance at a time. Capabilities are *won*, never handed out: an instance votes through `IDutyElector`, and the vote grants or refuses. Every duty is then a [role assignment](/v1.0.0/operations/startup/capabilities-and-duties#role-assignment-the-default), a row with a lease and an epoch; no duty is held by a session advisory lock. A holder that dies stops renewing, and the duty goes to the next vote once its lease lapses or this page's rule has the instance reaped. Its writes are fenced by the epoch, so a holder judged dead while still running cannot act beside its successor.
 
-Holdings are **recorded but never consulted to decide**: *the lock decides, the row reports.* `wh_instance_capabilities` is keyed `(instance, capability)` with `acquired_at` — "which instance is the migrator right now, and for how long" as a query (and in the startup status surface's fleet section, as a join). It rides the same rails as liveness: reaped instances cascade their holdings, so the record's only staleness window is the heartbeat lease the system already bounds.
+Holdings are **recorded**: *the vote decides, the row reports.* `wh_instance_capabilities` is keyed `(instance, capability)` with `acquired_at`: "which instance is the migrator right now, and for how long" as a query (and in the startup status surface's fleet section, as a join). It rides the same rails as liveness: reaped instances cascade their holdings, so the record's only staleness window is the heartbeat lease the system already bounds.
 
-The eviction fence reaches acquisition: `record_capability` refuses a tombstoned instance, and the elector releases the lock it just won and stands down — a zombie can win a race but cannot hold a duty. Long-tenure holders fence themselves with `IDutyGrant.VerifyStillHeldAsync`: a grant whose session died (the OOMKill half-open-TCP shape) reports lost before the next unit of exclusive work, because another instance may already hold it.
+The eviction fence reaches acquisition: the vote refuses a tombstoned instance, and so does `record_capability`, so a zombie cannot hold a duty. Long-tenure holders fence themselves with `IDutyGrant.VerifyStillHeldAsync`: a grant that lapsed or was taken over reports lost before the next unit of exclusive work, because another instance may already hold it. During a rolling deploy, a holding that an older release records outside the role table counts only while this rule calls that instance live (see [a rolling deploy from a release that held duties by session lock](/v1.0.0/operations/startup/capabilities-and-duties#legacy-holder)).
+{verified: DutyElectionE2ETests.DirtyDeath_JudgedByTheLivenessRule_HandsTheDutyOver_AndTheGrantKnowsItIsLostAsync, RoleAssignmentElectorE2ETests.EvictedInstance_IsRefused_NotContendedAsync, RoleAssignmentResilienceSqlTests.Vote_DoesNotCountAHolderOutsideTheTable_ThatTheLivenessRuleCallsDeadAsync}
 
 ## The Standby Handshake {#the-standby-handshake}
 
@@ -587,7 +588,7 @@ After deploy + restart, the heartbeat UPDATE call count in `pg_stat_statements` 
 
 ## Related
 
-- [Capabilities and Duties](/v1.0.0/operations/startup/capabilities-and-duties) — election over the same session-lock machinery; holdings ride the liveness rails.
+- [Capabilities and Duties](/v1.0.0/operations/startup/capabilities-and-duties): every duty a role assignment; a dead holder is replaced through this rule, and holdings ride the liveness rails.
 - [Rolling Upgrades](/v1.0.0/operations/startup/rolling-upgrades) — the standby handshake and eviction in the deployment story.
 - [Pinned connection pool](./pinned-connection-pool.md) — also uses direct conn(s); future work may add a per-pinned-conn lock for redundancy.
 - [Worker classification](./worker-classification.md) — HeartbeatWorker is classified `E` (timed) with an adaptive twist.

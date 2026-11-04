@@ -1,0 +1,38 @@
+name: Release on test status
+
+# The library's CI publishes live test-status data as a pull request into develop with auto-merge on
+# (whizbang-lib/whizbang#2056). When that pull request merges, the data is on develop and this starts the
+# release that carries it on to main, which tags, releases and deploys the site. The library's CI used to
+# start the release itself right after an immediate merge; with auto-merge the data lands only once the
+# checks pass, so the release starts here, on the merge.
+on:
+  pull_request:
+    types: [closed]
+    branches: [develop]
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  start-release:
+    name: Start the release for merged test status
+    # Only a merged test-status pull request from the release app; anything else is not a publish.
+    if: >-
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'test-status/') &&
+      github.event.pull_request.user.login == 'whizbang-release-bot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # GITHUB_TOKEN may start a workflow_dispatch run; start-release.yml mints the release app's own
+      # token for every write it makes, and serializes concurrent cuts itself.
+      - name: Start the docs release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run start-release.yml \
+            --repo "${{ github.repository }}" \
+            --ref develop \
+            -f release_type=patch \
+            -f auto_merge=true

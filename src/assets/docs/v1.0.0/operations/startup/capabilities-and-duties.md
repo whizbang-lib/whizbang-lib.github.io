@@ -7,21 +7,23 @@ version: 1.0.0
 category: Startup
 order: 2
 description: >-
-  The capability model behind fleet-exclusive startup work — duties won by
-  election, holdings recorded but never consulted to decide, takeover with no
-  coordinator, and the eviction fence
+  The capability model behind fleet-exclusive startup work: every duty a role
+  assignment won by a vote, with a lease and epoch fencing, takeover with no
+  coordinator, the eviction fence, and the advisory locks that remain and why
+  they are not duties
 tags: >-
-  capabilities, duties, election, advisory-lock, migrator, maintainer,
-  takeover, fencing, multi-instance
+  capabilities, duties, election, role-assignment, lease, epoch, advisory-lock,
+  migrator, maintainer, takeover, fencing, multi-instance, rolling-deploy
 codeReferences:
   - src/Whizbang.Core/Startup/IDutyElector.cs
-  - src/Whizbang.Data.Postgres/Notifications/PgDutyElector.cs
   - src/Whizbang.Data.Postgres/Notifications/PgRoleElector.cs
   - src/Whizbang.Data.Postgres/MigratorWatch.cs
   - src/Whizbang.Data.Postgres/SchemaBootstrapPhase.cs
   - src/Whizbang.Data.Postgres/Migrations/278_OneWriterOfTheInstancePhase.sql
   - src/Whizbang.Data.Postgres/Migrations/184_RoleAssignmentResilience.sql
-  - src/Whizbang.Data.Postgres/DutyLockKey.cs
+  - src/Whizbang.Data.Postgres/Migrations/326_EveryDutyIsARoleAssignment.sql
+  - src/Whizbang.Data.Postgres/AdvisoryLockProbe.cs
+  - src/Whizbang.Data.Postgres/Schema/ManagedSchemaReconciler.cs
   - src/Whizbang.Data.Postgres/Migrations/108_InstanceCapabilities.sql
   - src/Whizbang.Core/Startup/IDutyAcquisitionHandler.cs
   - src/Whizbang.Core/Startup/DutyHolderWorker.cs
@@ -44,11 +46,18 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/IntegrityDeliveryWorkerTests.cs
   - tests/Whizbang.Core.Tests/Workers/WorkTableVacuumOnAcquisitionTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/DutyHolderWorkerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleAssignmentElectorE2ETests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleAssignmentResilienceSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleAssignmentResilienceE2ETests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleAssignmentSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaInitializationConcurrencyTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ManagedSchemaReconcilerPoolerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/CoordinationSourceGuardTests.cs
 ---
 
 # Capabilities and Duties
 
-"Exactly one instance does this" appears throughout a multi-instance deployment — one instance migrates the schema, one runs the table rewrites. A **capability** names that idea: something an instance **holds**, acquired by winning it. Nothing declares in advance which instances may hold what — every instance attempts everything, and holding is a named, recorded fact rather than an implicit consequence of winning a lock.
+"Exactly one instance does this" appears throughout a multi-instance deployment: one instance migrates the schema, one runs the table rewrites. A **capability** names that idea: something an instance **holds**, acquired by winning it. Nothing declares in advance which instances may hold what: every instance attempts everything, and holding is a named, recorded fact rather than an implicit consequence of winning a race.
 
 Capabilities come in two kinds, and [step exclusivity](startup-pipeline#the-step-contract) falls out of the distinction rather than being a separate property:
 
@@ -57,13 +66,13 @@ Capabilities come in two kinds, and [step exclusivity](startup-pipeline#the-step
 
 A step requiring a duty runs on one instance; a step requiring a shared capability runs on all of them. A step therefore cannot declare a contradiction — there is no way to claim fleet-exclusivity while requiring a capability every instance holds.
 
-## The lock decides, the row reports
+## The vote decides, the row reports {#the-lock-decides-the-row-reports}
 
-Capability holdings are **recorded** in `wh_instance_capabilities`, but never **consulted to decide**:
+Capability holdings are **recorded** in `wh_instance_capabilities`, but that record is not what grants a duty:
 
-> An instance acquires a capability by attempting the primitive, not by reading a table. If the record and the lock ever disagree, the lock is right and the record is stale.
+> An instance acquires a duty by voting for it, not by reading a table. The vote decides, and the assignment row it writes (`wh_role_assignments`, with a lease and an epoch) is the authority from then on. The capability record reports who holds what.
 
-Treating a stored assignment as authoritative is what reintroduces orphaned state — a dead instance's row goes on claiming a capability until something reaps it. Treating it as *derived* state costs nothing and buys the questions that matter during an incident: *which instance is the migrator right now, how long has it been, is a duty currently unheld* — answered as a query, not a broadcast to instances that may not be answering. The [status surface's fleet section](startup-status) reads exactly this record.
+Treating the capability record as authoritative is what reintroduces orphaned state: a dead instance's row goes on claiming a capability until something reaps it. Treating it as *derived* state costs nothing and buys the questions that matter during an incident: *which instance is the migrator right now, how long has it been, is a duty currently unheld*, answered as a query, not a broadcast to instances that may not be answering. The [status surface's fleet section](startup-status) reads exactly this record.
 
 Holdings live in their own table keyed by *(instance, capability)* rather than as a column on the instance row: an instance holds several at once, the relationship carries its own `acquired_at`, and capability writes stay off the heartbeat's write-suppression path. Reaping stays free — stale instances are genuinely deleted and the foreign key cascades.
 
@@ -73,10 +82,11 @@ These are two different problems and they use two different mechanisms:
 
 | Concern | Mechanism | Why |
 |---|---|---|
-| **Election** — who performs a duty | Database primitive: by default a one-statement vote that assigns the duty as a row with an epoch and a lease ([role assignment](#role-assignment-the-default)); otherwise a session advisory lock on a process-stable key | Linearizable against the authority every instance already depends on, and decided entirely in the database |
-| **Membership** — who is alive, what they hold | Heartbeat plus the instance-alive session lock ([instance liveness](../../fundamentals/workers/instance-liveness)) | Drives re-attempt prompts, observability, and the reaping backstop |
+| **Election**: who performs a duty | A one-statement vote that assigns the duty as a row with an epoch and a lease ([role assignment](#role-assignment-the-default)) | Linearizable against the authority every instance already depends on, and decided entirely in the database |
+| **Membership**: who is alive, what they hold | [The one liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule) over the heartbeat and the instance-alive lock | Drives re-attempt prompts, observability, and the reap |
 
-Liveness never decides an election. A holder that is alive but briefly slow would otherwise get declared dead by peers watching a timeout, a replacement elected, and two instances believing they hold the duty — for `migrator`, two instances running DDL at once. Heartbeats and `InstanceDiedSignal` only *prompt re-attempts*; the lock grants or refuses.
+Liveness can end a tenure, never share one. The vote voids an assignment whose holder the rule had reaped or evicted, so a holder that died without releasing is replaced as soon as the rule calls it dead, not only when its lease runs out. A holder that is alive but was judged dead anyway (paused, partitioned) is not a second holder: its epoch is stale, and the database refuses its writes (`wh_assert_role_epoch`). Heartbeats and `InstanceDiedSignal` only *prompt re-attempts*; the vote grants or refuses.
+{verified: DutyElectionE2ETests.DirtyDeath_JudgedByTheLivenessRule_HandsTheDutyOver_AndTheGrantKnowsItIsLostAsync, RoleAssignmentSqlTests.Elect_WhenTheHolderIsNoLongerRegistered_VoidsItAsUnregisteredAsync, RoleAssignmentElectorE2ETests.StaleHolder_AfterLosingTheRole_FailsVerification_AndTheDatabaseRefusesItsWriteAsync}
 
 <a id="bootstrap-registration-records-migrating"></a>
 
@@ -106,7 +116,7 @@ registration too.
 
 ## Winning a duty
 
-```csharp{title="The elector seam" description="Attempt acquisition — the primitive grants, or refuses with a reason" category="Implementation" difficulty="INTERMEDIATE" tags=["Startup","Duties"] tests=["DutyElectionE2ETests.Contention_ExactlyOneWins_AndTheRowReportsTheLockHolderAsync","DutyElectionE2ETests.DirtyDeath_TheGrantKnowsItIsLost_AndAnotherInstanceAcquiresAsync","StartupPipelineRunnerDutyTests.AwaitDutyStep_WhoseDutyIsNeverGrantable_FailsBoundedlyInsteadOfHangingAsync"]}
+```csharp{title="The elector seam" description="Attempt acquisition: the vote grants, or refuses with a reason" category="Implementation" difficulty="INTERMEDIATE" tags=["Startup","Duties"] tests=["DutyElectionE2ETests.Contention_ExactlyOneWins_AndTheRowReportsTheLockHolderAsync","DutyElectionE2ETests.DirtyDeath_JudgedByTheLivenessRule_HandsTheDutyOver_AndTheGrantKnowsItIsLostAsync","StartupPipelineRunnerDutyTests.AwaitDutyStep_WhoseDutyIsNeverGrantable_FailsBoundedlyInsteadOfHangingAsync"]}
 public interface IDutyElector {
   // Grants, or refuses WITH A REASON — losing the race is the only refusal worth retrying,
   // and a caller that cannot tell the reasons apart retries the unretryable forever.
@@ -129,20 +139,23 @@ public interface IDutyGrant : IAsyncDisposable {
   string Duty { get; }
   DateTimeOffset AcquiredAt { get; }
 
-  // Fencing: round-trips the session that holds the primitive. A long-tenure holder calls
-  // this before each unit of exclusive work — a grant whose session died is a grant another
-  // instance may already hold.
+  // Fencing: confirms the grant is still held, renewing its lease when due. A long-tenure
+  // holder calls this before each unit of exclusive work: a grant that lapsed or was taken
+  // over is a grant another instance may already hold.
   Task<bool> VerifyStillHeldAsync(CancellationToken ct);
+
+  long? Epoch => null;   // the fencing token exclusive writes present
 }
 ```
 
-The Postgres implementation takes a session advisory lock on a process-stable key derived from the schema and duty name — process-stable because a per-process hash seed would give every instance its own private lock and exclude nothing. Winning records the holding; a refusal carries its reason and the [pipeline](startup-pipeline) acts on it: `Skip` non-holders carry on; `Await` non-holders retry **only while the refusal is `Contended`** — an `Unavailable` or `Refused` duty fails the step immediately, naming the duty and the elector's detail, because boot failing loudly beats boot hanging silently. While a legitimate contended wait persists, the runner narrates it through `IStartupStepObserver.OnStepWaitingAsync` on a backoff, so a long wait is a story in the logs rather than silence.
+The Postgres implementation, `PgRoleElector`, votes for the duty in one statement and holds it as a [role assignment](#role-assignment-the-default); no session stays open while the duty is held. Winning records the holding; a refusal carries its reason and the [pipeline](startup-pipeline) acts on it: `Skip` non-holders carry on; `Await` non-holders retry **only while the refusal is `Contended`**; an `Unavailable` or `Refused` duty fails the step immediately, naming the duty and the elector's detail, because boot failing loudly beats boot hanging silently. While a legitimate contended wait persists, the runner narrates it through `IStartupStepObserver.OnStepWaitingAsync` on a backoff, so a long wait is a story in the logs rather than silence.
 
-The **eviction fence reaches election**: an instance that has been [evicted](../../fundamentals/workers/instance-liveness#eviction-reaping-is-a-fence-not-just-a-deletion) is refused at acquisition even when it wins the primitive, and the implementation releases what it won. That is what turns eviction from a request into a guarantee for exclusive work.
+The **eviction fence reaches election**: an instance that has been [evicted](../../fundamentals/workers/instance-liveness#eviction-reaping-is-a-fence-not-just-a-deletion) is refused at acquisition, whoever holds the duty, and its renewal is refused too. That is what turns eviction from a request into a guarantee for exclusive work.
+{verified: DutyElectionE2ETests.EvictedInstance_IsRefusedAtAcquisition_EvenWithTheLockFreeAsync, RoleAssignmentElectorE2ETests.EvictedInstance_IsRefused_NotContendedAsync, RoleAssignmentSqlTests.Renew_ByATombstonedHolder_IsRefusedAsync}
 
 ### When the elector itself fails
 
-A refusal is an *answer*. Separately, the question can fail to be asked at all: the elector reaches its coordination primitive over a network, so a read timeout there is neither a grant nor a refusal — it is the absence of a verdict, and it says nothing about whether the step should run.
+A refusal is an *answer*. Separately, the question can fail to be asked at all: the elector reaches its vote over a network, so a read timeout there is neither a grant nor a refusal; it is the absence of a verdict, and it says nothing about whether the step should run.
 
 Such a failure is **absorbed and retried**, exactly as a `Contended` refusal is, because it is the same class of blip every other worker rides out on its next tick. It is also **bounded**: after `MaxTransientDutyFailures` consecutive failures the step fails, naming the underlying exception. Both halves matter, and for the same reason — retrying a standing outage forever is the other way to be silently broken. A clean refusal in between resets the count, because it proves the elector is reachable and therefore that the earlier failures were blips rather than the leading edge of an outage.
 
@@ -150,35 +163,76 @@ What this deliberately does *not* do is stop the host. The startup pipeline runs
 
 Staying up is also the more informative outcome, and fail-closed is what makes it safe: a pipeline that never completes leaves the availability filter refusing writes, so the instance is up, [reports unready](startup-status), and carries the reason in its logs. `NonHolderBehavior.Skip` keeps its single non-blocking attempt throughout — a transient failure reports the step skipped with the elector's error as the reason, rather than quietly promoting it into a waiter.
 
-## Role assignment (the default) {#role-assignment-the-default}
+## Every duty is a role assignment {#role-assignment-the-default}
 
-With the Postgres driver, duties are held by **role assignment** unless `Whizbang:Database:RoleAssignment:Enabled` is `false`. The advisory lock decides only the vote, a single statement; from then on the duty is a row in `wh_role_assignments` with a holder, an **epoch** and a **lease** in database time. The holder's own work loop renews the lease through `VerifyStillHeldAsync`, so a holder that is stuck, paused or partitioned stops renewing and loses the duty after one lease, and exclusive work presents `(holder, epoch)` to the database (`wh_assert_role_epoch`), so a holder that lost the duty cannot write. The grant carries the epoch as `IDutyGrant.Epoch`.
+With the Postgres driver every duty is held by **role assignment**: `maintainer`, `migrator`, the commit-order stamper's leadership (`commit-stamper`), the partition assigner's, and any duty a host names for its own steps. There is no other way to hold a duty, and no setting that turns it off. The vote is a single statement, and its transaction-scoped lock only serializes votes for the same role; it is released when the statement commits. From then on the duty is a row in `wh_role_assignments` with a holder, an **epoch** and a **lease** in database time. The holder's own work loop renews the lease through `VerifyStillHeldAsync`, so a holder that is stuck, paused or partitioned stops renewing and loses the duty after one lease, and exclusive work presents `(holder, epoch)` to the database (`wh_assert_role_epoch`), so a holder that lost the duty cannot write. The grant carries the epoch as `IDutyGrant.Epoch`.
 
-Held this way: `maintainer`, `migrator`, and the commit-order stamper's leadership (`commit-stamper`). Any other duty name stays on the session lock described below. A few behaviors to know:
+`RoleAssignmentOptions.Roles` lists the duties the [holder loop](#the-holder-loop) holds and the `roles` health component reports. A duty not listed there is still held by assignment whenever something asks for it.
+
+### Design choices {#role-assignment-design-choices}
+
+| Choice | Reason | Verified |
+|---|---|---|
+| Every duty, a host's own included, is voted in the role table. No duty is held by a session advisory lock (#2044). | One way to hold a duty means one place that says who holds it, one fence and one takeover rule. A session lock needs a pinned direct connection for the whole tenure, cannot be taken from a holder that is alive but stuck, and is lost on every database restart. | {verified: RoleAssignmentElectorE2ETests.EveryDuty_IsHeldByAssignment_EvenOneTheHolderLoopDoesNotHoldAsync, DutyElectionE2ETests.TwoPipelines_RaceADutyStep_ExactlyOneInstanceRunsItAsync, CoordinationSourceGuardTests.NoDuty_IsHeldByAnAdvisoryLockAnywhereAsync} |
+| Exclusive work presents `(holder, epoch)`, and a stale epoch is refused in SQL, in the writer's own transaction. | A holder that wakes after losing the duty cannot argue with a check the database runs. | {verified: RoleAssignmentSqlTests.AssertEpoch_WithAStaleEpoch_RaisesInSql_AndTheWriteBesideItRollsBackAsync, RoleAssignmentElectorE2ETests.StaleHolder_AfterLosingTheRole_FailsVerification_AndTheDatabaseRefusesItsWriteAsync} |
+| A holder that dies without releasing is replaced once its lease lapses or [the one liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule) has it reaped, about 30 seconds for a direct instance, not the moment its connection drops. | Nothing is held by a session, so there is nothing for the server to free. The rule is the one definition of dead every reader uses, and the lease bounds a holder that is alive but stuck. Earlier releases handed a host's own duty over the instant its session ended; a slower takeover is the cost of one mechanism with a fence. | {verified: DutyElectionE2ETests.DirtyDeath_JudgedByTheLivenessRule_HandsTheDutyOver_AndTheGrantKnowsItIsLostAsync, RoleAssignmentElectorE2ETests.CrashedHolder_VoidsAfterTheLapseBound_AndTheNextVoteTakesOverAsync, RoleAssignmentChaosTests.KillNine_TheHolderVanishes_AndTheNextHolderFinishesTheWorkOnceAsync} |
+| A clean release hands the duty over at once and announces it on `wh_role_released`. | A release is not a health signal, so it carries no lapse wait and no cool-down. | {verified: RoleAssignmentElectorE2ETests.GracefulRelease_HandsOffAtOnce_WithNoLapseWaitAsync, RoleAssignmentSqlTests.Release_NotifiesWaiters_SoTheyReVoteAtOnceAsync} |
+| The grant holds no connection. Each vote, renewal and release is one statement on any connection, a pooled one included. | A transaction pooler serves it, and a database restart does not cost the duty: the row survives, and the next renewal presents the same epoch. | {verified: RoleAssignmentElectorE2ETests.Assignment_SurvivesEveryConnectionBeingTerminated_WithTheSameEpochAsync, RoleAssignmentDatabaseRestartChaosTests.DatabaseRestart_TheAssignmentSurvives_AndTheHolderKeepsItsEpochAsync} |
+| No role function reads an advisory lock. The lock reader is dropped (migration 326), and a legacy key or bridge session passed by an older caller is ignored. | A lock is a second answer to who holds a duty, and one a pooler can strand on the wrong backend. | {verified: RoleAssignmentResilienceSqlTests.TheAdvisoryLockReader_IsGoneAsync, RoleAssignmentResilienceSqlTests.Vote_IgnoresAnAdvisoryLockOnTheLegacyKey_AndRecordsNoBridgeSessionAsync, RoleAssignmentResilienceSqlTests.VoteRoles_TakesNoLegacyKeysAsync} |
+
+A few more behaviors to know:
 
 - **A newer release takes over cooperatively.** An instance on a newer library version asks an older holder to drain (`IDutyGrant.DrainRequested`); the holder finishes its current step and releases. A vacant duty goes to the newest version voting for it.
 - **One long statement does not lose the duty.** Each duty may declare its own lease, and a holder that marks the backend running its statement (`PgRoleElector.MarkDutyBackendAsync`) stays live while that statement runs.
 - **A database outage does not cool anyone down.** After an involuntary lapse an instance waits `CooldownAfterLapse` before winning the duty back, unless every holder lapsed together.
-- **Rolling deploy from a session-lock release.** The bridge (`HoldLegacySessionLock`) is on by default in this release, so old and new instances never both act. It will default to off in a later release; `Whizbang__Database__RoleAssignment__HoldLegacySessionLock=false` turns it off early.
 
 Health reports the duties under the [`roles` component](../../resilience/managed-resource-health#roles) and the meter `Whizbang.Roles` counts elections, hand-offs, drains and losses. The full design, the resilience requirements it meets and the chaos suite that tests them are in the [Duty Role Assignment](../../../proposals/duty-role-assignment) proposal; the options are in the [configuration reference](../configuration/configuration-reference#role-assignment-options).
 
+### A rolling deploy from a release that held duties by session lock {#legacy-holder}
+
+An instance on an older release may still hold a duty by its own session advisory lock. Its elector records the holding (`record_capability`) when it wins, and that record is what this release reads; the lock itself is never read. While the instance that recorded the holding is live by the one liveness rule:
+
+- the vote answers `legacy_holder` and writes no assignment;
+- a holder that finds such a holding at its next renewal steps aside (the role is vacated with reason `legacy_holder`), so an older instance that took the duty after the vote overlaps the new holder for at most one renew interval.
+
+A holding recorded by an instance the rule calls dead does not count, and is reaped with its instance row. The role functions an older release calls keep their signatures (`wh_vote_role`, `wh_renew_role_lease`, `wh_vote_roles`, `wh_end_lapsed_bridge`), so its calls are answered from the table alone; the bridge expiry ends no session and always answers `NULL`.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The vote refuses with `legacy_holder` while a live instance records a holding outside the table. | Old and new must not both act, and the record is the one thing an older release writes that this one can read without a lock. | {verified: RoleAssignmentResilienceSqlTests.Vote_WhileALiveInstanceHoldsTheDutyOutsideTheTable_AnswersLegacyHolderAsync, RoleAssignmentSqlTests.Elect_WhileAnotherBackendHoldsTheLegacySessionLock_AnswersLegacyHolderAsync, RoleAssignmentElectorE2ETests.MixedFleet_AnOlderReleasesRecordedHolding_IsSeenByTheVote_AndNoAssignmentIsWrittenAsync} |
+| A holding recorded by an instance the rule calls dead does not count. | Otherwise a crashed older instance would block the duty until the reap ran. | {verified: RoleAssignmentResilienceSqlTests.Vote_DoesNotCountAHolderOutsideTheTable_ThatTheLivenessRuleCallsDeadAsync} |
+| A holder steps aside within one renewal once a live older instance records the duty. | The older instance cannot see the row, so the newer one yields. The overlap of at most one renew interval replaces the bridge, which held a pinned connection per duty to close it. | {verified: RoleAssignmentResilienceSqlTests.RenewLease_StepsAside_WhenALegacyHolderTookTheLockAfterTheVoteAsync, RoleAssignmentResilienceE2ETests.AHolder_StepsAsideWithinOneRenewal_WhenAnOlderReleaseTookTheDutyOutsideTheTableAsync, RoleAssignmentChaosTests.RollingDeploy_FromTheSessionLockRelease_NeverHasBothActingAsync} |
+| An older bridged instance's drain request still reaches an older holder. | A release before this one may still be rolling out beside an even older one. | {verified: RoleAssignmentResilienceE2ETests.ABridgedNewerInstance_StillAsksTheOlderHolderToDrainAsync} |
+
+**The gap that remains.** An older instance configured with role assignment off, whose stamper takes its own leader lock, records nothing, so the vote cannot see it. The fleet-wide stand-down planned under [#2022](https://github.com/whizbang-lib/whizbang/issues/2022) closes it. The keys that configured the old mechanisms are [removed keys](../configuration/configuration-reference#removed-keys): a deployment that still sets one is told so at startup.
+
+### The advisory locks that remain, and why they are not duties {#remaining-advisory-locks}
+
+Every advisory lock left in the library is mutual exclusion around one statement or one DDL pass, never a duty: it decides nothing about which instance does work afterward, and it is gone when the statement or pass ends. Two of them guard schema work and are the ones an operator meets:
+
+| Lock | Why it stays | Verified |
+|---|---|---|
+| **The schema lock**, transaction-scoped (`pg_try_advisory_xact_lock`), held around one schema pass and released at commit. `AdvisoryLockProbe` reads only whether it is held elsewhere, so a contender waits for that pass instead of queuing behind it. | The migrator duty decides who migrates; the lock keeps DDL to one pass at a time even when the duty is wrong or no elector is registered. A transaction lock cannot outlive its pass, so it cannot be stranded. | {verified: SchemaInitializationConcurrencyTests.XactLock_WhenTransactionCommitted_AutoReleasesLockAsync, SchemaInitializationConcurrencyTests.SlowPath_WhenAnotherProcessHoldsTheSchemaLock_WaitsInsteadOfMigratingAsync, SchemaInitializationConcurrencyTests.Staged_WithNoElectorTheLockIsStillTheGuardAsync} |
+| **The concurrent index drop.** `DROP INDEX CONCURRENTLY` cannot run in a transaction, so the schema lock is taken at session level for the drop's three statements (lock, drop, record) and released after. It runs only on a connection whose statements reach one backend; through a transaction pooler the drop waits for a direct connection and says why. | No transaction-scoped or row lock is possible around a statement that refuses a transaction, and sharing the schema pass's key keeps the drop and the pass apart. A release that finds nothing is logged, naming the lock. | {verified: ManagedSchemaReconcilerPoolerTests.ThroughATransactionPooler_IndexDropsWaitForADirectConnection_AndSayWhyAsync, ManagedSchemaReconcilerTests.WhileAnotherSessionHoldsTheSchemaLock_ItDoesNothingAsync, AdvisoryLockReleaseTests.ReleasingALockAnotherSessionHolds_ReturnsFalse_AndWarnsNamingTheLockAndKeyAsync} |
+
+The vote's own transaction lock is the same kind: it orders concurrent votes for one role for the length of one statement. A source guard holds the line: an advisory lock anywhere else in the library fails a test, and so does one in a file that holds a duty (see [one way to coordinate](../../../contributors/gravity.md#coordination-source-guard)).
+{verified: CoordinationSourceGuardTests.AdvisoryLocks_AppearOnlyInTheAllowlistedFilesAsync, CoordinationSourceGuardTests.NoDuty_IsHeldByAnAdvisoryLockAnywhereAsync}
+
 ## Takeover
 
-An instance never looks up whether it has been *assigned* a capability — it attempts acquisition. Takeover therefore needs no coordinator:
+An instance never looks up whether it has been *assigned* a capability; it votes. Takeover therefore needs no coordinator:
 
-1. The holder holds its session lock; its record names the capability.
-2. The holder dies. On clean session termination PostgreSQL releases the lock **immediately**, server-side.
-3. The record is briefly stale, still claiming the capability.
-4. Another instance attempts — because it was already blocked on the lock, on its next poll, or prompted by `InstanceDiedSignal`.
-5. It acquires the lock and **is the holder from that instant**, whatever any row still says.
-6. Its record is written; the dead instance's rows are reaped at lease expiry and cascade away.
+1. The holder holds the assignment and renews its lease from its work loop; its record names the capability.
+2. The holder releases cleanly, which vacates the row at once and announces it; or it dies, and stops renewing.
+3. After a death the row is stale until its lease lapses in database time or the liveness rule has the instance reaped.
+4. Another instance votes: on a release announcement, on its next poll, or prompted by `InstanceDiedSignal`.
+5. The vote voids the lapsed or orphaned assignment and grants a new epoch. The new holder **is the holder from that instant**; the old epoch's writes are refused.
+6. Its record is written; the dead instance's rows are reaped and cascade away.
 
-The record is inconsistent only between steps 2 and 6 — the same heartbeat-lease window the system already reaps. A half-open session whose lock lingers (a pod killed for memory) is bounded by the stale-instance cleanup's definitive-dead cutoff, which is why heartbeat liveness is a **correctness backstop** here rather than a latency optimization: the lock handles every clean failure; the cutoff bounds the pathological one.
+No session or TCP timeout is involved at any step: a hard kill on a half-open connection is bounded by the lease and the rule, not by keepalive.
 
-The steps above are the session-lock model. Under role assignment, step 2 is the lease lapsing in database time (or a clean release, which hands over at once and announces it), and step 5 is the next vote, which voids the lapsed assignment and grants a new epoch.
-
-For `Migrate`, waiters watch the migrator directly: its assignment row, and the duty's session lock for a migrator on an older release. A migrator that stops cleanly releases its duty, so a waiter that finds the schema current exits at once; a migrator that dies is noticed when its lease lapses (30 seconds by default, held open while its migration statement runs), and the schema lock still guarantees that only one instance applies DDL at a time. The duties that rely on signal-plus-poll re-attempt — `maintainer` among them — are precisely the ones for which tens of seconds is immaterial.
+For `Migrate`, waiters watch the migrator directly (`MigratorWatch`): its assignment row, and any holding recorded outside the table by a live migrator on an older release. A migrator that stops cleanly releases its duty, so a waiter that finds the schema current exits at once; a migrator that dies is noticed when its lease lapses (30 seconds by default, held open while its migration statement runs), and the schema lock still guarantees that only one instance applies DDL at a time. The duties that rely on signal-plus-poll re-attempt (`maintainer` among them) are precisely the ones for which tens of seconds is immaterial.
+{verified: MigratorWatchTests.AMigratorHoldingTheRole_IsMigrating_UntilItReleasesItAsync, MigratorWatchTests.AMigratorOnAnOlderRelease_IsSeenByItsRecordedHolding_WhileTheRuleCallsItLiveAsync, SchemaInitializationConcurrencyTests.Staged_AKilledDutyHolderIsTakenOverAsync}
 
 ## Acquiring a duty {#acquiring-a-duty}
 
@@ -186,7 +240,7 @@ Some work belongs to *winning* a duty rather than to holding it. An `IDutyAcquis
 
 The grant tells the handler where the role came from. `IDutyGrant.PreviousHolderInstanceId` is the instance that held the role before, when this grant took it over (a hand-off or a takeover after a lapse), and `null` for a first assignment. It is the last holder the role recorded, so after the whole fleet stops, the next cold start counts as a takeover from the last instance that held it.
 
-A handler runs on the holder loop, so it is bounded the same way owed work is: one that hangs stops the loop and the role lapses to another instance. A failure is logged with the handler and the role, and the role is kept. Handlers need role assignment; without it nothing holds a duty from the loop, and no handler runs. A role held only for its acquisition work is still woken at once when its holder releases it, like any other role (see [what starts a pass](#what-starts-a-pass)).
+A handler runs on the holder loop, so it is bounded the same way owed work is: one that hangs stops the loop and the role lapses to another instance. A failure is logged with the handler and the role, and the role is kept. Handlers need the holder loop; a host without one holds no duty from the loop, and no handler runs. A role held only for its acquisition work is still woken at once when its holder releases it, like any other role (see [what starts a pass](#what-starts-a-pass)).
 
 ### Vacuum on acquiring the maintainer duty {#vacuum-on-acquiring-the-maintainer-duty}
 
@@ -303,7 +357,7 @@ difficulty: "INTERMEDIATE"
 tags: ["duties", "role-assignment", "holder-loop", "events", "observability"]
 tests: ["DutyHolderWorkerTests.TheHostedLoop_PassesOnItsInterval_WakesOnARelease_AndReleasesOnStopAsync"]
 }
-// Null when this host has no duty work to hold, or role assignment is off.
+// Null when this host has no duty work to hold.
 if (app.Services.GetService<DutyHolderWorker>() is { } holder) {
   holder.OnBecameHolder += duty => logger.LogInformation("This instance now holds {Duty}", duty);
   holder.OnWakeRequested += () => earlyPasses.Add(1);
