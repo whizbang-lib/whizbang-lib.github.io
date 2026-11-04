@@ -29,6 +29,7 @@ codeReferences:
   - src/Whizbang.Core/Startup/DutyHolderWorker.cs
   - src/Whizbang.Core/Workers/WorkTableVacuumOnAcquisition.cs
   - src/Whizbang.Core/Startup/MaintainerDuty.cs
+  - src/Whizbang.Core/RunControl/WhizbangRunPermit.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceTransitionSqlTests.cs
@@ -127,6 +128,7 @@ public enum DutyRefusal {
   Contended,     // another instance holds it — retry; the holder's release frees it
   Unavailable,   // no coordination connection at all — a standing misconfiguration
   Refused,       // this instance is evicted/unregistered — needs an operator, not a retry
+  Halted,        // this instance's run permit is closed (paused, standing down, stopping); a resume answers the next vote
 }
 
 public sealed record DutyAttempt {   // exactly one of Grant / Refusal is present
@@ -152,6 +154,20 @@ The Postgres implementation, `PgRoleElector`, votes for the duty in one statemen
 
 The **eviction fence reaches election**: an instance that has been [evicted](../../fundamentals/workers/instance-liveness#eviction-reaping-is-a-fence-not-just-a-deletion) is refused at acquisition, whoever holds the duty, and its renewal is refused too. That is what turns eviction from a request into a guarantee for exclusive work.
 {verified: DutyElectionE2ETests.EvictedInstance_IsRefusedAtAcquisition_EvenWithTheLockFreeAsync, RoleAssignmentElectorE2ETests.EvictedInstance_IsRefused_NotContendedAsync, RoleAssignmentSqlTests.Renew_ByATombstonedHolder_IsRefusedAsync}
+
+### A halted instance holds no role {#halted-refusal}
+
+While the instance's [run permit](../../resilience/managed-resource-run-control#one-run-control-path) is closed (it is
+paused, standing down or stopping), `PgRoleElector` refuses every vote as `DutyRefusal.Halted` without asking the
+database, the batched vote included. The [run-control path](../../resilience/managed-resource-run-control#halt-sequence)
+has already released the roles this instance held; the refusal keeps the holder loop, the partition assigner and the
+commit-order stamper from winning one back in the meantime. A resume reopens the permit and the next vote is answered
+as usual; a stop is final.
+{verified: RoleAssignmentElectorE2ETests.WhileTheRunPermitIsClosed_EveryVoteIsRefusedAsHalted_UntilItReopensAsync}
+
+**Why a refusal of its own.** `Contended` says another instance holds the duty, and `Refused` says this instance needs
+an operator. A halted instance is neither: nobody else may hold the role, and nothing is wrong with the instance. It
+has chosen to hold nothing until it resumes, and a reason of its own lets a log line say so.
 
 ### When the elector itself fails
 
@@ -296,9 +312,18 @@ When role assignment does not manage the duty (no duty loop registered, or a loo
 disable the work it guards.
 
 Every one of these callers asks the same question through one helper, `MaintainerDuty.IsThisInstancesTurn(services)`:
-true when this instance holds the duty, or when role assignment does not manage it. The rule used to be written out in
+true when this instance's run permit is open and it holds the duty, or when its run permit is open and role assignment
+does not manage the duty. The rule used to be written out in
 each caller, and four copies of a three-clause condition were four chances for one to drift. With one helper, a new
 kind of fleet-wide work joins the rule by calling it, and a change to the rule reaches every caller at once.
+
+**No instance has a turn while its run permit is closed.** A paused, stood-down or stopping instance does no
+fleet-wide work, with role assignment or without it, even in the moment between the
+[run-control path](../../resilience/managed-resource-run-control#halt-sequence) releasing the maintainer role and the
+holder loop learning of it. Every maintenance worker and step asks this one question, so the permit is obeyed here once
+for all of them, and the [run-permit audit](../../resilience/managed-resource-run-control#run-permit-enforcement)
+places each maintenance worker by it.
+{verified: MaintainerDutyTests.WhileTheRunPermitIsClosed_NoInstanceHasATurnAsync, MaintainerDutyTests.WithoutRoleAssignment_AClosedPermit_StillHasNoTurnAsync, MaintainerDutyTests.AnOpenPermit_LeavesTheAnswerToTheDutyAsync}
 
 Holding the duty decides *where* the work runs, not *when*. The maintenance sweep and the deferrable integrity work
 also wait for the service to be idle, under [housekeeping arbitration](../workers/housekeeping-arbitration).

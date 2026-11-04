@@ -141,6 +141,62 @@ await Assert.That(csharp["src/Whizbang.Data.Postgres/MigratorWatch.cs"].Contains
 await Assert.That(csharp.Keys.Any(p => p.EndsWith("/PgDutyElector.cs", StringComparison.Ordinal))).IsFalse();
 ```
 
+### Every worker obeys the run permit {#run-permit-guard}
+
+The same standard covers how an instance stops taking work. Before
+[#2045](https://github.com/whizbang-lib/whizbang/issues/2045) a stand-down, a pause and a stop were three paths: the
+standby watcher and the startup stand-down wrote `StandingBy` directly, the killswitch broadcast a phase that workers
+kept polling through, and host shutdown wrote its stages in one service and released roles in another. Now there is
+one run permit and [one path](/v1.0.0/resilience/managed-resource-run-control#one-run-control-path) that closes it, and
+two tests keep every worker on it.
+
+The source guard gained three checks:
+
+| Check | Fails on | Ask instead |
+|---|---|---|
+| `EveryClaim_ObeysTheRunPermitAsync` | A file that calls a claim (`Claim*Async`, `Lease*Async`, `FetchPendingCoalesceAsync`, the integrity claims) and neither takes a hold (`RunPermit.EnterAsync`) nor asks `MaintainerDuty.IsThisInstancesTurn` | Take a hold around the claim, or run it on the maintainer's turn |
+| `HaltingPhases_AreWrittenOnlyByTheRunControlPathAsync` | `Pausing`, `Paused`, `StandingBy`, `Stopping`, `Stopped` or `Resuming` written through `AdvanceToAsync` or `EnterPhaseAsync` outside the path | `IWhizbangRunController.HaltAsync` or `ResumeAsync` |
+| `EveryHostedConsumer_ObeysTheRunPermitAsync` | A `BackgroundService` that subscribes to a transport without `RunPermit.Obey` | Obey the permit: pause every subscription on a close, resume on a reopening |
+
+{verified: CoordinationSourceGuardTests.EveryClaim_ObeysTheRunPermitAsync, CoordinationSourceGuardTests.HaltingPhases_AreWrittenOnlyByTheRunControlPathAsync, CoordinationSourceGuardTests.EveryHostedConsumer_ObeysTheRunPermitAsync}
+
+Each allowlist entry states its reason, as above: the store implementations that declare and run the claims, the
+maintenance steps that run on the maintainer's turn, a deduplication claim taken while handling a message the instance
+already holds, and a test harness's manual pump. Only the path itself may write a halting phase, and the startup
+stand-down may record `StandingBy` alone only in a host with no path, where there is no permit, no held work and no
+role to release.
+
+**The scans prove they see.** `TheRunControlScans_SeeWhatTheyGuardAsync` checks that the claim scan finds the claim
+worker's claim and its hold, the maintainer question in the integrity audit, and the path's own phase writes, and that
+the halting-phase pattern matches a sample direct write; the hosted-consumer check asserts that it found exactly the two
+consumers it vouches for, `TransportConsumerWorker` and `ServiceBusConsumerWorker`. A stale allowlist entry fails, as
+everywhere in the guard.
+{verified: CoordinationSourceGuardTests.TheRunControlScans_SeeWhatTheyGuardAsync, CoordinationSourceGuardTests.EveryHostedConsumer_ObeysTheRunPermitAsync}
+
+```csharp{title="A hosted consumer must obey the run permit" description="The guard lists every hosted worker that subscribes to a transport, fails any that does not obey the run permit, and checks it found both consumers so it cannot pass by reading nothing." category="Testing" difficulty="INTERMEDIATE" tags=["Gravity", "Source guard", "RunControl", "Coordination"] tests=["CoordinationSourceGuardTests.EveryHostedConsumer_ObeysTheRunPermitAsync"]}
+var offenders = _csharpSources()
+  .Where(f => _hostedWorker().IsMatch(f.Value) && _subscribes().IsMatch(f.Value)
+    && !f.Value.Contains("RunPermit.Obey(", StringComparison.Ordinal))
+  .Select(f => f.Key)
+  .ToList();
+await Assert.That(offenders).IsEmpty();
+var consumers = _csharpSources().Where(f => _hostedWorker().IsMatch(f.Value) && _subscribes().IsMatch(f.Value))
+  .Select(f => f.Key).Order(StringComparer.Ordinal).ToList();
+await Assert.That(consumers).IsEquivalentTo([
+  "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
+  "src/Whizbang.Core/Workers/TransportConsumerWorker.cs",
+]).Because("the scan must see the consumers it vouches for, or it vouches for nothing");
+```
+
+**A source scan cannot see a registration, so a host test does.** `RunPermitAuditTests` composes a real host the way a
+consumer does (registering `ServiceBusConsumerWorker` the way a host does), builds it without starting it, and gives
+every hosted service a stated place: it obeys the permit itself and holds the container's one permit, it obeys through
+the maintainer question or the role elector, it finishes work the instance already holds, or it takes no work. A new
+hosted service with no place fails, naming it, so its author decides how it obeys a stand-down, a pause and a stop
+instead of taking work through all three. A worker that obeys a permit of its own, rather than the container's, fails
+too: the path would close a permit nothing reads.
+{verified: RunPermitAuditTests.EveryHostedService_SaysHowItObeysTheRunPermit_AndTheObeyersHoldTheOnePermitAsync}
+
 The failure message says what to use instead (for a liveness check: *ask the one rule, `wh_instance_is_live` or
 `wh_live_instance_ids`*), so an author who trips the guard falls toward the standard path, not toward a new allowlist
 entry.

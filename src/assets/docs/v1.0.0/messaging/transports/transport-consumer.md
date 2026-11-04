@@ -27,6 +27,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs
   - src/Whizbang.Core/Routing/MessageDiscardPolicy.cs
   - src/Whizbang.Core/Workers/NoTransportConfiguredNotice.cs
+  - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
+  - src/Whizbang.Core/RunControl/WhizbangRunPermit.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerBuilderExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerBuilderExtensionsServiceNameTests.cs
@@ -51,6 +53,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AbsorbedEventReachesEventStoreTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerWithoutATransportTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWithoutATransportStartupTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerRunPermitTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/ServiceBusConsumerWorkerRunPermitTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RunPermitAuditTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -381,6 +386,56 @@ gives it durable custody. RabbitMQ has no delivery count of its own for a requeu
 message: give the queue a delivery limit (a quorum queue with `x-delivery-limit` and a
 dead-letter exchange), or a batch that always fails is redelivered indefinitely. A real host shutdown propagates as itself and is never wrapped.
 {verified: TransportBatchGuardTests.AStatementTimeoutFailsTheBatchAsATypedSignalNotACancellationAsync, TransportBatchGuardTests.AnOrdinaryFaultFailsTheBatchTooAsync, TransportBatchGuardTests.ACanceledBATCHTokenIsStillContainedWhileTheHostIsAliveAsync, TransportConsumerWorkerBatchFailureTests.InboxStoreTimesOut_TransportToldBatchFailed_WorkerStaysUpAndStoresTheRedeliveryAsync, AzureServiceBusTransportBatchPipelineTests.NonSessionBatch_HandlerReportsBatchFailed_AbandonsNeverCompletesAsync, AzureServiceBusTransportBatchPipelineTests.NonSessionBatch_HandlerFailsAtMaxDeliveryCount_DeadLettersNeverCompletesAsync, AzureServiceBusTransportBatchPipelineTests.SessionBatch_HandlerReportsBatchFailedFromACancellation_AbandonsNeverCompletesAsync, RabbitMQTransportBatchPathTests.SubscribeBatchAsync_HandlerReportsBatchFailedFromACancellation_NacksNeverAcksAsync}
+
+## Pausing and the run permit {#run-permit}
+
+The consumer receives nothing while the instance's
+[run permit](../../resilience/managed-resource-run-control#one-run-control-path) is closed. A transport calls the
+consumer back rather than the consumer looping, so it cannot take a hold around each unit of work the way a claiming
+worker does; it obeys the permit by acting on each change of it instead (`RunPermit.Obey`):
+
+- **A close pauses every subscription before the close completes**, so by the time the run-control path writes
+  `Pausing` or `Stopping`, nothing is still being received.
+- **A reopening resumes them.**
+- **A subscription established while the permit is closed is paused at once**: the first subscription, a reconnect, a
+  recovery, or one the health monitor restores. A subscription that cannot be paused is logged at Warning and the
+  consumer still starts; it receives until the permit reopens or the instance stops.
+- **After the consumer is disposed** a change of the permit touches no subscription.
+
+{verified: TransportConsumerWorkerRunPermitTests.AClose_PausesEverySubscriptionBeforeTheChangeCompletes_AndAReopeningResumesThemAsync, TransportConsumerWorkerRunPermitTests.APermitClosedBeforeSubscribing_LeavesTheSubscriptionsPausedAsync, TransportConsumerWorkerRunPermitTests.AHealthyStatusWithNoSubscriptionYet_UnderAClosedPermit_PausesNothingAsync, TransportConsumerWorkerRunPermitTests.ASubscriptionThatCannotBePaused_UnderAClosedPermit_IsLogged_AndTheConsumerStillStartsAsync, TransportConsumerWorkerRunPermitTests.AfterDispose_AChangeOfThePermit_TouchesNoSubscriptionAsync}
+
+**To pause the consumer, pause the instance** through the killswitch (`IWhizbangKillswitch.PauseAsync`, then
+`ResumeAsync`). That is the [one run-control path](../../resilience/managed-resource-run-control#who-calls-the-path):
+it stops the claiming workers too and hands this instance's roles to its peers. A consumer paused on its own while the
+rest of the instance kept claiming would leave the inbox draining work nothing was receiving more of, and say nothing
+about it on the instance's row.
+
+:::updated{version="1.0.0" type="breaking"}
+`TransportConsumerWorker.PauseAllSubscriptionsAsync` and `ResumeAllSubscriptionsAsync` are now internal
+([#2045](https://github.com/whizbang-lib/whizbang/issues/2045)). Call `IWhizbangKillswitch.PauseAsync` and
+`ResumeAsync` instead.
+:::
+
+### A host-registered `ServiceBusConsumerWorker` {#service-bus-consumer-worker-run-permit}
+
+`ServiceBusConsumerWorker` is registered by the host itself rather than by the library. It obeys the run permit by
+default all the same: resolved from the container, it is given the instance's one permit whenever the worker pipeline
+registered it, and it pauses and resumes its subscriptions on each change exactly as above.
+
+Its public `PauseAllSubscriptionsAsync` and `ResumeAllSubscriptionsAsync` are kept, and are not a second path: when the
+registered run-control path closes this consumer's permit, they pause and resume **the instance** through that path
+(no claim, no receive, roles handed off). Only a consumer under no run-control path, or one given a permit the path
+does not close, pauses its own subscriptions alone.
+{verified: ServiceBusConsumerWorkerRunPermitTests.AClose_PausesEverySubscriptionBeforeTheChangeCompletes_AndAReopeningResumesThemAsync, ServiceBusConsumerWorkerRunPermitTests.APermitClosedBeforeSubscribing_LeavesEverySubscriptionPausedAsync, ServiceBusConsumerWorkerRunPermitTests.ASubscriptionThatCannotBePaused_UnderAClosedPermit_IsLogged_AndTheConsumerStillStartsAsync, ServiceBusConsumerWorkerRunPermitTests.AfterStop_AChangeOfThePermit_TouchesNoSubscriptionAsync, ServiceBusConsumerWorkerRunPermitTests.PauseAll_WithTheRunControlPathRegistered_TakesThePath_AndResumeAllReopensItAsync, ServiceBusConsumerWorkerRunPermitTests.PauseAll_WithAPathOverAnotherPermit_PausesOnlyThisConsumersSubscriptionsAsync, RunPermitAuditTests.EveryHostedService_SaysHowItObeysTheRunPermit_AndTheObeyersHoldTheOnePermitAsync}
+
+**Why the host-registered worker obeys by default.** A consumer the host registers is still a consumer on this
+instance: a stand-down or a stop that left it receiving would keep filling the inbox of an instance that has said it
+takes no work. The run-permit audit registers it the way a host does, and the source guard fails any hosted worker that
+subscribes to a transport without obeying the permit.
+
+**Why its pause and resume pause the instance.** They are what existing hosts call, often in test cleanup, to stop
+receiving. Routing them through the path keeps one meaning of "paused" for the instance: the phase on its row, its
+claims and its consumers agree.
 
 ## Subscription Resilience {#subscription-resilience}
 

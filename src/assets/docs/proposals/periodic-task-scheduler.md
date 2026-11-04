@@ -41,6 +41,13 @@ The periodic ones each own their cadence, their jitter (where they have any), th
 
 There is a re-closable gate — `WhizbangRunPermit`, with `Running` / `Paused` / `Stopped` semantics — already implemented and tested. **Nothing in the codebase ever calls `Set()` on it.** The actuator exists; there is no governor, and no obvious place to put one.
 
+> **Since [#2045](https://github.com/whizbang-lib/whizbang/issues/2045):** the run permit has a governor. One path,
+> `IWhizbangRunController`, closes and reopens the instance's one `WhizbangRunPermit` for a stand-down, a pause and a
+> stop, and every claiming worker takes each claim inside a hold of it (see
+> [Managed-Resource Run-Control](../v1.0.0/resilience/managed-resource-run-control.md#one-run-control-path)). The
+> permit governs whether the instance takes work, not when a periodic task runs, so the scheduler this proposal
+> describes is still open.
+
 ## Design
 
 ### 1. Tasks are registered, not self-scheduled
