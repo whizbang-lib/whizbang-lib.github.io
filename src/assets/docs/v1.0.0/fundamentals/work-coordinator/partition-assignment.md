@@ -187,7 +187,7 @@ query instead of adding to it, so a claim with the assignment costs no more than
 
 | Option | Default | Meaning |
 |---|---|---|
-| `Enabled` | `true` | Elect an assigner and use its assignment. Takes effect where role assignment is enabled. |
+| `Enabled` | `true` | Elect an assigner and use its assignment. Takes effect where the duty loop holds the assigner's role, which the Postgres driver adds. |
 | `AssignmentLease` | 90 s | How long an assignment holds without renewal. Must exceed 60 s, the slow heartbeat cadence. |
 | `RepublishInterval` | 5 min | The backstop: republish at least this often. |
 

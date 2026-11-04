@@ -13,6 +13,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/AdvisoryLockRelease.cs
   - src/Whizbang.Data.Postgres/Notifications/NotificationConnectionPlan.cs
   - src/Whizbang.Data.Postgres/Notifications/PgRoleElector.cs
+  - src/Whizbang.Data.Postgres/Notifications/PgCommitOrderStamperWorker.cs
+  - src/Whizbang.Data.Postgres/Schema/ManagedSchemaReconciler.cs
   - src/Whizbang.Data.Postgres/Migrations/143_NotifyStateNeverWaits.sql
   - src/Whizbang.Data.Postgres/Migrations/146_DoorbellsRingAfterCommit.sql
   - src/Whizbang.Data.Postgres/Migrations/317_EveryReaderJudgesLivenessByTheRule.sql
@@ -20,8 +22,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ListenLivenessSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DoorbellsRingAfterCommitSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AdvisoryLockReleaseTests.cs
-  - tests/Whizbang.Data.EFCore.Postgres.Tests/PgDutyElectorLockReleaseTests.cs
-  - tests/Whizbang.Data.EFCore.Postgres.Tests/PgRoleElectorBridgeLockTests.cs
+  - tests/Whizbang.Core.Component.Tests/Notifications/PgCommitOrderStamperIterationDiagnosticsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ManagedSchemaReconcilerPoolerTests.cs
 ---
 
 # Notifications and pgbouncer
@@ -71,22 +73,31 @@ Each pod opens **exactly one** direct connection (bypasses pgbouncer) and multip
            └──────────────────────────────────────────────────┘
 ```
 
-**Total bypass-pool connections per pod: 1.** Multiple subscribers (work signals, commit-order stamping, app signals, future channels) all share that single direct conn. Pre-slice-33 design opened one direct connection per listener type (3 per pod). With horizontal scaling — many pods × many services × many environments — that adds up fast on the Postgres `max_connections` budget.
+**Total bypass-pool connections per pod: 1.** Multiple subscribers (work signals, the commit-order stamper's wake, app signals, future channels) all share that single direct conn. Pre-slice-33 design opened one direct connection per listener type (3 per pod). With horizontal scaling (many pods × many services × many environments), that adds up fast on the Postgres `max_connections` budget.
 
-### Session locks also need the direct connection {#session-locks}
+### No leader holds a session lock {#session-locks}
 
-Three leaders hold a session-level advisory lock for as long as they lead: the duty elector, the role elector's
-bridge (the legacy session lock it holds while a role is bridged) and the commit-order stamper's leader lock. A
-transaction pooler does not keep a session lock on one backend, so they run on the same direct connection as
-`LISTEN`. When that connection resolves through the pooled connection-string key instead, each logs a Warning
-asking for the `-direct` connection; the role elector's bridge now warns the same way the duty elector and the
-stamper already did.
+No duty is held by a session advisory lock (#2044). The duty elector, the commit-order stamper and
+the migrator all lead through [role assignment](/v1.0.0/operations/startup/capabilities-and-duties#role-assignment-the-default):
+each vote, renewal, release and fenced write is one statement or one transaction, which a
+transaction pooler serves correctly. None of them needs the `-direct` connection to lead, and the
+stamper no longer warns when its connection resolves through the pooled key. Earlier releases held
+three leaders on session locks (the duty elector, the role elector's legacy-lock bridge and the
+stamper's own leader lock), each on a direct connection for its whole tenure.
+{verified: PgCommitOrderStamperIterationDiagnosticsTests.Startup_PooledFallback_NeedsNoDirectConnection_SoNoPooledWarningAsync, RoleAssignmentElectorE2ETests.Assignment_SurvivesEveryConnectionBeingTerminated_WithTheSameEpochAsync, CoordinationSourceGuardTests.NoDuty_IsHeldByAnAdvisoryLockAnywhereAsync}
 
-Every release of a session-level advisory lock checks its result. `pg_advisory_unlock` returns false when the
-session running it does not hold the lock, which behind a pooler means the release ran on a different backend
-and the lock is still held where it was taken. That case is logged at Warning naming the lock and its key, so a
-leaked lock is visible instead of silently blocking the next holder.
-{verified: PgRoleElectorBridgeLockTests.ABridgeResolvedThroughAPooledKey_WarnsBeforeTakingTheSessionLockAsync, AdvisoryLockReleaseTests.ReleasingALockAnotherSessionHolds_ReturnsFalse_AndWarnsNamingTheLockAndKeyAsync, PgDutyElectorLockReleaseTests.AGrantWhoseLockWasGoneBeforeItsRelease_SaysSoAsync}
+One session-level lock remains: a concurrent index drop holds the schema lock for its three
+statements, because `DROP INDEX CONCURRENTLY` cannot run in a transaction. It runs only on a
+connection whose statements reach one backend; through a transaction pooler the drop waits for a
+direct connection and says so (see
+[the advisory locks that remain](/v1.0.0/operations/startup/capabilities-and-duties#remaining-advisory-locks)).
+{verified: ManagedSchemaReconcilerPoolerTests.ThroughATransactionPooler_IndexDropsWaitForADirectConnection_AndSayWhyAsync}
+
+Its release checks its result. `pg_advisory_unlock` returns false when the session running it does
+not hold the lock, which behind a pooler means the release ran on a different backend and the lock
+is still held where it was taken. That case is logged at Warning naming the lock and its key, so a
+leaked lock is visible instead of silently blocking the next schema pass.
+{verified: AdvisoryLockReleaseTests.ReleasingALockAnotherSessionHolds_ReturnsFalse_AndWarnsNamingTheLockAndKeyAsync, ManagedSchemaReconcilerPoolerTests.ThroughAPoolerTheDirectCheckCannotSee_AReleaseThatFindsNothingIsLoggedAsync}
 
 ### The LISTEN connection is not a heartbeat {#listen-as-heartbeat}
 {verified: ListenLivenessSqlTests.ClaimOrphanedOutbox_StaleHeartbeat_WithOnlyAConnectionNamedForIt_LeasesReclaimableAsync, ListenLivenessSqlTests.ClaimOrphanedInbox_StaleHeartbeat_WithOnlyAConnectionNamedForIt_LeasesReclaimableAsync, ListenLivenessSqlTests.ClaimOrphanedPerspectiveEvents_DeadInstanceRow_WithOnlyAConnectionNamedForIt_LeasesReclaimableAsync, ListenLivenessSqlTests.ClaimOrphanedOutbox_DirectOwnerHoldingItsAliveLock_LeasesNotReclaimedAsync}
