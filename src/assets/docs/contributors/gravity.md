@@ -92,16 +92,23 @@ definitions and a comment that names `pg_stat_activity` are not offenders.
 **Every allowlist entry states its reason.** A file or function is allowed because it *is* the mechanism (the rule
 itself, the lock half of the rule, the one LISTEN connection, the signal bus's transport), because it only displays or
 throttles and judges nothing (a status report showing how long ago an instance beat, a write throttle on the beat
-itself), or because it holds a transaction-scoped lock for one statement or DDL pass, which is mutual exclusion and not
-a duty. Entries marked `PENDING` are mechanisms the standard has not folded in yet, and each names the later part of the
-work that removes it (advisory-lock duties move to role assignments; raw channels move to the signal bus).
+itself), or because it holds a lock for one statement or DDL pass, which is mutual exclusion and not a duty (the concurrent index
+drop, which cannot run in a transaction, holds the schema lock at session level for its three statements and nothing
+more). Entries marked `PENDING` are mechanisms the standard has not folded in yet, and each names the later part of the
+work that removes it (raw channels move to the signal bus). The advisory-lock duties were the first to go: since
+[#2044](https://github.com/whizbang-lib/whizbang/issues/2044) every duty is a role assignment, and their pending
+entries are gone.
 
-```csharp{title="An allowlist entry carries its reason" description="Each allowed file or SQL function maps to why it may use the mechanism; PENDING entries name the change that removes them." category="Testing" difficulty="INTERMEDIATE" tags=["Gravity", "Source guard", "Liveness", "Coordination"] tests=["CoordinationSourceGuardTests.SqlLivenessChecks_AppearOnlyInTheRuleAndTheAllowlistedFunctionsAsync", "CoordinationSourceGuardTests.EveryAllowlistEntry_StillMatchesAsync"]}
+```csharp{title="An allowlist entry carries its reason" description="Each allowed file or SQL function maps to why it may use the mechanism; PENDING entries name the change that removes them." category="Testing" difficulty="INTERMEDIATE" tags=["Gravity", "Source guard", "Liveness", "Coordination"] tests=["CoordinationSourceGuardTests.SqlLivenessChecks_AppearOnlyInTheRuleAndTheAllowlistedFunctionsAsync", "CoordinationSourceGuardTests.AdvisoryLocks_AppearOnlyInTheAllowlistedFilesAsync", "CoordinationSourceGuardTests.EveryAllowlistEntry_StillMatchesAsync"]}
 private static readonly Dictionary<string, string> _sqlLivenessAllowlist = new(StringComparer.Ordinal) {
   ["wh_instance_liveness"] = "THE liveness rule",
   ["wh_direct_alive_lock_holders"] = "the lock half of the rule",
   ["register_instance_heartbeat"] = "a write throttle on the beat itself; it judges no peer",
-  ["wh_vote_role"] = PENDING_DUTIES + " (the vote refuses while a legacy lock is held)",
+};
+
+private static readonly Dictionary<string, string> _advisoryAllowlist = new(StringComparer.Ordinal) {
+  ["src/Whizbang.Data.Postgres/SchemaInitializationLock.cs"] = EXCLUSION,
+  ["src/Whizbang.Data.Postgres/Schema/ManagedSchemaReconciler.cs"] = EXCLUSION + "; and " + CONCURRENT_DROP,
 };
 ```
 
@@ -110,7 +117,29 @@ private static readonly Dictionary<string, string> _sqlLivenessAllowlist = new(S
 the commit that removes the last use removes the entry with it. And a guard that reads nothing passes everything, so
 `TheScans_SeeTheMechanismsTheyGuardAsync` proves each scan finds what it exists to find: the LISTEN connection, a
 schema lock, the rule itself and a sample heartbeat comparison, while `claim_work`, which asks the rule, is not flagged.
+The SQL scan reads a function's last word: a function a later migration drops is not scanned, because no database
+runs it, and one dropped and then defined again is scanned by its new definition.
 {verified: CoordinationSourceGuardTests.EveryAllowlistEntry_StillMatchesAsync, CoordinationSourceGuardTests.TheScans_SeeTheMechanismsTheyGuardAsync}
+
+**No duty is held by an advisory lock, and a test says so.** An allowlist can only say where a lock may appear, not
+what it may be used for, so a separate check names the files that hold duties and fails if any of them takes an
+advisory lock: the role elector, the commit-order stamper and the migrator watch, which also may not use the lock probe.
+It fails as well if the session-lock duty elector comes back, or if any allowlist entry is still waiting for the
+advisory-lock duties to move.
+{verified: CoordinationSourceGuardTests.NoDuty_IsHeldByAnAdvisoryLockAnywhereAsync}
+
+```csharp{title="No duty file takes an advisory lock" description="The guard names the files that hold duties and fails if any takes an advisory lock, if the migrator watch uses the lock probe, or if the session-lock elector returns." category="Testing" difficulty="INTERMEDIATE" tags=["Gravity", "Source guard", "Duties", "Coordination"] tests=["CoordinationSourceGuardTests.NoDuty_IsHeldByAnAdvisoryLockAnywhereAsync"]}
+string[] dutyHolders = [
+  "src/Whizbang.Data.Postgres/Notifications/PgRoleElector.cs",
+  "src/Whizbang.Data.Postgres/Notifications/PgCommitOrderStamperWorker.cs",
+  "src/Whizbang.Data.Postgres/MigratorWatch.cs",
+];
+foreach (var path in dutyHolders) {
+  await Assert.That(_advisory().IsMatch(csharp[path])).IsFalse().Because($"{path} holds a duty; a duty is a role assignment");
+}
+await Assert.That(csharp["src/Whizbang.Data.Postgres/MigratorWatch.cs"].Contains("AdvisoryLockProbe", StringComparison.Ordinal)).IsFalse();
+await Assert.That(csharp.Keys.Any(p => p.EndsWith("/PgDutyElector.cs", StringComparison.Ordinal))).IsFalse();
+```
 
 The failure message says what to use instead (for a liveness check: *ask the one rule, `wh_instance_is_live` or
 `wh_live_instance_ids`*), so an author who trips the guard falls toward the standard path, not toward a new allowlist
