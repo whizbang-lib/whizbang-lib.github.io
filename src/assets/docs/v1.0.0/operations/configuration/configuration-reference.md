@@ -1442,6 +1442,10 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `EpochClosureEnabled` | `bool` | `true` | `Whizbang__StreamIntegrity__EpochClosureEnabled` | Advance the digest-epoch closure frontier on the maintenance cadence |
 | `MaxEpochClosuresPerMaintenanceCycle` | `int` | `64` | `Whizbang__StreamIntegrity__MaxEpochClosuresPerMaintenanceCycle` | Max epochs closed per maintenance cycle |
 | `PublishReportEvents` | `bool` | `false` | `Whizbang__StreamIntegrity__PublishReportEvents` | Publish divergence/gap detections as durable events. Off (the default): unpublished report events are swept from the outbox each maintenance cycle |
+| `ReattributionEnabled` | `bool` | `true` | `Whizbang__StreamIntegrity__ReattributionEnabled` | Re-attribute this store's history received before origins were recorded to the services that wrote it. Runs on the maintainer under the housekeeping idle gate, and only when owned domains are registered. See [re-attribution](/v1.0.0/resilience/stream-integrity#re-attribution) |
+| `ReattributionIntervalSeconds` | `int` | `60` | `Whizbang__StreamIntegrity__ReattributionIntervalSeconds` | Seconds between re-attribution passes. Must be at least 1 (checked at host start) |
+| `ReattributionBatchSize` | `int` | `5000` | `Whizbang__StreamIntegrity__ReattributionBatchSize` | Rows one re-attribution batch scans, in commit-sequence order. Must be at least 1 (checked at host start) |
+| `MaxReattributionBatchesPerPass` | `int` | `20` | `Whizbang__StreamIntegrity__MaxReattributionBatchesPerPass` | The most re-attribution batches one pass runs, so a pass admitted by the idle gate (or forced through after `MaxDeferral`) is bounded. Must be at least 1 (checked at host start) |
 
 ## Routing
 
