@@ -785,9 +785,24 @@ var destination = new TransportDestination(
 // sys.Label LIKE 'inventory.%' OR sys.Label LIKE 'orders.%' OR sys.Label LIKE 'shipping.%'
 ```
 
+**Exact patterns.** A pattern with no wildcard matches one subject exactly. A per-namespace command inbox
+subscription uses these: one per command type the service handles, for example
+`sys.Label LIKE 'myapp.orders.commands.createorder'` (see
+[command inbox type filters](../../fundamentals/dispatcher/routing#command-inbox-type-filter)).
+
+**Long pattern lists are split across rules.** A SQL filter expression is limited to 1,024 characters, and a
+service that handles many commands of one namespace needs more. The clauses are split, in order, across as
+many rules as they need, each within the limit: `RoutingPatternFilter`, then `RoutingPatternFilter-2`,
+`RoutingPatternFilter-3` and so on. The broker delivers a message once when any rule matches. A single clause
+longer than the limit still gets a rule of its own, which the broker refuses and the transport logs, rather
+than a pattern silently disappearing.
+{verified: AzureServiceBusProvisioningPathTests.SubscribeAsync_RoutingPatternsBeyondOneFilterLimit_SplitAcrossRulesWithinTheLimitAsync, AzureServiceBusProvisioningPathTests.SubscribeAsync_SplitRoutingPatternRules_AlreadyCorrect_SkipsRuleChurnAsync, ServiceBusRoutingRuleSplitTests.FewClauses_OneRuleUnderTheHistoricalNameAsync, ServiceBusRoutingRuleSplitTests.AClauseLongerThanTheLimit_StillGetsARuleOfItsOwnAsync}
+
 **Filter Provisioning Behavior**:
-- Deletes all existing rules on the subscription (including `$Default`, which matches all messages)
-- Creates a `RoutingPatternFilter` rule with the SqlFilter expression
+- Leaves the rules untouched when they already equal the desired rule set (no delete-and-recreate window)
+- Otherwise deletes all existing rules on the subscription (including `$Default`, which matches all messages)
+- Creates the `RoutingPatternFilter` rule (and `-2`, `-3`, ... when split) with the SqlFilter expressions
+- Manifest provisioning converges an existing subscription's rules too, not only a new one's, so a command inbox subscription created with the match-all rule stops receiving commands its service does not handle
 - Only applied when `RoutingPatterns` metadata is present
 - Requires `AutoProvisionInfrastructure = true` (default)
 

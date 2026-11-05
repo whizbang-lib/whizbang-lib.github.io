@@ -1390,6 +1390,15 @@ stateDiagram-v2
   class Healed healed
 ```
 
+**Recording an answer costs in proportion to the bundle.** When a bundle's children commit,
+`wh_integrity_record_bundle_answer` finds the ledger rows the bundle covered (each bucket and its type lane) by primary
+key, never by reading the ledger, and leaves a row already answered with no answer pending untouched: `answered_at` is
+read only as set or not set, and the type lane row is shared by every bundle of its type, so rewriting it made
+concurrent answers queue on it. One consequence: `last_touched` is not refreshed on a row that was already answered.
+The rows a call writes are locked first, in primary key order, so two bundles covering the same buckets wait for each
+other instead of deadlocking.
+{verified: IntegrityBundleAnswerPlanShapeTests.RecordBundleAnswer_UnderAGenericPlan_FindsTheCoveredLedgerRowsByPrimaryKey_NotALedgerScanAsync, IntegrityBundleAnswerPlanShapeTests.RecordBundleAnswer_LocksTheRowsItWrites_InPrimaryKeyOrderAsync, IntegrityBundleAnswerPlanShapeTests.RecordBundleAnswer_ARowAlreadyAnswered_IsNotRewrittenAsync, IntegrityBundleAnswerPlanShapeTests.RecordBundleAnswer_ARowWithItsAnswerPending_IsStillAnsweredAsync}
+
 **Answer pending.** The drain records every bucket of a request that left, and only those: a group
 whose send failed is not marked and is claimed again after its backoff. The mark lasts
 `Whizbang:StreamIntegrity:RepairAnswerTimeoutMinutes` (default **180**). The default is three hours
@@ -1524,37 +1533,47 @@ bundle in the same transaction sees only its own rows.
 ---
 
 ## Directed integrity traffic {#directed-integrity-traffic}
-{verified: RepairTopicResolverTests.Unset_OwnCommandInbox_IsPreferredOverASharedFirstDestinationAsync, RepairTopicResolverTests.Unset_NoOwnCommandInbox_KeepsTheFirstDestination_AndSaysOnceThatItIsSharedAsync, RepairTopicResolverTests.Configured_WinsAsync, IntegrityControlDestinationTests.ADirectedMessage_ToTheAddresseesAdvertisedTopic_ReachesOnlyTheAddresseeAsync}
+{verified: RepairTopicResolverTests.Unset_ServiceControlInbox_IsPreferredOverCommandInboxesAndSharedTopicsAsync, RepairTopicResolverTests.Unset_NoControlInbox_ACommandInboxIsNotChosenOverASharedTopicAsync, RepairTopicResolverTests.Unset_NoOwnCommandInbox_KeepsTheFirstDestination_AndSaysOnceThatItIsSharedAsync, RepairTopicResolverTests.Configured_WinsAsync, IntegrityControlDestinationTests.ADirectedMessage_ToTheAddresseesAdvertisedTopic_ReachesOnlyTheAddresseeAsync}
 
 Most integrity traffic is addressed to one service: a manifest request and its answer, a drill-down, a page follow, a
 redelivery request and the bundle that answers it. Each service advertises the address it wants that traffic on in
-its [checkpoint](#ownership-is-exchanged-on-the-checkpoint), and every peer sends to that address.
+its [checkpoint](#ownership-is-exchanged-on-the-checkpoint) and in the reply address of every request it sends, and
+every peer sends to that address.
 
 The address is resolved in this order:
 
 | Order | Address | When |
 |---|---|---|
 | 1 | `StreamIntegrityOptions.RepairTopic` | Configured explicitly |
-| 2 | This service's own command inbox | The [namespace inbox strategy](../fundamentals/dispatcher/routing) provisioned a command inbox for a command namespace this service handles. Only this service subscribes to it |
-| 3 | The first destination this service consumes | No command inbox of its own. Usually a topic other services read too, so the service logs once that its integrity traffic is on a shared topic |
+| 2 | This service's own [control inbox](../fundamentals/dispatcher/routing#service-control-inbox), `inbox.whizbang.service.<service>` | The namespace inbox strategy provisions it for every service. Only this service subscribes to it |
+| 3 | The first shared destination this service consumes | No control inbox (a strategy that does not provision one). A command inbox is never chosen. Usually a topic other services read too, so the service logs once that its integrity traffic is on a shared topic |
 
-```mermaid{caption="A directed integrity request reaches only its addressee's own command inbox; a broadcast backfill still rides the shared topic." tests=["IntegrityControlDestinationTests.ADirectedMessage_ToTheAddresseesAdvertisedTopic_ReachesOnlyTheAddresseeAsync","RepairTopicResolverTests.Broadcast_IsTheSharedTopic_NeverTheOwnCommandInboxAsync"]}
+```mermaid{caption="A directed integrity request reaches only its addressee's own control inbox, even when another service reads the addressee's command inbox; a broadcast backfill still rides the shared topic." tests=["IntegrityControlDestinationTests.ADirectedMessage_ToTheAddresseesAdvertisedTopic_ReachesOnlyTheAddresseeAsync","RepairTopicResolverTests.Broadcast_IsNeverTheServicesOwnControlInboxAsync"]}
 flowchart LR
-  C[Consumer] -->|manifest request, TTL| OI[(Origin's own command inbox)]
+  C[Consumer] -->|manifest request, TTL| OI[(Origin's control inbox)]
   OI --> O[Origin]
-  O -->|answer, TTL| CI[(Consumer's own command inbox)]
+  O -->|answer, TTL| CI[(Consumer's control inbox)]
   CI --> C
-  C -->|broadcast backfill| S[(Shared inbox topic)]
+  C -->|broadcast backfill| S[(Shared broadcast inbox)]
   S --> O
   S --> P[Every other service]
+  X[Service handling one of the origin's commands] -.->|type-filtered: commands only| N[(Origin's command inbox)]
 ```
 
-**Why the own inbox.** The default used to be the first destination a service consumes, which in practice is the
-shared inbox every service reads. Every directed integrity message was then copied to every service, which read it
-only to discard it, and a stopped service's subscription kept growing until the shared topic reached its size cap.
-The own command inbox is subscribed by exactly one service, so a directed message reaches exactly one. A
+**Why the control inbox.** The default used to be the first destination a service consumes, usually the shared
+broadcast inbox every service reads, so every directed integrity message was copied to every service. The next default
+was the service's own command inbox, but a command inbox is read by every service that handles a command of its
+namespace, so directed traffic still reached services it was not addressed to; and command inbox subscriptions are now
+[filtered to command types](../fundamentals/dispatcher/routing#command-inbox-type-filter), which would drop control
+traffic. The control inbox is subscribed by exactly one service, so a directed message reaches exactly one. A
 [subscription-expansion backfill](#phase-s-subscription-expansion-backfill) for a type with no known owner is a
-broadcast by design, so it still goes on the shared topic.
+broadcast by design, so it still goes on the shared broadcast inbox, never on a control inbox.
+{verified: RepairTopicResolverTests.Broadcast_IsNeverTheServicesOwnControlInboxAsync, SubscriptionExpansionTargetingTests.Backfill_RepliesToItsOwnControlInbox_AndBroadcastsOnTheSharedTopicAsync, NamespaceInboxStrategyTests.SecondServiceHandlingACommandInTheAddresseesNamespace_NeverReceivesItsIntegrityTrafficAsync}
+
+**Services on an earlier version.** Senders answer on whatever address a receiver advertised, so a service that still
+advertises a command inbox or the shared broadcast inbox keeps receiving where it did. When it upgrades, its next
+checkpoint advertises its control inbox. Messages a peer sends to the old address before it sees that checkpoint expire
+(see below) and are regenerated on the next cycle.
 
 ### Integrity control messages expire {#integrity-control-message-ttl}
 {verified: IntegrityControlDestinationTests.For_StampsTheIntegrityTimeToLive_ByDefaultAnHourAsync, IntegrityControlDestinationTests.For_StampsTheConfiguredTimeToLiveAsync, IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_TheManifestRequest_ExpiresWithTheIntegrityTimeToLiveAsync, StreamIntegrityOptionsValidatorTests.Validate_AControlMessageTimeToLiveBelowOneMinute_FailsNamingTheKeyAsync}
