@@ -260,7 +260,7 @@ stores them already settled, with the reason in `InboxMessage.DiscardedOnReceive
 | Reason | When |
 |---|---|
 | `no_local_consumer` | No receptor, lifecycle receptor, perspective or runtime receptor on this service consumes the message's type. Offloaded bodies and composites are exempt, since their consumers are known only after rehydration or fan-out. Events in an [absorbed namespace](../../fundamentals/dispatcher/routing#absorbed-namespaces) are exempt too, since they are kept for the event store with no consumer (see [below](#absorbed-events-on-receive)). |
-| `foreign_target` | The envelope is directed at another service (its target names a different service). |
+| `foreign_target` | The envelope is directed at another service (its target names a different service). Framework traffic directed elsewhere is [discarded with no row](#framework-traffic-discarded-on-receipt). |
 | `owned_echo` | An event of a namespace this service owns, delivered back to it: its own event, already stored here (see [echo suppression](../../fundamentals/dispatcher/routing#transport-echo-suppression)). |
 | `self_echo` | A command of a namespace this service owns whose last hop is this service: its own send, delivered back. |
 | `unknown_event_type` | An event whose type was not among the event types this service knew when it started receiving. |
@@ -299,6 +299,37 @@ outside the absorbed namespaces that reached dispatch with no consumer registere
 disappeared after it was stored, typically because a deploy removed a receptor.
 {verified: ReceiveConsumerGateTests.NoConsumer_InAnAbsorbedNamespace_KeepsTheMessageAsync, ReceiveConsumerGateTests.NoConsumer_OutsideTheAbsorbedNamespaces_IsUnconsumedAsync, ReceiveConsumerGateTests.NoConsumer_AndNoPolicy_IsUnconsumedAsync, ReceiveConsumerGateTests.BodyOffloadClaim_KeepsTheMessageAsync, ReceiveConsumerGateTests.Composite_KeepsTheMessageAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnUnconsumedEventInAnAbsorbedNamespace_IsStoredLive_SoTheEventStoreCapturesItAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnUnconsumedEventOutsideTheAbsorbedNamespaces_IsStillStoredSettledAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnAbsorbedEventWithALocalConsumer_IsStoredLiveAsBeforeAsync, ServiceBusConsumerWorkerDropGateTests.HandleMessage_UnconsumedEventInAnAbsorbedNamespace_IsStoredLive_SoTheEventStoreCapturesItAsync, ServiceBusConsumerWorkerDropGateTests.HandleMessage_UnconsumedEventOutsideTheAbsorbedNamespaces_IsStillStoredSettledAsync, MessageDiscardPolicyTests.EvaluateInbox_UnconsumedType_OnAbsorbedNamespace_IsSkippedAsRoutine_NotAsRegistryDriftAsync, MessageDiscardPolicyTests.EvaluateInbox_UnconsumedType_OnNonAbsorbedNamespace_IsStillRegistryDriftAsync, AbsorbedEventReachesEventStoreTests.AnUnconsumedEventInAnAbsorbedNamespace_IsCopiedIntoTheEventStoreAsync, AbsorbedEventReachesEventStoreTests.AnUnconsumedEventOutsideTheAbsorbedNamespaces_IsNotCopiedAsync}
 {verified: TransportConsumerWorkerStoresBeforeSkippingTests.AMessageNoLocalConsumerTakes_IsStoredAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AMessageDirectedAtAnotherService_IsStoredAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnEchoOfThisServicesOwnEvent_IsHeldNotDroppedAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnEchoOfThisServicesOwnCommand_IsStoredAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnEventTheKnownEventFilterRejects_IsStoredAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnUnconsumedEventTheKnownEventFilterAlsoRejects_KeepsItsFirstReasonAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AMessageThisServiceProcesses_IsStoredWithNoReasonAsync, TransportConsumerWorkerStoresBeforeSkippingTests.ASkip_IsCountedUnderItsReason_NotAsADuplicateAsync, InboxDiscardedOnReceiveSqlTests.AMessageDiscardedOnReceive_IsStoredSettled_WithItsReason_AndNeverClaimedOrCopiedAsync}
+
+
+### Framework traffic is discarded on receipt {#framework-traffic-discarded-on-receipt}
+
+Framework control and minted traffic is the one exception to storing before settling. A message whose
+payload type is in the framework's reserved `whizbang.core` namespace (and, when the type name names its
+assembly, is defined in `Whizbang.Core`) is discarded on receipt, with no inbox row, when either:
+
+- it is addressed to another service (its target names a different service), or
+- nothing on this service consumes it.
+
+The check runs first, before the control-class comparison, storage or composite fan-out, on whatever
+entity the message arrived on. The discard is counted on `whizbang.transport.inbox.messages_discarded`
+under its reason (`foreign_target` or `no_local_consumer`) and logged at `Debug`, and the broker settles
+the message. Both consumer workers make the same decision.
+{verified: ReceiveConsumerGateFrameworkDiscardTests.FrameworkMessage_AddressedElsewhere_IsDiscardedAsForeignTargetAsync, ReceiveConsumerGateFrameworkDiscardTests.FrameworkMessage_Unconsumed_IsDiscardedAsNoLocalConsumerAsync, TransportConsumerWorkerDirectedTargetTests.ForeignTarget_FrameworkMintedMessage_IsDiscardedWithoutARowAsync, TransportConsumerWorkerDirectedTargetTests.UnconsumedFrameworkControlMessage_IsDiscardedWithoutARowAsync, ServiceBusConsumerWorkerDropGateTests.HandleMessage_FrameworkMessageAddressedElsewhere_IsDiscardedWithoutARowAsync, StreamIntegrityRedeliveryE2ETests.DroppedDeliveries_RepairViaTargetedComposite_PreservesOriginalIdentityAsync}
+
+What is not discarded here:
+
+- Domain traffic keeps its settled row, with the reasons in the table above.
+- A framework message addressed to this service, or broadcast, that something here consumes is stored as usual.
+- A body-offload claim keeps its message: it stands in for a message of any type, restored downstream.
+- A host type under a namespace that merely starts with `Whizbang.Core` but lives in another assembly is domain traffic.
+- A service that cannot name itself does not judge the target, and keeps the message.
+
+{verified: TransportConsumerWorkerDirectedTargetTests.MatchingTarget_FrameworkMintedMessage_IsStoredAsync, TransportConsumerWorkerDirectedTargetTests.UnconsumedDomainMessage_IsStillStoredSettledAsync, ReceiveConsumerGateFrameworkDiscardTests.BodyOffloadClaim_IsNotFrameworkTrafficAsync, ReceiveConsumerGateFrameworkDiscardTests.NotAFrameworkPayload_IsNotFrameworkTrafficAsync, TransportConsumerWorkerDirectedTargetTests.ForeignTarget_FrameworkMessage_WithoutServiceIdentity_IsStoredFailOpenAsync}
+
+**Why.** Framework control traffic is regenerated by its producer on the next cycle, so a copy this
+service cannot use is worth nothing stored. A settled row still cost a database write per copy, and a
+redelivery bundle addressed elsewhere that reached dispatch ran real database work and could be retried
+until the broker dead-lettered it. Unusable control traffic now costs neither a retry nor database time.
 
 ### The one refusal {#refused-bodies}
 
