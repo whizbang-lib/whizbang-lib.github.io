@@ -1397,7 +1397,7 @@ the sweep reads them, and leaves the ones you do not set alone. See [Database-si
 
 ### StreamIntegrityOptions
 
-Self-healing continuity checking; the defaults are the recommended posture. **Configure:** bound automatically from `Whizbang:StreamIntegrity` — no registration call needed. `services.Configure<StreamIntegrityOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Stream Integrity](../../resilience/stream-integrity#how-the-phases-unfold-from-a-cold-start).
+Self-healing continuity checking; the defaults are the recommended posture. **Configure:** bound automatically from `Whizbang:StreamIntegrity`; no registration call is needed. `services.Configure<StreamIntegrityOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Stream Integrity](../../resilience/stream-integrity#how-the-phases-unfold-from-a-cold-start). On the Dapper driver every integrity switch defaults to off and a switch configured on is refused at start: [What the Dapper driver refuses at startup](../../data/drivers#what-dapper-refuses-at-startup).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
