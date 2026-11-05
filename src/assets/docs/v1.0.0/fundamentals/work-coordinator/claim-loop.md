@@ -15,6 +15,7 @@ description: >-
 tags: 'work-coordinator, claim-loop, claim-work, acquisition, backpressure, work-stealing, command-lane'
 codeReferences:
   - src/Whizbang.Core/Workers/ClaimWorker.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.cs
   - src/Whizbang.Core/Workers/AdaptiveClaimWindow.cs
   - src/Whizbang.Core/Workers/AdaptiveOutstandingBudget.cs
   - src/Whizbang.Core/Workers/ClaimCycleReport.cs
@@ -40,6 +41,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HeartbeatPhaseOrderSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerAcquisitionBoundsTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerRunPermitTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperWorkCoordinatorGuardAndGateTests.cs
   - tests/Whizbang.Core.Tests/Workers/AdaptiveClaimWindowLatencyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BoundedAcquisitionRewriteSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkPlanShapeTests.cs
@@ -62,6 +65,7 @@ testReferences:
 ```
 loop:
   await wake (semaphore released by NOTIFY signal | local channel produce | adaptive timeout)
+  using hold = await RunPermit.EnterAsync(ct)   ← waits while the run permit is closed; a stop ends the loop
   workBatch = await coordinator.ClaimWorkAsync(req, ct)
   if workBatch.OutboxWork ∪ InboxWork ∪ PerspectiveStreamIds is non-empty:
     consecutiveEmptyPolls = 0
@@ -76,6 +80,39 @@ Three things make this efficient:
 1. **Empty-call short-circuit in `claim_work` SQL** — when no work exists, the function returns in ≤ 1 ms (vs the legacy 17 ms floor).
 2. **Adaptive backoff** — empty polls double the wait until `PollingMaxIntervalMilliseconds` (10 s default).
 3. **Wake semaphore** — `RequestImmediatePoll()` releases the wait so notifications and local producers wake the worker immediately.
+
+## Each claim is a hold of the run permit {#run-permit}
+
+`ClaimWorker` takes each claim, and hands its batch to the drain channels, inside a hold of the instance's
+[run permit](/v1.0.0/resilience/managed-resource-run-control#one-run-control-path). While the permit is closed (a
+pause, a stand-down or a stop) no claim is made: the first claim waits for the permit to open, and a stopped permit
+ends the loop without a claim. The [run-control path](/v1.0.0/resilience/managed-resource-run-control#halt-sequence)
+waits for the hold in hand to be disposed before it releases anything, so it never releases a batch that is still
+being handed off.
+{verified: ClaimWorkerRunPermitTests.AClosedPermit_HoldsTheFirstClaim_AndEveryClaimIsTakenInsideAHoldAsync, ClaimWorkerRunPermitTests.AStoppedPermit_EndsTheClaimLoopWithoutAClaimAsync}
+
+The other claiming workers do the same: the multi-stream command worker, the coalesce shipper and the schedule worker.
+A source guard fails any claim call that neither takes a hold nor asks the maintainer question (see
+[enforcement](/v1.0.0/resilience/managed-resource-run-control#run-permit-enforcement)).
+{verified: CoordinationSourceGuardTests.EveryClaim_ObeysTheRunPermitAsync}
+
+**Why in the process, not only in the claim SQL.** Earlier releases broadcast `Pausing` and `Paused` while the claim
+loop kept polling, and only the claim function refused a caller whose row was no longer eligible. That cost a round
+trip per poll to learn nothing, and it left a window between the phase being written and the next claim seeing it. The
+permit is in memory, so the next claim is held the moment the permit closes.
+
+### On a halt, unstarted leases are released {#release-on-halt}
+
+`ClaimWorker` is an `IReleasesHeldWork`: step 4 of the run-control path. Once no claim is in hand, it names the
+inbox and perspective streams of its **last claim** that the drain channels report as not in flight, and calls
+`IWorkCoordinator.ReleaseUnstartedLeasesAsync` on them, the same release a [stuck instance](#a-stuck-instance-releases-what-it-has-not-started)
+makes. A peer takes those streams over at once instead of after their leases lapse. A stream a drain has begun is
+finished here, never released under it, and before any claim there is nothing to release.
+{verified: ClaimWorkerRunPermitTests.ReleaseHeldWork_ReleasesTheLastClaimsStreamsThatNoDrainHasStartedAsync, ClaimWorkerRunPermitTests.ReleaseHeldWork_BeforeAnyClaim_ReleasesNothingAsync}
+
+Both drivers implement the release: the Dapper coordinator calls `release_unstarted_leases` as EF Core does, and two
+empty lists cost no round trip.
+{verified: DapperWorkCoordinatorGuardAndGateTests.ReleaseUnstartedLeasesAsync_ReleasesThisInstancesUnprocessedInboxLease_AndEndsItsStreamOwnershipAsync, DapperWorkCoordinatorGuardAndGateTests.ReleaseUnstartedLeasesAsync_NoStreams_CostsNoRoundTripAsync, DapperWorkCoordinatorGuardAndGateTests.ReleaseUnstartedLeasesAsync_ThroughTheGate_ReleasesAsync}
 
 ## Adaptive backoff
 
@@ -456,19 +493,20 @@ Siblings cannot take work from a heartbeating instance; that is what [liveness](
 The store side is `release_unstarted_leases(p_instance_id, p_inbox_stream_ids, p_perspective_stream_ids)` (migration 145). For rows leased to the calling instance in the named streams and not yet processed it refunds the optimistic attempt the claim charged (`attempts = GREATEST(attempts - 1, 0)`, since the rows never reached a receptor), clears `instance_id` and `lease_expiry`, and ends the instance's ownership of those streams in `wh_active_streams` so the unowned path opens to siblings. Two invariants:
 
 - **The instance calls it on itself.** Nothing is ever taken from a heartbeating instance by anyone else; the function only touches rows whose `instance_id` is the caller's, so a sibling's leases are never affected.
-- **A store without the function is not an error.** The default `IWorkCoordinator` implementation throws `NotImplementedException`; the worker logs that the rows stay leased to this instance until they lapse (the previous behavior) and keeps claiming.
+- **A store without the function is not an error.** The default `IWorkCoordinator` implementation throws `NotImplementedException`; the worker logs that the rows stay leased to this instance until they lapse (the previous behavior) and keeps claiming. Both shipped drivers, EF Core and Dapper, implement it; on a halt the [run-control path](#release-on-halt) logs the failure of a store without it and the halt goes on.
 
 ## Ranking: who counts as alive {#ranking-who-counts-as-alive}
 {verified: AliveLockLivenessSqlTests.Rank_ADirectPeerOnTheSlowCadenceHoldingItsLock_IsCountedAsync, AliveLockLivenessSqlTests.Rank_ADirectPeerWhoseLockIsReleased_IsCountedOutAtOnceAsync, AliveLockLivenessSqlTests.Rank_APooledPeerPastTheCutoff_IsCountedOutWhateverLockItsSessionHoldsAsync, AliveLockLivenessSqlTests.Rank_APooledPeerWithAFreshHeartbeat_IsCountedAsync, AliveLockLivenessSqlTests.Rank_ARowWithNoRecordedMode_IsJudgedAsPooledAsync}
 
-Unowned work is claimed by rank: `partition_number % active_instance_count = rank`. A claim that presents the partition assigner's current assignment takes its rank from it (see [Partition assignment](partition-assignment.md)). Otherwise `claim_work` ranks itself among the peers it counts as alive and eligible for work. Since migration 204 it counts them alive by the [liveness rule](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule) every reader shares:
+Unowned work is claimed by rank: `partition_number % active_instance_count = rank`. A claim that presents the partition assigner's current assignment takes its rank from it (see [Partition assignment](partition-assignment.md)). Otherwise `claim_work` ranks itself among the peers it counts as alive and eligible for work. Since migration 317 it counts them alive by asking [the liveness rule](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule) every reader shares, where it used to apply a fixed 30 s cutoff of its own:
 
-- a peer whose heartbeat is inside the 30 s cutoff is alive;
-- a peer recorded as `direct` whose alive-lock is held is alive whatever the age of its heartbeat, so a direct instance beating on the 60 s slow cadence is never counted out between beats;
-- a pooled peer, or one with no mode recorded, is judged by its heartbeat alone;
+- a peer recorded as `direct` whose alive-lock is held is alive whatever the age of its heartbeat (up to the definitive-dead cutoff), so a direct instance beating on the 60 s slow cadence is never counted out between beats;
+- a direct peer without its lock is alive for one beat (30 s) past its last heartbeat;
+- a peer behind a transaction pooler, or one with no mode recorded, is alive inside the window it declares from its own cadence (30 s when it records none), so one late beat no longer counts it out;
 - the calling instance counts itself, since it is running the claim, provided its own row may claim; since migration 300 one whose row may not claims nothing ([below](#ineligible-caller-claims-nothing)).
 
-When a direct instance loses its lock, the next claim of any peer judges it by its heartbeat, so it is ranked out at once and the shares re-spread on that claim.
+When a direct instance loses its lock, the next claim of any peer judges it by one beat, so it is ranked out at once and the shares re-spread on that claim.
+{verified: LivenessRuleReadersSqlTests.Rank_ADirectPeerThatLostItsLock_IsNotCountedPastOneBeatAsync, LivenessRuleReadersSqlTests.Rank_ADirectPeerWithoutItsLock_IsCountedInsideOneBeatAsync, LivenessRuleReadersSqlTests.Rank_APeerInsideItsOwnWindow_IsCountedPastTheOldThirtySecondCutoffAsync}
 
 ### Only peers eligible for work are ranked {#eligible-only-ranking}
 {verified: WorkEligibilitySqlTests.Rank_APeerInMigrating_IsNotCounted_SoTheCallerCoversEveryPartitionAsync, WorkEligibilitySqlTests.Rank_APeerThatReachesAcceptingCommands_IsCountedAsync, WorkEligibilitySqlTests.Rank_ADrainingPeer_ItsShareMovesToTheCallerAtOnceAsync, WorkEligibilitySqlTests.Rank_ADirectPeerHoldingItsLockInMigrating_IsNotCountedAsync, WorkEligibilitySqlTests.Rank_AnOlderPeerThatRecordsNoPhase_IsCountedAsBeforeAsync, WorkEligibilitySqlTests.Rank_ACallerThatIsNotYetEligible_StillCountsItselfAsync}
@@ -482,7 +520,7 @@ Since migration 229 a live peer is ranked only when it is also [eligible for wor
 - **No extra cost.** The test is a filter on columns of the registration rows the ranking already reads, inlined into the same scan: no added table, function call or lock.
 - **The multi-stream claim ranks the same way.** See [Multi-stream commands](/v1.0.0/fundamentals/dispatcher/multi-stream-commands#ownership).
 
-**Cost.** The lock is read through `wh_direct_alive_lock_holders()` only for a direct row whose heartbeat is past the cutoff, and then once per claim as a hashed subplan. A claim whose peers all have fresh heartbeats, or are pooled, never reads `pg_locks`. With half of a direct fleet on the slow cadence, the measured cost is one pass over the registration table: 1 buffer at 20 instances, 6 at 400. {verified: AliveLockRankCostScenarioTests.SelfRankedClaim_WithHalfTheFleetOnTheSlowCadence_ReadsTheLocksOnce_ReportAsync}
+**Cost.** The lock is read through `wh_direct_alive_lock_holders()` only for a direct row whose heartbeat is past one beat, and then once per claim as a hashed subplan. A claim whose peers all have fresh heartbeats, or are pooled, never reads `pg_locks`. With half of a direct fleet on the slow cadence, the measured cost is one pass over the registration table: 1 buffer at 20 instances, 6 at 400. {verified: AliveLockRankCostScenarioTests.SelfRankedClaim_WithHalfTheFleetOnTheSlowCadence_ReadsTheLocksOnce_ReportAsync}
 
 ### An ineligible caller claims nothing {#ineligible-caller-claims-nothing}
 {verified: WorkEligibilitySqlTests.Rank_ACallerThatIsNotYetEligible_StillCountsItselfAsync, MultiStreamCommandStoreSqlTests.ClaimAsync_ACallerNotYetReady_ClaimsNothingAsync, CoalesceFoldCoordinatorSqlTests.FetchPendingCoalesce_ByACallerNotYetEligible_FetchesNothingAsync}
@@ -504,7 +542,7 @@ Kept on purpose, each with its reason:
 
 | Case | What the claim does | Why | Locked by |
 |---|---|---|---|
-| A draining caller (stage Draining or phase `Stopping`) | Still claims its share | Under a published assignment its partitions stay its own until the assigner republishes; refusing it would leave them unclaimed for that window. Claiming overlaps its peers briefly, and stream leases keep the work single. | {verified: WorkEligibilitySqlTests.Claim_ADrainingCaller_StillClaimsItsShareAsync} |
+| A draining caller (stage Draining or phase `Stopping`) | Still claims its share | Under a published assignment its partitions stay its own until the assigner republishes; refusing it would leave them unclaimed for that window. Claiming overlaps its peers briefly, and stream leases keep the work single. An instance on a release with the [run permit](#run-permit) has stopped claiming before it writes `Stopping`, so only older instances reach this rule during a rolling deploy; its removal is tracked in [#2053](https://github.com/whizbang-lib/whizbang/issues/2053). | {verified: WorkEligibilitySqlTests.Claim_ADrainingCaller_StillClaimsItsShareAsync} |
 | A caller that records no stage and no phase (an older build) | Claims as before | During a rolling upgrade an older instance writes neither column; it is eligible whenever it is live, as 229 kept it. | {verified: WorkEligibilitySqlTests.Claim_ACallerThatRecordsNoPhase_StillClaimsItsShareAsync} |
 | A caller with no row at all | Served as before | A running instance whose row was reaped, or one not registered yet, re-registers on the claim's notice and is ranked as live meanwhile; so the missing row is repaired without the instance losing its share in the meantime. | {verified: ClaimWorkRegistrationSqlTests.ClaimWork_MissingOwnRegistration_StillRanksItselfAmongTheLiveAsync} |
 | A refused caller whose row is stale | Claims nothing, and is still asked to register | The re-register notice is how a stale row is repaired; refusing the claim must not also hide that the row needs writing. | {verified: WorkEligibilitySqlTests.Claim_ARefusedCallerWhoseRowIsStale_IsStillAskedToRegisterAsync} |
@@ -517,11 +555,11 @@ once and decides both from it, so the claim adds no lookup. The multi-stream cla
 primary-key lookup of the caller's row each. Nothing here takes a lock.
 
 ### The re-register notice and `p_alive_lock_held` {#re-register-notice}
-{verified: AliveLockLivenessSqlTests.Notice_ADirectCallerHoldingItsLock_IsNotAskedToRegisterBetweenSlowBeatsAsync, AliveLockLivenessSqlTests.Notice_ADirectCallerWithoutItsLock_IsAskedToRegisterAsync, AliveLockLivenessSqlTests.Notice_APooledCallerPastTheCutoff_IsStillAskedToRegisterAsync, AliveLockLivenessSqlTests.Notice_AMissingRegistration_IsReportedWhateverTheLockAsync, ClaimWorkerAliveLockTests.AClaim_WhileTheAliveLockIsHeld_SaysSoAsync, ClaimWorkerAliveLockTests.AClaim_WithoutTheAliveLock_SaysSoAsync, ClaimWorkerAliveLockTests.AClaim_WithNoAliveLockSourceRegistered_HoldsNoLockAsync}
+{verified: LivenessRuleReadersSqlTests.Caller_LiveByTheRule_IsNotAskedToReRegisterAsync, AliveLockLivenessSqlTests.Notice_ADirectCallerHoldingItsLock_IsNotAskedToRegisterBetweenSlowBeatsAsync, AliveLockLivenessSqlTests.Notice_ADirectCallerWithoutItsLock_IsAskedToRegisterAsync, AliveLockLivenessSqlTests.Notice_APooledCallerPastTheCutoff_IsStillAskedToRegisterAsync, AliveLockLivenessSqlTests.Notice_AMissingRegistration_IsReportedWhateverTheLockAsync, ClaimWorkerAliveLockTests.AClaim_WhileTheAliveLockIsHeld_SaysSoAsync, ClaimWorkerAliveLockTests.AClaim_WithoutTheAliveLock_SaysSoAsync, ClaimWorkerAliveLockTests.AClaim_WithNoAliveLockSourceRegistered_HoldsNoLockAsync}
 
-The claim reads its caller's registration and never writes it. When the row is missing or older than the cutoff (or, for a caller that passes a phase, records another one; see [below](#lifecycle-phase)), it raises `NOTICE 'whizbang.instance_registration_stale=true'` (`WorkBatch.InstanceRegistrationStale`) and the caller registers in a statement of its own.
+The claim reads its caller's registration and never writes it. When the row is missing or the rule calls the caller not live (or, for a caller that passes a phase, records another one; see [below](#lifecycle-phase)), it raises `NOTICE 'whizbang.instance_registration_stale=true'` (`WorkBatch.InstanceRegistrationStale`) and the caller registers in a statement of its own.
 
-A direct instance holding its lock beats every 60 s, so its row is past the 30 s cutoff for half of every beat. To keep that from reading as stale, `ClaimWorker` resolves `IInstanceAliveLockSource` from the claim's scope and passes its answer as `ClaimWorkRequest.AliveLockHeld`. Both coordinators (EF Core and Dapper) send it as `claim_work`'s `p_alive_lock_held` parameter (default `FALSE`). A direct caller that holds its lock is not asked to re-register; a pooled caller past the cutoff still is; and a missing registration is reported whatever the lock says. A host without a lock source registered passes `false`, as before. {verified: AliveLockLivenessSqlTests.Coordinator_PassesTheCallersAliveLock_SoADirectCallerHoldingItIsNotReportedStaleAsync, DapperWorkCoordinatorBroadTests.ClaimWorkAsync_ADirectInstanceBetweenSlowBeats_IsReportedStaleOnlyWithoutItsLockAsync}
+A direct instance holding its lock beats every 60 s, so its row is past one beat for half of every beat. To keep that from reading as stale, `ClaimWorker` resolves `IInstanceAliveLockSource` from the claim's scope and passes its answer as `ClaimWorkRequest.AliveLockHeld`. Both coordinators (EF Core and Dapper) send it as `claim_work`'s `p_alive_lock_held` parameter (default `FALSE`). A direct caller that holds its lock is not asked to re-register; a pooled caller is not asked inside its own window and still is past it; and a missing registration is reported whatever the lock says. A host without a lock source registered passes `false`, as before. {verified: AliveLockLivenessSqlTests.Coordinator_PassesTheCallersAliveLock_SoADirectCallerHoldingItIsNotReportedStaleAsync, DapperWorkCoordinatorBroadTests.ClaimWorkAsync_ADirectInstanceBetweenSlowBeats_IsReportedStaleOnlyWithoutItsLockAsync}
 
 ### A claim announces no phase {#lifecycle-phase}
 {verified: ClaimWorkerLifecyclePhaseTests.AClaim_SaysNothingOfItsPhase_EvenWithALifecycleAsync, ClaimWorkerLifecyclePhaseTests.AClaim_WithNoLifecycleRegistered_SaysNothingOfItsPhaseAsync, WorkEligibilitySqlTests.ARegistration_NoLongerMovesARecordedPhase_TheStageRecordMakesTheRowCurrentAsync}

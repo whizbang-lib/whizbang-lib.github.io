@@ -70,6 +70,14 @@ A restart with unchanged code changes nothing.
 
 During a rolling update the previous release keeps running, and keeps querying its indexes, until the new one is ready. Each instance records what it declares, and an object is dropped only once **no running instance still declares it**. If a running instance has recorded nothing, because it predates the ledger, **nothing** is dropped until it's gone.
 
+A running instance is one [the liveness rule](../workers/instance-liveness#liveness-rule) calls live: the gate reads
+`wh_live_instance_ids()` and keeps no window of its own. Earlier releases counted an instance that had heartbeated
+within the last two minutes, a window that matched no other reader: an instance the reap had already called dead could
+still hold a drop back, and the gate could give up on a peer the claim still counted live. The declarations of an instance the rule calls dead are
+forgotten on the same read. The rule is in Preflight's bootstrap region, so the gate can read it on any database the
+reconcile reaches.
+{verified: ManagedSchemaReconcilerTests.AnObjectARunningInstanceStillDeclares_IsKeptUntilItStopsAsync, ManagedSchemaReconcilerTests.WhileAnInstanceThatHasNotReportedIsRunning_NothingIsDroppedAsync}
+
 A drop held back this way isn't left for the next deploy. A maintenance step re-runs the reconcile on one instance of the fleet every 15 minutes, so the drop happens once the previous release has stopped.
 
 {verified: StartupParityTests.WithSeveralInstancesRunning_ARetiredObjectIsDroppedAsync, StartupParityTests.TheFleetGate_HoldsTheDropWhileALivePeerDeclaresIt_AndThePeriodicReRunDropsItOnceThePeerStopsAsync, StartupParityTests.ThePeriodicReRun_IsRegisteredAsync}

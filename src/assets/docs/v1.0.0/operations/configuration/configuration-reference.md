@@ -160,7 +160,7 @@ The two warnings (logger category `Whizbang.Core.Configuration.UnknownConfigurat
 | 3 | `Whizbang configuration key '<key>' was removed and has no effect, and nothing replaces it. Remove it` |
 
 ### Removed keys {#removed-keys}
-{verified: UnknownConfigurationKeyCheckTests.Removed_WhizbangCoreDeclaresEveryFormerTableEntry_ThroughTheAttributeAsync, UnknownConfigurationKeyCheckTests.Removed_EveryReplacementIsAKeyTheLibraryReads_AndNoRemovedKeyIsAsync, ConfigurationManifestRemovedKeyGeneratorTests.TypeAttributes_EveryReplacementInOrder_OrNoneAsync}
+{verified: UnknownConfigurationKeyCheckTests.Removed_WhizbangCoreDeclaresEveryFormerTableEntry_ThroughTheAttributeAsync, UnknownConfigurationKeyCheckTests.Removed_EveryReplacementIsAKeyTheLibraryReads_AndNoRemovedKeyIsAsync, UnknownConfigurationKeyCheckTests.Run_ARemovedKeyWithNoReplacement_SaysNothingReplacesItAsync, ConfigurationManifestRemovedKeyGeneratorTests.TypeAttributes_EveryReplacementInOrder_OrNoneAsync}
 
 A removed key is declared in code with `[RemovedConfigurationKey]`, on the options type of its replacement or on the
 assembly. The configuration manifest generator records each declaration in the assembly's generated manifest, and the
@@ -189,6 +189,10 @@ Removed keys the library declares:
 | `Whizbang:Transports:<transport>:MessageProcessing:InboxBatchSize` | `Whizbang:Workers:InboxBatch:MaxSize`. See [sliding window options](#sliding-window-options) |
 | `Whizbang:Transports:<transport>:MessageProcessing:InboxBatchSlideMs` | `Whizbang:Workers:InboxBatch:SlidingWindow` |
 | `Whizbang:Transports:<transport>:MessageProcessing:InboxBatchMaxWaitMs` | `Whizbang:Workers:InboxBatch:MaxWait` |
+| `Whizbang:Database:RoleAssignment:Enabled` | Nothing. Every duty is a role assignment and there is no other way to hold one (#2044). See [every duty is a role assignment](../startup/capabilities-and-duties#role-assignment-the-default) |
+| `Whizbang:Database:RoleAssignment:HoldLegacySessionLock` | Nothing. The legacy-lock bridge is gone; an older release's duty is seen through the holding it records. See [a rolling deploy from a release that held duties by session lock](../startup/capabilities-and-duties#legacy-holder) |
+| `Whizbang:Database:Stamper:AdvisoryLockKey` | Nothing. The commit-order stamper takes no lock of its own; it leads through the `commit-stamper` role. See [Commit sequence](../../fundamentals/work-coordinator/commit-sequence#leadership) |
+| `Whizbang:StandbyWatcher:RequesterLivenessWindow` | `Whizbang:Workers:Heartbeat:IntervalSeconds`: the standby watcher keeps no window of its own; [the liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule) judges the requester by the window it declares from its heartbeat cadence. See [Rolling Upgrades](../startup/rolling-upgrades#the-standby-handshake) |
 
 ## Quick Map
 
@@ -202,6 +206,7 @@ Removed keys the library declares:
 | `Whizbang:WorkCoordinatorGate` | `WorkCoordinatorGateOptions` | Automatic (worker pipeline); a Postgres driver's `MaxInFlightCommands` fills `MaxConcurrent` when the section leaves it unset |
 | `Whizbang:ServiceName` (falls back to `ServiceName`) | — (string) | Automatic |
 | `Whizbang:ShowBanner` | — (bool) | Automatic |
+| `Whizbang:Application:Version`, `Whizbang:Application:DeployNumber` | none (read once, when the application version is first resolved) | Automatic (worker pipeline); see [Application version](#application-version) |
 | `ConnectionStrings:*` | — (strings, naming conventions below) | Automatic |
 | `ConnectionPool:*` | — (generated DbContext registration) | Automatic |
 | `Whizbang:BodyOffload` | `MessageBodyOffloadOptions` (every key) | Automatic (`AddWhizbangBodyOffload()`, which every provider helper calls) |
@@ -297,35 +302,32 @@ Code-only (not read from configuration): `SearchPath` (default: EF model schema)
 
 ### Whizbang:Database:Stamper → CommitOrderStamperOptions
 
-Bound alongside `Whizbang:Database`. Controls the per-database commit-order stamper singleton. **Details:** no dedicated page yet. {verified: ConfigureCommitOrderStamperOptionsFromConfigurationTests.FencedRetryInterval_ParsesUnderInvariantCultureAsync, ConfigureCommitOrderStamperOptionsFromConfigurationTests.NotifyHealthyPollingInterval_ParsesUnderInvariantCultureAsync, ConfigureCommitOrderStamperOptionsFromConfigurationTests.DrainBatchSize_ParsesIntAsync}
+Bound alongside `Whizbang:Database`. Controls the commit-order stamper, one leader per service schema. **Details:** [Commit sequence](../../fundamentals/work-coordinator/commit-sequence). {verified: ConfigureCommitOrderStamperOptionsFromConfigurationTests.FencedRetryInterval_ParsesUnderInvariantCultureAsync, ConfigureCommitOrderStamperOptionsFromConfigurationTests.NotifyHealthyPollingInterval_ParsesUnderInvariantCultureAsync, ConfigureCommitOrderStamperOptionsFromConfigurationTests.DrainBatchSize_ParsesIntAsync}
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
-| `PollingInterval` | `TimeSpan` | `00:00:00.250` | `Whizbang__Database__Stamper__PollingInterval` | How often the lock-holder stamps pending commit sequences absent a NOTIFY |
-| `LeaderElectionRetry` | `TimeSpan` | `00:00:01.500` | `Whizbang__Database__Stamper__LeaderElectionRetry` | How long a non-holder waits before retrying advisory-lock acquisition |
+| `PollingInterval` | `TimeSpan` | `00:00:00.250` | `Whizbang__Database__Stamper__PollingInterval` | How often the `commit-stamper` role holder stamps pending commit sequences absent a NOTIFY |
+| `LeaderElectionRetry` | `TimeSpan` | `00:00:01.500` | `Whizbang__Database__Stamper__LeaderElectionRetry` | How long a non-holder waits before voting for the `commit-stamper` role again, when no release is announced |
 | `BatchSize` | `int` | `1000` | `Whizbang__Database__Stamper__BatchSize` | Rows stamped per call once the backlog is drained |
 | `DrainBatchSize` | `int` | `25000` | `Whizbang__Database__Stamper__DrainBatchSize` | Largest batch while a backlog drains: a call that fills its batch doubles the next, up to this. Must be a size the database can stamp inside the command timeout; a call that times out halves the batch, and the drain does not grow back past the size that completed. At or below `BatchSize`, growth is off |
-| `DisableStamper` | `bool` | `false` | `Whizbang__Database__Stamper__DisableStamper` | Killswitch — worker exits early, never acquires the lock |
-| `AdvisoryLockKey` | `long` | `0x57480001_5557_5048` | `Whizbang__Database__Stamper__AdvisoryLockKey` | Advisory lock key; must match across all instances sharing a database |
+| `DisableStamper` | `bool` | `false` | `Whizbang__Database__Stamper__DisableStamper` | Killswitch: the worker exits early and never asks for the role |
 | `FencedRetryInterval` | `TimeSpan` | `00:00:00.250` | `Whizbang__Database__Stamper__FencedRetryInterval` | Re-stamp cadence while rows stay unstamped because an older same-database transaction still holds the ordering fence. Bounds how long a commit stays invisible to perspective fetches after the fence clears, instead of waiting for the next NOTIFY or backup tick |
 | `NotifyHealthyPollingInterval` | `TimeSpan?` | `00:00:30` | `Whizbang__Database__Stamper__NotifyHealthyPollingInterval` | Relaxed polling while LISTEN/NOTIFY is verified working; drops back to `PollingInterval` the moment it is not. Ignored unless greater than `PollingInterval`; `null` polls at `PollingInterval` always |
 
-With role assignment on (the default), the stamper's leader is the `commit-stamper` role rather than a session-lock holder: `LeaderElectionRetry` is how long a non-holder waits between votes when no release is announced, and `AdvisoryLockKey` names the lock an older stamper takes, which a bridged holder also holds and a vote looks for.
+The stamper's leader is the `commit-stamper` role; the stamper takes no lock of its own. `AdvisoryLockKey` is a [removed key](#removed-keys).
 
 ### Whizbang:Database:RoleAssignment → RoleAssignmentOptions {#role-assignment-options}
 
-Bound by the Postgres driver, which holds duties (`maintainer`, `migrator`, and the stamper's `commit-stamper` role) as liveness-tied assignments with an epoch by default. **Details:** [Duty Role Assignment](../../../proposals/duty-role-assignment).
+Bound by the Postgres driver, which holds every duty (`maintainer`, `migrator`, the stamper's `commit-stamper` role, and any other) as a liveness-tied assignment with a lease and an epoch. `Enabled` and `HoldLegacySessionLock` are [removed keys](#removed-keys). **Details:** [Duty Role Assignment](../../../proposals/duty-role-assignment).
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
-| `Enabled` | `bool` | `true` | `Whizbang__Database__RoleAssignment__Enabled` | `false` hands every duty back to the session-lock elector |
-| `HoldLegacySessionLock` | `bool` | `true` | `Whizbang__Database__RoleAssignment__HoldLegacySessionLock` | The mixed-version bridge: a holder also holds the duty's session lock, so a rolling deploy from a release that held duties by session lock never has old and new both acting. On by default in this release and planned to default to off in a later one; set `Whizbang__Database__RoleAssignment__HoldLegacySessionLock=false` to turn it off early, once no older instance remains |
 | `RenewInterval` | `TimeSpan` | `00:00:05` | `Whizbang__Database__RoleAssignment__RenewInterval` | How often a holder renews its lease from its own work loop |
 | `MissedRenewalsBeforeLapse` | `int` | `3` | `Whizbang__Database__RoleAssignment__MissedRenewalsBeforeLapse` | The default lease is this many renew intervals |
 | `CooldownAfterLapse` | `TimeSpan` | `00:00:15` | `Whizbang__Database__RoleAssignment__CooldownAfterLapse` | How long an instance whose own assignment lapsed must wait before it can win it back. A fleet-wide lapse (a database outage) carries none |
 | `OwedWorkRetryBase` | `TimeSpan` | `00:00:30` | `Whizbang__Database__RoleAssignment__OwedWorkRetryBase` | Backoff after owed duty work fails, doubled per failure, capped at one hour |
 
-Code-only (through `AddWhizbangRoleAssignment(o => ...)`): `Roles`, `RoleLeases` (a lease per duty; the migrator's default is 30 seconds) and `LegacyLockKeys`.
+Code-only (through `AddWhizbangRoleAssignment(o => ...)`): `Roles` (the duties the holder loop holds and the `roles` health component reports; a duty not listed is still held by assignment when asked for) and `RoleLeases` (a lease per duty; the migrator's default is 30 seconds).
 
 ### Whizbang:Capabilities → CapabilityOptions {#capabilities-options}
 
@@ -344,6 +346,37 @@ Bound when any capability provider registers (both Postgres drivers do), so the 
 |-----|------|---------|----------------------|---------|
 | `Whizbang:ServiceName` | `string` | assembly name | `Whizbang__ServiceName` | Logical service name used for instance registration and subscriptions; falls back to root-level `ServiceName`, then the entry assembly name |
 | `Whizbang:ShowBanner` | `bool` | `true` | `Whizbang__ShowBanner` | Print the ASCII banner at startup (the version log line always prints). The one key for the banner: it overrides `WhizbangCoreOptions.ShowBanner` set in code; there is no `Whizbang:Core:ShowBanner` |
+
+### Application version {#application-version}
+{verified: ApplicationVersionTests.FromConfiguration_ReadsTheExplicitVersionAsync, ApplicationVersionTests.FromConfiguration_ReadsTheDeployNumberAsync, ApplicationVersionTests.FromConfiguration_NothingConfigured_UsesTheEntryAssemblyAsync, ApplicationVersionTests.Resolve_BothAnExplicitVersionAndADeployNumber_FailsLoudlyAsync, ApplicationVersionTests.CompareTo_AnUnknownVersion_NeverOrdersAsync}
+
+The version of the application built on Whizbang, recorded on every instance row beside the library version and in the
+migration ledger. See [Both versions](../startup/startup-status#both-versions).
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `Whizbang:Application:Version` | `string` (SemVer) | unset | `Whizbang__Application__Version` | The application version, as the host knows it. Recorded in SemVer form, build metadata dropped |
+| `Whizbang:Application:DeployNumber` | `long` (0 or more) | unset | `Whizbang__Application__DeployNumber` | A monotonic deploy number, for a pipeline that has a build counter rather than a release version. Recorded as `deploy:<n>` |
+
+Precedence: a key the host sets wins; otherwise the entry assembly's informational version when it reads as SemVer;
+otherwise the version is **unknown** (`NULL` on the instance row, `unknown` in the ledger). An unknown version never
+orders against anything, so it never stands another instance down; a SemVer version and a deploy number never order
+against each other either.
+
+**Setting both keys fails startup**, and so does a `Version` that is not SemVer or a `DeployNumber` that is negative or
+not a whole number. A host that states its version explicitly is told at once that it stated it wrong, rather than
+being recorded as unknown. A blank `Version` is no override.
+{verified: ApplicationVersionTests.Resolve_AnExplicitVersionThatIsNotSemVer_FailsLoudlyAsync, ApplicationVersionTests.Resolve_ANegativeDeployNumber_FailsLoudlyAsync, ApplicationVersionTests.FromConfiguration_ADeployNumberThatIsNotANumber_FailsLoudlyAsync, ApplicationVersionTests.Resolve_ABlankExplicitVersion_IsNotAnOverrideAsync}
+
+```json{title="Supply the application version" description="Set one of the two keys; setting both fails startup." category="Configuration" difficulty="BEGINNER" tags=["Configuration", "Versioning", "Startup"] tests=["ApplicationVersionTests.FromConfiguration_ReadsTheExplicitVersionAsync", "ApplicationVersionTests.Resolve_BothAnExplicitVersionAndADeployNumber_FailsLoudlyAsync"]}
+{
+  "Whizbang": {
+    "Application": {
+      "Version": "2.4.0"
+    }
+  }
+}
+```
 
 ### ConnectionStrings Conventions
 
@@ -733,12 +766,13 @@ Startup reconciliation of ephemeral-event settings drift. **Configure:** bound a
 
 ### WhizbangLifecycleOptions
 
-Coordinated lifecycle state machine tunables. **Configure:** the run-control registration lambda, then bound from `Whizbang:Lifecycle` over it. **Details:** [Managed Resource Run Control](../../resilience/managed-resource-run-control).
+Coordinated lifecycle state machine and run-control path tunables. **Configure:** the run-control registration lambda, then bound from `Whizbang:Lifecycle` over it. **Details:** [Managed Resource Run Control](../../resilience/managed-resource-run-control).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
 | `TransitionAckTimeout` | `TimeSpan` | `00:00:30` | `Whizbang__Lifecycle__TransitionAckTimeout` | Per-resource acknowledgement budget per coordinated transition; exceeding faults the system |
 | `FaultRecordWindow` | `TimeSpan` | `00:00:05` | `Whizbang__Lifecycle__FaultRecordWindow` | How long the system stays Faulted (record/report) before Halted |
+| `HeldWorkTimeout` | `TimeSpan` | `00:00:20` | `Whizbang__Lifecycle__HeldWorkTimeout` | How long the [run-control path](../../resilience/managed-resource-run-control#held-work-timeout) waits for the work in hand to finish on a stand-down, a pause or a stop before it releases what is still held and confirms the halt; work still in hand after it keeps its leases, which lapse to a peer. The default leaves a host's default 30-second shutdown budget time to stop its workers and deregister |
 
 ### StandbyWatcherOptions
 
@@ -748,7 +782,6 @@ Cadences for the rolling-upgrade standby handshake. **Configure:** bound automat
 |----------|------|---------|----------------------|---------|
 | `PollInterval` | `TimeSpan` | `00:00:05` | `Whizbang__StandbyWatcher__PollInterval` | How often the watcher checks for an active standby request |
 | `ObsolescenceInterval` | `TimeSpan` | `00:01:00` | `Whizbang__StandbyWatcher__ObsolescenceInterval` | How often a serving instance re-assesses its verdict against the ledger |
-| `RequesterLivenessWindow` | `TimeSpan` | `00:00:30` | `Whizbang__StandbyWatcher__RequesterLivenessWindow` | How stale the requester's heartbeat may be before its request is void. A requester holding its alive-lock is alive whatever its heartbeat's age |
 
 ### WhizbangHealthOptions
 

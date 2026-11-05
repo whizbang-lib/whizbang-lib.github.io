@@ -120,7 +120,7 @@ Whizbang uses **hash-based migration tracking** to manage database schema change
 On each application startup, Whizbang:
 
 1. **Creates tracking tables** (`wh_schema_versions`, `wh_schema_migrations`) if they don't exist
-2. **Records the library version** and application version in `wh_schema_versions`
+2. **Records the library version** and the [application version](#version-auditing) in `wh_schema_versions`
 3. **Hash-checks each migration**: computes SHA-256 of its normalized SQL and compares it to the stored hash ([what counts as a change](#what-counts-as-a-change))
 4. **Skips unchanged migrations** (status 3) or **re-executes changed ones** (status 2)
 5. **Tracks each perspective individually** with `perspective:<Name>` keys
@@ -128,8 +128,8 @@ On each application startup, Whizbang:
 
 ```
 wh_schema_versions
-  id | library_version  | application_version     | applied_at
-  1  | 0.9.4-local.65   | MyApp.OrderService/1.0.0 | 2026-03-16 ...
+  id | library_version  | application_version | notes                    | applied_at
+  1  | 0.9.4-local.65   | 2.4.0               | MyApp.OrderService/1.0.0 | 2026-03-16 ...
 
 wh_schema_migrations
   file_name                    | content_hash     | status | status_description
@@ -554,10 +554,36 @@ var dropped = await initializer.CleanupBackupsAsync(olderThanDays: 30);
 
 Both the Whizbang library version and the consuming application version are recorded:
 
-- **library_version**: The Whizbang NuGet package version (e.g., `0.9.4`)
-- **application_version**: The consuming app's assembly name and version (e.g., `MyApp.OrderService/1.0.0`)
+- **library_version**: The Whizbang NuGet package version (for example `0.9.4`).
+- **application_version**: The application version exactly as the [instance rows](../startup/startup-status#both-versions)
+  record it: SemVer text, `deploy:<n>` for a host-supplied deploy number, or `unknown`. Never `NULL`.
+- **notes**: On the EF Core driver, the assembly that applied the pass and its version (for example
+  `MyApp.OrderService/1.0.0`), which `application_version` held before.
 
-This lets you query which app version last applied migrations to a database.
+This lets you query which release of the library and of the application last applied migrations to a database, and
+compare both with the versions the fleet is running.
+
+```sql{title="Who migrated, against what the fleet runs" description="The ledger's newest pass beside the versions each live instance records." category="Operations" difficulty="BEGINNER" tags=["Migrations", "Versioning", "SQL"] tests=["SchemaLedgerApplicationVersionTests.APass_RecordsTheApplicationVersionInTheLedgerAsync", "InstanceLivenessRuleSqlTests.Heartbeat_RecordsTheWindowAndTheApplicationVersionAsync"]}
+SELECT library_version, application_version, notes, applied_at
+FROM wh_schema_versions ORDER BY applied_at DESC LIMIT 1;
+
+SELECT instance_id, library_version, application_version
+FROM wh_service_instances
+WHERE instance_id IN (SELECT instance_id FROM wh_live_instance_ids());
+```
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The ledger records the application version the host's services resolve, the same text the instance rows record. | Both versions of whoever migrated can then be compared with the fleet's. | {verified: SchemaLedgerApplicationVersionTests.APass_RecordsTheApplicationVersionInTheLedgerAsync, SchemaLedgerApplicationVersionTests.ApplicationVersionOf_ReadsTheHostsProvider_OrNothingAsync, PostgresSchemaInitializerTests.InitializeSchemaAsync_RecordsTheLedgerApplicationVersion_OverTheConstructorsAsync} |
+| An unknown application version is recorded as `unknown`, never `NULL`. | The ledger's unique key is `(library_version, application_version)`, and a `NULL` is distinct from every other `NULL`, so each pass would add a row. | {verified: PostgresSchemaInitializerTests.InitializeSchemaAsync_WithNoApplicationVersion_RecordsUnknown_NeverNullAsync, SchemaInitializationTests.EnsureWhizbangDatabaseInitialized_RecordsMigrationTrackingDataAsync} |
+| On the EF Core driver the assembly name and version move to `notes`. | `application_version` now means the application's version; which assembly ran the pass is still worth keeping. | {verified: SchemaInitializationTests.EnsureWhizbangDatabaseInitialized_RecordsMigrationTrackingDataAsync} |
+| The Dapper driver records the resolved version, and falls back to the `applicationVersion` passed to `PostgresSchemaInitializer` only when none resolves. | A host that constructs the initializer itself keeps what it passed. | {verified: PostgresSchemaInitializerTests.InitializeSchemaAsync_RecordsTheLedgerApplicationVersion_OverTheConstructorsAsync, PostgresSchemaInitializerTests.InitializeSchemaAsync_WithApplicationVersion_RecordsBothVersionsAsync} |
+
+:::updated{version="1.0.0" type="breaking"}
+`wh_schema_versions.application_version` used to hold the EF Core driver's assembly name and version. It now holds the
+application version (`unknown` when none resolves), and the assembly name is in `notes`. A query that read the
+assembly from `application_version` reads `notes` instead. Rows written before this change keep what they recorded.
+:::
 
 ### An older instance never overwrites a newer one
 
@@ -612,6 +638,15 @@ Five boundaries keep the sweep self-limiting:
 
 Log line to look for, one per re-run file: `re-running because the database's definition of <functions> does not match this file, its last word`. The Dapper-based `PostgresSchemaInitializer` does not yet run this sweep; only the EF Core initializer (generated from `DbContextSchemaExtensionTemplate`) does.
 
+#### The log line names only a file the sweep adds {#stale-sweep-names-only-what-it-adds}
+{verified: StartupMigrationStepsTests.AFreshDatabase_LogsNoReRunOfAFileThePassRunsAnywayAsync, StartupMigrationStepsTests.AFunctionMissingFromACurrentDatabase_IsTheOneReRunLoggedAsync, StartupMigrationStepsTests.AFailedStep_KeepsWhatCommitted_RecordsItsError_AndTheRetryResumesThereAsync}
+
+The line is written only for a file the sweep puts into the run. A file that is already in it, because it is new, its hash changed, or a pass that stopped part way has not reached it yet, is not named, even though its functions are missing: they are missing because the file has not run, not because a replay reverted them.
+
+Why: the comparison finds every function a file has not created yet. Before this rule, a fresh database logged one `re-running because ... (missing)` line for nearly every migration file, and a pass that failed and retried logged one for every file after the failure, each blaming a replay that never happened. Those lines read as evidence that particular files were being re-run on every attempt, when the pass was simply running files it had not finished. The sweep never changed which files ran in that case (they were in the run already); only the log was wrong.
+
+So the line now means one thing: this database held a function that a recorded, unchanged file should have given it, and the file is being re-run to put it back.
+
 ### The bootstrap closure is applied once per definition, never per start
 
 Before the election, every instance applies the bootstrap closure: the core tables and the regions
@@ -657,6 +692,15 @@ and the registration that calls it would fail; a registration that skipped the w
 phase, which reads as an older build, eligible for work during its own migration. Migration 278 is the function's only definition, so the closure's copy is its last word, as the rule
 below requires.
 {verified: MigrationBootstrapRegionsTests.TheBootstrapSubsetIsTheMigrationsStartupNeedsAsync, SchemaBootstrapPhaseTests.AnEmptyDatabaseRecordsATransitionAtRegistrationAfterTheBootstrapAsync, WorkEligibilitySqlTests.BootstrapRegistration_RecordsTheInstanceAsConnecting_SoItIsNotACandidateAsync, PreflightInstanceColumnsTests.EveryFunctionTheBootstrapDefines_IsDefinedAsItsLastWordAsync}
+
+Since migration 316 the closure also carries the instance record's `application_version` and
+`liveness_window_seconds` columns and [the liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule)
+(`wh_instance_liveness`, `wh_live_instance_ids`, `wh_instance_is_live`), with 204's `wh_direct_alive_lock_holders`
+copied word for word because the rule calls it and a SQL function's body is checked when it is created. The migrator
+reads the rule before its pass, to name the other releases still alive, and the
+[standby handshake](../startup/rolling-upgrades#the-standby-handshake) reads it before this release's pass has run.
+`record_heartbeat` and `cleanup_stale_instances` stay in the main pass.
+{verified: MigrationBootstrapRegionsTests.TheBootstrapSubsetIsTheMigrationsStartupNeedsAsync, PreflightInstanceColumnsTests.EveryColumnAMigrationAddsToAnInstanceOrRoleTable_IsAddedByTheBootstrapClosureAsync, PreflightInstanceColumnsTests.EveryFunctionTheBootstrapDefines_IsDefinedAsItsLastWordAsync, FleetVersionsTests.AnOlderReleaseLiveOnlyByItsAliveLock_IsReportedAsync}
 
 Registration ends Preflight and writes the stage the instance held until its row existed. Earlier releases created
 those columns and the recorder only in the main pass, so on a fresh database that write failed (logged at Debug and
@@ -844,7 +888,7 @@ Run the default-privilege statements before the first start, so every object the
 
 ### Which instance migrates {#which-instance-migrates}
 
-The migrator is a duty, held by [role assignment](../startup/capabilities-and-duties#role-assignment-the-default) by default. Its vote is part of the bootstrap closure (migration `184_RoleAssignmentResilience.sql` is a bootstrap region), so the assignment table and its functions exist before the first migration runs. Every instance applies the [bootstrap closure](#bootstrap-waits-for-the-lock) and then joins the registry, both in Preflight, and votes in Elect; the winner migrates and releases the duty when it returns, however it returns.
+The migrator is a duty, and like every duty it is held by [role assignment](../startup/capabilities-and-duties#role-assignment-the-default). Its vote is part of the bootstrap closure (migration `184_RoleAssignmentResilience.sql` is a bootstrap region), so the assignment table and its functions exist before the first migration runs. Every instance applies the [bootstrap closure](#bootstrap-waits-for-the-lock) and then joins the registry, both in Preflight, and votes in Elect; the winner migrates and releases the duty when it returns, however it returns.
 
 **No election on a current schema.** The election runs only when the [Assess verdict](../startup/rolling-upgrades#assess) leaves something to migrate. When the verdict is [`Current`](../startup/rolling-upgrades#current), nothing is pending and every stored-form conversion has settled, so the instance applies no bootstrap closure, joins the registry as Preflight's last step (`the schema is current; registering this instance`), and skips Elect and Migrate (`Stage 2 of 7: Elect - skipped: the schema is current; no migrator is needed`). It takes neither the migrator duty nor the schema lock, so a restart or a scale-out never waits behind another instance's migration. A [stood-down](../startup/rolling-upgrades#standing-down) instance does not vote either: it applies nothing and stays in Preflight. **Why skip it rather than hold a quick one.** A vote is a write to the role tables and a wait on whoever holds the duty; with nothing to migrate there is no outcome worth waiting for. The check that found the schema current is made without a lock: the hash checks of the pass's own fast path, plus the stored-form settlement that the rewrite would otherwise take the schema lock to discover.
 {verified: StartupParityTests.ARestartOnACurrentSchema_TakesNoSchemaLock_AndSkipsElectAndMigrateAsync, SchemaInitializationStagesTests.OnACurrentSchema_ElectAndMigrateAreSkipped_AfterRegisteringAsync, AssessBindingSourceGuardTests.TheGeneratedPass_ReadsTheVerdict_BeforeItAppliesAnythingAsync}
@@ -852,8 +896,8 @@ The migrator is a duty, held by [role assignment](../startup/capabilities-and-du
 Registering is Preflight's last step, logged as `Stage 1 of 7: Preflight - the bootstrap closure is in place; registering this instance`, and Elect only votes (`Stage 2 of 7: Elect - voting for the migrator duty`). **Why register before Elect, and after the bootstrap.** The row is written once the instance and role tables it lives in are ready, and the capability function refuses an instance it cannot find, a refusal that would say nothing about contention. Earlier releases entered Elect and then registered as part of the election, so registration belonged to no stage. A registration that fails is logged, and the instance migrates under the schema lock alone without voting. See [what a restart records](../startup/startup-status#what-a-fresh-database-and-a-restart-record).
 {verified: StartupPreflightHostTests.TheInstanceRow_IsRegisteredAtTheEndOfPreflight_BeforeElectAsync, MigratorDutyStagingTests.Register_RunsTheRegistration_AndAnswersThatTheInstanceJoinedAsync, MigratorDutyStagingTests.Register_ThatFails_IsSaidAndAnsweredAsNotJoinedAsync, MigratorDutyStagingTests.Elect_AfterRegistering_AsksTheElectorOnce_AndHandsOverTheGrantAsync}
 
-An instance that lost the vote waits for the result instead of queuing behind the schema lock. It watches the migrator itself: its assignment row and, for a migrator on a release that still held the duty by session lock, that lock (`MigratorWatch`). The migrator renews its assignment between phases and marks the backend running its DDL, so one long migration statement does not lose the duty; its lease is 30 seconds by default (`RoleAssignmentOptions.RoleLeases`). If the migrator dies, its assignment lapses and a waiter goes on to do the schema work itself, still under the schema lock, which keeps DDL to one instance at a time whatever the duty says.
-{verified: MigratorWatchTests.AMigratorHoldingTheRole_IsMigrating_UntilItReleasesItAsync, MigratorWatchTests.AMigratorOnAnOlderRelease_HoldingTheDutysSessionLock_IsMigratingAsync, SchemaMigratorDeferralGenerationTests.AWaiterWatchesTheMigratorAsync, SchemaMigratorDeferralGenerationTests.TheMigratorRenewsItsRole_AndMarksTheBackendRunningTheMigrationAsync}
+An instance that lost the vote waits for the result instead of queuing behind the schema lock. It watches the migrator itself (`MigratorWatch`): the migrator's assignment row, plus any holding of the duty recorded outside the table by a migrator on an older release that held it by its own session lock, counted only while [the one liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule) calls that instance live. No lock is read: the watch never uses the lock probe, so a waiter sees an older migrator through the record it writes, and a dead one's record does not hold the waiter up. The migrator renews its assignment between phases and marks the backend running its DDL, so one long migration statement does not lose the duty; its lease is 30 seconds by default (`RoleAssignmentOptions.RoleLeases`). If the migrator dies, its assignment lapses and a waiter goes on to do the schema work itself, still under the schema lock, which keeps DDL to one instance at a time whatever the duty says.
+{verified: MigratorWatchTests.AMigratorHoldingTheRole_IsMigrating_UntilItReleasesItAsync, MigratorWatchTests.AMigratorOnAnOlderRelease_IsSeenByItsRecordedHolding_WhileTheRuleCallsItLiveAsync, MigratorWatchTests.NothingHeld_IsNotMigratingAsync, CoordinationSourceGuardTests.NoDuty_IsHeldByAnAdvisoryLockAnywhereAsync, SchemaMigratorDeferralGenerationTests.AWaiterWatchesTheMigratorAsync, SchemaMigratorDeferralGenerationTests.TheMigratorRenewsItsRole_AndMarksTheBackendRunningTheMigrationAsync}
 
 ### Table rewrites run post-ready, under the maintainer duty
 
@@ -988,7 +1032,8 @@ that failed is a warning naming it, with the exception.
 A release that changes a stored unit is not safe under a mixed fleet: an older instance still writing
 would write forms this release has just converted away. The migrator cannot refuse to run under a
 rolling update without deadlocking the rollout, so before it rewrites it names, at Warning, every
-other release alive in the instance registry:
+other release alive in the instance registry, as [the liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule)
+judges alive (it is in the bootstrap region, so it is there before the pass):
 
 ```text
 Other releases are alive in the fleet for schema {Schema} while the stored-form rewrite runs: {Releases}
@@ -998,7 +1043,7 @@ Deploy a unit-changing release without a mixed fleet: scale the older release to
 accept that rows it writes after the rewrite are read as renderings, counted on
 `whizbang.perspective.temporal_form_fallbacks`, until the next startup converts them.
 
-{verified: CanonicalTemporalRewriteWiringTests.TheRewriteRunsAfterTheElectionOnTheMigratorAsync, CanonicalTemporalRewriteWiringTests.TheMigratorWarnsAboutOtherReleasesBeforeRewritingAsync, FleetVersionsTests.AnOlderReleaseStillAliveIsReportedAsync, FleetVersionsTests.TheSameReleaseIsNotReportedAsync, FleetVersionsTests.AStaleInstanceIsNotReportedAsync}
+{verified: CanonicalTemporalRewriteWiringTests.TheRewriteRunsAfterTheElectionOnTheMigratorAsync, CanonicalTemporalRewriteWiringTests.TheMigratorWarnsAboutOtherReleasesBeforeRewritingAsync, FleetVersionsTests.AnOlderReleaseStillAliveIsReportedAsync, FleetVersionsTests.TheSameReleaseIsNotReportedAsync, FleetVersionsTests.AStaleInstanceIsNotReportedAsync, FleetVersionsTests.AnOlderReleaseLiveOnlyByItsAliveLock_IsReportedAsync}
 
 ### Objects you own over a temporal key
 
