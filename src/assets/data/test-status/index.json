@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "42019541034",
-    "sha": "6f76d2260b2f728c0ba8546ec56c1e2caad47611",
+    "runId": "42098800023",
+    "sha": "dcbef12998062706a0f477ba81cfd175c082f301",
     "branch": "develop",
-    "libraryVersion": "0.2627.0-alpha.567",
-    "completedAt": "2026-11-05T11:46:37.809Z"
+    "libraryVersion": "0.2627.0-alpha.587",
+    "completedAt": "2026-11-05T20:12:38.720Z"
   },
   "total": {
-    "passed": 38900,
+    "passed": 38971,
     "failed": 0,
     "skipped": 12
   },
@@ -18,7 +18,7 @@
       "skipped": 0
     },
     "component": {
-      "passed": 5680,
+      "passed": 5688,
       "failed": 0,
       "skipped": 0
     },
@@ -38,7 +38,7 @@
       "skipped": 0
     },
     "postgres-efcore-": {
-      "passed": 9102,
+      "passed": 9106,
       "failed": 0,
       "skipped": 0
     },
@@ -58,7 +58,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 21616,
+      "passed": 21675,
       "failed": 0,
       "skipped": 8
     }
@@ -162,7 +162,7 @@
     },
     "Whizbang.Core.Component.Tests": {
       "file": "Whizbang.Core.Component.Tests.json",
-      "passed": 4344,
+      "passed": 4352,
       "failed": 0,
       "skipped": 0
     },
@@ -174,7 +174,7 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 13794,
+      "passed": 13828,
       "failed": 0,
       "skipped": 0
     },
@@ -186,7 +186,7 @@
     },
     "Whizbang.Data.EFCore.Postgres.Tests": {
       "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
-      "passed": 9102,
+      "passed": 9106,
       "failed": 0,
       "skipped": 0
     },
@@ -408,7 +408,7 @@
     },
     "Whizbang.Transports.AzureServiceBus.Tests": {
       "file": "Whizbang.Transports.AzureServiceBus.Tests.json",
-      "passed": 602,
+      "passed": 625,
       "failed": 0,
       "skipped": 0
     },
@@ -468,7 +468,7 @@
     },
     "Whizbang.Transports.RabbitMQ.Tests": {
       "file": "Whizbang.Transports.RabbitMQ.Tests.json",
-      "passed": 146,
+      "passed": 148,
       "failed": 0,
       "skipped": 0
     },
