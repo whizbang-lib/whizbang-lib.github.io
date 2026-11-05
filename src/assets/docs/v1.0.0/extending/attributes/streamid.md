@@ -23,6 +23,7 @@ testReferences:
   - tests/Whizbang.Generators.Tests/StreamIdGeneratorCoverageTests.cs
   - tests/Whizbang.Generators.Tests/StreamIdOverrideGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/StreamIdDerivedFirstGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/StrongIdStreamIdGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/StreamIdAttributeAnalyzerTests.cs
   - tests/Whizbang.Core.Tests/StreamKeyAttributeTests.cs
   - tests/Whizbang.Core.Tests/StreamIdExtractorTests.cs
@@ -296,13 +297,64 @@ public Guid ProductId { get; init; }
 public Guid? ParentOrderId { get; init; }  // May be null for root orders
 ```
 
-### WhizbangId Types
+### WhizbangId Types {#strong-id-stream-ids}
 
-```csharp{title="WhizbangId StreamId" description="Strongly-typed ID as stream identifier" category="Usage" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "C#", "WhizbangId", "StreamId"] unverified="WhizbangId / Vogen value-object stream id — no candidate (nor StreamIdGeneratorCoverageTests) test exercises a strongly-typed value-object [StreamId]; only Guid, nullable-Guid, string, and int underlying types are covered"}
-// Using Vogen-generated value object
-[StreamId]
-public ProductId ProductId { get; init; }
+A [`[WhizbangId]`](../../fundamentals/identity/whizbang-ids) strong id can be the stream ID. The message routes by
+the Guid the id wraps:
+
+```csharp{title="WhizbangId StreamId" description="Strongly-typed ID as stream identifier" category="Usage" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "C#", "WhizbangId", "StreamId"] tests=["StrongIdStreamIdGeneratorTests.ACommandWhoseStreamIdIsAStrongId_SetStreamIdWritesTheStrongIdNotTheInheritedGuidAsync", "StrongIdStreamIdGeneratorTests.AnEventWhoseStreamIdIsAStrongId_SetStreamIdWritesTheStrongIdNotTheInheritedGuidAsync"]}
+[WhizbangId]
+public readonly partial struct ProductId;
+
+[GenerateStreamId]
+public class CreateProduct : ICommand {
+  [StreamId]
+  public ProductId ProductId { get; set; }
+}
 ```
+
+#### A generic base closed with a strong id
+
+A base message can take its stream ID type as a type parameter. Each concrete message closes it with its own strong
+id, and routes by that id:
+
+```csharp{title="Generic base with a strong-id stream id" description="A base message whose stream id is a type parameter, closed by each concrete message" category="Usage" difficulty="ADVANCED" tags=["Extending", "Attributes", "C#", "WhizbangId", "StreamId", "Generics"] tests=["StrongIdStreamIdGeneratorTests.GenericBaseWithAStrongIdStreamId_TheGeneratedCodeCompilesAsync", "StrongIdStreamIdGeneratorTests.GenericBaseWithAStrongIdStreamId_TheClosedMessagesRouteByTheirStrongIdAsync", "StrongIdStreamIdGeneratorTests.AGenericBaseClosedWithAStrongId_GeneratesSetsAndRoutesByTheStrongIdAsync"]}
+[WhizbangId]
+public readonly partial struct ThingId;
+
+public abstract class BaseCommand<TStreamId> : ICommand where TStreamId : struct {
+  [StreamId]
+  [GenerateStreamId]
+  public TStreamId StreamId { get; set; }
+}
+
+public class CreateThing : BaseCommand<ThingId> {
+  public string Name { get; set; } = "";
+}
+```
+
+The open base (`BaseCommand<TStreamId>`) gets no extractor of its own; `CreateThing` reads the inherited property with
+`ThingId` in place of `TStreamId`. The strong ids can live in several namespaces of one assembly
+{verified: WhizbangIdRegistrationGenerationTests.Generator_IdsInSeveralNamespaces_RegistrationCompilesAsync}.
+
+#### Generating a strong-id stream ID
+
+With [`[GenerateStreamId]`](./generatestreamid), the dispatcher mints a UUIDv7 and the generated `SetStreamId` writes
+it into the strong-id property, ahead of any `Guid` stream ID a base type declares. The setter wraps the Guid with the
+id's constructor, not `From`, so a stream ID a cascaded message copies from its source message is written even when
+it is not UUIDv7 {verified: StrongIdStreamIdGeneratorTests.AStrongIdStreamIdInheritedFromASourceMessage_IsWrittenWhateverItsVersionAsync}.
+As with a `Guid`, the property needs a setter: `[GenerateStreamId]` on an `init`-only strong id reports
+[WHIZ013](../../operations/diagnostics/whiz013)
+{verified: StrongIdStreamIdGeneratorTests.GenerateStreamIdOnAnInitOnlyStrongId_ReportsWhiz013Async}.
+
+#### Limitations
+
+- **`IHasStreamId` wins.** A message that implements `IHasStreamId` (a `Guid StreamId`) and also declares a strong-id
+  `[StreamId]` gets the minted id through `IHasStreamId` only. Use one or the other.
+- **Class-level `[GenerateStreamId]` on an open generic base is not inherited** by the types that close it. Put the
+  attribute on the base's `[StreamId]` property, as above, or on each closing type.
+- **Nullable strong ids** (`ThingId?`) are not supported as stream IDs, and a generic *interface* is not supported as
+  a polymorphic base.
 
 ## Diagnostics
 
