@@ -68,6 +68,12 @@ codeReferences:
   - src/Whizbang.Core/Startup/MaintainerDuty.cs
   - src/Whizbang.Data.Postgres/Migrations/320_RepairWaitsForItsAnswer.sql
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
+  - src/Whizbang.Core/Messaging/IConsumerRegistry.cs
+  - src/Whizbang.Core/Messaging/ConsumedMessageTypes.cs
+  - src/Whizbang.Core/Workers/RepairTopicResolver.cs
+  - src/Whizbang.Core/Transports/IntegrityControlDestination.cs
+  - src/Whizbang.Data.Postgres/Migrations/331_LedgerKeepsOnlyConsumedTypes.sql
+  - src/Whizbang.Data.Postgres/Migrations/332_DigestWindowsReadOnlyTheirWindow.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Routing/OwnedNamespaceMatcherLocalLaneTests.cs
   - tests/Whizbang.Core.Tests/Messaging/IntegrityDomainOwnershipTests.cs
@@ -139,6 +145,13 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/RepairDrainWorkerTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsCoverageTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerIntegrityGaugeTests.cs
+  - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerBranchCoverageTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/ConsumedMessageTypesTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerForgetUnconsumedSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ConsumedEventReachesEventStoreTests.cs
+  - tests/Whizbang.Core.Tests/Workers/RepairTopicResolverTests.cs
+  - tests/Whizbang.Core.Tests/Transports/IntegrityControlDestinationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/WindowedDigestLaneReadTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -461,7 +474,7 @@ rather than sequence windows.
 An event whose transaction drew its insertion order before the floor and committed after it is left out of the window
 as well. It is still covered by the digests.
 
-### Phase S — subscription-expansion backfill (startup, on by default)
+### Phase S — subscription-expansion backfill (startup, on by default) {#phase-s-subscription-expansion-backfill}
 
 The startup type-definition reconciler already diffs each service's catalog against its persisted
 registration. It gains one comparison: **the consumed-type set**. When a deploy grows it (new
@@ -610,6 +623,23 @@ belongs to Phase B's checkpoints (one doorbell-sized ephemeral event per origin 
 tunable as emit-on-publish with a slow max-idle heartbeat — never fully silent, because
 checkpoint absence is the transport-liveness alarm.
 
+### Windowed manifests read only their window {#windowed-manifests}
+{verified: WindowedDigestLaneReadTests.ManifestStreamWindow_ReadsTheWindow_NotTheLaneAsync, WindowedDigestLaneReadTests.TypeDigestWindow_ReadsTheWindow_NotTheLaneAsync}
+
+A windowed stream-level answer, and the windowed type-level fold behind a sealed epoch
+(`compute_type_digests_epoch_window`), each cover one range of a lane: the local lane by `commit_sequence`, an
+origin's lane by `origin_commit_sequence`. Both queries read the lane as two branches of a `UNION ALL`, one per lane,
+each with the window as a direct range on its own indexed column (`idx_event_store_commit_sequence` for the local
+lane, `idx_event_store_origin_lane` for an origin's). Exactly one branch is live per call; the other is pruned by its
+constant predicate on the lane. A call therefore reads the rows in its window, and its cost follows the window, not
+the size of the store.
+
+**Why two branches.** The lane's sequence used to come from one `CASE` expression, with the window filtered
+afterwards. No index can serve a range on a `CASE`, so every call read the whole lane, and the paged answers of a
+large store each paid for all of it. Migration 332 split the lane; no new index was needed, because both columns
+were already indexed. The tests count the rows each call actually reads (`pg_stat_xact_user_tables`) against a lane
+much larger than the window, so a return to the whole-lane read fails them.
+
 ### Phase L — local perspective-coverage audit {#phase-l-local-perspective-coverage-audit}
 
 Entirely local, no manifest exchange: verify per (stream, perspective) that cursor coverage reaches
@@ -653,6 +683,75 @@ That reads as a surplus, which raises an alarm and never a redelivery (see
 [Deficit repairs; mismatch alarms](#deficit-repairs-mismatch-alarms)), and it clears when the stamper reaches the event.
 Counting the history while it is unstamped did the opposite: a deficit, which is repaired, and with a whole history
 unstamped that was a repair storm.
+
+### The integrity surface is what the service consumes {#the-integrity-surface-is-what-the-service-consumes}
+{verified: IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_ConsumerWithNoPerspectives_RequestsOnlyTheEventItsReceptorConsumesAsync, IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_PerspectiveAndReceptorConsumer_RequestIncludesTheReceptorOnlyEventAsync, IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_ConsumesNoEvents_RequestsNothingAsync}
+
+Stream integrity compares what an origin wrote with what this service holds, so it can only ask about events this
+service actually stores. A service stores an inbound event when something here consumes it, and the receive boundary
+discards the rest. The integrity surface is therefore the same set the receive boundary keeps:
+
+- the event types the [consumer registry](../extending/internals/receptor-registry-query#what-a-service-consumes)
+  lists (perspectives, inbox and lifecycle receptors, synchronous receptors, notification tags and the collective
+  sink), and
+- every event in a namespace this service absorbs (`RoutingOptions.AbsorbNamespaces`): absorbed events are stored on
+  purpose with no consumer, so a later perspective can rebuild from them.
+
+Every integrity phase reads that one surface: the audit's manifest request, the checkpoint verification, the manifest
+comparison, the repair ledger and the subscription-expansion backfill.
+
+| Service | Types its audit requests |
+|---|---|
+| Perspectives only | The events its perspectives fold |
+| Perspectives and receptors | The events its perspectives fold plus the events only a receptor handles |
+| Receptors only, no perspectives | The events its receptors consume |
+| Absorbs a namespace | The above, plus the absorbed namespaces on the request |
+| Consumes no events | Nothing: no request is sent |
+
+**Why not every known type.** The audit used to take its types from the perspective event list. A service with no
+perspectives sent no type list, which an origin reads as "every type", and a service with perspectives never audited
+the events only a receptor handles. A type nothing here consumes is never stored here, so every bucket of it reads as
+a deficit, and its redelivery is discarded at the receive boundary: the repair-ledger row can never heal. Those rows
+held `whizbang.stream_integrity.unhealed_buckets` up and kept the repair budget cycling. An empty consumed set now
+requests nothing, never every type.
+
+#### Absorbed namespaces travel on the request {#absorbed-namespaces-on-the-request}
+{verified: IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_AbsorbedNamespace_WithNothingConsumingIt_IsStillAuditedAsync, IntegrityManifestReceptorTests.RequestReceptor_AbsorbedNamespaces_AddTheOriginsOwnTypesInThemAsync, IntegrityManifestReceptorTests.RequestReceptor_AbsorbedNamespacesWithoutATypeList_AnswerTheNamespacesTypesAsync, IntegrityManifestReceptorTests.RequestReceptor_EmptyAbsorbedNamespaces_AnswerTheTypeListAsItCameAsync}
+
+The requester cannot list the types in an absorbed namespace: nothing here references them, so they are not in its
+consumer registry. `RequestIntegrityManifest.EventNamespaces` carries the namespaces instead, and the origin expands
+them into the types it audits in those namespaces before it answers. The field is additive: an origin that predates
+it answers the type list alone, and an empty list answers the type list as it came.
+
+#### Comparisons skip what nothing here consumes {#comparisons-skip-unconsumed-types}
+{verified: IntegrityManifestReceptorTests.ManifestReceptor_OnlyTypesNothingHereConsumes_ComparesNothingAsync, IntegrityManifestReceptorTests.ManifestReceptor_TypeLevelMismatch_OfATypeNothingHereConsumes_IsNeverEscalatedAsync, IntegrityManifestReceptorTests.ManifestReceptor_StreamLevelDivergence_OfATypeNothingHereConsumes_IsNeverRepairedAsync, ConsumedMessageTypesTests.Keeps_AnUnconsumedTypeInAnAbsorbedNamespace_WhenTheDiscardPolicyKeepsItAsync}
+
+An origin's answer, and its checkpoint, can still name types outside the surface (an origin that predates the
+narrowed request answers every type). The checkpoint and manifest receptors filter what the origin reported through
+the receive boundary's own keep decision (`ConsumedMessageTypes.Keeps`), so a type the receive boundary would discard
+is never counted, escalated or repaired. The filter combines with
+[ownership](#the-local-lane-follows-ownership): a bucket must be both kept here and owned by the reporting origin.
+
+#### Rows outside the surface are forgotten {#rows-outside-the-surface-are-forgotten}
+{verified: IntegrityLedgerForgetUnconsumedSqlTests.Forget_RemovesEveryRowOfAnUnconsumedType_AndKeepsTheConsumedOnesAsync, IntegrityLedgerForgetUnconsumedSqlTests.Forget_KeepsTheRowsOfATypeInAnAbsorbedNamespaceAsync, IntegrityLedgerForgetUnconsumedSqlTests.Forget_ANullConsumedSet_ForgetsNothingAsync, IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_ForgetsTheLedgerRowsOfEveryTypeOutsideTheConsumedSetAsync}
+
+Each audit cycle calls `wh_integrity_forget_unconsumed` (migration 331) with the consumed event types and the
+absorbed namespaces. It deletes the repair-ledger rows of every other type, so a ledger recorded before the surface
+was narrowed, or before a consumer was removed, heals itself on the next cycle. A row's namespace is the part of its
+type name before the last `.`, the form the receive boundary derives, so a nested type belongs to its outer type's
+namespace. A null consumed set forgets nothing: only an explicit set may empty the ledger. The audit logs how many
+rows it forgot.
+
+#### After upgrading {#integrity-surface-after-upgrading}
+{verified: SubscriptionExpansionTargetingTests.Backfill_FirstPassAfterUpgrade_AsksTheReceptorOnlyEventOfItsOwner_NeverBroadcastsAsync, SubscriptionExpansionTargetingTests.Backfill_MixedOwnership_DirectsTheOwnedTypesAndBroadcastsTheRestAsync, ConsumedEventReachesEventStoreTests.WithNoPerspectives_AConsumedEvent_IsCopiedIntoTheEventStoreAsync}
+
+The same change makes the receive path store every consumed event, whether or not a perspective folds it (see
+[classifying a received message](../extending/internals/receptor-registry-query#classifying-a-received-message)).
+On the first start after upgrading, the [subscription-expansion backfill](#phase-s-subscription-expansion-backfill)
+sees those newly stored types as an expansion of the consumed set and asks for their history under its existing caps.
+A type with a known owner is asked of that owner directly; only a type with no known owner is broadcast.
+`whizbang.stream_integrity.backfills_requested` counts the requests, so an operator can see the one-time backfill.
+Set `BackfillOnSubscriptionGrowth` to `false` before upgrading to record the expansion as Pending instead.
 
 ### What is digested {#what-is-digested}
 
@@ -812,7 +911,8 @@ services.Configure<StreamIntegrityOptions>(o => {
   // Repair posture + storm caps (always enforced)
   o.RepairMode = IntegrityRepairMode.AutoRepairCapped;  // ladder: ReportOnly is the opt-down/dry-run
   o.RepairTopic = null;                      // topic repair requests publish to AND bundles return on
-                                             // (null = the consumer's first subscribed destination)
+                                             // (null = this service's own command inbox, else its first
+                                             //  consumed destination; see Directed integrity traffic)
   o.MaxAutoRepairRequestsPerCheckpoint = 10;
   o.MaxAutoRepairRequestsPerAudit = 25;     // per manifest comparison; see "Repair caps" below
   o.MaxRepairDrainBacklog = 10_000;          // total bound on the paced repair drain's ledger
@@ -1083,7 +1183,8 @@ the reason (most often an origin request topic it has not learned).
 
 - **Topics.** The request goes on the origin's request topic: the one learned from its integrity checkpoints, or
   the one named. The republished events come back on `StreamIntegrityOptions.RepairTopic`, else the service's
-  first consumer destination, or a reply topic named in the request.
+  own command inbox, else its first consumer destination, or a reply topic named in the request (see
+  [directed integrity traffic](#directed-integrity-traffic)).
 - **Filters.** `TenantScope` and `EventTypes` narrow the selection; `StateOnly` stores and projects the events
   without running trigger receptors again, for a backfill rather than a missed delivery.
 - **Bounds.** Streams are sent 500 to a request. The origin still caps each request at its
@@ -1418,6 +1519,63 @@ again because each call's table was a new one. Each call empties the table befor
 bundle in the same transaction sees only its own rows.
 
 ---
+
+## Directed integrity traffic {#directed-integrity-traffic}
+{verified: RepairTopicResolverTests.Unset_OwnCommandInbox_IsPreferredOverASharedFirstDestinationAsync, RepairTopicResolverTests.Unset_NoOwnCommandInbox_KeepsTheFirstDestination_AndSaysOnceThatItIsSharedAsync, RepairTopicResolverTests.Configured_WinsAsync, IntegrityControlDestinationTests.ADirectedMessage_ToTheAddresseesAdvertisedTopic_ReachesOnlyTheAddresseeAsync}
+
+Most integrity traffic is addressed to one service: a manifest request and its answer, a drill-down, a page follow, a
+redelivery request and the bundle that answers it. Each service advertises the address it wants that traffic on in
+its [checkpoint](#ownership-is-exchanged-on-the-checkpoint), and every peer sends to that address.
+
+The address is resolved in this order:
+
+| Order | Address | When |
+|---|---|---|
+| 1 | `StreamIntegrityOptions.RepairTopic` | Configured explicitly |
+| 2 | This service's own command inbox | The [namespace inbox strategy](../fundamentals/dispatcher/routing) provisioned a command inbox for a command namespace this service handles. Only this service subscribes to it |
+| 3 | The first destination this service consumes | No command inbox of its own. Usually a topic other services read too, so the service logs once that its integrity traffic is on a shared topic |
+
+```mermaid{caption="A directed integrity request reaches only its addressee's own command inbox; a broadcast backfill still rides the shared topic." tests=["IntegrityControlDestinationTests.ADirectedMessage_ToTheAddresseesAdvertisedTopic_ReachesOnlyTheAddresseeAsync","RepairTopicResolverTests.Broadcast_IsTheSharedTopic_NeverTheOwnCommandInboxAsync"]}
+flowchart LR
+  C[Consumer] -->|manifest request, TTL| OI[(Origin's own command inbox)]
+  OI --> O[Origin]
+  O -->|answer, TTL| CI[(Consumer's own command inbox)]
+  CI --> C
+  C -->|broadcast backfill| S[(Shared inbox topic)]
+  S --> O
+  S --> P[Every other service]
+```
+
+**Why the own inbox.** The default used to be the first destination a service consumes, which in practice is the
+shared inbox every service reads. Every directed integrity message was then copied to every service, which read it
+only to discard it, and a stopped service's subscription kept growing until the shared topic reached its size cap.
+The own command inbox is subscribed by exactly one service, so a directed message reaches exactly one. A
+[subscription-expansion backfill](#phase-s-subscription-expansion-backfill) for a type with no known owner is a
+broadcast by design, so it still goes on the shared topic.
+
+### Integrity control messages expire {#integrity-control-message-ttl}
+{verified: IntegrityControlDestinationTests.For_StampsTheIntegrityTimeToLive_ByDefaultAnHourAsync, IntegrityControlDestinationTests.For_StampsTheConfiguredTimeToLiveAsync, IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_TheManifestRequest_ExpiresWithTheIntegrityTimeToLiveAsync, StreamIntegrityOptionsValidatorTests.Validate_AControlMessageTimeToLiveBelowOneMinute_FailsNamingTheKeyAsync}
+
+Every directed integrity message carries a time to live, `Whizbang:StreamIntegrity:ControlMessageTimeToLiveMinutes`
+(default 60). The transports lift it to the broker's own expiry (see the
+[control-plane rail](../fundamentals/dispatcher/routing#control-class)), so a message nobody reads in time is dropped
+by the broker instead of piling up. Integrity requests are regenerated every cycle, so an expired one costs nothing:
+the next checkpoint, audit or repair pass asks again. The value must be at least 1; a smaller one fails at host start
+naming the key.
+
+```json{title="Shorten the integrity time to live" description="Directed integrity messages expire at the broker after 15 minutes" category="Configuration" difficulty="INTERMEDIATE" tags=["stream-integrity","time-to-live","configuration"]}
+{
+  "Whizbang": {
+    "StreamIntegrity": {
+      "ControlMessageTimeToLiveMinutes": 15
+    }
+  }
+}
+```
+
+**Mixed versions.** The address is advertised on the checkpoint, so an upgraded service sends to whatever each peer
+advertises. A peer that has not upgraded advertises the shared topic and keeps receiving its integrity traffic there
+until it upgrades; nothing needs to be deployed in a particular order.
 
 ## Integrity work runs on the maintainer {#integrity-work-runs-on-the-maintainer}
 
