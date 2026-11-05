@@ -120,7 +120,9 @@ the same helper, `CommandInboxNaming.TopicFor`, so they cannot disagree on casin
 **What a service subscribes to.** `NamespaceInboxStrategy` gives a service:
 
 - one inbox per distinct contract namespace it handles commands from, taken from its receptors,
-  lowercased and deduplicated;
+  lowercased and deduplicated, and [filtered to the command types it handles](#command-inbox-type-filter);
+- its own [control inbox](#service-control-inbox), `inbox.whizbang.service.<service>`, which only it
+  subscribes to;
 - the system broadcast inbox, `inbox.whizbang`, which carries system commands, control-plane
   messages and minted composites (the whole `whizbang.core` namespace subtree is reserved for it and
   never gets a per-namespace inbox);
@@ -152,8 +154,53 @@ settings: no command namespace is routed to its own inbox, and the shared inbox 
 a non-standard shared topic for the transitional subscription.
 {verified: DefaultNamespaceTopologyTests.ExplicitLegacyStrategies_AreByteIdenticalToTodaysSharedTopologyAsync, DefaultNamespaceTopologyTests.ExplicitLegacyInboxAlone_ClearsFlipAndRetirementAsync, DefaultNamespaceTopologyTests.UseDomainTopics_EitherSide_ClearsFlipAndRetirementAsync, DefaultNamespaceTopologyTests.UseCustom_EitherSide_ClearsFlipAndRetirementAsync, DefaultNamespaceTopologyTests.ExplicitFlipCalls_WinOverTheLegacyStrategyClearingAsync, NamespaceInboxStrategyTests.Inbox_UseNamespaceInboxes_SetsNamespaceStrategyAsync}
 
-Because each per-namespace inbox belongs to one service, a second service subscribing to it would
-receive every command twice. See [Command Ownership and Ownership Drift](#ownership-drift).
+#### Each subscription receives only the commands it handles {#command-inbox-type-filter}
+
+A command inbox entity is not exclusive: every service that handles any command of a namespace
+subscribes to that namespace's inbox. A service that handles two export commands of another service's
+namespace therefore has a subscription on that namespace's inbox. Each subscription is filtered to the
+exact command types its service handles, matched on the wire subject the publisher stamps,
+`{namespace}.{typename}` in lowercase. A nested command type matches under both spellings a publisher
+can stamp, `outer+inner` and `inner`. One send reaches exactly the services that handle that command,
+and nothing else sent to the entity matches.
+{verified: NamespaceInboxStrategyTests.GetSubscriptions_PerNamespaceInbox_FiltersToTheHandledCommandTypesAsync, NamespaceInboxStrategyTests.GetSubscriptions_ForeignNamespace_ReceivesOnlyTheCommandsThisServiceHandlesAsync, NamespaceInboxStrategyTests.GetSubscriptions_NestedCommandType_MatchesBothWireSpellingsAsync, NamespaceInboxStrategyTests.GetSubscriptions_TypeNameOutsideItsNamespace_UsesTheSimpleNameAsync}
+
+**Why.** The filter used to match the whole namespace. A service handling one command of another
+service's namespace received every command sent there, and every directed integrity message addressed
+to the owner, only to discard them. On Azure Service Bus a long type list is split across several filter
+rules (see [routing filters](../../messaging/transports/azure-service-bus#routing-filters)), and on
+RabbitMQ the queue's old match-all `#` binding is removed once explicit patterns are bound.
+{verified: AzureServiceBusProvisioningPathTests.SubscribeAsync_RoutingPatternsBeyondOneFilterLimit_SplitAcrossRulesWithinTheLimitAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_ExistingCommandInboxSubscription_ConvergesToTheTypeFilterAsync, RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_ExplicitPatterns_UnbindTheLegacyMatchAllBindingAsync, RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_MatchAllSubscription_KeepsItsMatchAllBindingAsync}
+
+A second service subscribed to a command inbox without that filter would receive the owner's commands
+and might handle them twice. See [Command Ownership and Ownership Drift](#ownership-drift).
+
+### Each Service's Own Control Inbox {#service-control-inbox}
+
+Every service subscribes to an entity of its own, `inbox.whizbang.service.<service>`: the service name
+in lowercase, with every character other than letters, digits, `.`, `-` and `_` replaced by `-`. Only
+that service subscribes to it, so the subscription has no filter; the entity is the filter. It is
+provisioned with the transport's usual settings, and its subscription is marked as the service's
+control inbox, not as a command inbox, so the [ownership drift check](#ownership-drift) never inspects it.
+{verified: CommandInboxNamingTests.ServiceControlTopicFor_IsTheServicesOwnLowercaseControlEntityAsync, CommandInboxNamingTests.ServiceControlTopicFor_ReplacesCharactersAnEntityNameCannotCarryAsync, NamespaceInboxStrategyTests.GetSubscriptions_AlwaysIncludesThisServicesOwnControlInboxAsync}
+
+Directed integrity traffic addressed to the service travels here: repair and redelivery requests,
+manifests, and the bundles that answer them. The service advertises this entity as its request and
+reply address (see [directed integrity traffic](../../resilience/stream-integrity#directed-integrity-traffic)).
+A second service that handles a command of the addressee's namespace never receives that traffic: it is
+not subscribed to the addressee's control inbox, and its command inbox filter matches only command types.
+{verified: NamespaceInboxStrategyTests.SecondServiceHandlingACommandInTheAddresseesNamespace_NeverReceivesItsIntegrityTrafficAsync, IntegrityControlDestinationTests.ADirectedMessage_ToTheAddresseesAdvertisedTopic_ReachesOnlyTheAddresseeAsync}
+
+**Why its own entity.** A command inbox is not exclusive, and its type filter would drop control
+traffic sent to it. A per-service entity is exclusive by construction on every transport and needs no
+target property or header filter.
+
+**Services on an earlier version.** Senders always answer on the address the receiver advertised, so a
+service that still advertises a command inbox or the shared broadcast inbox keeps receiving there. Once
+it upgrades, it advertises its control inbox on its next checkpoint. Until peers see that checkpoint,
+traffic they send to its old command inbox matches no subscription and is dropped; integrity messages
+expire and are regenerated on the next cycle, so the cost is one cycle's delay.
+
 
 ### How Command Filtering Works {#own-namespace-of}
 
@@ -1732,11 +1779,13 @@ transport — you do **not** need `Route.Outbox(...)`/`Route.Both(...)` to force
 
 A command type has one owner. Events fan out to every interested service, but a command is handled
 by exactly one. With per-namespace command inboxes (`NamespaceInboxStrategy`, which is what
-`new RoutingOptions()` uses and what `Inbox.UseNamespaceInboxes()` selects), a service gets one inbox
-entity per command contract namespace it handles, named `inbox.<contract-namespace>` in lowercase,
-and subscribes to it. If a second service also subscribes to that entity, every command on it is
-delivered to both services and handled twice.
-{verified: RoutingOptionsTests.Inbox_DefaultStrategy_IsPerNamespaceInboxesAsync, NamespaceInboxStrategyTests.GetSubscriptions_HandledCommandNamespaces_OnePerDistinctNamespaceAsync, NamespaceInboxStrategyTests.GetSubscriptions_MixedCaseNamespace_LowercasesTopicAsync, NamespaceInboxStrategyTests.GetSubscriptions_PerNamespaceSubscriptions_CarryOwnedCommandInboxMarkerAsync}
+`new RoutingOptions()` uses and what `Inbox.UseNamespaceInboxes()` selects), every service that handles
+a command of a namespace subscribes to that namespace's inbox, named `inbox.<contract-namespace>` in
+lowercase, [filtered to exactly the command types it handles](#command-inbox-type-filter). A second
+subscriber filtered that way is the topology working. A second subscriber that matches more than its
+exact command types (the whole namespace, or everything) receives the owner's commands and may handle
+them twice.
+{verified: RoutingOptionsTests.Inbox_DefaultStrategy_IsPerNamespaceInboxesAsync, NamespaceInboxStrategyTests.GetSubscriptions_HandledCommandNamespaces_OnePerDistinctNamespaceAsync, NamespaceInboxStrategyTests.GetSubscriptions_PerNamespaceInbox_FiltersToTheHandledCommandTypesAsync, NamespaceInboxStrategyTests.GetSubscriptions_PerNamespaceSubscriptions_CarryOwnedCommandInboxMarkerAsync}
 
 Whizbang checks this rule twice: at build time for receptors compiled together, and at startup for
 services built separately.
@@ -1761,25 +1810,29 @@ the system broadcast inbox `inbox.whizbang` carry every service's subscription b
 checked.
 
 **Azure Service Bus.** The provisioner lists every subscription on the command inbox topic with
-`IServiceBusAdminClient.GetSubscriptionsAsync(topicName)`. Any subscription other than this service's
-own is drift. A subscription this service created on an earlier boot is not.
-{verified: ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_OwnedCommandInbox_ForeignSubscription_RecordsDriftAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_OwnedCommandInbox_OwnSubscriptionOnly_NoDriftAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_SharedEntities_NeverDriftCheckedAsync}
+`IServiceBusAdminClient.GetSubscriptionsAsync(topicName)` and reads each foreign subscription's rules. A
+subscription whose every rule is a SQL filter of exact subject matches (`sys.Label LIKE '<subject>'`
+clauses joined by `OR`, with no wildcard) is a service handling some of the namespace's commands, and
+is not drift. Anything else is drift: the match-all `$Default` rule, a wildcard such as
+`sys.Label LIKE 'myapp.orders.commands.%'`, an extra clause such as `OR 1=1`, any other kind of filter,
+or no rules at all. A subscription this service created on an earlier boot is not drift.
+{verified: ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_CommandInbox_ForeignSubscriptionFilteredToExactTypes_IsNotDriftAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_CommandInbox_ForeignSubscriptionMatchingTheNamespace_IsDriftAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_CommandInbox_ForeignSubscriptionWithTheMatchAllDefaultRule_IsDriftAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_CommandInbox_ForeignSubscriptionWithACorrelationRule_IsDriftAsync, ExactSubjectFilterClassificationTests.AnythingElse_IsNotExactAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_OwnedCommandInbox_OwnSubscriptionOnly_NoDriftAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_SharedEntities_NeverDriftCheckedAsync}
 
 `GetSubscriptionsAsync` has a default interface implementation that returns no subscriptions, so a
 custom `IServiceBusAdminClient` that does not override it compiles but turns the check off. The
 built-in `ServiceBusAdminClientWrapper` overrides it with the real listing.
 
-**RabbitMQ.** AMQP cannot list the queues bound to an exchange, so the check is indirect: if the
-command inbox exchange already exists but this service's own queue for it does not, another service
-is taken to have claimed the entity. An exchange and queue that both exist are this service's earlier
-boot, and entities that do not exist yet are a first boot; neither is drift. An operator who recreates
-a queue with this service's name can hide a real claim.
-{verified: RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_OwnedInboxExchangeExistsWithoutOurQueue_RecordsDriftAsync, RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_OwnedInboxExchangeAndOurQueueExist_NoDriftAsync, RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_FreshEntities_NoDriftAsync, RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_SharedEntities_NeverDriftProbedAsync}
+**RabbitMQ.** AMQP cannot list the queues bound to an exchange, or another queue's bindings. The only
+observable is that the command inbox exchange already exists while this service's own queue for it does
+not, and with type-filtered subscriptions that is what a second service handling some of the
+namespace's commands legitimately leaves behind. It cannot be told apart from a match-all subscriber, so
+it is logged at Information and never recorded as drift; RabbitMQ records no ownership drift.
+{verified: RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_CommandInboxExchangeExistsWithoutOurQueue_IsNotDriftAsync, RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_OwnedInboxExchangeAndOurQueueExist_NoDriftAsync}
 
-**What a finding does.** Each foreign claim is logged at `Error` level and recorded in the singleton
-`TopologyDriftState` as a `TopologyDriftFinding(Entity, ObservedSubscription, Detail)`: the topic or
-exchange, the foreign subscription (on RabbitMQ, a placeholder naming the missing queue), and a short
-diagnosis. The check never blocks startup: the service still creates its own subscription and runs. If
+**What a finding does.** Each foreign subscription that is not filtered to exact command types is logged
+at `Error` level and recorded in the singleton `TopologyDriftState` as a
+`TopologyDriftFinding(Entity, ObservedSubscription, Detail)`: the topic, the foreign subscription, and a
+short diagnosis. The check never blocks startup: the service still creates its own subscription and runs. If
 listing the subscriptions fails, the check is skipped for that entity with a `Debug` log line and
 provisioning continues.
 {verified: ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_OwnedCommandInbox_ForeignSubscription_RecordsDriftAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_OwnershipDriftCheck_EnumerationFails_LogsAndContinuesAsync, TopologyDriftStateTests.State_Findings_SnapshotsInRecordOrderAsync}
@@ -1789,19 +1842,24 @@ component named `topology` (see [Managed-Resource Health](../../resilience/manag
 It reports `Operational` while no finding exists, and `Degraded`, never faulted, once any finding is
 recorded, with a detail that names each command inbox and the foreign subscription on it. Findings
 are kept for the life of the process, so the drift stays visible after the startup log has scrolled
-away.
+away. `Degraded` maps to readiness `Degraded` (HTTP 200, the instance stays in rotation) and liveness
+`Healthy` under both built-in health policies, so drift is visible on dashboards and never restarts or
+removes an instance.
 {verified: TopologyDriftStateTests.HealthSource_NoFindings_ReportsOperationalAsync, TopologyDriftStateTests.HealthSource_WithFinding_ReportsDegradedWithDetailAsync, TopologyDriftStateTests.HealthSource_Component_IsTopologyAsync}
 
-To clear drift, make one service the owner of the command namespace: remove the other service's
-receptor for the command (or turn it into a lifecycle observer with `[FireAt(...)]`), then delete its
-subscription or queue on the command inbox entity. The health component returns to `Operational` on
+To clear drift, find the foreign subscription that matches more than its service's command types. Usually
+it was provisioned before the type filter by a service on an earlier version: upgrading that service, or
+re-provisioning its subscription, replaces the rule. If the other service really handles the same command,
+make one service the owner: remove the other service's receptor for the command (or turn it into a
+lifecycle observer with `[FireAt(...)]`). The health component returns to `Operational` on
 the next start once nothing foreign is found.
 
 ## Broker Integration
 
 ### RabbitMQ
 
-- **Commands (default)**: One exchange per command namespace, `inbox.<contract-namespace>`, bound to the handling service's queue `<service>-inbox.<contract-namespace>`
+- **Commands (default)**: One exchange per command namespace, `inbox.<contract-namespace>`, bound to each handling service's queue `<service>-inbox.<contract-namespace>` with one binding per command type that service handles
+- **Directed integrity traffic**: One exchange per service, `inbox.whizbang.service.<service>`, bound to that service's queue
 - **Commands (legacy shared inbox)**: Single "inbox" exchange with routing key pattern matching
 - **Events**: One exchange per namespace with topic routing
 
@@ -1821,7 +1879,8 @@ Exchange: myapp.orders.events
 
 ### Azure Service Bus
 
-- **Commands (default)**: One topic per command namespace, `inbox.<contract-namespace>`, with the handling service's subscription on it
+- **Commands (default)**: One topic per command namespace, `inbox.<contract-namespace>`, with a subscription per handling service, each filtered to the command types that service handles
+- **Directed integrity traffic**: One topic per service, `inbox.whizbang.service.<service>`, with that service's subscription on it
 - **Commands (legacy shared inbox)**: Single "inbox" topic with CorrelationFilter on routing key
 - **Events**: One topic per namespace with subscriptions
 
