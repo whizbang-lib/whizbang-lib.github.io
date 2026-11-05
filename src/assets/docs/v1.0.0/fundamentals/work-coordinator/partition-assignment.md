@@ -180,13 +180,23 @@ while it drains:
 
 {verified: WorkEligibilitySqlTests.Candidates_ADrainingInstanceWithAFreshHeartbeat_IsLeftOutAtOnceAsync, WorkEligibilitySqlTests.Rank_ADrainingPeer_ItsShareMovesToTheCallerAtOnceAsync, AliveVersusEligibleE2ETests.ADrainingInstance_StopsBeingEligible_AndItsShareGoesToItsPeerAsync}
 
-## Cost
+## Cost {#cost}
 
 Claimers cache the assignment in memory (`PartitionAssignmentCache`). The assigner announces each
-publish with `NOTIFY wh_partition_assignment` (payload `epoch:revision`). A claimer that hears it, or
+publish as a `PartitionAssignmentPublishedSignal` on the [signal bus](../signal-bus/signal-bus#coordination-signals),
+carrying the version `epoch:revision`: `wh_publish_partition_assignment` calls the bus's SQL publish, which notifies
+`wh_partition_assignment` (the channel and payload earlier releases use) and records the decision durably, so a claimer
+that missed the notification is told by its tail. The cache hears it through the bus (`PartitionAssignmentCache.OnPublished`,
+which replaces the earlier `OnNotification`) and owns no channel. A claimer that hears it, or
 whose claim reports its copy stale, refreshes with one keyed read of a one-row table. A claim
 presents only the version. Its fence is one read of a one-row table, and it replaces the claim's ranking
 query instead of adding to it, so a claim with the assignment costs no more than one without.
+
+| Behavior | Why | Verified by |
+|---|---|---|
+| A publish is announced on the bus, and the claimers' cache hears it there and presents the new version. | Only the bus owns `NOTIFY` and `LISTEN`; the cache subscribes to a typed signal like every other consumer. | {verified: PartitionAssignerWorkerPostgresTests.APublish_IsHeardByTheClaimersCache_WhichThenPresentsTheNewVersionAsync, PartitionAssignmentSqlTests.Publish_ByTheRoleHolder_WritesTheAssignmentAndAnnouncesItAsync} |
+| An announced version the cache does not hold marks its copy stale, and the announcement is raised only once the copy is stale. | A claim made by a caller woken by the announcement must read the new version, not the copy it replaces. | {verified: PartitionAssignmentCacheTests.OnPublished_ForADifferentVersion_MarksTheCopyStaleAsync, PartitionAssignmentCacheTests.OnPublished_RaisesTheAnnouncementOnlyOnceTheCopyIsStaleAsync} |
+| An announced version the cache already holds reads nothing, and still raises the announcement. | A decision can be heard twice (the notification, then the durable log's replay); the second is harmless. | {verified: PartitionAssignmentCacheTests.OnPublished_ForTheVersionAlreadyHeld_ReadsNothingAsync, PartitionAssignmentCacheTests.OnPublished_ForTheVersionAlreadyHeld_StillRaisesTheAnnouncementAsync} |
 
 ## Configuration
 

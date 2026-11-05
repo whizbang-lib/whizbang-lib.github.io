@@ -85,9 +85,14 @@ their own stamper. (Before 0.2604.0 the leader lock was fixed per database: only
 services got a leader, and the others' events became visible only after the unstamped-row grace
 window, several seconds per event.) The leader wakes from two sources:
 
-- **`wh_committed` NOTIFY** — the event-store emit chains ring this channel at commit time,
-  waking the leader sub-millisecond through the shared LISTEN connection.
-- **Backstop tick** — a polling floor for deployments where LISTEN is unavailable, relaxed to a
+- **`RowsCommittedSignal` on the signal bus**: the event-store emit chains ring the `wh_committed`
+  channel after commit, and the bus's Postgres transport delivers it as this signal, waking the leader
+  sub-millisecond through the shared LISTEN connection. The stamper subscribes to the signal and owns
+  no channel; it takes an `ISignalBus` where earlier releases took the shared notification connection.
+  A doorbell, so it is best-effort: wakes coalesce, and the backstop tick stands behind it (see
+  [Coordination signals](../signal-bus/signal-bus#coordination-signals)).
+  {verified: PgCommitOrderStamperWorkerCoverageTests.TheBus_WakesTheStamperOnACommit_AndAWaiterOnItsRolesReleaseAsync}
+- **Backstop tick**: a polling floor for deployments where LISTEN is unavailable, relaxed to a
   slow cadence while the signaling gate reports NOTIFY healthy.
 
 On each wake the leader calls `stamp_pending_commit_sequences`, which assigns `commit_sequence`
@@ -113,7 +118,7 @@ zero, so a healthy idle stamper is visible as such.
 | Each stamp is one transaction that checks the holder's epoch (`wh_assert_role_epoch`) before it commits. A refused stamp rolls back, and the stamper stops leading. | A stamper that lost the role, paused or partitioned, cannot stamp alongside its successor. | {verified: CommitOrderStamperRoleTests.ALeaderThatLostTheRole_IsRefusedByTheFenceAtItsNextStamp_AndStopsLeadingAsync, CommitOrderStamperRoleTests.ALeaderWhoseRenewalIsRefused_StopsLeadingAsync} |
 | The stamping loop renews the role itself: each iteration verifies the grant, and the loop never sleeps longer than one renew interval. | A stamper that stops looping stops renewing, and its role goes to another instance. | {verified: CommitOrderStamperRoleTests.TheRoleHolder_StampsUnderTheFence_AndIsTheOnlyLeaderAsync} |
 | No direct connection is needed. Through a pooled connection the stamper logs no pooler warning. | No session state has to survive between statements, so a transaction pooler serves every stamp. | {verified: PgCommitOrderStamperIterationDiagnosticsTests.Startup_PooledFallback_NeedsNoDirectConnection_SoNoPooledWarningAsync} |
-| A non-holder votes again every `LeaderElectionRetry`, and at once when the role's release is announced. | A clean hand-off should not wait for a retry interval. | {verified: CommitOrderStamperRoleTests.AWaitingNonHolder_IsWokenByTheRolesRelease_NotItsRetryIntervalAsync} |
+| A non-holder votes again every `LeaderElectionRetry`, and at once when the release of the stamper's role (and only that role) arrives as a `RoleReleasedSignal` on the bus. A release heard twice, by the notification and then the durable log's replay, frees one vote. | A clean hand-off should not wait for a retry interval, and a decision replayed to an instance that missed it must not wake it twice. | {verified: CommitOrderStamperRoleTests.AWaitingNonHolder_IsWokenByTheRolesRelease_NotItsRetryIntervalAsync, PgCommitOrderStamperWorkerCoverageTests.TheBus_WakesTheStamperOnACommit_AndAWaiterOnItsRolesReleaseAsync} |
 | A newer-version instance asking for the role gets it after the stamp in progress. | The cooperative drain every duty follows. | {verified: CommitOrderStamperRoleTests.ALeaderAskedToDrain_ReleasesTheRole_AndTheNewerInstanceTakesItAsync} |
 | With no elector registered, the stamper logs a warning and does not stamp. | There is no role to hold and no lock to fall back to. The driver always registers an elector, so this is a host that left out the notification services. | {verified: PgCommitOrderStamperWorkerCoverageTests.ExecuteAsync_WithNoDutyElector_SaysSoAndEndsWithoutLeadingAsync} |
 
@@ -143,7 +148,7 @@ written the affected database. The fence is now scoped to the current database.
 
 ## Fenced work retries until drained {#fenced-retry}
 
-A commit's own `wh_committed` wake can arrive while an older same-database transaction is still
+A commit's own `wh_committed` wake (`RowsCommittedSignal`) can arrive while an older same-database transaction is still
 open. The stamp call then legitimately assigns nothing — but that wake will not repeat, and
 without care the pending rows would sit invisible until the next backstop tick.
 

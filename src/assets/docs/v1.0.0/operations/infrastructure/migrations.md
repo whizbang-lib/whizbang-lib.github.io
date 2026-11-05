@@ -702,6 +702,15 @@ reads the rule before its pass, to name the other releases still alive, and the
 `record_heartbeat` and `cleanup_stale_instances` stay in the main pass.
 {verified: MigrationBootstrapRegionsTests.TheBootstrapSubsetIsTheMigrationsStartupNeedsAsync, PreflightInstanceColumnsTests.EveryColumnAMigrationAddsToAnInstanceOrRoleTable_IsAddedByTheBootstrapClosureAsync, PreflightInstanceColumnsTests.EveryFunctionTheBootstrapDefines_IsDefinedAsItsLastWordAsync, FleetVersionsTests.AnOlderReleaseLiveOnlyByItsAliveLock_IsReportedAsync}
 
+Since migration 330 the closure also carries the signal bus's SQL publish, `wh_publish_signal`, the durable log's
+`payload` column on `wh_signals`, and `wh_release_role` redefined from 184 to publish a released role through the bus
+(see [coordination signals](../../fundamentals/signal-bus/signal-bus#coordination-signals)). The role release is
+Preflight's, so its last definition must be in the closure, and so must what it calls. On a fresh database the closure
+runs before migration 065 creates `wh_signals`: the column is then left to the main pass, and a release in that window
+notifies without recording, because there is no log to record into yet. The same migration's
+`wh_publish_partition_assignment`, `wh_record_multi_stream_run` and `cleanup_stale_instances` stay in the main pass.
+{verified: MigrationBootstrapRegionsTests.TheBootstrapSubsetIsTheMigrationsStartupNeedsAsync, PreflightInstanceColumnsTests.EveryFunctionTheBootstrapDefines_IsDefinedAsItsLastWordAsync, RoleAssignmentSqlTests.Release_IsRecordedDurably_SoAnInstanceThatMissedTheNotificationIsStillToldAsync}
+
 Registration ends Preflight and writes the stage the instance held until its row existed. Earlier releases created
 those columns and the recorder only in the main pass, so on a fresh database that write failed (logged at Debug and
 held), and the row recorded nothing until Converge. A fresh database's row now records its stage from registration,

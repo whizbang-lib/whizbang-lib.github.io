@@ -18,52 +18,32 @@ public interface IWorkNotificationListener {
 }
 ```
 
-The listener is a `BackgroundService` that:
+Behind it, the engine's push side:
 1. Opens a long-lived connection that bypasses any session-state-breaking pooler.
-2. Subscribes to the engine's pub/sub mechanism for the `wh_work` channel (or equivalent).
-3. Dispatches received notifications to `OnSignal(WorkSignalCategory)`.
+2. Subscribes to the engine's pub/sub mechanism for each instance's work channel (`wh_work_i_<instance>` on Postgres) and the signal bus's other channels, as the bus's transport.
+3. Dispatches received notifications as typed signals, which the listener turns into `OnSignal(WorkSignalCategory)`.
 4. Reconnects with exponential backoff on disconnect.
 5. Surfaces health via `IsHealthy` + `OnHealthChanged`.
 
 ## Postgres reference
 
-`Whizbang.Data.Postgres/Notifications/PgWorkNotificationListener.cs` is the reference. ~120 lines:
+On Postgres the push side is the [signal bus](../../v1.0.0/fundamentals/signal-bus/signal-bus.md), and only the bus
+issues `NOTIFY` and `LISTEN` ([#2046](https://github.com/whizbang-lib/whizbang/issues/2046)):
 
-```csharp
-public sealed partial class PgWorkNotificationListener : BackgroundService, IWorkNotificationListener {
-  protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
-    if (string.IsNullOrWhiteSpace(_options.DirectConnectionString) || _options.DisableNotifications) {
-      return;  // NoOp mode
-    }
+- `PgSharedNotifyConnection` is the one long-lived direct connection per instance. It owns reconnect, backoff,
+  keepalive and the self-test probe, and implements `INotifySignalingGate`.
+- `PostgresSignalTransport` is the bus's Postgres transport and the connection's only subscriber. It `LISTEN`s on the
+  broadcast channel, the instance's own channel (`wh_work_i_<instance>`), the
+  [coordination channels](../../v1.0.0/fundamentals/signal-bus/signal-bus.md#coordination-signals) and each
+  application topic, and delivers typed signals to the bus.
+- `PgWorkNotificationListener` implements `IWorkNotificationListener` as a **subscriber of the bus**: it subscribes to
+  the work doorbells, the orphan wake and the dead-letter doorbell, and raises `OnSignal(WorkSignalCategory)`. It owns
+  no channel and no connection; `IsHealthy` is the gate's availability.
 
-    var attempt = 0;
-    while (!stoppingToken.IsCancellationRequested) {
-      try {
-        await using var conn = new NpgsqlConnection(_options.DirectConnectionString);
-        conn.Notification += _onNotification;
-        await conn.OpenAsync(stoppingToken);
-
-        await using (var cmd = new NpgsqlCommand("LISTEN wh_work", conn)) {
-          await cmd.ExecuteNonQueryAsync(stoppingToken);
-        }
-
-        _setHealthy(true);
-        attempt = 0;
-
-        while (!stoppingToken.IsCancellationRequested) {
-          // WaitAsync blocks until a notification arrives or keepalive timeout.
-          // On keepalive: SELECT 1 to prove the connection is alive.
-        }
-      } catch (Exception ex) when (ex is not OperationCanceledException) {
-        _setHealthy(false);
-        attempt++;
-        var delay = _computeBackoff(attempt);
-        await Task.Delay(delay, stoppingToken);
-      }
-    }
-  }
-}
-```
+A new engine with server-side pub/sub follows the same shape: implement the bus's transport (`ISignalTransport`, and
+`ISignalTopicTransport` to carry application topics) over one long-lived connection, and let the existing subscribers
+hear it through the bus. A coordination test guard fails when a raw channel subscription appears outside the bus's
+files (see [Gravity](../gravity.md#coordination-source-guard)).
 
 ## Engine equivalents
 
@@ -98,21 +78,17 @@ Send a cheap query (`SELECT 1` for SQL backends) periodically to prove the conne
 
 ## App signals (if your engine supports it)
 
-If `SupportsServerSideNotifications`, also implement `IAppSignalChannel` for application pub/sub. Postgres reference: `PgAppSignalChannel.cs`.
+Application pub/sub needs no separate implementation: `IAppSignalChannel` is the signal bus, which hands each topic
+to every transport that implements `ISignalTopicTransport`. Postgres reference: `PostgresSignalTransport.cs`
+(`PublishTopicAsync`, `SubscribeTopic`). `PgAppSignalChannel` is deleted.
 
 App channels share the listener connection but use distinct postgres channel names (`wh_app_<topic>`). The validator in `Whizbang.Core/Notifications/AppSignals/AppSignalTopicValidator.cs` enforces the `wh_` prefix is reserved for internal use.
 
 ## NOTIFY emission contract
 
-The corresponding write side is in your SQL functions. After successful inserts in `commit_handler_result` and `complete_perspective`, emit:
+The corresponding write side is in your SQL functions. On Postgres a store or handler commit that inserted work rings the owners of the streams it touched (`notify_instance_owners(payload, stream_ids)`, payload `outbox`, `inbox` or `perspective`); the hot transaction only queues the doorbell, and `ring_doorbells`, the signal bus's after-commit ringer, sends it on `wh_work_i_<owner>` once the transaction has committed (see [Doorbells ring after commit](../../v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md#doorbells-ring-after-commit)). A coordination decision is published through `wh_publish_signal`. No other SQL function notifies.
 
-```sql
-PERFORM pg_notify('wh_work', 'outbox');       -- if outbox rows inserted
-PERFORM pg_notify('wh_work', 'inbox');        -- if inbox rows inserted
-PERFORM pg_notify('wh_work', 'perspective');  -- if perspective rows created
-```
-
-Postgres dedups `(channel, payload)` pairs at COMMIT — burst inserts collapse to one delivered notification per category. Free.
+Postgres dedups `(channel, payload)` pairs at COMMIT: burst inserts collapse to one delivered notification per category.
 
 ## DI registration
 
@@ -124,12 +100,13 @@ public static IServiceCollection AddWhizbangPostgresNotifications(
     sp.GetRequiredService<PgWorkNotificationListener>());
   services.AddHostedService(sp =>
     sp.GetRequiredService<PgWorkNotificationListener>());
-  services.AddSingleton<IAppSignalChannel, PgAppSignalChannel>();
+  // App signals ride the signal bus: the channel is the bus itself.
+  services.TryAddSingleton<IAppSignalChannel>(static sp => sp.GetRequiredService<SignalBus>());
   return services;
 }
 ```
 
-The same listener instance is bound as `IWorkNotificationListener`, the hosted service, and (when applicable) the dispatcher for `IAppSignalChannel`. This consolidates to one direct connection per pod.
+The same listener instance is bound as `IWorkNotificationListener` and the hosted service, and `IAppSignalChannel` resolves to the signal bus. Every signal, work, coordination or application, rides the bus's one transport over one direct connection per pod.
 
 ## When to skip
 
