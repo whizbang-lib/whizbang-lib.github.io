@@ -635,10 +635,13 @@ constant predicate on the lane. A call therefore reads the rows in its window, a
 the size of the store.
 
 **Why two branches.** The lane's sequence used to come from one `CASE` expression, with the window filtered
-afterwards. No index can serve a range on a `CASE`, so every call read the whole lane, and the paged answers of a
-large store each paid for all of it. Migration 332 split the lane; no new index was needed, because both columns
-were already indexed. The tests count the rows each call actually reads (`pg_stat_xact_user_tables`) against a lane
-much larger than the window, so a return to the whole-lane read fails them.
+afterwards. A custom plan, which sees the lane parameter's value, folds that `CASE` to one column and can use its
+index. But a function's queries and an auto-prepared statement switch to the generic plan after a few calls, and the
+generic plan keeps the `CASE`. No index can serve a range on it, so in steady state every call read the whole lane,
+and the paged answers of a large store each paid for all of it. Migration 332 split the lane; no new index was needed,
+because both columns were already indexed. The tests force the generic plan and count the rows each call actually
+reads (`pg_stat_xact_user_tables`) against a lane much larger than the window, so a return to the whole-lane read
+fails them.
 
 ### Phase L — local perspective-coverage audit {#phase-l-local-perspective-coverage-audit}
 
