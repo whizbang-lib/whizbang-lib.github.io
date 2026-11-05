@@ -14,6 +14,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Notifications/NotificationConnectionPlan.cs
   - src/Whizbang.Data.Postgres/Notifications/PgRoleElector.cs
   - src/Whizbang.Data.Postgres/Notifications/PgCommitOrderStamperWorker.cs
+  - src/Whizbang.Data.Postgres/Notifications/PgWorkNotificationListener.cs
+  - src/Whizbang.Data.Postgres/Notifications/PostgresSignalTransport.cs
   - src/Whizbang.Data.Postgres/Schema/ManagedSchemaReconciler.cs
   - src/Whizbang.Data.Postgres/Migrations/143_NotifyStateNeverWaits.sql
   - src/Whizbang.Data.Postgres/Migrations/146_DoorbellsRingAfterCommit.sql
@@ -24,6 +26,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AdvisoryLockReleaseTests.cs
   - tests/Whizbang.Core.Component.Tests/Notifications/PgCommitOrderStamperIterationDiagnosticsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ManagedSchemaReconcilerPoolerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Notifications/PgWorkNotificationListenerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/SharedDirectConnectionCountRegressionTests.cs
 ---
 
 # Notifications and pgbouncer
@@ -56,10 +60,9 @@ Each pod opens **exactly one** direct connection (bypasses pgbouncer) and multip
 │                │                   │                                 │  │
 │                │                   │  uses ONE Npgsql connection     │  │
 │                │                   │  ┌───────────────────────────┐  │  │
-│                │                   │  │ Subscribers:              │  │  │
-│                │                   │  │   PgWorkNotificationListener  │
-│                │                   │  │   PgCommitOrderStamperWorker  │
-│                │                   │  │   PgAppSignalChannel      │  │  │
+│                │                   │  │ One subscriber:           │  │  │
+│                │                   │  │   PostgresSignalTransport │  │  │
+│                │                   │  │   (the signal bus's wire) │  │  │
 │                │                   │  └───────────────────────────┘  │  │
 │                │                   └─────────────────┬───────────────┘  │
 │                │                                     │                  │
@@ -73,7 +76,19 @@ Each pod opens **exactly one** direct connection (bypasses pgbouncer) and multip
            └──────────────────────────────────────────────────┘
 ```
 
-**Total bypass-pool connections per pod: 1.** Multiple subscribers (work signals, the commit-order stamper's wake, app signals, future channels) all share that single direct conn. Pre-slice-33 design opened one direct connection per listener type (3 per pod). With horizontal scaling (many pods × many services × many environments), that adds up fast on the Postgres `max_connections` budget.
+**Total bypass-pool connections per pod: 1.** Every channel (work signals, the commit-order stamper's wake, role releases, partition assignments, multi-stream runs, app signals) shares that single direct conn.
+
+### Only the signal bus listens {#only-the-bus-listens}
+
+The shared connection has one subscriber, the signal bus's Postgres transport, and only the bus issues `NOTIFY` and
+`LISTEN` ([#2046](https://github.com/whizbang-lib/whizbang/issues/2046)). The work listener, the commit-order stamper,
+the holder loop, the partition cache and the multi-stream worker each subscribe to a typed signal on the bus and own
+no channel; application topics ride the same transport (see [App signals](app-signals.md)). In SQL, the only functions
+that notify are the bus's own: `ring_doorbells`, the after-commit doorbell ringer, and `wh_publish_signal`, the bus's
+publish (see [Coordination signals](../signal-bus/signal-bus#coordination-signals)). A source guard fails the build's
+tests when a subscription to the shared connection appears outside the bus's files, or a coordination channel is
+named anywhere but the bus's wire (see [Gravity](../../../contributors/gravity#coordination-source-guard)).
+{verified: CoordinationSourceGuardTests.RawChannelSubscriptions_AppearOnlyInTheSignalBusFilesAsync, CoordinationSourceGuardTests.CoordinationChannels_AreNamedOnlyByTheBussWireAsync, CoordinationSourceGuardTests.SqlNotifications_AppearOnlyInTheAllowlistedFunctionsAsync, SharedDirectConnectionCountRegressionTests.SharedConn_OneListenerSessionPerPod_AcrossAllRegisteredSubscribersAsync} Pre-slice-33 design opened one direct connection per listener type (3 per pod). With horizontal scaling (many pods × many services × many environments), that adds up fast on the Postgres `max_connections` budget.
 
 ### No leader holds a session lock {#session-locks}
 
@@ -165,8 +180,8 @@ On startup (and periodically thereafter via `PeriodicReprobeInterval`, default 5
    IF v_inbox_inserted_count > 0  THEN PERFORM pg_notify('wh_work_i_{owner}', 'inbox');  END IF;
    ```
 2. Postgres queues notifications. **Dedup at COMMIT**: 10 000 inserts that all `pg_notify('wh_work_i_{owner}', 'outbox')` collapse to **one** delivered notification per `(channel, payload)` tuple — postgres handles this automatically.
-3. On COMMIT, the owning instance's `PgSharedNotifyConnection` is in `WaitAsync` on its direct connection. The notification fires its handler. The handler looks up the channel name in the subscription registry and invokes each subscriber's `OnNotification(payload)` callback synchronously.
-4. `PgWorkNotificationListener` (a thin subscriber) parses the payload and fires `OnSignal(WorkSignalCategory.Outbox)`.
+3. On COMMIT, the owning instance's `PgSharedNotifyConnection` is in `WaitAsync` on its direct connection. The notification fires its handler. The handler looks up the channel name in the subscription registry and hands the payload to the signal bus's Postgres transport, which delivers the typed signal (`WorkOutboxAvailableSignal`) to its bus subscribers synchronously.
+4. `PgWorkNotificationListener`, a subscriber of the bus, fires `OnSignal(WorkSignalCategory.Outbox)`. It subscribes to the three work doorbells, the reap's orphan wake (`WorkOrphanedSignal`) and the dead-letter doorbell (`DeadLetterReadySignal`), and owns no channel or connection; a work signal a poll source raised arrives the same way, which only wakes a worker that would have found the work on its next poll. {verified: PgWorkNotificationListenerTests.EveryWorkDoorbell_FiresOnSignalWithItsCategoryAsync, PostgresSignalTransportUnitTests.TheWorkChannel_DeliversOrphanedWorkAndDeadLetters_AsSignalsAsync, PgWorkNotificationListenerIntegrationTests.PgNotify_OutboxCategory_FiresOnSignalWithOutboxAsync}
 5. `ClaimWorker` is subscribed to `OnSignal`; it calls `RequestImmediatePoll()` which releases the wake semaphore.
 6. The claim worker's loop returns from its sleep early and immediately polls `claim_work`.
 
@@ -326,11 +341,11 @@ Bound from the `Whizbang:Database` section in `IConfiguration`:
 
 ## App signals
 
-Whizbang exposes the same NOTIFY infrastructure to application code via `IAppSignalChannel`. App topics share the per-pod shared connection just like internal channels:
+Whizbang exposes the same NOTIFY infrastructure to application code via `IAppSignalChannel`, which is the signal bus. App topics share the per-pod shared connection just like internal channels:
 
 - App channels are named `wh_app_<topic>`.
 - Topic validation rejects the `wh_` prefix in user input — app code cannot publish to or subscribe to internal categories.
-- `Subscribe(topic, handler)` registers an `INotifySubscription` on the shared connection (one per topic, lazily); multiple handlers on the same topic share the underlying `LISTEN` and fan out in memory.
+- `Subscribe(topic, handler)` hands the topic to the bus's Postgres transport, which `LISTEN`s on it (one per topic, lazily); multiple handlers on the same topic share the underlying `LISTEN` and fan out in memory.
 
 See [App signals](app-signals.md) for usage.
 
@@ -411,7 +426,7 @@ For a local Aspire setup, there's no pgbouncer; the pooled connection is direct 
 
 For 50 pods × 11 services in production (illustrative numbers — scale to your own deployment):
 
-- **Direct connections to postgres (slice 33+)**: 50 × 11 = 550 (one shared LISTEN per pod per service, regardless of how many subscribers — work signals, commit-order stamping, app signals, etc.).
+- **Direct connections to postgres (slice 33+)**: 50 × 11 = 550 (one shared LISTEN per pod per service, regardless of how many signals ride it: work signals, commit-order stamping, coordination signals, app signals).
 - **Pre-slice-33 baseline**: 50 × 11 × 3 = 1 650 (three listeners per pod). Slice 33 cuts the direct-conn budget by ~67%.
 - **Pooled connections to pgbouncer**: 50 × 11 × `Maximum Pool Size` (50 default) = 27 500 client positions, oversubscribed onto ~25–50 pgbouncer backend connections per service DB = ~275–550 backend pool connections total.
 - **Total backend connections per service DB**: ~30–55 backend pool + 50 direct = ~80–105.
