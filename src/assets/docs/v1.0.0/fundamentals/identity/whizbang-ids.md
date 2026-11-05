@@ -37,6 +37,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/ValueObjects/TrackedGuidMonotonicityTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdVersionAcceptanceTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderRegistryTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdServiceCollectionExtensionsTests.cs
@@ -634,7 +635,7 @@ public readonly partial struct CustomerId;
 The `[WhizbangId]` attribute triggers source generation that creates:
 - Value object with `Value` property (Guid)
 - `New()` static method for creating new IDs (uses `TrackedGuid.New()` internally)
-- `From(Guid)` / `From(TrackedGuid)` static methods for wrapping existing GUIDs — **both validate UUIDv7** and throw `ArgumentException` for non-v7 values
+- `From(Guid)` / `From(TrackedGuid)` static methods for wrapping existing GUIDs: **both validate UUIDv7** and throw `ArgumentException` for non-v7 values (unless the id is declared with [`AcceptAnyVersion`](#accept-any-version))
 - `Parse(string)` method for deserialization (validates UUIDv7)
 - Equality operators and `IComparable<T>`
 - Implicit conversion to Guid (explicit conversion from Guid)
@@ -660,6 +661,44 @@ Guid guid = orderId;
 // Get underlying Guid
 Guid underlyingGuid = orderId.Value;
 ```
+
+### Ids that are not UUIDv7 {#accept-any-version}
+
+Some identities are not UUIDv7 and never will be: name-derived ids (UUIDv5 or v8), ids derived from a hash, and
+v4 ids issued by an external identity provider. Declare those ids with `AcceptAnyVersion = true`:
+
+```csharp{title="Accepting any Guid version" description="An id that takes any non-empty Guid, such as one issued by an external identity provider" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "AcceptAnyVersion"] tests=["WhizbangIdVersionAcceptanceTests.AnyVersion_FromGuid_RoundTripsAsync", "WhizbangIdVersionAcceptanceTests.AnyVersion_New_StillProducesUuidV7Async", "WhizbangIdVersionAcceptanceTests.AnyVersion_EmptyGuid_IsRejectedEverywhereAsync", "WhizbangIdVersionAcceptanceTests.Strict_NonV7_IsRejectedByFromParseCastAndJsonAsync"]}
+using Whizbang.Core;
+
+[WhizbangId(AcceptAnyVersion = true)]
+public readonly partial struct ExternalUserId;
+
+// A v4 Guid from the identity provider: accepted
+var userId = ExternalUserId.From(Guid.Parse("3f2504e0-4f89-41d3-9a0c-0305e82c3301"));
+
+// New() still makes a UUIDv7
+var fresh = ExternalUserId.New();
+
+// Guid.Empty is never a valid id: throws ArgumentException
+ExternalUserId.From(Guid.Empty);
+```
+
+With the option, every way into the id takes any Guid except `Guid.Empty`, and they all agree:
+
+| Way in | Default (`AcceptAnyVersion = false`) | `AcceptAnyVersion = true` |
+|--------|--------------------------------------|---------------------------|
+| `From(Guid)`, `From(TrackedGuid)` | UUIDv7 only | any non-empty Guid |
+| `Parse(string)` | UUIDv7 only | any non-empty Guid |
+| Explicit cast from `Guid` | UUIDv7 only | any non-empty Guid |
+| JSON reader (every serialization profile) | UUIDv7 only | any non-empty Guid |
+| Public constructor, `Value` initializer | not checked | any non-empty Guid |
+| `New()` | makes a UUIDv7 | makes a UUIDv7 |
+
+Every rejection throws `ArgumentException` (the JSON reader fails the deserialization), and the message names the id
+type, for example `ExternalUserId requires a non-empty Guid`.
+
+The default stays strict, so declare the option only on ids whose values come from outside. For ids your system
+creates, keep the default, so they stay UUIDv7 and sort by creation time.
 
 ## Strongly-Typed ID Providers
 
