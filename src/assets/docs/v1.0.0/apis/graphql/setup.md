@@ -16,11 +16,15 @@ codeReferences:
   - src/Whizbang.Transports.HotChocolate/Configuration/WhizbangGraphQLOptions.cs
   - src/Whizbang.Transports.HotChocolate/Middleware/ScopeMiddlewareExtensions.cs
   - src/Whizbang.Transports.HotChocolate/Middleware/WhizbangScopeMiddleware.cs
+  - src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateWhizbangIdExtensions.cs
+  - src/Whizbang.Transports.HotChocolate/Types/WhizbangIdType.cs
 testReferences:
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/ServiceRegistrationTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/WhizbangGraphQLOptionsTests.cs
   - tests/Whizbang.Transports.HotChocolate.Component.Tests/Unit/ScopeMiddlewareExtensionsTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/WhizbangScopeMiddlewareTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Ids.Tests/Unit/WhizbangIdGraphQLTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Ids.Tests/Unit/WhizbangIdTypeTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -183,6 +187,79 @@ builder.Services
     .AddWhizbangLensQueries();
 ```
 
+## Strong IDs {#strong-ids}
+
+`AddWhizbangIds()` lets a resolver take a [`[WhizbangId]`](../../fundamentals/identity/whizbang-ids) type as an
+argument or an input field, and return one:
+
+```csharp{title="Strong IDs" description="Strong ids as GraphQL arguments, input fields and results" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "WhizbangId", "Scalars"] tests=["WhizbangIdGraphQLTests.Schema_ShowsEachIdAsANamedUuidScalarAsync", "WhizbangIdGraphQLTests.Argument_WithAUuidV7_ReachesTheResolverAsTheIdAsync", "WhizbangIdGraphQLTests.InputField_WithAUuidV7_ReachesTheResolverAsTheIdAsync", "WhizbangIdGraphQLTests.Result_OfAnIdType_IsWrittenAsAUuidStringAsync"]}
+[WhizbangId]
+public readonly partial struct OrderId;
+
+public class Query {
+  public string GetOrder(OrderId id) => id.Value.ToString();
+  public OrderId EchoOrder(OrderId id) => id;
+}
+
+builder.Services
+    .AddGraphQLServer()
+    .AddWhizbangLenses()
+    .AddWhizbangIds()
+    .AddQueryType<Query>();
+```
+
+Each id type becomes its own scalar, named after the type and written as a UUID string:
+
+```graphql{title="Strong ID in the schema" description="The scalar AddWhizbangIds adds for OrderId"}
+type Query {
+  order(id: OrderId!): String!
+  echoOrder(id: OrderId!): OrderId!
+}
+
+"A OrderId, written as a UUID string."
+scalar OrderId @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc9562")
+```
+
+Input goes through the id's own `From(Guid)`, so a literal, a variable and an input field are all checked the same
+way. A value that is not a UUID, or a Guid the id refuses (not UUIDv7, or `Guid.Empty`), fails as a GraphQL error
+with the code `WHIZBANG_INVALID_ID` and the reason, and the resolver does not run:
+
+```json{title="Invalid strong ID" description="The response to order(id: ...) with a UUIDv4" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "WhizbangId", "Errors"] tests=["WhizbangIdGraphQLTests.Argument_WithANonV7Guid_IsAGraphQLErrorAsync", "WhizbangIdGraphQLTests.InputField_WithANonV7Guid_IsAGraphQLErrorAsync", "WhizbangIdGraphQLTests.Argument_ThatIsNotAUuid_IsAGraphQLErrorAsync"]}
+{
+  "errors": [
+    {
+      "message": "The value is not a valid OrderId: OrderId requires UUIDv7 but received version 4 (Parameter 'value')",
+      "locations": [{ "line": 1, "column": 9 }],
+      "path": ["id"],
+      "extensions": {
+        "code": "WHIZBANG_INVALID_ID",
+        "fieldCoordinate": "Query.order(id:)",
+        "fieldType": "OrderId",
+        "responseName": "order"
+      }
+    }
+  ],
+  "data": null
+}
+```
+
+An id declared with `[WhizbangId(AcceptAnyVersion = true)]` takes any non-empty Guid here too, because the scalar
+applies the id's own rule {verified: WhizbangIdGraphQLTests.AnyVersionId_WithANonV7Guid_ReachesTheResolverAsync, WhizbangIdGraphQLTests.AnyVersionId_WithTheEmptyGuid_IsAGraphQLErrorAsync}.
+
+Notes:
+
+- **Opt-in.** `AddWhizbangLenses()` does not call `AddWhizbangIds()`. Without it, an id property on a read model
+  stays an object or input type (`{ value }`), as before.
+- **Why a named scalar, not `UUID`.** HotChocolate reports a failed type conversion as a generic "unable to convert"
+  or "Unexpected Execution Error", without the reason. A scalar can reject the value during input coercion and say
+  why. The schema also shows which id each argument takes. On the wire it is the same UUID string, so a client maps
+  these scalars the way it maps `UUID`.
+- **Scalar names are the type's short name.** Two id types with the same name in different namespaces (including
+  Whizbang's own ids below) fail the schema build with HotChocolate's duplicate-type error.
+- Every id type in the loaded assemblies gets a scalar, including ids no field uses and Whizbang's own ids
+  (`MessageId`, `CorrelationId`, `EventId`, `StreamId`). The ids are found through the registration each assembly's
+  generated code makes, without reflection.
+
 ## What Gets Registered
 
 `AddWhizbangLenses()` registers:
@@ -196,6 +273,10 @@ builder.Services
 
 - `IScopeContextAccessor` - AsyncLocal-based scope access
 - `WhizbangScopeOptions` singleton (if configured)
+
+`AddWhizbangIds()` registers:
+
+- One scalar per `[WhizbangId]` type (see [Strong IDs](#strong-ids))
 
 ## Next Steps
 
