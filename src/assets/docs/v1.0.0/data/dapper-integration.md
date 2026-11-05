@@ -130,6 +130,16 @@ code of yours that needs the schema waits on it (a worker of your own is registe
 stage-by-stage comparison and the upgrade note: before this release the schema was migrated inside
 `AddWhizbangPostgres`, and the gate never opened on a Dapper host.
 
+### What the Dapper work coordinator runs {#coordinator-parity}
+
+{verified: WorkCoordinatorDriverParityTests.EveryDefaultBodiedMember_IsImplementedByDapper_OrAllowListedWithAReasonAsync, DapperStreamIntegrityRefusalTests.ASwitchConfiguredOn_RefusesTheHost_NamingTheFeatureTheKeyAndTheReasonAsync}
+
+The Dapper work coordinator runs the same SQL as the EF Core coordinator for retention, table maintenance, recovery,
+the type registry, lifecycle reconciliation and coalescing. Stream integrity is the exception: it runs on the EF Core
+driver only, its switches default to off on a Dapper host, and turning one on fails the host at start. See
+[What the Dapper work coordinator supports](drivers.md#dapper-coordinator-parity) and
+[What the Dapper driver refuses at startup](drivers.md#what-dapper-refuses-at-startup).
+
 ---
 
 ## Basic Usage

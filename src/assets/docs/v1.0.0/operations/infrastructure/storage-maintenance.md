@@ -35,11 +35,11 @@ codeReferences:
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Data.Postgres/Migrations/254_BloatMeasurementsRecordTheirMethod.sql
   - src/Whizbang.Data.Postgres/Migrations/258_EventStoreCreatedAtBrin.sql
-  - src/Whizbang.Data.EFCore.Postgres/OrphanedLifecycleEventsSql.cs
+  - src/Whizbang.Data.Postgres/OrphanedLifecycleEventsSql.cs
   - src/Whizbang.Core/Workers/QueueIndexReindexStep.cs
   - src/Whizbang.Core/Workers/MaintenanceWorkerOptionsValidator.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
-  - src/Whizbang.Data.EFCore.Postgres/QueueIndexSql.cs
+  - src/Whizbang.Data.Postgres/QueueIndexSql.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/FrameworkTableAutovacuumTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PerspectiveCursorFillFactorTests.cs
