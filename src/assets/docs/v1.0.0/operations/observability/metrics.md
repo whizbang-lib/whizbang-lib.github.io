@@ -919,6 +919,8 @@ Meter name: `Whizbang.TypeRegistry` (`TypeRegistryMetrics`)
 
 ## Whizbang.StreamIntegrity {#stream-integrity}
 
+{verified: StreamIntegrityMetricsTests.Counters_AreCreatedWithExpectedNamesAsync, StreamIntegrityMetricsTests.Counters_AreNotNullAsync}
+
 Meter name: `Whizbang.StreamIntegrity` (`StreamIntegrityMetrics`)
 
 | Metric Name | Type | Description |
@@ -933,6 +935,8 @@ Meter name: `Whizbang.StreamIntegrity` (`StreamIntegrityMetrics`)
 | `whizbang.stream_integrity.manifests_requested` | Counter\<long\> | Manifest requests sent to origins; tagged by `origin` + `sweep` |
 | `whizbang.stream_integrity.manifest_chunks_sent` | Counter\<long\> | Manifest chunks answered as an origin; tagged by `level` |
 | `whizbang.stream_integrity.drill_downs_requested` | Counter\<long\> | Type-level mismatches escalated to stream-level requests; tagged by `origin` |
+| `whizbang.stream_integrity.unplaced_buckets` | Counter\<long\> | Windowed stream buckets left undecided because events are held without the origin's commit sequence; not recorded or repaired, the full-history comparison decides them ([events held without an origin sequence](../../resilience/stream-integrity#events-held-without-an-origin-sequence)); tagged by `origin` |
+| `whizbang.stream_integrity.stream_digest_drift_corrected` | Counter\<long\> | Stream digest buckets the id-lane backfill found drifted from their events and corrected, each also logged at Warning ([one digest fold](../../resilience/stream-integrity#id-lane-backfill)); tagged by `kind` (drift_updated \| drift_removed \| drift_added) |
 | `whizbang.stream_integrity.backfills_requested` | Counter\<long\> | Types queued for the [paced backfill](../../resilience/stream-integrity#paced-backfill) on consumed-set growth (value = new type count) |
 | `whizbang.stream_integrity.backfill_windows_requested` | Counter\<long\> | Paced backfill windows asked of owners, retries included; tagged by `event_type` |
 | `whizbang.stream_integrity.backfill_events_received` | Counter\<long\> | Events the answered paced backfill windows selected; tagged by `event_type` |
