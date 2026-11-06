@@ -16,6 +16,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/279_CollectiveApplyProgress.sql
   - src/Whizbang.Core/Workers/RetentionSettingsBridge.cs
   - src/Whizbang.Core/Workers/QueueIndexReindexStep.cs
+  - src/Whizbang.Data.EFCore.Postgres/FrameworkIndexBuildMaintenanceStep.cs
+  - src/Whizbang.Data.Postgres/ConcurrentIndexBuild.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerStepTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerRetentionSyncTests.cs
@@ -25,6 +27,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveApplyProgressSqlTests.cs
   - tests/Whizbang.Core.Tests/Workers/QueueIndexReindexStepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueueIndexReindexSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ConcurrentIndexBuildTests.cs
 ---
 
 # Maintenance steps {#maintenance-steps}
@@ -89,6 +92,17 @@ A claim per window keeps it to one rebuild per window across the fleet. `AddWhiz
 
 [Storage maintenance: rebuilding queue-table indexes](../../operations/infrastructure/storage-maintenance#queue-index-rebuild)
 has the survey, the threshold, the leftovers and the reason for each rule.
+
+## Framework index build {#framework-index-build}
+
+{verified: ConcurrentIndexBuildTests.AfterTheMigrations_TheIndexIsNotThereYet_AndTheMaintenanceStepBuildsItAsync, ConcurrentIndexBuildTests.ThePostgresDriver_RegistersTheStepAsync, ConcurrentIndexBuildTests.TheStep_RefusesWhatItCannotRunAsync}
+
+The EF Core Postgres driver's `framework-index-build` step builds the framework indexes a migration must not build,
+with `CREATE INDEX CONCURRENTLY` outside any transaction, so writes to the indexed table go on during the build. It is
+a step for the same reason the queue-index rebuild is: a ready schema, a settled service and the maintainer duty are
+exactly what an index build on a large table needs. Once every index is valid, each run is one catalog read per index.
+[Indexes built after the migrations](../../operations/infrastructure/migrations#indexes-built-after-the-migrations)
+has the indexes, the leftovers and the reason for each rule.
 
 ## Ledger retention {#ledger-retention}
 

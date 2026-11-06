@@ -58,6 +58,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/IntegrityAuditWorker.cs
   - src/Whizbang.Core/Workers/RepairDrainWorker.cs
   - src/Whizbang.Core/Workers/SubscriptionExpansionWorker.cs
+  - src/Whizbang.Core/Workers/SubscriptionBackfillWorker.cs
   - src/Whizbang.Core/Messaging/RedeliveryPump.cs
   - src/Whizbang.Data.EFCore.Postgres/IntegrityCheckpointReceptor.cs
   - src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs
@@ -99,7 +100,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/IntegrityCheckpointWorkerPriorityTests.cs
   - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerPriorityTests.cs
   - tests/Whizbang.Core.Tests/Workers/RepairDrainWorkerPriorityTests.cs
-  - tests/Whizbang.Core.Tests/Workers/SubscriptionExpansionWorkerPriorityTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/SubscriptionBackfillWorkerTests.cs
   - tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpPriorityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityReceptorsPriorityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs
@@ -399,7 +400,7 @@ records. With `LeastUrgent`, an audit composite stays idle whatever joins it.
 
 ## Background work {#background-work}
 
-{verified: AuditingEventStoreDecoratorPriorityTests.AppendAsync_WithEnvelope_QueuesTheAuditRecordAsBackground_OnTheRowAndTheEnvelopeAsync, AuditingEventStoreDecoratorPriorityTests.AppendAsync_TheAuditedEventsInteractiveNumber_DoesNotReachTheAuditRecordAsync, SystemEventEmitterPriorityTests.EmitEventAudited_TheAuditEnvelopeIsBackgroundAsync, SystemEventEmitterPriorityTests.EmitCommandAudited_TheAuditEnvelopeIsBackgroundAsync, IntegrityCheckpointWorkerPriorityTests.RunCheckpointOnce_WithTransport_EveryTopicCopyIsBackgroundAsync, IntegrityAuditWorkerPriorityTests.LocalGaps_TheReportAndTheRebuild_AreDispatchedInsideABackgroundHandlingAsync, IntegrityReceptorsPriorityTests.ManifestRequestReceptor_EveryManifestChunkIsBackgroundAsync, IntegrityManifestReceptorTests.ManifestReceptor_Divergence_TheRepairRequestIsBackgroundAsync, IntegrityManifestReceptorTests.ManifestReceptor_TypeLevelMismatch_TheDrillDownRequestIsBackgroundAsync, IntegrityManifestReceptorTests.ManifestReceptor_TypeLevelBulkDeficit_TheBackfillRequestIsBackgroundAsync, RepairDrainWorkerPriorityTests.DrainTick_EveryRepairRequestIsBackgroundAsync, SubscriptionExpansionWorkerPriorityTests.Expansion_TheBackfillRequestIsBackgroundAsync, RedeliveryPumpPriorityTests.Publish_EveryBundleOnTheWireIsBackgroundAsync}
+{verified: AuditingEventStoreDecoratorPriorityTests.AppendAsync_WithEnvelope_QueuesTheAuditRecordAsBackground_OnTheRowAndTheEnvelopeAsync, AuditingEventStoreDecoratorPriorityTests.AppendAsync_TheAuditedEventsInteractiveNumber_DoesNotReachTheAuditRecordAsync, SystemEventEmitterPriorityTests.EmitEventAudited_TheAuditEnvelopeIsBackgroundAsync, SystemEventEmitterPriorityTests.EmitCommandAudited_TheAuditEnvelopeIsBackgroundAsync, IntegrityCheckpointWorkerPriorityTests.RunCheckpointOnce_WithTransport_EveryTopicCopyIsBackgroundAsync, IntegrityAuditWorkerPriorityTests.LocalGaps_TheReportAndTheRebuild_AreDispatchedInsideABackgroundHandlingAsync, IntegrityReceptorsPriorityTests.ManifestRequestReceptor_EveryManifestChunkIsBackgroundAsync, IntegrityManifestReceptorTests.ManifestReceptor_Divergence_TheRepairRequestIsBackgroundAsync, IntegrityManifestReceptorTests.ManifestReceptor_TypeLevelMismatch_TheDrillDownRequestIsBackgroundAsync, IntegrityManifestReceptorTests.ManifestReceptor_TypeLevelBulkDeficit_TheBackfillRequestIsBackgroundAsync, RepairDrainWorkerPriorityTests.DrainTick_EveryRepairRequestIsBackgroundAsync, SubscriptionBackfillWorkerTests.Tick_InsideAnInteractiveHandling_TheWindowStaysBackgroundAsync, RedeliveryPumpPriorityTests.Publish_EveryBundleOnTheWireIsBackgroundAsync}
 
 Work the framework creates for itself is declared **background by construction**, on the envelope and on
 the row, whatever the handling that caused it: nobody is waiting on it, and a flood of it at the standard
@@ -411,8 +412,8 @@ by a rule a host has to remember:
 | the audit decorator and the system event emitter | every `EventAudited` and `CommandAudited` record, and so the audit digest folded from them |
 | the integrity checkpoint and audit workers | checkpoints, manifest requests, and the gap reports and rebuilds they dispatch (the worker enters a background handling, so the dispatcher's inheritance rule declares them) |
 | the integrity receptors | manifest answers, drill-down and follow-up requests, repair and backfill requests |
-| the repair drain and the subscription expansion worker | redelivery requests |
-| the redelivery pump | every bundle it ships |
+| the repair drain and the paced subscription backfill | redelivery requests, including each backfill window |
+| the redelivery pump | every bundle it ships, and every backfill window's answer |
 
 The negative case is tested at each site as well: an audit record of an interactive event, or one built
 while an interactive handling is in progress, does not inherit interactive. A worker's ambient background
