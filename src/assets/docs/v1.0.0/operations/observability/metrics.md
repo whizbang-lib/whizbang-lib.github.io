@@ -62,6 +62,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/PerspectiveRewindMetricsTests.cs
   - tests/Whizbang.Core.Tests/Workers/PendingEventsStatisticsRefreshTests.cs
   - >-
+  - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsBackfillGaugeTests.cs
     tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerStartupAndMaintenanceTests.cs
   - tests/Whizbang.Core.Tests/Observability/WorkCoordinatorMetricsTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowOutboxFlushFailureTests.cs
@@ -932,7 +933,13 @@ Meter name: `Whizbang.StreamIntegrity` (`StreamIntegrityMetrics`)
 | `whizbang.stream_integrity.manifests_requested` | Counter\<long\> | Manifest requests sent to origins; tagged by `origin` + `sweep` |
 | `whizbang.stream_integrity.manifest_chunks_sent` | Counter\<long\> | Manifest chunks answered as an origin; tagged by `level` |
 | `whizbang.stream_integrity.drill_downs_requested` | Counter\<long\> | Type-level mismatches escalated to stream-level requests; tagged by `origin` |
-| `whizbang.stream_integrity.backfills_requested` | Counter\<long\> | State-only backfill requests broadcast for consumed-set growth (value = new type count) |
+| `whizbang.stream_integrity.backfills_requested` | Counter\<long\> | Types queued for the [paced backfill](../../resilience/stream-integrity#paced-backfill) on consumed-set growth (value = new type count) |
+| `whizbang.stream_integrity.backfill_windows_requested` | Counter\<long\> | Paced backfill windows asked of owners, retries included; tagged by `event_type` |
+| `whizbang.stream_integrity.backfill_events_received` | Counter\<long\> | Events the answered paced backfill windows selected; tagged by `event_type` |
+| `whizbang.stream_integrity.backfills_ended` | Counter\<long\> | Paced backfills that ended; tagged by `outcome` (complete \| unanswered) |
+| `whizbang.stream_integrity.backfill_windows_in_flight` | ObservableGauge\<int\> | Paced backfill windows asked for and awaiting their answer |
+| `whizbang.stream_integrity.backfill_remaining_events` | ObservableGauge\<long\> | Events each running paced backfill is estimated to have left; tagged by `event_type`; falls to zero as it finishes |
+| `whizbang.stream_integrity.redelivery_answers_capped` | Counter\<long\> | Redelivery answers an origin stopped at its event bound with more selected; tagged by `kind` (window \| ordinary) |
 | `whizbang.stream_integrity.digest_buckets_verified` | Counter\<long\> | Settled digest buckets checked by the trust-but-verify sweep |
 | `whizbang.stream_integrity.digest_drift_healed` | Counter\<long\> | Digest buckets the sweep healed; tagged by `kind` (updated \| removed \| added) |
 | `whizbang.stream_integrity.redelivery_requests_received` | Counter\<long\> | Re-delivery requests served as an origin (repair + backfill flows) |

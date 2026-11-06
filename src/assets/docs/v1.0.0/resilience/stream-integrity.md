@@ -75,6 +75,12 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/331_LedgerKeepsOnlyConsumedTypes.sql
   - src/Whizbang.Data.Postgres/Migrations/332_DigestWindowsReadOnlyTheirWindow.sql
   - src/Whizbang.Data.Postgres/Migrations/335_RedeliveryReconcilesRunAsABatch.sql
+  - src/Whizbang.Core/Workers/SubscriptionBackfillWorker.cs
+  - src/Whizbang.Core/Messaging/SubscriptionBackfill.cs
+  - src/Whizbang.Data.EFCore.Postgres/BackfillWindowAnswerReceptor.cs
+  - src/Whizbang.Data.Postgres/SubscriptionBackfillSql.cs
+  - src/Whizbang.Data.Postgres/Migrations/334_PacedSubscriptionBackfill.sql
+  - src/Whizbang.Data.Postgres/ConcurrentIndexBuild.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileCoordinatorTests.cs
@@ -156,6 +162,18 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/RepairTopicResolverTests.cs
   - tests/Whizbang.Core.Tests/Transports/IntegrityControlDestinationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WindowedDigestLaneReadTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/SubscriptionBackfillWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/SubscriptionBackfillCursorTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/SubscriptionBackfillOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RepairTrafficTests.cs
+  - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsBackfillGaugeTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/BackfillWindowAnswerReceptorTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryWindowAnswerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/SubscriptionBackfillStoreTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PacedBackfillEndToEndTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PacedBackfillIndexTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RunPermitAuditTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -483,8 +501,9 @@ as well. It is still covered by the digests.
 The startup type-definition reconciler already diffs each service's catalog against its persisted
 registration. It gains one comparison: **the consumed-type set**. When a deploy grows it (new
 perspective; perspective adds a type; first boot of a new consumer), the
-`SubscriptionExpansionWorker` records the expansion in the consumed-type registry and sends **one
-broadcast, state-only `RequestRedeliveryCommand`** for the new types' history. Delivered history
+`SubscriptionExpansionWorker` records the expansion in the consumed-type registry and **queues a
+paced backfill** of each new type's history, which the `SubscriptionBackfillWorker` walks in bounded,
+state-only windows (see [paced backfill](#paced-backfill)). Nothing is sent from the reconciler itself. Delivered history
 folds into projections through the normal pipeline (state-only children are event-stored and
 projected); an explicit "schedule the local rebuild once delivery completes" step is design
 intent, not yet wired as of a64ba9a.
@@ -499,11 +518,12 @@ worker itself.)
 :::updated
 **Design specifics (as built):**
 
-- **The backfill request BROADCASTS** (no `Target`) — an expanding consumer cannot know which
-  origins emitted a type's history. Every service's re-delivery receptor runs the scoped selection;
-  origins holding matching events answer with bundles targeted back at the requester, everyone
-  else selects nothing. A consumer that persisted forwarded copies may answer too — extra sources
-  converge harmlessly by event-id identity.
+- **Each window is asked of the type's owner**, directed on the owner's request topic, when the
+  owner is known from the [domain claims](#ownership-is-exchanged-on-the-checkpoint) and has announced
+  a request address. A type with no usable owner is **broadcast** (no `Target`): an expanding consumer
+  cannot know which origins emitted that type's history. Every service's re-delivery receptor runs
+  the scoped selection; origins holding matching events they wrote answer with bundles targeted back
+  at the requester, everyone else selects nothing. Extra sources converge harmlessly by event-id identity.
 - **"Backfill builds state, never re-fires triggers" rides the ENVELOPE**: a `stateOnly` delivery
   marker (wire key `sto`, sibling of the directed `tgt`) stamped on the bundle by the pump and
   inherited by every fanned-out child. A state-only child is event-stored and projected normally,
@@ -515,6 +535,160 @@ worker itself.)
   (Baseline/Pending/Requested); today only the startup worker reads it — wiring it into the
   deep audit as the "pending backfill" surface is not yet done as of a64ba9a.
 :::
+
+### Paced backfill {#paced-backfill}
+
+{verified: SubscriptionExpansionTargetingTests.Backfill_TypesWithAKnownOwner_AreQueuedForThatOwner_AndNothingIsSentAtOnceAsync, SubscriptionExpansionTargetingTests.Backfill_TypesOfOneOwner_AreQueuedOnePerTypeAsync, SubscriptionExpansionWorkerTests.Expansion_QueuesAPacedBackfillAndMarksRequested_SendingNothingAtOnceAsync, SubscriptionBackfillWorkerTests.Tick_RequestsTheFirstWindowOfAQueuedBackfill_FromItsOwner_AndWaitsForTheAnswerAsync, SubscriptionBackfillWorkerTests.Tick_AnAnsweredWindow_IsFollowedByTheNextFromWhereItStoppedAsync, SubscriptionBackfillWorkerTests.Tick_AWindowAwaitingItsAnswer_IsNotAskedAgainAsync, PacedBackfillEndToEndTests.ATypeLargerThanTheOwnerBound_ArrivesWhole_AcrossSeveralWindows_AndTheBackfillCompletesAsync}
+
+A boot that grew the consumed set used to ask every owner for the whole history of every new type at once, and each
+owner answered with one bundle per event. On a store with millions of events that was a flood: the transport, the
+owner's database and the requester's inbox all took the whole history in one burst, while the services were also
+serving live traffic. The backfill is now a walk the requester paces:
+
+1. **The reconciler queues; it does not send.** For each new type it queues one backfill per (owner, event type):
+   for the type's owner when one is known with a request address, otherwise for a broadcast (the empty owner id).
+2. **The `SubscriptionBackfillWorker` asks for one window at a time.** A window is the type's events after the
+   backfill's position, in the owner's commit-sequence order, up to `BackfillWindowSize` events. The next window of a
+   type is asked for only once the previous one has been answered.
+3. **The owner answers the window and then says where it stopped.** It ships the window's events in as few bundles as
+   its size bounds allow, then sends a `BackfillWindowAnswer` with the last commit sequence the window covered and
+   whether more remains.
+4. **The answer moves the position.** The requester records it durably, and the next window starts after it. An
+   answer with nothing more ends the backfill as complete.
+
+```mermaid {caption="One paced backfill: the requester asks for a window, the owner ships it and answers where it stopped, and only then is the next window asked for" tests=["SubscriptionBackfillWorkerTests.Tick_AnAnsweredWindow_IsFollowedByTheNextFromWhereItStoppedAsync","RedeliveryWindowAnswerTests.Window_StoppedAtTheOwnerBound_SaysWhereAndThatMoreRemains_AndTheNextWindowsReceiveTheRestAsync","BackfillWindowAnswerReceptorTests.Answer_IsAppliedToItsBackfill_AndItsEventsCountedByTypeAsync"]}
+sequenceDiagram
+  participant R as Requester (maintainer)
+  participant T as wh_subscription_backfills
+  participant O as Owner
+  R->>T: read running backfills
+  R->>O: window n: type, after position, up to BackfillWindowSize
+  R->>T: window n requested, answer due by
+  O-->>R: bundles (many streams each, on the backfill's session)
+  O-->>R: BackfillWindowAnswer: stopped at, more remains
+  R->>T: position = stopped at
+  R->>O: window n+1 (only now)
+```
+
+#### Why each choice {#paced-backfill-why}
+
+- **Windows by the owner's commit sequence, not by stream.** One number is the whole position: the last commit
+  sequence a window covered is exactly where the next one starts, across every stream of the type. A (stream,
+  version) keyset would have to carry two values and would walk the type one stream at a time. Only stamped events
+  have a commit sequence, so only they are selected; an event the stamper has not reached is covered by the
+  [deep audit](#phase-a-digest-manifests) like any other gap.
+  {verified: SelectRedeliveryEventsTests.Select_ByCommitSequence_WalksStampedRowsInCommitOrderAsync, SelectRedeliveryEventsTests.Select_ByCommitSequence_WithoutEventTypes_IsRefusedAsync, RedeliveryWindowAnswerTests.Window_SelectsByCommitSequenceFromThePosition_ShipsOneBundle_AndAnswersAsync, RedeliveryWindowAnswerTests.Window_PagesByCommitSequence_NeverByStreamKeysetAsync, RedeliveryWindowAnswerTests.Window_NamingNoEventType_IsNotAnsweredAsync}
+- **The position is durable, one row per (owner, event type).** Migration 334 adds `wh_subscription_backfills`: the
+  position, the window awaiting its answer and until when, attempts, counts and the outcome. A restart resumes from the
+  position instead of asking for the history again, a finished type stops, and queuing a pair that is already present
+  keeps its row, so every instance can queue the same expansion safely.
+  {verified: SubscriptionBackfillStoreTests.Enqueue_QueuesOnePerOwnerAndType_AndQueuingAgainKeepsTheRowAsync, SubscriptionBackfillStoreTests.MarkRequested_AwaitsTheAnswer_AndASecondRequestOfTheSameWindowCountsAnAttemptAsync, SubscriptionBackfillStoreTests.RecordAnswer_MovesThePositionToWhereTheWindowStopped_AndTheNextWindowStartsItsAttemptsAtOneAsync, SubscriptionBackfillStoreTests.RecordAnswer_WithNothingMore_CompletesTheBackfill_AndKeepsTheFirstSequenceAsync, SubscriptionBackfillStoreTests.End_EndsARunningBackfill_AndAnAnswerAfterwardsChangesNothingAsync}
+- **An answer applies only to the window awaiting it.** A late answer to an earlier window, or a duplicate, changes
+  nothing and counts nothing, so a retried window can never move the position twice.
+  {verified: SubscriptionBackfillStoreTests.RecordAnswer_LateDuplicateOrForAnotherWindow_ChangesNothingAsync, BackfillWindowAnswerReceptorTests.AnAnswerThatAppliesToNothing_CountsNothingAsync, BackfillWindowAnswerReceptorTests.FinalAnswer_EndsTheBackfill_AndCountsItCompleteAsync}
+- **A token bucket paces events, not windows.** Every window spends its full `BackfillWindowSize` from a bucket that
+  refills at `BackfillEventsPerMinute` and holds at most one minute's worth, or one window when a window is larger, so
+  the rate bounds the events asked for whatever the window size, and a window larger than a minute's rate can still be
+  afforded. At the defaults (1,000-event windows, 6,000 events a minute) a store with millions of events of a type is
+  backfilled over hours rather than in one burst.
+  {verified: SubscriptionBackfillWorkerTests.Tick_SpendsTheWholeWindowFromTheBucket_SoTheRateBoundsTheEventsRequestedAsync, SubscriptionBackfillWorkerTests.Tick_AWindowLargerThanAMinutesRate_IsStillAffordableAsync, SubscriptionBackfillOptionsTests.Defaults_PaceTheBackfillSoItCannotFloodAsync}
+- **At most `BackfillMaxConcurrentWindows` windows are out at once** (2 by default), across every type and owner, and
+  the backfill asked least recently goes first. The owner serves each window on its own
+  [idle-gated integrity queue](#integrity-deliveries-are-queued), so a small bound keeps the requester from piling
+  work on an owner that is busy.
+  {verified: SubscriptionBackfillWorkerTests.Tick_RequestsAtMostTheConfiguredWindowsAtOnceAsync, SubscriptionBackfillWorkerTests.Tick_TheLeastRecentlyAskedBackfillGoesFirstAsync}
+- **An unanswered window is asked again, then the type stops.** A window waits `RepairAnswerTimeoutMinutes` for its
+  answer, the same allowance a [repair waits](#repair-waits-for-its-answer), because the owner's queue may be deferred
+  for up to `MaxDeferral`. It is then asked again at the same position, up to `BackfillMaxWindowAttempts` (3 by
+  default), and the backfill ends as `Unanswered` with a Warning naming the type and owner. A bound is needed because
+  an owner on a release before windowed backfill ignores the window and answers the ordinary way, with bundles but no
+  window answer: the events still arrive, and the deep audit reports anything still missing.
+  {verified: SubscriptionBackfillWorkerTests.Tick_AWindowPastItsAnswerTimeout_IsAskedAgain_AtTheSamePositionAsync, SubscriptionBackfillWorkerTests.Tick_AWindowUnansweredForEveryAttempt_EndsTheBackfillAsUnanswered_AndAsksNoMoreAsync, SubscriptionBackfillWorkerTests.Tick_AnEndedBackfill_IsLeftAloneAsync}
+- **Bundles span streams, and the answer rides behind them.** A window's bundles group events by scope only, so a
+  window of a thousand events in a thousand streams ships in a few bundles instead of a thousand; each child still
+  names the stream it is stored on, and the receiver's fan-out takes each stream's events in version order. Every
+  bundle and the answer travel on the backfill's own broker session, so the answer arrives after the window's events.
+  An ordinary request keeps one stream per bundle, which every receiver understands; only a windowed backfill, whose
+  requester is new enough to ask for it, gets cross-stream bundles.
+  {verified: RedeliveryPumpWindowTests.Publish_WithABundleStream_ShipsManyStreamsInOneBundle_OnTheBackfillSessionAsync, RedeliveryPumpWindowTests.Publish_WithABundleStream_StillSplitsAtTheCountBoundAndByScopeAsync, RedeliveryPumpWindowTests.PublishWindowAnswer_SendsTheAnswerToTheRequester_OnTheBackfillSessionAsync}
+- **The answer is integrity traffic.** `BackfillWindowAnswer` is a control-plane message, applied by the requester's
+  [integrity delivery drain](#the-integrity-delivery-drain) like the request it answers, and a report-only service
+  applies none.
+  {verified: BackfillWindowAnswerReceptorTests.Registrar_JoinsTheAnswerReceptorAtTheThreeStagesAsync, BackfillWindowAnswerReceptorTests.Answer_InReportOnly_IsNotAppliedAsync, RepairTrafficTests.InboxMessageTypeNames_NameTheRequestTheBundleAndTheWindowAnswer_NormalizedAsync}
+- **It runs on the maintainer, under the idle gate, and only when repair is on.** The worker ticks every second to
+  refill its bucket, but asks for windows only on the instance holding the
+  [maintainer duty](#integrity-work-runs-on-the-maintainer), only once the housekeeping idle gate admits integrity
+  work, and never in `ReportOnly` or with `BackfillOnSubscriptionGrowth` off. A window is background work like every
+  other request the framework makes for itself.
+  {verified: SubscriptionBackfillWorkerTests.Tick_OnAnInstanceWhoseRunPermitIsClosed_SendsNothingAsync, SubscriptionBackfillWorkerTests.Tick_WhenTheIdleGateRefusesIntegrityWork_SendsNothingAsync, SubscriptionBackfillWorkerTests.Tick_InReportOnly_SendsNothing_AndReadsNothingAsync, SubscriptionBackfillWorkerTests.Tick_WithBackfillOnSubscriptionGrowthOff_SendsNothingAsync, SubscriptionBackfillWorkerTests.Tick_InsideAnInteractiveHandling_TheWindowStaysBackgroundAsync, RunPermitAuditTests.TheTurnkeyHost_RunsThePacedBackfillAsync}
+- **A failed send costs one window.** A broker failure is logged, the window is not recorded as requested, and it is
+  asked again on a later tick; the other backfills still go. An owner that has announced no request address is skipped
+  until it does.
+  {verified: SubscriptionBackfillWorkerTests.Tick_AFailedSend_IsNotRecorded_AndTheNextBackfillStillGoesAsync, SubscriptionBackfillWorkerTests.Tick_AnOwnerWithNoRequestAddress_IsSkipped_AndTheOthersStillGoAsync, SubscriptionBackfillWorkerTests.Tick_ABackfillWithNoKnownOwner_BroadcastsItsWindow_OnTheSharedTopicAsync}
+
+#### An answer never stops short in silence {#answers-say-where-they-stopped}
+
+{verified: RedeliveryWindowAnswerTests.Window_StoppedAtTheOwnerBound_SaysWhereAndThatMoreRemains_AndTheNextWindowsReceiveTheRestAsync, RedeliveryWindowAnswerTests.Window_SelectingNothing_AnswersThatNothingRemains_WithoutABundleAsync, RedeliveryWindowAnswerTests.Window_OfEventsThisServiceDoesNotOwn_ShipsNothing_ButStillMovesThePositionAsync, RedeliveryWindowAnswerTests.OrdinaryRequest_StoppedAtTheBoundWithMoreLeft_IsCountedAsCappedAsync, RedeliveryWindowAnswerTests.OrdinaryRequest_ThatSelectedEverything_IsNotCappedAsync, PacedBackfillEndToEndTests.ATypeLargerThanTheOwnerBound_ArrivesWhole_AcrossSeveralWindows_AndTheBackfillCompletesAsync}
+
+An owner caps every answer at its `Whizbang:Redelivery:MaxEventsPerRequest` (10,000 by default). Before windows, an
+answer that reached the cap simply stopped, and nothing told the requester, so a backfill of a larger type never
+completed. A window is clamped to the same cap, but its answer reports the last commit sequence it covered and that
+more remains, and the next window starts exactly there: a type of any size arrives whole across several windows. A
+window that selected only events of types the owner does not own ships nothing but still moves the position past them,
+so it cannot ask for the same events forever.
+
+An ordinary (non-window) request has no position to continue from. When one reaches the cap with more selected, the
+owner counts it on `redelivery_answers_capped` with `kind=ordinary` and logs it; a non-zero rate means requests wider
+than the cap.
+
+#### What it reads through {#paced-backfill-index}
+
+{verified: PacedBackfillIndexTests.AWindowRead_UsesTheTypeCommitSequenceIndex_InOrderAsync, PacedBackfillIndexTests.TheHeadRead_UsesTheTypeCommitSequenceIndexAsync, PacedBackfillIndexTests.BeforeTheBuild_AWindowRead_AnswersWithoutTheIndexAsync, PacedBackfillIndexTests.AProbeThatNamesNoType_IsNotOfferedTheIndexAsync}
+
+A window reads one type's stamped events in commit order from a position, under a limit, and the answer reads the
+type's head. Both go through `idx_event_store_type_commit_sequence` on `(event_type, commit_sequence)`. Its predicate
+also names `event_type IS NOT NULL`, which every row satisfies but only a query filtering on a type implies, so the
+planner never offers it to a commit-sequence probe that names no type, which has its own index.
+
+The index is **not built by migration 334**. A `CREATE INDEX` inside a migration's transaction would hold every write
+to the event store for the whole build, minutes on a large store. It is built with `CREATE INDEX CONCURRENTLY` after
+the migrations, by a maintenance step: see
+[indexes built after the migrations](../operations/infrastructure/migrations#indexes-built-after-the-migrations).
+Windows read without it, more slowly, until it is valid.
+
+#### Watching a backfill {#watching-a-backfill}
+
+{verified: SubscriptionBackfillWorkerTests.Tick_CountsWindowsRequested_AndPublishesTheInFlightAndRemainingGaugesAsync, StreamIntegrityMetricsBackfillGaugeTests.BackfillGauges_ReportTheLastReading_InFlightAndRemainingByTypeAsync, SubscriptionBackfillCursorTests.EstimateRemaining_ScalesWhatArrivedOverTheSpanAheadAsync, SubscriptionBackfillCursorTests.EstimateRemaining_BeforeAnyEvent_IsUnknownAsync}
+
+| Instrument | Meaning |
+| --- | --- |
+| `backfill_windows_requested` (tag `event_type`) | Windows asked of owners, retries included. |
+| `backfill_events_received` (tag `event_type`) | Events the answered windows selected. |
+| `backfills_ended` (tag `outcome`: `complete`, `unanswered`) | Backfills that ended. `unanswered` means an owner on an earlier release, or one that stopped answering. |
+| `backfill_windows_in_flight` (gauge) | Windows asked for and awaiting their answer; at most `BackfillMaxConcurrentWindows`. |
+| `backfill_remaining_events` (gauge, tag `event_type`) | Each running backfill's estimate of what is left: the density of what has arrived (events per commit sequence so far) over the span between the position and the owner's head. Unreported until a window has answered with events; falls to zero as the backfill finishes. |
+| `redelivery_answers_capped` (tag `kind`: `window`, `ordinary`) | Owner side: answers that stopped at `MaxEventsPerRequest` with more selected. |
+
+The two gauges are published by the backfill worker's own tick on the maintainer, not by the maintenance tick that
+reads the [integrity gauges](#integrity-gauges). The worker logs one line when a type's backfill starts, and the
+requester logs one when it finishes, with the events and window requests it took. The rows of
+`wh_subscription_backfills` are the durable record: `outcome` is 0 running, 1 complete, 2 unanswered.
+
+#### Settings {#paced-backfill-options}
+
+All bound from `Whizbang:StreamIntegrity`; each must be at least 1, checked at host start with the key named.
+{verified: SubscriptionBackfillOptionsTests.Defaults_PaceTheBackfillSoItCannotFloodAsync, SubscriptionBackfillOptionsTests.Validate_AValueBelowOne_FailsNamingTheKeyAsync}
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `BackfillWindowSize` | `1000` | Events one window asks an owner for. The owner clamps it to its `MaxEventsPerRequest` |
+| `BackfillEventsPerMinute` | `6000` | The backfill's pace in events asked for per minute, across every type |
+| `BackfillMaxConcurrentWindows` | `2` | Windows awaiting their answer at once, across every type and owner |
+| `BackfillMaxWindowAttempts` | `3` | Times one window is asked without an answer before the type's backfill ends as unanswered; each attempt waits `RepairAnswerTimeoutMinutes` |
+
+**Mixed versions.** An owner on an earlier release ignores the window and answers the ordinary way, so the events
+arrive and the backfill ends as unanswered after its attempts. A requester on an earlier release asks the old way, and
+an upgraded owner answers that the old way too. Nothing has to be deployed in a particular order.
 
 ### Phase A: digest manifests (the scheduled deep audit) {#phase-a-digest-manifests}
 
@@ -750,14 +924,15 @@ namespace. A null consumed set forgets nothing: only an explicit set may empty t
 rows it forgot.
 
 #### After upgrading {#integrity-surface-after-upgrading}
-{verified: SubscriptionExpansionTargetingTests.Backfill_FirstPassAfterUpgrade_AsksTheReceptorOnlyEventOfItsOwner_NeverBroadcastsAsync, SubscriptionExpansionTargetingTests.Backfill_MixedOwnership_DirectsTheOwnedTypesAndBroadcastsTheRestAsync, ConsumedEventReachesEventStoreTests.WithNoPerspectives_AConsumedEvent_IsCopiedIntoTheEventStoreAsync}
+{verified: SubscriptionExpansionTargetingTests.Backfill_FirstPassAfterUpgrade_QueuesTheReceptorOnlyEventForItsOwnerAsync, SubscriptionExpansionTargetingTests.Backfill_MixedOwnership_QueuesTheOwnedTypeForItsOwnerAndTheRestAsBroadcastAsync, ConsumedEventReachesEventStoreTests.WithNoPerspectives_AConsumedEvent_IsCopiedIntoTheEventStoreAsync}
 
 The same change makes the receive path store every consumed event, whether or not a perspective folds it (see
 [classifying a received message](../extending/internals/receptor-registry-query#classifying-a-received-message)).
 On the first start after upgrading, the [subscription-expansion backfill](#phase-s-subscription-expansion-backfill)
-sees those newly stored types as an expansion of the consumed set and asks for their history under its existing caps.
-A type with a known owner is asked of that owner directly; only a type with no known owner is broadcast.
-`whizbang.stream_integrity.backfills_requested` counts the requests, so an operator can see the one-time backfill.
+sees those newly stored types as an expansion of the consumed set and queues a [paced backfill](#paced-backfill) of
+their history. A type with a known owner is asked of that owner directly; only a type with no known owner is broadcast.
+`whizbang.stream_integrity.backfills_requested` counts the types queued, and `backfill_remaining_events` shows how much
+of the one-time backfill is left.
 Set `BackfillOnSubscriptionGrowth` to `false` before upgrading to record the expansion as Pending instead.
 
 ### What is digested {#what-is-digested}
@@ -942,8 +1117,12 @@ services.Configure<StreamIntegrityOptions>(o => {
   o.MaxIntegrityDeliveryAttempts = 5;        // then the delivery is dropped with a warning
   o.IntegrityDeliveryRetryBackoffSeconds = 30;  // doubles per attempt, capped at one hour
 
-  // Phase S — subscription growth
+  // Phase S: subscription growth, backfilled in paced windows (see "Paced backfill")
   o.BackfillOnSubscriptionGrowth = true;
+  o.BackfillWindowSize = 1_000;              // events one window asks an owner for
+  o.BackfillEventsPerMinute = 6_000;         // the pace, across every type
+  o.BackfillMaxConcurrentWindows = 2;        // windows awaiting an answer at once
+  o.BackfillMaxWindowAttempts = 3;           // unanswered requests of one window before the type stops
 });
 ```
 
@@ -1572,7 +1751,7 @@ namespace, so directed traffic still reached services it was not addressed to; a
 traffic. The control inbox is subscribed by exactly one service, so a directed message reaches exactly one. A
 [subscription-expansion backfill](#phase-s-subscription-expansion-backfill) for a type with no known owner is a
 broadcast by design, so it still goes on the shared broadcast inbox, never on a control inbox.
-{verified: RepairTopicResolverTests.Broadcast_IsNeverTheServicesOwnControlInboxAsync, SubscriptionExpansionTargetingTests.Backfill_RepliesToItsOwnControlInbox_AndBroadcastsOnTheSharedTopicAsync, NamespaceInboxStrategyTests.SecondServiceHandlingACommandInTheAddresseesNamespace_NeverReceivesItsIntegrityTrafficAsync}
+{verified: RepairTopicResolverTests.Broadcast_IsNeverTheServicesOwnControlInboxAsync, SubscriptionBackfillWorkerTests.Tick_ABackfillWithNoKnownOwner_BroadcastsItsWindow_OnTheSharedTopicAsync, NamespaceInboxStrategyTests.SecondServiceHandlingACommandInTheAddresseesNamespace_NeverReceivesItsIntegrityTrafficAsync}
 
 **Services on an earlier version.** Senders answer on whatever address a receiver advertised, so a service that still
 advertises a command inbox or the shared broadcast inbox keeps receiving where it did. When it upgrades, its next
@@ -1623,6 +1802,7 @@ slot, are deferred while the service is busy or cooling down, and are forced thr
 | Draining integrity deliveries (received checkpoints, manifest requests, manifest chunks, redelivery requests, bundle reconciles) | The maintainer, in the `IntegrityDeliveryWorker` | Yes |
 | The deep and local audit (`IntegrityAuditWorker`) | The maintainer | Yes |
 | The paced repair drain (`RepairDrainWorker`) | The maintainer | Yes |
+| Asking for subscription backfill windows (`SubscriptionBackfillWorker`) | The maintainer | Yes, see [paced backfill](#paced-backfill) |
 | Publishing continuity checkpoints (`IntegrityCheckpointWorker`) | The maintainer | **No**, see [checkpoints are not gated](#checkpoints-are-not-idle-gated) |
 | Storing a redelivery bundle's events | Whichever instance receives the bundle | No: that is ordinary event storage |
 
@@ -2434,7 +2614,7 @@ the beat is never dropped. With no owned domains registered, the topic set is un
 
 ### Redelivery ships only what the origin wrote {#redelivery-ships-only-what-the-origin-wrote}
 
-{verified: SelectRedeliveryEventsTests.Select_AuthoredBy_ShipsOnlyEventsTheAnsweringServiceWroteAsync, SelectRedeliveryEventsTests.Select_WithoutAuthoredBy_KeepsTheEarlierSelectionAsync, RedeliveryRequestReceptorTests.Receptor_AsksTheSelectionForEventsThisServiceAuthoredAsync, RedeliveryRequestReceptorTests.Receptor_ARequestThisServiceMadeItself_IsIgnoredAsync, RedeliveryRequestReceptorTests.Receptor_ShipsOnlyEventsOfOwnedTypes_AndPagesPastTheRestAsync, SubscriptionExpansionTargetingTests.Backfill_TypesWithAKnownOwner_AreAskedOfThatOwnerOnlyAsync, SubscriptionExpansionTargetingTests.Backfill_TypesWithNoUsableOwner_FallBackToOneBroadcastAsync, SubscriptionExpansionTargetingTests.Backfill_MixedOwnership_DirectsTheOwnedTypesAndBroadcastsTheRestAsync, SubscriptionExpansionTargetingTests.Backfill_AnOwnerThatIsThisService_IsNotAskedAsync}
+{verified: SelectRedeliveryEventsTests.Select_AuthoredBy_ShipsOnlyEventsTheAnsweringServiceWroteAsync, SelectRedeliveryEventsTests.Select_WithoutAuthoredBy_KeepsTheEarlierSelectionAsync, RedeliveryRequestReceptorTests.Receptor_AsksTheSelectionForEventsThisServiceAuthoredAsync, RedeliveryRequestReceptorTests.Receptor_ARequestThisServiceMadeItself_IsIgnoredAsync, RedeliveryRequestReceptorTests.Receptor_ShipsOnlyEventsOfOwnedTypes_AndPagesPastTheRestAsync, SubscriptionExpansionTargetingTests.Backfill_TypesWithAKnownOwner_AreQueuedForThatOwner_AndNothingIsSentAtOnceAsync, SubscriptionExpansionTargetingTests.Backfill_TypesWithNoUsableOwner_AreQueuedAsBroadcastsAsync, SubscriptionExpansionTargetingTests.Backfill_MixedOwnership_QueuesTheOwnedTypeForItsOwnerAndTheRestAsBroadcastAsync, SubscriptionExpansionTargetingTests.Backfill_AnOwnerThatIsThisService_IsNotAskedAsync}
 
 A redelivery bundle names the answering service as its origin, so it may carry only events that service
 wrote. Three rules make that hold:
@@ -2453,10 +2633,10 @@ wrote. Three rules make that hold:
 
 **The backfill asks the owner.** When the consumed-type set grows, the backfill no longer broadcasts one
 request every holder answers. Each new type whose owner is known from the domain claims, with a request
-address, is asked of that owner alone: one directed state-only request per owner, on the owner's request
-topic. Only the types with no usable owner (none known, an owner that announced no request address, or this
-service itself) fall back to the single broadcast, which the rules above keep cheap: in practice only the
-author answers.
+address, is queued for that owner alone, and each of its [paced windows](#paced-backfill) is a directed
+state-only request on the owner's request topic. Only the types with no usable owner (none known, an owner that
+announced no request address, or this service itself) are queued for a broadcast, which the rules above keep
+cheap: in practice only the author answers.
 
 ### Re-attribution {#re-attribution}
 
@@ -2530,7 +2710,8 @@ patterns worth understanding before building a dashboard:
 
 {verified: MaintenanceWorkerIntegrityGaugeTests.AnInstanceThatIsNotTheMaintainer_StillPublishesTheLedgerReadingAsync, MaintenanceWorkerIntegrityGaugeTests.ATickTheIdleGateDefers_StillPublishesTheLedgerReadingAsync, IntegrityRepairAnswerSqlTests.Summary_CountsBucketsAwaitingAnAnswer_AnsweredBuckets_AndTheIntegrityDeliveriesWaitingAsync, IntegrityRepairAnswerSqlTests.Summary_WithNoIntegrityDeliveries_ReportsNoneWaitingAsync, StreamIntegrityMetricsCoverageTests.AnswerAndDeliveryGauges_ReportLiveSnapshotValuesAsync}
 
-Every gauge on the `Whizbang.StreamIntegrity` meter is read in one round trip at the start of every maintenance tick,
+Every gauge on the `Whizbang.StreamIntegrity` meter except the two [backfill gauges](#watching-a-backfill), which the
+backfill worker publishes on the maintainer, is read in one round trip at the start of every maintenance tick,
 on every instance, ahead of the maintainer-duty check and the idle gate (see the collector, above). Every instance of a
 service therefore reports the same ledger and the same delivery queue, so read these as one value per service (the
 maximum across its instances), never a sum.
@@ -2568,6 +2749,8 @@ maximum across its instances), never a sum.
 | `origins_adopted` | Stored events whose empty origin columns a redelivery filled: [history received before origins were recorded](#pre-stamp-history), now verifiable. Rises while that history is redelivered once, then stops. |
 | `origins_refused` | Stored events with an empty origin that a redelivery did not adopt, because the event's first hop names another service than the bundle's origin: [events this service authored](#pre-stamp-history-first-hop) that the origin's store had filed as its own. Non-zero means an origin is redelivering events it did not author; the Warning logged once per bundle names it. |
 | `ownership_conflicts` (tag `domain`) | Domains two services claim on their checkpoints, once per contesting pair and domain; neither claimant is used. Non-zero means two services' `OwnDomains` declarations overlap. See [ownership is exchanged on the checkpoint](#ownership-is-exchanged-on-the-checkpoint). |
+| `backfill_windows_requested` / `backfill_events_received` (tag `event_type`), `backfills_ended` (tag `outcome`) | The [paced backfill](#watching-a-backfill): windows asked for, events the answers selected, and backfills that ended `complete` or `unanswered`. |
+| `redelivery_answers_capped` (tag `kind`) | Answers an origin stopped at `MaxEventsPerRequest` with more selected: `window` (the next window continues) or `ordinary` (nothing continues; [the request was wider than the cap](#answers-say-where-they-stopped)). |
 | `redelivery_requests_ignored` (tag `reason`) | Redelivery requests an origin declined to answer: `own_request` (its own backfill broadcast came back to it). |
 | `origins_reattributed` | Stored events received before origins were recorded that [re-attribution](#re-attribution) gave their owner as origin. Rises while the walk covers that history, then stops. |
 | `origins_unattributed` | Stored events of a type this service does not own whose owner is not known. They move once an owner announces the domain. |
