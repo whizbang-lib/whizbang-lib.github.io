@@ -74,7 +74,11 @@ codeReferences:
   - src/Whizbang.Core/Transports/IntegrityControlDestination.cs
   - src/Whizbang.Data.Postgres/Migrations/331_LedgerKeepsOnlyConsumedTypes.sql
   - src/Whizbang.Data.Postgres/Migrations/332_DigestWindowsReadOnlyTheirWindow.sql
+  - src/Whizbang.Data.Postgres/Migrations/335_RedeliveryReconcilesRunAsABatch.sql
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileCoordinatorTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcileBatchTests.cs
   - tests/Whizbang.Core.Tests/Routing/OwnedNamespaceMatcherLocalLaneTests.cs
   - tests/Whizbang.Core.Tests/Messaging/IntegrityDomainOwnershipTests.cs
   - tests/Whizbang.Core.Tests/Workers/IntegrityCheckpointOwnershipTests.cs
@@ -1668,7 +1672,9 @@ integrity work. Once admitted, or forced through after `MaxDeferral`, it:
    locked and pushing each leased row out of view for `IntegrityDeliveryLeaseSeconds`, so a drain that overlaps this
    one during a maintainer-duty failover does not take the same rows;
 2. handles them one at a time, each in its own scope and inside the drain context, so the wrapped receptor does the
-   work instead of recording it again;
+   work instead of recording it again; when a lease holds more than one delivery of a type with a batch handler (the
+   redelivery reconcile), those are handled together instead, at the position of the first of them (see
+   [redelivery reconciles run as a batch](#redelivery-reconciles-run-as-a-batch));
 3. deletes each delivery it handled;
 4. stops at `MaxIntegrityDeliveriesPerPass` deliveries, or as soon as a lease comes back short, and leaves the rest for
    the next pass.
@@ -1681,11 +1687,49 @@ registered for, such as one recorded by a different library version. Integrity t
 is dropped at its bound rather than dead-lettered: the next checkpoint, audit or repair cycle asks again. A pass that
 fails as a whole is logged and leaves every delivery queued for the next pass.
 
-Because the drain handles deliveries one at a time on one instance, redelivery reconciles no longer run in parallel.
+Because the drain handles deliveries on one instance, redelivery reconciles no longer run in parallel.
 Bundles for the same streams used to queue on the per-stream advisory locks inside the database, each waiting
 session holding a pooled connection that ordinary message work needed.
 
 The table needs no retention in maintenance: the drain deletes every delivery it handles and every delivery it drops.
+
+### Redelivery reconciles run as a batch {#redelivery-reconciles-run-as-a-batch}
+
+{verified: RedeliveryBatchReconcileSqlTests.Batch_RefoldsEachSealedEpochOnce_NotOncePerBundleAsync, RedeliveryBatchReconcileSqlTests.Batch_DrainingASeededBacklog_FoldsEachEpochOnce_WhereTheSingleBundleCallsFoldEveryBundleAsync, RedeliveryBatchReconcileSqlTests.Batch_FillsEverySequence_AsTheSingleBundleCallsWouldAsync, RedeliveryBatchReconcileSqlTests.Batch_AnEventTwoBundlesName_AdoptsOnce_ForTheFirstBundleAsync, RedeliveryBatchReconcileSqlTests.Batch_AFirstHopNamingAnotherService_IsRefused_AndALaterBundleOfThatServiceAdoptsAsync, RedeliveryBatchReconcileSqlTests.Batch_EventsThatAlreadyCarryTheirOrigin_AdoptNothing_AndRefoldNothingAsync, RedeliveryBatchReconcileSqlTests.Batch_UnderAGenericPlan_FindsStoredEventsByKey_NotAStoreScanAsync, RedeliveryReconcileBatchTests.Batch_WithABatchCapableStore_ReconcilesEveryBundleInOneCall_AndConcludesEachAsync, RedeliveryReconcileBatchTests.Batch_WithoutTheBatchCall_ReconcilesEachBundleOnItsOwnAsync, RedeliveryReconcileBatchTests.Batch_ABundleWhoseConclusionFails_IsLogged_AndTheOthersStillConcludeAsync, IntegrityDeliveryWorkerTests.DeliveriesOfABatchedType_AreHandledTogether_AndEachIsCompletedAsync, IntegrityDeliveryWorkerTests.AFailedBatch_HandlesEachDeliveryOnItsOwn_WithAWarningAsync, IntegrityDeliveryWorkerTests.RecordedReconciles_DrainAsOneBatchCall_AndEachIsCompletedAsync, IntegrityDeliveryDeferralTests.TheRedeliveryReconcile_HasABatchHandler_AndTheFirstBatchRegistrationWinsAsync}
+
+A reconciled bundle refolds the sealed [epochs](#epoch-seals-the-substrate) that hold the events it moved. Reconciled
+one bundle at a time, every bundle paid for its own refold, even when the bundle before it had refolded the same
+epoch. That cost dominates a backlog of small bundles. The usual source of such a backlog is history
+[re-attributed to its owner](#the-local-lane-follows-ownership): re-attribution records an event's origin but not its
+origin sequence, which only the origin knows, so every redelivered bundle from the owner fills one sequence and
+refolds the epoch that sequence falls in. A hundred thousand one-event bundles were a hundred thousand epoch folds,
+most of them of the same few epochs.
+
+The drain hands every redelivery reconcile in a lease to one store call, `wh_reconcile_redelivered_bundles`
+(migration 335, behind `IWorkCoordinator.ReconcileRedeliveredBundlesAsync`):
+
+- each bundle gets what reconciling it alone would give it: the same origin and sequence fills, the same
+  [first-hop check](#pre-stamp-history-first-hop), the same counts per bucket;
+- every bundle's streams are locked once, in the emit chain's order, before anything is read, so a batch and a
+  concurrent append or reconcile queue rather than deadlock;
+- an event that two bundles of the batch name adopts once, for the first bundle that can fill it; the other bundle
+  counts it present and not adopted, as it would have found it had it run second;
+- the fills are one update, keyed by event id, and the digests move lanes in one pass;
+- only the sealed epochs that hold a moved event are refolded, each once for the batch, in the origins' lanes by
+  origin sequence and in the local lane by local sequence. A local refold advances the
+  [origin generation](#origin-generation) once.
+
+Each bundle is then concluded as before: its report, its counters and its [ledger](#unhealable-buckets) marks. A
+failure while concluding one bundle is logged for that bundle and the others still conclude.
+
+The batch is as large as the lease, `IntegrityDeliveryBatchSize` (50 by default). A lease holding a single reconcile
+runs it alone. A store without the batch call (the interface's default, which the Dapper driver keeps) reconciles each
+bundle on its own, as before. If the batch faults, for example because one recorded payload cannot be read, the drain
+handles each delivery of that batch on its own, so attempts, backoff and dropping apply to each one and a bad delivery
+fails alone.
+
+On a seeded backlog of 1,000 one-event bundles spread over five sealed epochs, reconciling one bundle per call ran
+1,000 epoch folds; the batch ran 5.
 
 ### When the store cannot queue {#integrity-inline-fallback}
 
@@ -2131,8 +2175,52 @@ heals and its ledger row is deleted. Each piece of pre-087 history costs one red
 an Information line per bundle names the origin and how many of its events adopted it.
 
 The reconcile is integrity work, so it runs on the maintainer's
-[integrity delivery drain](#integrity-deliveries-are-queued), one bundle at a time, rather than on the inbox worker
-that committed the bundle.
+[integrity delivery drain](#integrity-deliveries-are-queued) rather than on the inbox worker that committed the
+bundle, and the drain reconciles the bundles of a lease [as a batch](#redelivery-reconciles-run-as-a-batch).
+
+#### Origin fills and sequence fills {#pre-stamp-history-fills}
+
+{verified: RedeliveredOriginAdoptionSqlTests.Adopt_AnEventWithTheOriginButNoSequence_TakesOnlyTheSequenceAsync, RedeliveredOriginAdoptionSqlTests.Adopt_IsSafeToRepeat_ASecondBundleAdoptsNothingAsync, RedeliveredOriginAdoptionSqlTests.Adopt_AnEventAlreadyCarryingTheOrigin_IsPresentButUnchangedAsync, RedeliveryBatchReconcileSqlTests.Batch_ReportsOriginsFilled_ApartFromSequencesFilledAsync, RedeliveryBatchReconcileCoordinatorTests.Reconcile_ReturnsEachBundlesBuckets_AtItsOwnPositionAsync, RedeliveryReconcilerTests.Reconcile_SequenceFills_AreReportedApartFromOriginFillsAsync}
+
+A stored event can be missing either column. History received before origins were recorded is missing both.
+History [re-attributed to its owner](#the-local-lane-follows-ownership) already carries its origin, because ownership
+names the author, but not its origin sequence: that sequence is the position in the origin's own store, it reached
+this service only on the wire, and the inbox row that carried it is long gone. Only a redelivery from the origin can
+supply it.
+
+A reconcile therefore fills one of two things. An **origin fill** gives an event with no origin the bundle's origin
+(and its sequence, when the bundle has one); the event's digest moves from the local lane to the origin's, so the
+count of events stored under that origin grows. A **sequence fill** gives an event that already carries the origin
+the sequence it lacked; nothing moves between lanes and the count under that origin does not change, but the event
+now falls inside the origin's sealed epochs, which are refolded. Both are one-time changes: a second redelivery of
+the same event finds both columns filled and adopts nothing, logs nothing and refolds nothing.
+
+The two are reported apart. A bundle that only filled origins logs, once, that it filled the origin identity of
+N of its events; a bundle that filled any sequences logs how many origins and how many sequences alone it filled
+(`RedeliveredBucketPresence.OriginsFilled` carries the split). Both count toward `origins_adopted`. A steady run of
+sequence fills after re-attribution is the drain working through the reconciles recorded for that history, not the
+same events being filled again.
+
+To watch such a catch-up on a receiver, count the events still waiting for their sequence, and the reconciles still
+queued:
+
+```sql{title="Origin sequences still to fill" description="Events that carry an origin but not its sequence, per origin" category="Operations" difficulty="INTERMEDIATE" tags=["Stream Integrity", "Sql", "Diagnostics"]}
+SELECT origin_service_id, count(*) AS waiting_for_sequence
+FROM wh_event_store
+WHERE origin_service_id IS NOT NULL AND origin_commit_sequence IS NULL
+GROUP BY origin_service_id
+ORDER BY 2 DESC;
+```
+
+```sql{title="Integrity deliveries still queued" description="The maintainer's drain backlog by delivery type" category="Operations" difficulty="INTERMEDIATE" tags=["Stream Integrity", "Sql", "Diagnostics"]}
+SELECT delivery_type, count(*) AS queued, min(queued_at) AS oldest
+FROM wh_integrity_deliveries
+GROUP BY delivery_type
+ORDER BY 2 DESC;
+```
+
+The first count falls as the reconciles drain; `whizbang:redelivery-reconcile` in the second is the queue that feeds
+it. Both read with the service's own schema on the search path, or qualified by it.
 
 :::updated
 **Reconciling a bundle reads only the digests it changes ([#2000](https://github.com/whizbang-lib/whizbang/issues/2000)).**

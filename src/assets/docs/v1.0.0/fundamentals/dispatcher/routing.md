@@ -1978,6 +1978,19 @@ broker's delivery count stays at 1. Once the count reaches `MaxDurableObservatio
 message has been claimed at least once, the inbox gate dead-letters it with `PoisonRedeliveryLoop`. A
 message that was never claimed is not quarantined, so broadcast fan-out is not mistaken for a loop.
 
+{verified: TransportConsumerWorkerPoisonQuarantineTests.Batch_ControlPlaneMessageObservedPastTheBound_IsNotMovedToDeadLettersAsync, TransportConsumerWorkerPoisonQuarantineTests.Batch_DomainMessageBesideAControlPlaneMessage_IsStillQuarantinedAsync, TransportConsumerWorkerPoisonQuarantineTests.Batch_RedeliveryObservationsPastBound_MovesTheInboxRowToDeadLettersAsync}
+
+**Control-plane traffic is never quarantined by observations.** An
+[integrity checkpoint](../../resilience/stream-integrity#phase-b-continuity-checkpoints-fast-drop-detection) is
+published once per topic of its origin's owned types, and every copy carries the same message id, so the inbox stores
+it once and handles it once. A consumer subscribed to ten of those topics still observes that id ten times, while the
+first copy is being handled, so the count reaches the bound after one claim. That is fan-out, not a redelivery loop.
+Quarantining it moved the checkpoint to dead letters and took its row from the handler, so the origin was reported as
+not checkpointing. Control-plane messages (checkpoints, manifests, repair and redelivery requests) past the bound are
+therefore left in place and logged at Debug. This matches the dead-letter boundary, which already drops control-plane
+traffic rather than storing it: the next cycle re-derives it. A control-plane message that keeps failing is still
+ended by the inbox attempt bound. Domain messages are quarantined as before.
+
 Without a trustworthy first-enqueue timestamp (for example a RabbitMQ message from a foreign publisher),
 aged messages are not reported, and the poison-detection health component shows the surface degraded.
 
