@@ -59,6 +59,9 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/PostgresColumnType.cs
   - src/Whizbang.Data.Postgres/CatalogCheckedDdl.cs
   - src/Whizbang.Data.Postgres/MigrationDeadlockRetry.cs
+  - src/Whizbang.Data.Postgres/ConcurrentIndexBuild.cs
+  - src/Whizbang.Data.EFCore.Postgres/FrameworkIndexBuildMaintenanceStep.cs
+  - src/Whizbang.Data.Postgres/Migrations/334_PacedSubscriptionBackfill.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationStepTransactionTests.cs
@@ -108,6 +111,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/CatalogCheckedDdlPostgresTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationAgainstRunningWorkersTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSchemaAgainstRunningWorkersTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ConcurrentIndexBuildTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PacedBackfillIndexTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -936,6 +941,62 @@ The runtime maintenance cycle **never executes a blocking rewrite**: an ACCESS E
 the same whatever it held. The detector's own settings stay: `table_rewrite_bloat_threshold` (the ratio above which a
 table is offered), `table_rewrite_min_rows` (tables smaller than this are ignored) and `pending_table_rewrites` (the
 queued requests).
+
+## Indexes built after the migrations {#indexes-built-after-the-migrations}
+
+{verified: ConcurrentIndexBuildTests.NoMigration_BuildsTheBackfillIndex_InsideItsTransactionAsync, ConcurrentIndexBuildTests.AfterTheMigrations_TheIndexIsNotThereYet_AndTheMaintenanceStepBuildsItAsync, ConcurrentIndexBuildTests.Ensure_BuildsOnce_ThenFindsItValidAsync, ConcurrentIndexBuildTests.ThePostgresDriver_RegistersTheStepAsync}
+
+A migration runs in [one transaction per step](#one-transaction-per-step), and `CREATE INDEX` inside a transaction
+holds a lock that blocks every write to the table until the build commits. On a large, write-heavy table such as
+`wh_event_store` that is minutes of stalled appends during an upgrade. `CREATE INDEX CONCURRENTLY` lets writes go on,
+but it cannot run inside a transaction at all. So a framework index on such a table is never created by a migration.
+It is declared in `ConcurrentIndexBuild.FrameworkIndexes` and built after the migrations by the `framework-index-build`
+[maintenance step](../../fundamentals/workers/maintenance-steps#framework-index-build), which the EF Core Postgres
+driver registers. The first is `idx_event_store_type_commit_sequence`, which the
+[paced subscription backfill](../../resilience/stream-integrity#paced-backfill-index) reads one type's history through.
+
+| What the step finds | What it does |
+| --- | --- |
+| The index, valid | Nothing (one catalog read). Once built, every later cycle costs only that read |
+| No such table | Nothing |
+| An index build in progress on the table (`pg_stat_progress_create_index`) | Steps aside; the next cycle looks again |
+| No index | Builds it with `CREATE INDEX CONCURRENTLY`, outside any transaction, with no timeout |
+| An invalid index and no build in progress | Drops it with `DROP INDEX CONCURRENTLY`, then builds it |
+| A build that fails | Logs a Warning, drops the invalid index the build left (only when no build is working on it) and reports the failure; the next cycle tries again |
+
+**Why each rule.**
+
+- **After the migrations, as a maintenance step.** The step runs where the cycle has already decided the schema is
+  ready, the service has settled and this instance holds the maintainer duty, so one instance builds and never in the
+  middle of the startup pass. No existing mechanism did this: the stored-form index rebuild covers perspective tables
+  and runs inside startup, and the [queue-index rebuild](../../fundamentals/workers/maintenance-steps#queue-index-rebuild)
+  only rebuilds indexes that already exist.
+- **Reads work without the index.** Every query the index serves answers without it, more slowly, so nothing waits for
+  the build and nothing breaks while it is missing.
+  {verified: PacedBackfillIndexTests.BeforeTheBuild_AWindowRead_AnswersWithoutTheIndexAsync}
+- **An interrupted build is dropped and rebuilt.** A concurrent build that stops part way (a crash, a cancellation, a
+  failure reading the table) leaves an INVALID index under the name. `CREATE INDEX IF NOT EXISTS` would take that for
+  the index while no read could use it, so the step looks at validity, not existence.
+  {verified: ConcurrentIndexBuildTests.Ensure_AnInvalidLeftoverOfAnInterruptedBuild_IsDroppedAndRebuiltAsync, ConcurrentIndexBuildTests.Ensure_ABuildThatFails_LeavesNoInvalidIndexBehindAsync, ConcurrentIndexBuildTests.Ensure_ABuildRefusedOutright_IsFailed_AndLeavesNothingAsync}
+- **A build in progress is left alone, without a lock.** While another session is building, the invalid index under
+  the name may be that build's work in progress, and dropping it would destroy the build. The step reads
+  `pg_stat_progress_create_index` and steps aside instead of holding an advisory lock, because the framework
+  coordinates through duties, not advisory locks. It builds without `IF NOT EXISTS`, so a race for the name fails on
+  the name rather than mistaking the other build's invalid index for a finished one.
+  {verified: ConcurrentIndexBuildTests.Ensure_WhileAnotherBuildIsInProgressOnTheTable_StepsAside_AndLeavesItsIndexAloneAsync}
+- **No timeout.** A concurrent build blocks no write, and one that stops short is dropped and started over, so a
+  timeout would only throw away work. It waits for every transaction older than it and reads the table twice, so the
+  first cycle after an upgrade on a large store can take minutes.
+
+The log lines name the index and schema: `built concurrently` (Information), `dropped the invalid leftover of an
+interrupted concurrent build` (Information), `an index build is in progress on its table; this run steps aside`
+(Debug), and `could not be built concurrently` (Warning). To check one by hand:
+
+```sql{title="Is the backfill index built and valid?" category="Operations" difficulty="BEGINNER"}
+SELECT c.relname, i.indisvalid
+FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
+WHERE c.relname = 'idx_event_store_type_commit_sequence';
+```
 
 ## The stored-form rewrite
 
