@@ -764,6 +764,14 @@ Startup reconciliation of ephemeral-event settings drift. **Configure:** bound a
 | `PointerPrune.RetentionDays` | `int?` | unset (database: `90`) | `Whizbang__Ephemeral__PointerPrune__RetentionDays` | Days a reaped pointer is kept before it may be pruned; never shorter than the deduplication window. Publishes `ephemeral_pointer_retention_days` |
 | `PointerPrune.IntervalDays` | `int?` | unset (database: `30`) | `Whizbang__Ephemeral__PointerPrune__IntervalDays` | Days between prunes. Publishes `ephemeral_pointer_prune_interval_days` |
 
+### SupersedingOptions {#superseding-options}
+
+Superseding (latest-wins) event types. **Configure:** bound automatically from `Whizbang:Superseding`, with no registration call needed. **Details:** [History stored before the declaration](../../fundamentals/events/superseding-events#history-stored-before-the-declaration).
+
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|--------------------|---------|
+| `ReconcileHistory` | `bool` | `true` | `Whizbang__Superseding__ReconcileHistory` | Maintenance stamps the flag and key on the events a superseding type stored before its declaration and queues the superseded ones for the reaper, which deletes them only past its gates. `false` keeps that history as stored {verified: ProcessWideOptionsBindingTests.Superseding_Unconfigured_ReconcilesHistory_AndTheKeyTurnsItOffAsync, SupersedingHistoryReconcileSqlTests.Step_WithTheSettingOff_TouchesNothingAsync} |
+
 ### WhizbangLifecycleOptions
 
 Coordinated lifecycle state machine and run-control path tunables. **Configure:** the run-control registration lambda, then bound from `Whizbang:Lifecycle` over it. **Details:** [Managed Resource Run Control](../../resilience/managed-resource-run-control).
