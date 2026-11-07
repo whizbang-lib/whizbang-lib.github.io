@@ -8,7 +8,8 @@ description: >-
   feedback on the adaptive window, work stealing, the per-category outstanding
   budget with the perspective drain cap, the release of unstarted leases by a
   stuck instance, outbox stream runs with the immediate re-claim after a full
-  outbox acquisition, how a claim keeps the queue tables' planner statistics
+  outbox acquisition, why the re-offer hands on only streams the drain can
+  fetch, how a claim keeps the queue tables' planner statistics
   true, how a claim ranks only the peers that are alive and eligible for work,
   why a caller that is not eligible claims nothing,
   and why a claim no longer announces the caller's lifecycle phase.
@@ -30,6 +31,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/229_OnlyReadyInstancesAreEligibleForWork.sql
   - src/Whizbang.Data.Postgres/Migrations/278_OneWriterOfTheInstancePhase.sql
   - src/Whizbang.Data.Postgres/Migrations/300_AnIneligibleCallerClaimsNothing.sql
+  - src/Whizbang.Data.Postgres/Migrations/230_ReceivedStreamsKeepTheProducersOrder.sql
+  - src/Whizbang.Data.Postgres/Migrations/349_ReOfferOnlyFetchableStreams.sql
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/Signals/BasePollSignalSource.cs
   - src/Whizbang.Core/Signals/PollIdleBackoff.cs
@@ -46,6 +49,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/AdaptiveClaimWindowLatencyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BoundedAcquisitionRewriteSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkPlanShapeTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/HeldBackEventsDoNotCrowdTheReOfferTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimReofferPlanShapeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkStaleStatisticsTests.cs
   - tests/Whizbang.Core.Component.Tests/Signals/PollSignalSourceIdleBackoffTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OutboxStreamRunSqlTests.cs
@@ -368,6 +373,46 @@ a poll examines no longer depend on the holdings at all. The test asserts both c
 once at a full budget of holdings and again at double it: blocks catch the heap fetches, and tuples
 catch an index-only pass over the whole holdings, which is cheap in blocks and still grows with the
 backlog.
+
+### The re-offer hands on only what the drain can fetch {#the-re-offer-hands-on-only-what-the-drain-can-fetch}
+{verified: HeldBackEventsDoNotCrowdTheReOfferTests.OneStreamReOffer_PassesOverAHeldBackEvent_ToAFetchableCheckpointAsync, HeldBackEventsDoNotCrowdTheReOfferTests.HeldBackStream_OnceItsPredecessorIsHeldToo_IsStoredAndReOfferedAsync}
+
+A received event keeps its producer's order (migration 230). When an event sorts after an earlier pending event of its
+stream that this instance does not hold, the claim's store pass **holds it back**: the row stays leased but unstored
+(`chain_emitted_at` is still null) until the earlier event is held too. The drain's fetch, `fetch_inbox_batch`, never
+returns an unstored event, so a held-back stream handed to the drain yields nothing.
+
+Since migration 349 the inbox re-offer walk applies the same predicate the fetch applies: on an event lane it skips a
+held event that is still unstored, so a stream whose held rows are all such events is not offered, and a stream that
+also holds a stored event or a command is still walked and lands on that row. Once the earlier event is held, both are
+stored in order and the stream is re-offered like any other. The walk is otherwise the one migration 158 bounded.
+
+**Why the re-offer has to agree with the fetch.** The re-offer is what the drainers work from, and when the
+[outstanding budget](#the-outstanding-budget-reads-inbox-rows-only-perspective-has-its-own-cap) is spent it narrows to
+a few streams, under load to one. The walk takes the most urgent bucket first, a held-back interactive event
+outranks background traffic such as checkpoints, and a held-back stream stays held back on every poll, so a one-stream
+re-offer went to the held-back stream every time, and the drain fetched it as nothing. Every other row the claim acquired was charged an attempt and never offered. A row that is never offered
+is never dispatched, and the attempt ceiling is enforced at dispatch, so those rows were not dead-lettered either:
+each lease lapsed, the next claim took the row again and charged it again, and rows climbed attempts for days. The
+starved rows included received [integrity checkpoints](../../resilience/stream-integrity.md), so a consumer that owns
+nothing never processed one and never learned who owns the types it consumes. Filtering in the walk, rather than in the
+drain, is what lets a narrowed re-offer go to work that can actually dispatch: the drain cannot give back a slot the
+walk already spent.
+
+Rows that were charged past the ceiling before this change, or by any future path that acquires a row and never hands
+it on, are concluded by the maintenance cycle; see
+[exhausted rows are concluded](../../operations/observability/stuck-row-sentinel.md#exhausted-rows-are-concluded).
+
+**What it costs.** `chain_emitted_at` is not a column of `idx_inbox_state_held_lanes`, so on the event lanes the walk's
+probe is an index scan that reads the row, where it was index-only, and it reads past each held-back row it skips.
+Measured on a busy store, a claim that took about 52 ms takes about 3 ms more, and the extra cost grows with the number
+of held-back rows the instance holds, not with its whole holdings. Migration 349 adds no index: putting the column in
+the lane index would make the probe index-only again, but would widen an index that every lease and every store pass
+writes, to save a cost that only held-back rows incur. The plan shape is locked: the test reads the plans the claim's own statements ran, on a store
+with many held streams, held-back streams and a deep unowned backlog, under the custom plan the function declares and
+under a forced generic plan, and fails if any read of `wh_inbox_state` in the walk is not an index scan, if
+`idx_inbox_state_held_lanes` is not among them, or if the predicate is applied after the scan instead of on it.
+{verified: ClaimReofferPlanShapeTests.TheReOfferWalk_ReadsTheWorkTableOnlyThroughItsHeldLanesIndexAsync}
 
 ## Outbox streams move in runs
 {verified: OutboxStreamRunSqlTests.ClaimWork_OneLongStream_DrainsInRunsNotRowsAsync, OutboxStreamRunSqlTests.ProcessOutboxFailures_MidRun_ReleasesTheRestOfTheRunToBeRetriedInOrderAsync, ClaimWorkerAcquisitionBoundsTests.FullOutboxAcquisition_ClaimsAgainWithoutSpacingAsync, OutboxDrainWorkerStreamRunTests.ALongStream_IsContinuedFromItsCursorWithoutAClaimCycleAsync}
