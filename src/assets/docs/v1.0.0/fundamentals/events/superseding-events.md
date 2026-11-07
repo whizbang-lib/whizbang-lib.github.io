@@ -118,6 +118,36 @@ stream, of the same type, with the same key.
 | Only an event can be superseding; `[Superseding]` on a command is ignored. | Only an event is stored on a stream. | {verified: MessageTypeCatalogGeneratorTests.Generator_SupersedingEvent_StampsTheEntryAndRegistersTheKeyAsync} |
 | The flag name parser that reads `Flags` written as names (`"Superseding"`) knows the new bit. | A name it does not know is refused (22P02), which would refuse every superseding event written by a host that serializes enums as names. | {verified: SupersedingEventReaperSqlTests.Emit_FlagsWrittenAsNames_StampTheKeyOfASupersedingEventAsync} |
 
+### A key missing from the payload {#a-key-missing-from-the-payload}
+
+When a received message or a stored event is read from JSON, the key is taken from the payload. If the payload does
+not carry the key property at all, or carries it as `null`, the event has **no key**: it is still marked superseding,
+but it is never superseded and never supersedes another, so it is never reaped.
+
+This matters for a key of a value type such as `Guid` or `int`. Reading the payload as the event type would turn an
+absent key into the type's default (`00000000-0000-0000-0000-000000000000`, `0`), so every such event on a stream would
+share one key and all but the newest would be deleted. It happens in two places:
+
+- **History stored before the key property existed.** The [history reconcile](#history-stored-before-the-declaration)
+  stamps those events without a key and logs each one at Information ("has no superseding key in its payload"). They
+  are kept.
+- **A rolling deploy.** A message from an older producer that lacks the key is stored on the receiver without a key,
+  and kept.
+
+To bring such events under the superseding rule, give them a key first (for example with an upcaster). Until then they
+are kept.
+
+{verified: SupersedingEventsTests.KeyOf_AValueTypeKeyMissingFromTheJson_IsNull_ButAPresentDefaultIsAKeyAsync, ReceivedInboxMessageBuilderSupersedingKeyTests.Build_AReceivedEventMissingItsValueTypeKey_IsFlaggedButUnkeyed_APresentDefaultIsAKeyAsync, SupersedingHistoryReconcileSqlTests.Reconcile_AValueTypeKeyMissingFromThePayload_IsStampedUnkeyed_KeptAndLogged_APresentDefaultIsAKeyAsync, DapperSupersedingKeyTests.HistoryMissingAValueTypeKey_IsReconciledUnkeyed_AndNoneIsReapedAsync}
+
+| Choice | Reason | Verified |
+|---|---|---|
+| Absence decides, not the value. A key that is present is a real key even when it equals the type's default: two events that both carry `RegionId = Guid.Empty` supersede each other. | Only the payload knows whether the key was written. A default value can be a legitimate key; a missing one is unknown, and deleting history on an unknown key cannot be undone. | {verified: SupersedingEventsTests.KeyOf_AValueTypeKeyMissingFromTheJson_IsNull_ButAPresentDefaultIsAKeyAsync, ReceivedInboxMessageBuilderSupersedingKeyTests.Build_AReceivedEventMissingItsValueTypeKey_IsFlaggedButUnkeyed_APresentDefaultIsAKeyAsync} |
+| The check applies only to payloads read from JSON (receive and history). A typed event dispatched in process is unchanged. | A typed event always has its key property, so its value, default or not, was set by the code that raised it. | {verified: DispatcherSupersedingKeyTests.PublishAsync_ASupersedingEvent_CarriesTheFlagAndItsKey_AnOrdinaryEventNeitherAsync} |
+| The key is looked for under the name the serializer writes: its `[JsonPropertyName]`, or the naming policy's name, matched case-insensitively when the serializer options are (the framework's are). | A check under the wrong name would call every key missing and stop reclaiming anything. | {verified: SupersedingEventsTests.KeyOf_AKeyWithAJsonPropertyName_IsLookedForUnderThatNameAsync, SupersedingEventsTests.KeyOf_AContractWithAttributeProviders_HonorsItsNamingPolicyAsync} |
+| A nullable key behaves the same way: missing or `null` means no key. | One rule for every key type. | {verified: SupersedingEventsTests.KeyOf_ANullableKey_IsNullWhenMissingOrNull_AndItsValueWhenPresentAsync} |
+| The history reconcile logs a missing key at Information, the receive path does not log it. | Old history without the key is expected and can number in the thousands; the event is kept either way, so neither is a warning. | {verified: SupersedingHistoryReconcileSqlTests.Reconcile_AValueTypeKeyMissingFromThePayload_IsStampedUnkeyed_KeptAndLogged_APresentDefaultIsAKeyAsync} |
+| Code generated before this change (no registered key name) reads the payload as before. Rebuild against the current generator to get the check. | Older generated registrations carry only the key accessor, not the key's JSON name. | {verified: SupersedingEventsTests.KeyOf_ARegistrationWithoutAMappableKeyMember_ReadsThePayloadAsBeforeAsync} |
+
 ## The reaper {#the-reaper}
 
 Storing an event with a key queues the older events of its stream, type and key in `wh_superseded_events`. The
