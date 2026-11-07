@@ -18,6 +18,9 @@ codeReferences:
   - src/Whizbang.Core/Workers/QueueIndexReindexStep.cs
   - src/Whizbang.Data.EFCore.Postgres/FrameworkIndexBuildMaintenanceStep.cs
   - src/Whizbang.Data.Postgres/ConcurrentIndexBuild.cs
+  - src/Whizbang.Data.EFCore.Postgres/StreamDigestIdLaneBackfillMaintenanceStep.cs
+  - src/Whizbang.Data.Postgres/StreamDigestIdLaneBackfill.cs
+  - src/Whizbang.Data.Postgres/Migrations/337_StreamDigestIdLanesBackfill.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerStepTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerRetentionSyncTests.cs
@@ -28,6 +31,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/QueueIndexReindexStepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueueIndexReindexSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ConcurrentIndexBuildTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestIdLaneBackfillSqlTests.cs
 ---
 
 # Maintenance steps {#maintenance-steps}
@@ -103,6 +107,22 @@ a step for the same reason the queue-index rebuild is: a ready schema, a settled
 exactly what an index build on a large table needs. Once every index is valid, each run is one catalog read per index.
 [Indexes built after the migrations](../../operations/infrastructure/migrations#indexes-built-after-the-migrations)
 has the indexes, the leftovers and the reason for each rule.
+
+## Stream digest id-lane backfill {#stream-digest-id-lane-backfill}
+
+{verified: StreamDigestIdLaneBackfillSqlTests.Run_FillsInBatches_ReportsDriftAtWarningAndOnTheMeter_AndFinishesAsync, StreamDigestIdLaneBackfillSqlTests.Run_StopsAtItsRoundLimit_AndWhenBusy_StepsAsideAsync, StreamDigestIdLaneBackfillSqlTests.Backfill_OnceDone_ReadsNothingAndChangesNothingAsync, StreamDigestIdLaneBackfillSqlTests.TheStep_RunsTheBackfill_WithTheServicesMetricsAsync, StreamDigestIdLaneBackfillSqlTests.ThePostgresDriver_RegistersTheStepAsync}
+
+The EF Core Postgres driver's `stream-digest-id-lane-backfill` step fills the id lanes of the stream digests stored
+before migration 336, which a repair needs to [name the one event a stream is missing](../../resilience/stream-integrity#one-missing-event-is-named).
+Filling them reads every stream's events, which is why it is a step and not part of the migration: a migration would
+hold every stream it touched until it committed, while the cycle runs it only on a settled service, on the maintainer,
+a bounded piece at a time. Each run walks at most 20 batches of 500 streams, each batch its own transaction under its
+streams' append locks, from a cursor kept in `wh_settings`; an instance that finds the cursor held steps aside for the
+cycle. A bucket it finds drifted from its events is logged at Warning with both values and counted on
+`whizbang.stream_integrity.stream_digest_drift_corrected` before it is corrected. Once nothing is left it records the
+backfill as done, and each later run is one keyed read; a new database is done from its first start.
+[Buckets stored before the id lanes](../../resilience/stream-integrity#id-lane-backfill) has the measured cost and the
+reason for each rule.
 
 ## Ledger retention {#ledger-retention}
 

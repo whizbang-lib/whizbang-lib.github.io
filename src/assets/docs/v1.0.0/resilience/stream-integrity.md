@@ -81,6 +81,14 @@ codeReferences:
   - src/Whizbang.Data.Postgres/SubscriptionBackfillSql.cs
   - src/Whizbang.Data.Postgres/Migrations/334_PacedSubscriptionBackfill.sql
   - src/Whizbang.Data.Postgres/ConcurrentIndexBuild.cs
+  - src/Whizbang.Core/Messaging/IntegrityDigestMath.cs
+  - src/Whizbang.Core/Messaging/IntegrityGapTrackerState.cs
+  - src/Whizbang.Data.Postgres/StreamDigestIdLaneBackfill.cs
+  - src/Whizbang.Data.EFCore.Postgres/StreamDigestIdLaneBackfillMaintenanceStep.cs
+  - src/Whizbang.Data.Postgres/Migrations/336_StreamDigestsFoldThroughOneHelper.sql
+  - src/Whizbang.Data.Postgres/Migrations/337_StreamDigestIdLanesBackfill.sql
+  - src/Whizbang.Data.Postgres/Migrations/338_RepairNamesTheMissingEvent.sql
+  - src/Whizbang.Data.Postgres/Migrations/339_IntegrityGapTrackerSurvivesARestart.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileCoordinatorTests.cs
@@ -174,6 +182,16 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PacedBackfillEndToEndTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PacedBackfillIndexTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RunPermitAuditTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/HeldWithoutOriginSequenceTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/SingleMissingEventTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/IntegrityGapTrackerDurabilityTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedReceivedDigestSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestFoldHelperSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestWritersTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestIdLaneReadsSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestIdLaneBackfillSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/StreamDigestFoldGuardTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityGapTrackerStoreSqlTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -496,6 +514,47 @@ rather than sequence windows.
 An event whose transaction drew its insertion order before the floor and committed after it is left out of the window
 as well. It is still covered by the digests.
 
+#### The gap tracker survives a restart {#the-gap-tracker-survives-a-restart}
+
+{verified: IntegrityGapTrackerDurabilityTests.Hydrate_LoadsTheKeptOriginsAndPendingGaps_OnceAsync, IntegrityGapTrackerDurabilityTests.Hydrate_NeverOverwritesWhatThisProcessAlreadyLearnedAsync, IntegrityGapTrackerDurabilityTests.Hydrate_AFailedLoad_IsRetriedByTheNextCaller_NotLatchedAsync, IntegrityGapTrackerDurabilityTests.Hydrate_AStoreThatKeepsNothing_LeavesTheTrackerAsItIsAsync, IntegrityGapTrackerDurabilityTests.Hydrate_KeepsAtMostTheBoundOfPendingGapsAsync, IntegrityGapTrackerStoreSqlTests.ACheckpoint_IsKept_AndALaterOneMovesTheTimeAndKeepsAKnownAddressAsync, IntegrityGapTrackerStoreSqlTests.PendingGaps_AreReplacedPerOrigin_AndReadBackAsync, IntegrityGapTrackerStoreSqlTests.ReplacingWithNothing_ClearsTheOriginsPendingGapsAsync, IntegrityCheckpointReceptorTests.Checkpoint_IsKeptByTheStore_WithTheOriginsAddressAndTimeAsync, IntegrityCheckpointReceptorTests.APendingGapSeenBeforeARestart_IsConfirmedByTheFirstCheckpointAfterItAsync, IntegrityAuditWorkerTests.AfterARestart_KnownOriginsAreAskedBeforeAnyNewCheckpointArrivesAsync}
+
+The consumer's gap tracker (`IntegrityGapTracker`) holds two things the checks depend on: every origin it has recorded
+a checkpoint from (its name, the address it takes directed integrity requests on, and when its last checkpoint
+arrived), and every deficit waiting for its origin's next checkpoint to confirm it. Until #2104 both lived only in
+memory, so every restart cost three things: the audit had no origins to ask until each origin checkpointed again, the
+liveness alarm's clock started over, and a gap seen just before the restart was detected again from scratch and
+confirmed a cycle late.
+
+Migration 339 keeps both in two tables:
+
+| Table | One row per | Written |
+| --- | --- | --- |
+| `wh_integrity_known_origins` | Origin: name, request address, last checkpoint time | On every recorded checkpoint. Only unindexed columns change, so the write is a heap-only update. A checkpoint without an address keeps the one already known. |
+| `wh_integrity_pending_gaps` | Pending gap: origin, tenant, type, window, expected count | Replaced for one origin when a checkpoint changes that origin's pending set (a gap first seen, confirmed or healed). A checkpoint that changes nothing writes nothing. |
+
+A new process loads both once, before the first read that needs them: the checkpoint receptor, the audit worker, the
+checkpoint worker's liveness check and the repair drain each call `IntegrityGapTracker.EnsureHydratedAsync`, and
+concurrent first callers share one load (`IWorkCoordinator.IntegrityLoadGapTrackerStateAsync`). So the first audit
+after a restart asks the origins the service already knew, and the first checkpoint after it confirms a gap seen
+before it.
+
+Why each choice:
+
+- **What the process learned live wins.** A checkpoint can arrive before the load finishes. The load adds only
+  origins and gaps the tracker does not hold, so a fresher in-memory value is never replaced by an older kept one.
+- **A failed load is retried, not latched.** A load that throws leaves the tracker unloaded, and the next caller tries
+  again. Marking it loaded before the read had succeeded would leave the process on an empty tracker until its next
+  restart while reporting nothing wrong.
+- **The pending bound still holds.** Kept gaps are loaded up to the tracker's cap, so a large kept set cannot grow the
+  tracker past the bound it has in memory.
+- **The pending set is replaced only when it changes.** Checkpoints arrive every interval from every origin; a write
+  per checkpoint for an unchanged set would be pure churn.
+- **Its own table, not the domain claims.** The origins could have been read from `wh_integrity_domain_claims`, but an
+  origin that announces no owned domains has no row there, and the liveness clock needs a time per checkpoint.
+- **A store that keeps nothing behaves as before.** The interface's defaults keep nothing and load nothing, so a
+  driver without the tables starts with an empty tracker and learns from the next checkpoints, as every version
+  before #2104 did.
+
 ### Phase S — subscription-expansion backfill (startup, on by default) {#phase-s-subscription-expansion-backfill}
 
 The startup type-definition reconciler already diffs each service's catalog against its persisted
@@ -753,10 +812,10 @@ bucket's events. Properties that fit Whizbang's real lifecycle:
 Rollups: per (tenant, type) digests derive from the atomic buckets, giving a two-level drill-down
 as built (`ManifestLevel` has exactly `Types` and `Streams`) — mismatch at type level → compare
 that type's stream digests → a mismatched stream goes straight to a stream-scoped re-delivery
-request, which converges by event-id identity. An id-level third step — exchanging the stream's
-event-id list so the set difference IS the repair set (streams are short by design; a
-set-reconciliation encoding à la IBLT as an optimization) — is a future refinement, not yet built
-as of a64ba9a.
+request, which converges by event-id identity. When a stream's bucket is missing exactly one event, its id lanes
+name that event and the request asks for it alone ([one missing event is named](#one-missing-event-is-named)). A
+general id-level step, exchanging the stream's event-id list so the set difference IS the repair set (a
+set-reconciliation encoding such as an IBLT), remains a future refinement.
 
 **Maintenance strategy.** Digests are maintained **incrementally, transactionally, at batch
 granularity** inside the existing emit chain: one digest upsert per distinct (tenant, type) in the
@@ -794,8 +853,8 @@ size threshold). The consumer diffs locally against its own digest table — a m
 Origins serve manifests from the maintained digest table (a rollup `SELECT`, never a store scan)
 and may cache the answer per cycle for multi-consumer fan-in (not yet implemented). Drill-down is
 **one batched round-trip per level, never per bucket**: all mismatched (tenant, type) buckets in
-one stream-level exchange — a mismatched stream then goes straight to stream-scoped re-delivery
-(the id-level exchange is a future refinement) — so even a messy divergence costs a handful of
+one stream-level exchange. A mismatched stream then goes straight to stream-scoped re-delivery, or to the one
+event it is missing when its id lanes [name it](#one-missing-event-is-named), so even a messy divergence costs a handful of
 control messages plus the repair payload itself. The steady-state hum
 belongs to Phase B's checkpoints (one doorbell-sized ephemeral event per origin per interval),
 tunable as emit-on-publish with a slow max-idle heartbeat — never fully silent, because
@@ -820,6 +879,53 @@ and the paged answers of a large store each paid for all of it. Migration 332 sp
 because both columns were already indexed. The tests force the generic plan and count the rows each call actually
 reads (`pg_stat_xact_user_tables`) against a lane much larger than the window, so a return to the whole-lane read
 fails them.
+
+### One missing event is named {#one-missing-event-is-named}
+
+{verified: SingleMissingEventTests.OneEventMissing_IsNamedByTheXorOfTheIdLanesAsync, SingleMissingEventTests.NothingHeldLocally_AndTheOriginHoldsOne_NamesItAsync, SingleMissingEventTests.TwoEventsMissing_NameNothingAsync, SingleMissingEventTests.NothingMissing_OrALocalSurplus_NamesNothingAsync, SingleMissingEventTests.EitherSideWithoutIdLanes_NamesNothingAsync, SingleMissingEventTests.AnXorOfZero_NamesNothingAsync, SingleMissingEventTests.PlacingHeldEvents_CarriesTheirIdLanes_SoTheMissingOneIsStillNamedAsync, IntegrityManifestReceptorTests.Repair_AStreamMissingOneEvent_AsksForThatEventOnlyAsync, IntegrityManifestReceptorTests.Repair_WithoutIdLanes_OrMoreThanOneMissing_AsksForTheWholeStreamAsync, IntegrityManifestReceptorTests.Repair_NamedAndWholeStreams_GoInSeparateRequests_AndManyNamedEventsArePagedAsync, IntegrityManifestReceptorTests.Repair_AStreamOfThreeTypes_ComparesOnlyTheTypeThisServiceKeepsAsync, IntegrityManifestReceptorTests.DrainMode_RecordsEachDeficitsMissingEvent_OrNullAsync, IntegrityRepairAnswerSqlTests.RecordMissingEvents_TheClaimCarriesEachRowsNamedEvent_OrNoneAsync, IntegrityRepairAnswerSqlTests.RecordMissingEvents_ALaterComparisonThatNamesNone_ClearsTheIdAsync, RepairDrainWorkerTests.DrainTick_ARowThatNamesItsMissingEvent_AsksForThatEventOnly_ApartFromWholeStreamRowsAsync, RedeliveryRequestReceptorTests.Receptor_NamedEvents_ShipsExactlyThoseEventsAsync, RedeliveryRequestReceptorTests.Receptor_ANamedEventItDoesNotHold_AnswersThatStreamOverTheWindowAsync, RedeliveryRequestReceptorTests.Receptor_EveryNamedEventFound_SyncsNoStreamWholeAsync, SelectRedeliveryEventsTests.Select_EventIds_SelectsOnlyThoseEvents_WithinTheOtherFiltersAsync, StreamDigestIdLaneReadsSqlTests.TheWindowedStreamAnswer_CarriesTheIdLanesAsync, StreamDigestIdLaneReadsSqlTests.AStoredBucketWithoutIdLanes_ReadsAsNullAsync}
+
+A stream-level repair used to name only types, streams and a commit-sequence range, so a stream missing one event
+cost its whole history (or its whole window) in transport and in processing at the consumer, where every event already
+held is a duplicate to skip. The usual case is exactly one event lost in transport.
+
+Every stream digest bucket also carries two **id lanes** (`id_lo`, `id_hi`): the XOR of the first and last 64 bits of
+every folded event id (see [one digest fold](#one-digest-fold)). XOR is its own inverse, so when the origin's bucket
+holds exactly one event more than the consumer's, origin XOR local over the id lanes is that event's id
+(`IntegrityDigestMath.SingleMissingEventId`). Every stream-level digest a comparison reads carries the lanes
+(`StreamDigest.IdLo` / `IdHi`): the stored table, the recompute, the windowed answer and the fold of
+[events held without an origin sequence](#events-held-without-an-origin-sequence).
+
+| The comparison finds | The repair asks for |
+| --- | --- |
+| The origin holds exactly one event more, both sides carry id lanes, and the XOR is not empty | That event, by id |
+| Two or more missing, a local surplus, or nothing missing | The stream over the window, as before |
+| Either side without id lanes (an older peer, or a bucket stored before 336 and not yet [backfilled](#id-lane-backfill)) | The stream over the window, as before |
+
+How the named event travels:
+
+- **The immediate (burst) path** sends it on `RequestRedeliveryCommand.EventIds`, beside the stream. Named streams go
+  in their own requests, at most 500 events each, so a large missing set is paged and one request never grows with the
+  divergence. The streams that cannot be named go together in one request for the window, as before.
+- **The paced drain** records it on the deficit's ledger row (`wh_integrity_ledger.missing_event_id`, migration 338,
+  through `IWorkCoordinator.IntegrityRecordMissingEventsAsync`), and sends it from there when it claims the row. Rows
+  that name an event and rows that do not are grouped apart, because an id list narrows a request to its ids. A later
+  comparison that cannot name one clears the id, so a stale name is never sent.
+- **The owner** ships exactly the named events (`RedeliveryRequest.EventIds`, selected within the request's other
+  filters). For a named stream where it holds no such event, it answers that stream over the window instead.
+
+Why each choice:
+
+- **Id lanes, not the hash lanes.** The hash lanes are a hash of the id and cannot be turned back into one. The id
+  lanes are the id itself, folded the same way, so the difference of one event is that event.
+- **Exactly one.** The XOR of two missing ids is neither of them, so the name is attempted only when the counts differ
+  by exactly one. Anything else syncs the stream whole, which is always correct.
+- **The owner checks the name.** A count difference of one does not prove the sets differ by one event: the consumer
+  could also hold an event the origin does not, and then the XOR names an id that does not exist. The owner finds no
+  such event and answers the stream over the window, so a wrong name costs one round trip, never a missed repair.
+- **The stream and window always ride along.** An owner that predates `EventIds` ignores the field and answers the
+  range as before, so a mixed-version fleet repairs correctly while it upgrades.
+- **Always per (stream, type).** A bucket is one (origin, tenant, type, stream), and the request keeps its type, so a
+  consumer that keeps only some of a stream's types compares and repairs only those.
 
 ### Phase L — local perspective-coverage audit {#phase-l-local-perspective-coverage-audit}
 
@@ -1000,14 +1106,89 @@ An event stored with `IEventStore.AppendAsync` (either driver, through `wh_appen
 
 The stream recompute the verification sweep trusts has always counted directly-appended events in the local lane. Before migration 225 the incremental table did not, so a stream written by both paths (the global `$wb-system` stream, or any stream an application appends to directly) had a table digest that missed some of its events, and closing such a stream subtracted events that had never been added. Rows appended before migration 225 are not refolded by the migration; the verification sweep heals any bucket that still differs from the recompute.
 
+### One digest fold {#one-digest-fold}
+
+{verified: StreamDigestFoldGuardTests.EveryFunctionThatWritesOrHashesStreamDigests_FoldsThroughTheSharedHelperAsync, StreamDigestFoldGuardTests.NoCSharpSqlHashesAnEventIdOrWritesDigestLanesItselfAsync, StreamDigestFoldGuardTests.TheGuard_FlagsAFunctionThatWritesDigestsItself_AndPassesOneThatCallsTheHelperAsync, StreamDigestWritersTests.OutboxEmitChain_FoldsEveryLaneAsync, StreamDigestWritersTests.OutboxEmitChain_FoldingIntoARowWithoutIdLanes_KeepsThemNullAsync, StreamDigestWritersTests.InboxEmitChain_FoldsEveryLaneIntoTheOriginsBucketAsync, StreamDigestWritersTests.DirectAppend_FoldsEveryLaneAsync, StreamDigestWritersTests.TruncateStreamPrefix_SubtractsEveryLaneOfTheTruncatedEventsAsync, StreamDigestWritersTests.ReclassifyEphemeral_SubtractsEveryLaneOfTheReclassifiedEventsAsync, StreamDigestWritersTests.AdoptRedeliveredOrigin_MovesEveryLaneToTheOriginsBucketAsync, StreamDigestWritersTests.SeedStreamDigestsBatch_FoldsEveryLaneOfTheSeededStreamsAsync, StreamDigestFoldHelperSqlTests.Fold_ThenUnfold_EveryLaneRoundTripsAsync, StreamDigestFoldHelperSqlTests.Seed_WritesOnlyWhereNoBucketExistsAsync, StreamDigestFoldHelperSqlTests.UnderAGenericPlan_TheUnfoldFindsItsBucketsByPrimaryKeyAsync, StreamDigestFoldHelperSqlTests.Heal_ADriftedBucket_IsRewrittenWithEveryLane_AndReportedWithBothValuesAsync, StreamDigestFoldHelperSqlTests.Heal_APhantomBucketIsRemoved_AndAMissingOneAdded_EachReportedAsync, StreamDigestFoldHelperSqlTests.Heal_ABucketChangedInsideTheSettleWindow_IsLeftAloneAsync, StreamDigestIdLaneReadsSqlTests.TheTableRead_CarriesTheStoredIdLanesAsync, StreamDigestIdLaneReadsSqlTests.TheRecompute_CarriesTheIdLanesAsync}
+
+Fifteen SQL functions write `wh_stream_digests`: both emit chains and `wh_append_event`, redelivered-origin adoption
+and the bundle reconciles, re-attribution, refiling, the prefix truncate, the superseded-event reaper, ephemeral
+reclassification, at-most-once flagging, archive restore and the seeding pass. Each used to carry its own copy of the
+fold. A change to the digest made in one copy and missed in another corrupts the stored digests silently, and the
+audit trusts those digests: the direct-append gap above is what such a miss looks like. Migration 336 gives the math
+one home, three SQL helpers:
+
+| Helper | Does |
+| --- | --- |
+| `_wh_digest_lane(event_id, lane)` | The only place an event id becomes a digest lane: lanes 0 and 1 are the 128-bit hash (`hashtextextended`, seeds 0 and 1, unchanged since 087), lanes 2 and 3 the id's two 64-bit halves. A single-expression SQL function, so the planner inlines it. |
+| `_wh_fold_stream_digests(...)` | Folds a set of events into their buckets (`fold`), takes them out (`unfold`), or writes only buckets that do not exist yet (`seed`), every lane together, buckets in key order. |
+| `_wh_heal_stream_digests(streams, settle, fill_id_lanes)` | Recomputes the settled buckets of the named streams (or all) from their events and rewrites what differs, returning each changed bucket with its stored and recomputed values: `drift_updated`, `drift_removed`, `drift_added`, and `filled` for id lanes it was asked to fill. |
+
+Every writer was redefined with its digest statements replaced by a call to the fold helper, keeping its own
+predicates, bucket deletes and lock order. The epoch folds, the windowed and type-level answers, the C# reads that
+fold events live, and the verification sweep take each event's lanes from `_wh_digest_lane` or heal through
+`_wh_heal_stream_digests`. The hash lanes and counts every writer stores are unchanged, so no digest a peer already
+holds changes.
+
+`wh_stream_digests` gained two **id lanes**, `id_lo` and `id_hi`: the XOR of each folded event id's two 64-bit halves,
+which is what lets a repair [name the one missing event](#one-missing-event-is-named). They are NULL until computed,
+and a fold keeps NULL as NULL (`NULL # x` is NULL), so a partly folded value never appears. A bucket the fold creates
+is complete and carries its id lanes from the start.
+
+A guard test reads every function in the schema and all C# SQL, and fails when any of them writes digest lanes or
+hashes an event id outside the helpers. It is checked against a sample function that writes digests itself, so a
+guard that stops finding anything also fails.
+
+Why each choice:
+
+- **Helpers, not one big function.** The writers differ in what they select, which buckets they may delete and the
+  order they lock in. Those stay in each writer; only the arithmetic, the part that must never differ, moved.
+- **Inlined lanes.** `_wh_digest_lane` is a plain SQL expression the planner inlines, so a fold costs what it cost
+  before. Measured on the emit chain over 300 batches of 50 events: 25.49 ms per batch before and 25.08 ms
+  after (p95 41.2 ms and 40.4 ms).
+- **NULL stays NULL.** An id lane folded onto a value that was never computed would look complete and be wrong, and a
+  wrong id lane names the wrong event. NULL makes the comparison fall back to whole-stream sync until the lane is
+  filled.
+- **Heal reports before it corrects.** Drift means a write path changed a bucket without the shared fold. Returning
+  both values lets the caller say so before anything relies on the corrected value.
+
+#### Buckets stored before the id lanes {#id-lane-backfill}
+
+{verified: StreamDigestIdLaneBackfillSqlTests.Backfill_FillsEveryStreamsIdLanes_AndRecordsThatItIsDoneAsync, StreamDigestIdLaneBackfillSqlTests.Backfill_ADriftedBucket_IsReturnedWithBothValues_ThenCorrectedAsync, StreamDigestIdLaneBackfillSqlTests.Backfill_StoppedAfterOneBatch_ResumesAfterItsCursorAsync, StreamDigestIdLaneBackfillSqlTests.Backfill_WhileAnotherCallerHoldsTheCursor_ReportsBusyAndWritesNothingAsync, StreamDigestIdLaneBackfillSqlTests.Backfill_OnceDone_ReadsNothingAndChangesNothingAsync, StreamDigestIdLaneBackfillSqlTests.Backfill_WithItsCursorRowMissing_StartsFromTheBeginningAsync, StreamDigestIdLaneBackfillSqlTests.Run_FillsInBatches_ReportsDriftAtWarningAndOnTheMeter_AndFinishesAsync, StreamDigestIdLaneBackfillSqlTests.Run_StopsAtItsRoundLimit_AndWhenBusy_StepsAsideAsync, StreamDigestIdLaneBackfillSqlTests.ThePostgresDriver_RegistersTheStepAsync}
+
+A bucket stored before 336 keeps NULL id lanes until something recomputes it from its events. That is a read of every
+stream's events, which a migration must not do: it would hold every stream it touched until the migration committed.
+So migration 337 only records whether there is anything to fill (`stream_digest_id_lanes_backfill_version` in
+`wh_settings`, `1` at once on a store with nothing to fill), and the `stream-digest-id-lane-backfill`
+[maintenance step](../fundamentals/workers/maintenance-steps#stream-digest-id-lane-backfill), which the EF Core
+Postgres driver registers, calls `wh_backfill_stream_digest_id_lanes_batch` in batches:
+
+- **Bounded.** A batch takes the next 500 digest streams after its cursor (one index probe per stream), and a
+  maintenance cycle runs at most 20 batches, each its own transaction.
+- **Exact.** A batch takes its streams' append locks, in the emit chain's order, before it reads, so no fold is in
+  flight while it recomputes and no settle window is needed.
+- **Resumable and idempotent.** The cursor (`stream_digest_id_lanes_backfill_cursor`) moves in the batch's own
+  transaction; a failed batch is repeated, and a bucket already right is not rewritten. One instance walks the cursor
+  at a time; another steps aside for the cycle.
+- **Done once.** When a batch finds nothing left, the backfill is recorded as done and every later cycle costs one
+  keyed read. A new database is done from its first start.
+- **Drift is reported, never hidden.** A bucket whose hash lanes or count disagree with its events is corrected, and
+  first logged at Warning with its stored and recomputed values, and counted on `stream_digest_drift_corrected`
+  (tagged `kind`: `drift_updated`, `drift_removed`, `drift_added`). Sustained non-zero means some write path changes
+  digests without the shared fold.
+
+Measured on a store of 2.24 million events in 500,000 streams: 1,000 batches, 102.8 s of database time in all (a mean
+of 103 ms per batch, p95 108 ms), and 234 MiB of WAL. Because the step is idle-gated like every maintenance step,
+that time is spread over the service's quiet periods rather than spent at startup.
+
 ## Scheduling, startup, and the repair policy ladder
 
 ### How the phases unfold from a cold start
 
 A restarted service reconciles in **layers** — the local layer immediately, the cross-service
-layer as soon as it has *heard from* its origins. The origin set is deliberately in-memory
-(a restart re-baselines it), so the first audit after a fleet-wide deploy usually runs only the
-local half; the next cycle has a warm tracker and runs the full exchange.
+layer as soon as it knows its origins. The origins and their pending gaps are kept in the store
+([the gap tracker survives a restart](#the-gap-tracker-survives-a-restart)), so a restarted service audits the origins
+it already knew on its first cycle. Only a service that has never recorded a checkpoint (a new database, or a store
+that keeps no tracker state) starts with an empty origin set and waits for its origins to checkpoint.
 
 **A cycle that reached no origins re-arms the startup window instead of the steady interval.**
 That matters because the interval defaults to a day. On a cold fleet start the audit can fire
@@ -2419,6 +2600,59 @@ the streams the bundle moved when it subtracts from and deletes emptied local bu
 key and touches only the buckets the bundle changed.
 :::
 
+#### Events held without an origin sequence {#events-held-without-an-origin-sequence}
+
+{verified: HeldWithoutOriginSequenceTests.PlacedFoldEqualToTheOrigin_MatchesAsync, HeldWithoutOriginSequenceTests.EventsHeldWithoutASequence_ThatCompleteTheWindow_MatchAsync, HeldWithoutOriginSequenceTests.OnlySequencelessEventsHeld_ThatAreTheWindow_MatchAsync, HeldWithoutOriginSequenceTests.MoreMissingThanTheSequencelessEventsCanCover_IsADeficit_WithTheHeldDigestAsync, HeldWithoutOriginSequenceTests.CountsThatFitButDigestsThatDiffer_AreUndecidedAsync, HeldWithoutOriginSequenceTests.NothingHeldWithoutASequence_ShortPlacedFold_IsADeficitAsBeforeAsync, HeldWithoutOriginSequenceTests.NothingHeldWithoutASequence_EqualOrLargerPlacedFold_DiffersAsBeforeAsync, IntegrityManifestReceptorTests.WindowedStream_EventsHeldWithoutAnOriginSequence_AreNoDeficit_AndTheFalseRowClearsAsync, IntegrityManifestReceptorTests.WindowedStream_AMissingEventBeyondTheHeldOnes_IsStillADeficit_WithTheHeldDigestAsync, IntegrityManifestReceptorTests.WindowedStream_UndecidedBucket_IsNeitherReportedNorRepaired_AndItsRowIsDroppedAsync, IntegrityManifestReceptorTests.WindowedStream_UndecidedBuckets_AreCountedOnTheUnplacedCounterAsync, IntegrityManifestReceptorTests.WindowedStream_MatchingBuckets_NeverAskForHeldEventsAsync, IntegrityManifestReceptorTests.UnwindowedStream_NeverAsksForHeldEventsAsync, IntegrityManifestReceptorTests.WindowedType_HeldEventsCompletingTheWindow_AdvanceTheSealAsync, IntegrityManifestReceptorTests.WindowedType_ADeficitTheHeldEventsMayFill_IsNotBulkBackfilledAsync, IntegrityManifestReceptorTests.WindowedType_ADeficitBeyondTheHeldEvents_IsBulkBackfilledByWhatIsMissingAsync, IntegrityCheckpointReceptorTests.AShortWindow_TheEventsHeldWithoutASequenceCanFill_IsNoGapAsync, IntegrityCheckpointReceptorTests.AFullWindow_NeverAsksForTheEventsHeldWithoutASequenceAsync, IntegrityCheckpointReceptorTests.AWindowShortByMoreThanTheEventsHeldWithoutASequence_IsStillAGapAsync, IntegrityCheckpointReceptorTests.APendingGap_TheEventsHeldWithoutASequenceFillOnTheRecount_HealsAndForgetsTheLaneAsync, UnsequencedReceivedDigestSqlTests.ByStream_FoldsOnlyTheOriginsSequencelessEventsOfTheNamedStreams_AsTheDigestFoldsDoAsync, UnsequencedReceivedDigestSqlTests.ByType_FoldsPerTenantAndType_AcrossStreamsAsync, UnsequencedReceivedDigestSqlTests.ByStream_UnderAGenericPlan_ReadsTheNamedStreamsRows_NotTheOriginsLaneAsync, UnsequencedReceivedDigestSqlTests.ByType_UnderAGenericPlan_ReadsTheOriginsSequencelessRows_NotItsSequencedLaneAsync}
+
+Until a redelivery fills it, an event that carries its origin but not the origin's commit sequence (the re-attributed
+history above) sits in no window. Windowed comparisons count a consumer's events by that sequence: the checkpoint
+counts the window's range, and the windowed stream and type folds take the window's slice of the origin's lane. So
+the consumer held every event of the window, and its bucket still read short on every audit. Before #2102 that was
+recorded as a deficit, and with repair on it asked the origin for events the consumer already had.
+
+A windowed comparison now also folds the events the consumer holds from that origin **without** a sequence
+(`IWorkCoordinator.ComputeUnsequencedReceivedDigestsAsync`, under the same predicates as every digest fold) and places
+them by identity with `IntegrityDigestMath.PlaceHeld`:
+
+| Verdict | When | What happens |
+| --- | --- | --- |
+| `Matches` | The placed fold equals the origin's, or the placed fold XOR the sequence-less fold does: the sequence-less events are the rest of the window | Healed. A false deficit row left by an earlier comparison is cleared. |
+| `Deficit` | The origin counts more events than the consumer holds placed and sequence-less together | A deficit, recorded and repaired. Its local digest includes the sequence-less events, so the ledger records what the consumer actually holds. |
+| `Undecided` | Sequence-less events are held, the counts fit, and the folds still differ | No ledger row and no repair; counted on `unplaced_buckets` and logged at Information per comparison. |
+| `Differs` | Nothing is held without a sequence, and the folds differ with no shortfall | The [taxonomy](#the-divergence-taxonomy) applies as before: identity mismatch or local surplus. |
+
+Where it applies:
+
+- **Windowed stream comparisons** fold the sequence-less events of the streams that disagree, one row per stream. The
+  read is paid only when a bucket disagrees, and it is bounded by the chunk's streams.
+- **Windowed type comparisons** fold the sequence-less events of the disagreeing types, one row per (tenant, type),
+  read through the origin lane index as that origin's sequence-less range, never its sequenced lane. A bulk backfill
+  the type deficit triggers is sized by what is missing beyond the held events, and a deficit the held events may
+  fill triggers none.
+- **Checkpoint counts**, and the recount that confirms a pending gap, add the held sequence-less events of a type to
+  the window's count, read only when a bucket reads short.
+- **Full-history comparisons** read nothing more: their folds already include every held event.
+
+Why each choice:
+
+- **Undecided is not a deficit.** When the counts fit but the folds differ, the window cannot tell whether a
+  sequence-less event is the one the window lacks or belongs to another window of the same stream. Recording a deficit
+  would repeat the false alarm this fixes, and recording a match would hide a real loss. The full-history comparison,
+  whose folds include every held event with no window, decides the stream, so nothing is left unverified; the
+  `unplaced_buckets` counter shows how much is waiting on it.
+- **A deficit only when the count proves it.** If the origin counts more events than the consumer holds in any form,
+  at least that many are missing whatever the sequence-less events turn out to be, so the deficit is certain.
+- **The checkpoint becomes less sensitive, by the held count.** A checkpoint compares counts, not identities, so it
+  cannot place an event. A window short by N events of a type is no gap when the consumer holds at least N events of
+  that type from the origin without a sequence. A real loss of up to that many events in that window is therefore
+  missed by the checkpoint. It is still caught by the digest audit, which compares identities, and the margin shrinks
+  to zero as redeliveries fill the sequences. The alternative, a gap on every window while that history waits for its
+  sequences, is the false alarm this removes.
+- **Paid only on disagreement.** A bucket that matches, or a checkpoint bucket that is not short, never reads the
+  sequence-less events, so a healthy comparison costs what it did.
+
+Existing false deficit rows clear on the next comparison of their bucket.
+
 #### Events this service authored {#pre-stamp-history-first-hop}
 
 {verified: RedeliveredOriginAdoptionSqlTests.Adopt_AnEventWhoseFirstHopNamesTheBundlesOrigin_AdoptsAsync, RedeliveredOriginAdoptionSqlTests.Adopt_AnEventWhoseFirstHopNamesThisService_IsRefusedAndStaysLocalAsync, RedeliveredOriginAdoptionSqlTests.Adopt_AFirstHopWithoutAServiceIdentity_AdoptsAsync, RedeliveredOriginAdoptionSqlTests.Adopt_EmptyHops_AdoptsAsync, RedeliveredOriginAdoptionSqlTests.Adopt_AnEventAlreadyCarryingAnOrigin_IsUntouchedWhateverItsFirstHopNamesAsync, InboxDispatchWorkerCompositeCommitTests.Redelivery_IsReconciledUnderTheServiceNameOfTheBundlesFirstHopAsync, RedeliveredOriginAdoptionSqlTests.Adopt_WithoutTheOriginsName_AdoptsAsBeforeAsync, RedeliveredOriginAdoptionSqlTests.Adopt_ABlankOrUnknownOriginName_AdoptsAsBeforeAsync, RedeliveredOriginAdoptionSqlTests.Adopt_ServiceNamesCompareWithoutCase_AndAnotherServiceInAnyCaseIsRefusedAsync, RedeliveredOriginAdoptionSqlTests.Adopt_TheLegacyLongFormHop_IsReadAndComparedWithoutCaseAsync, RedeliveryReconcilerTests.OriginServiceNameOf_NoHops_IsNullAsync, RedeliveryReconcilerTests.OriginServiceNameOf_AFirstHopWithABlankServiceName_IsNullAsync, RedeliveryReconcilerTests.OriginServiceNameOf_TheUnknownSentinelInAnyCase_IsNullAsync}
@@ -2763,6 +2997,8 @@ maximum across its instances), never a sum.
 | `manifests_requested`, `manifest_chunks_sent`, `drill_downs_requested`, `backfills_requested`, `redelivery_requests_received` | The exchange itself, hop by hop. |
 | `checkpoints_published` / `checkpoints_received`, `gaps_detected`, `coverage_gaps_detected`, `rebuilds_requested` | The continuity-checkpoint and coverage halves of the system. |
 | `digest_buckets_verified`, `digest_drift_healed` (tag `kind`) | The trust-but-verify sweep: buckets checked, and drift it healed (an unaccounted write path — investigate `kind`). |
+| `unplaced_buckets` (tag `origin`) | Windowed stream buckets a comparison left undecided because this service holds some of their events without the origin's commit sequence. None is recorded or repaired; the full-history comparison decides those streams. Falls to zero as redeliveries fill the sequences. See [events held without an origin sequence](#events-held-without-an-origin-sequence). |
+| `stream_digest_drift_corrected` (tag `kind`) | Stream digest buckets the [id-lane backfill](#id-lane-backfill) found disagreeing with their events and corrected (`drift_updated`, `drift_removed`, `drift_added`), each also a Warning with both values. Non-zero means a write path changed digests without [the shared fold](#one-digest-fold). |
 
 ### Reading a recovery
 
@@ -2782,11 +3018,11 @@ and non-zero (a stuck lane).
 
 ## Future work
 
-- **Persist the origin set?** The checkpoint origin tracker is deliberately in-memory (a restart
-  re-baselines), so after a fleet-wide deploy the FIRST audit usually runs only its local half —
-  the cross-service exchange starts on the next cycle, once checkpoints have re-announced the
-  origins. Persisting the origin set (a small table) would let the first audit exchange
-  immediately, trading a startup-freshness guarantee for it.
+- ~~**Persist the origin set?**~~ **Done (#2104).** The known origins and the pending gaps are kept in two small
+  tables and loaded once by a new process; see [the gap tracker survives a restart](#the-gap-tracker-survives-a-restart).
+- **Name more than one missing event.** The id lanes name a missing event only when exactly one is missing. A
+  set-reconciliation encoding (an IBLT over the bucket's ids) would name a small set; see
+  [one missing event is named](#one-missing-event-is-named).
 
 ### Original review questions
 
