@@ -84,13 +84,13 @@ service is busy or cooling down, admitted once it has stayed settled for `Settle
 forced through once it has been deferred for `MaxDeferral`. Its rank does not change: it still
 yields to dead-letter recovery and still holds off the cleanup sweep.
 
-Three [stream-integrity](../../resilience/stream-integrity#integrity-work-runs-on-the-maintainer)
+The [stream-integrity](../../resilience/stream-integrity#integrity-work-runs-on-the-maintainer)
 activities ask, each on the instance holding the maintainer duty: the integrity delivery drain
-(`IntegrityDeliveryWorker`), the deep audit (`IntegrityAuditWorker`) and the paced repair drain
-(`RepairDrainWorker`). They go through one helper, `IntegrityAdmission`, which measures the backlog,
+(`IntegrityDeliveryWorker`), the deep audit (`IntegrityAuditWorker`), the paced repair drain
+(`RepairDrainWorker`), and the idle ledger re-check (`IntegrityLedgerRecheckWorker`) among them. They go through one helper, `IntegrityAdmission`, which measures the backlog,
 asks for the slot under the requester's name, and releases it when the pass ends.
 
-**Each requester spends its own deferral budget.** The three share one slot but tick at very
+**Each requester spends its own deferral budget.** They share one slot but tick at very
 different rates. With one shared budget, whichever requester asked first after the ceiling would
 take the forced pass and re-arm the ceiling for all of them, starving a requester on a slower tick
 for as long as the load lasted. Each requester's ceiling runs from its own first deferral and is
