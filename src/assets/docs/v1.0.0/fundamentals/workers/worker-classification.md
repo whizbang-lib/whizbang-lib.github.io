@@ -24,6 +24,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Core/Workers/FailureFlushWorker.cs
   - src/Whizbang.Core/Workers/SubscriptionBackfillWorker.cs
+  - src/Whizbang.Core/Workers/IntegrityLedgerRecheckWorker.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerGateCadenceTests.cs
@@ -36,6 +37,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/SubscriptionExpansionWorkerTests.cs
   - tests/Whizbang.Core.Tests/Workers/BackupTickCoordinatorTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/SubscriptionBackfillWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/LedgerRecheckWorkerTests.cs
 ---
 
 # Worker classification
@@ -80,6 +82,7 @@ As of v0.681, zero D-class workers remain — every previously-polling worker ei
 | `IntegrityCheckpointWorker` | E | `CheckpointIntervalSeconds` (default 60 s) | Stream-integrity Phase B origin-side checkpoint publisher; publishes even on empty windows |
 | `IntegrityAuditWorker` | E | `AuditIntervalMinutes` (default 1440 — daily) | Stream-integrity Phases A + L deep audit |
 | `SubscriptionBackfillWorker` | E | 1 s pacing tick (token bucket at `BackfillEventsPerMinute`) | Stream-integrity [paced backfill](../../resilience/stream-integrity#paced-backfill); asks for windows only on the maintainer under the idle gate |
+| `IntegrityLedgerRecheckWorker` | E | `LedgerRecheckIntervalSeconds` (default 60 s) | Stream-integrity [idle ledger re-check](../../resilience/stream-integrity#idle-ledger-recheck); claims stale ledger rows only on the maintainer under the idle gate |
 | `BackupTickCoordinator` | E | Idle-aware: ASLEEP until `IdleThreshold` (30 s), then ticks every `PollingInterval` (30 s; `FastPollingInterval` 5 s when NOTIFY broken) | Runs registered backup ticks only when NOTIFY-driven activity isn't expected |
 | `OrphanInboxJanitor` | F | StartAsync once (startup purge sweep; `ExecuteAsync` is a no-op) | |
 | `SubscriptionExpansionWorker` | F | Runs once after the schema gate | Stream-integrity Phase S startup reconciler; baselines consumed-type expansions and queues their paced backfill |

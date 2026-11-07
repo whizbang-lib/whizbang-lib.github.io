@@ -324,8 +324,8 @@ instances do it once instead of N times:
 - the maintenance sweep (`MaintenanceWorker`);
 - claim pruning (emitted-event claims and saga claims);
 - partition maintenance;
-- stream-integrity work: the integrity delivery drain, the deep audit, the paced repair drain and checkpoint
-  publishing (see [integrity work runs on the maintainer](../../resilience/stream-integrity#integrity-work-runs-on-the-maintainer)).
+- stream-integrity work: the integrity delivery drain, the deep audit, the paced repair drain, the paced subscription
+  backfill, re-attribution, the idle ledger re-check (`IntegrityLedgerRecheckWorker`) and checkpoint publishing (see [integrity work runs on the maintainer](../../resilience/stream-integrity#integrity-work-runs-on-the-maintainer)).
 
 When role assignment does not manage the duty (no duty loop registered, or a loop without the `maintainer` role),
 **every instance** does the work, as before. There is no holder to defer to, and a check that waited for one would
