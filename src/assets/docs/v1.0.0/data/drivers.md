@@ -280,7 +280,7 @@ coordinator's schema, so the drivers cannot drift. On the Dapper driver that cov
 |------|---------------------|
 | Retention and storage | The offload-claim ledger and its sweep, the settled apply-path fold, the [ancient ephemeral pointer prune](../fundamentals/events/ephemeral-events.md), ephemeral reclassification and per-type grace, the lifecycle-completion cleanup, the exhausted orphan reap, [row retention](../fundamentals/perspectives/row-retention.md#dapper-driver) and the [prefix truncate](../fundamentals/events/event-streams.md#prefix-truncate-on-every-data-layer) |
 | Table maintenance | The rewrite queue and its measurements, the bloat estimate and the approximate measurement, `VACUUM (FULL)`, external and pg_squeeze rewrites, the work-table vacuum, and the queue-index survey, drop and rebuild |
-| Recovery and fleet | The stuck-row sentinels, the release of unprocessed inbox rows and unstarted leases, the service backlog the housekeeping gate reads, the broker dead-letter import, and the standby and eviction handshake |
+| Recovery and fleet | The stuck-row sentinels and the drop of exhausted control-plane inbox rows (`DropExhaustedInboxRowsAsync`, [exhausted rows are concluded](../operations/observability/stuck-row-sentinel.md#exhausted-rows-are-concluded)), the release of unprocessed inbox rows and unstarted leases, the service backlog the housekeeping gate reads, the broker dead-letter import, and the standby and eviction handshake |
 | Type registry, lifecycle and cursors | The type-definition catalog, its lineage and its reconcile claim, the lifecycle completion marker and the startup orphan reconciliation, the cursor batch and rewind reads, the ephemeral snapshot targets, and the local service id |
 | Coalescing | The pending groups, a group's singles, the fold and the deadline release |
 
@@ -288,7 +288,7 @@ The Dapper driver creates its schema on the application connection, so the role 
 the tables. There is no separate schema-initialization connection: a table maintenance statement on a table that role
 does not own is reported and not run, exactly as the EF Core coordinator does when no `-init` connection is configured.
 
-{verified: DapperRetentionSweepTests.PruneAncientEphemeralPointers_DisabledByDefault_ThenPrunesAllButTheNewestAsync, DapperTableMaintenanceTests.UnderARoleThatOwnsNoTable_NothingIsVacuumedRewrittenOrRebuilt_AndEachIsReportedAsync, DapperFleetRecoveryTests.ReleaseUnstartedLeases_ReturnsTheInstancesUnstartedRowsOfTheStreamsAsync, DapperLifecycleAndCatalogTests.OrphanedLifecycles_AreFoundUntilTheirCompletionIsRecordedAsync, DapperCoalesceTests.CompleteFold_StoresTheCompositeAndCompletesTheSinglesTogetherAsync}
+{verified: DapperRetentionSweepTests.PruneAncientEphemeralPointers_DisabledByDefault_ThenPrunesAllButTheNewestAsync, DapperTableMaintenanceTests.UnderARoleThatOwnsNoTable_NothingIsVacuumedRewrittenOrRebuilt_AndEachIsReportedAsync, DapperFleetRecoveryTests.ReleaseUnstartedLeases_ReturnsTheInstancesUnstartedRowsOfTheStreamsAsync, DapperFleetRecoveryTests.DropExhaustedInboxRows_DropsOnlyTheGivenRowsPastTheCeilingAsync, DapperLifecycleAndCatalogTests.OrphanedLifecycles_AreFoundUntilTheirCompletionIsRecordedAsync, DapperCoalesceTests.CompleteFold_StoresTheCompositeAndCompletesTheSinglesTogetherAsync}
 
 :::updated
 Before this release the Dapper coordinator left every one of these operations at its inert default. A retention setting such
