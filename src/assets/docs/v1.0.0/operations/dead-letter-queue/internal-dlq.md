@@ -160,6 +160,7 @@ Callers:
 |---|---|---|
 | `InboxDispatchWorker.ProcessOneInnerAsync` | `attempts > MaxInboxAttempts` (also composite fan-out failures, cap-independent) | `InboxDispatchWorkerOptions.MaxInboxAttempts` (default 10) |
 | `InboxDrainWorker` unreadable rows | `attempts > MaxInboxAttempts` on a row whose envelope it cannot read, which never reaches the dispatch worker ([unreadable rows](../workers/inbox-dispatch-worker#unreadable-rows)) | `InboxDispatchWorkerOptions.MaxInboxAttempts` (default 10) |
+| `MaintenanceWorker` exhausted inbox rows | `attempts > MaxInboxAttempts` on a row the claim kept charging that no dispatcher concluded; control-plane rows are dropped instead ([exhausted rows are concluded](../observability/stuck-row-sentinel#exhausted-rows-are-concluded)) | `InboxDispatchWorkerOptions.MaxInboxAttempts` (default 10), at most `MaintenanceWorkerOptions.ExhaustedInboxConcludeLimit` (default 500) per cycle |
 | `OutboxDrainWorker` pre-publish gate | `attempts > MaxOutboxAttempts`, checked before any publish attempt | `OutboxDrainWorkerOptions.MaxOutboxAttempts` (default 10) |
 | `OutboxPublishWorker` post-failure promotion | `attempts >= MaxOutboxAttempts` after a publish failure | `OutboxPublishWorkerOptions.MaxOutboxAttempts` (default 10) |
 | `PerspectiveWorker.FilterDeadLetteredAsync` | `failures > MaxPerspectiveEventAttempts` (apply failures; `attempts` counts leases and is diagnostic only) | `PerspectiveWorkerOptions.MaxPerspectiveEventAttempts` (default 10) |
