@@ -126,6 +126,18 @@ For complete functionality, add all packages:
 </ItemGroup>
 ```
 
+### Version numbers {#version-numbers}
+
+Every Whizbang package in one release carries the same version, so reference them all at one number. Three kinds of version are published to nuget.org:
+
+| Version | Example | What it is |
+|---|---|---|
+| `0.Y.0-alpha.N` | `0.2627.0-alpha.674` | Built from every change merged to the development line; `N` counts the changes since the last release |
+| `X.Y.Z-beta.N`, `X.Y.Z-rc.N` | `0.3301.0-beta.5` | A release being stabilized: the same tested build, published for early adopters |
+| `X.Y.Z` | `0.3309.0` | A stable release |
+
+A stable release's minor is **not** one above the alphas before it: it adds the latest number of each prerelease label since the last stable release, so `0.2627.0-alpha.674`, then `beta.5` and `rc.3`, ship as `0.3309.0` (2627 + 674 + 5 + 3). Each stable therefore sorts above every prerelease it supersedes. A jump in the minor between a prerelease and its stable is expected, and is not a breaking change on its own. The rule and the reasons behind it are in [Release Versioning and the Version Rollup](../../contributors/releases-and-versioning.md#version-rollup).
+
 ### Option 3: Central Package Management (Recommended for Solutions)
 
 Use `Directory.Packages.props` for version management:
