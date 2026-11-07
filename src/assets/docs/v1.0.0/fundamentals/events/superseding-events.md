@@ -5,7 +5,8 @@ description: >-
   Declare an event type [Superseding] when every event holds the whole state for its key: once a newer event of the
   same type and key is stored on the stream, the older one is deleted with its body and its digest contribution after
   every consumer has processed it. Covers the key, the reaper and its gates, what it means for rebuilds and rewinds,
-  integrity digests, received copies, and the WHIZ135 and WHIZ136 build rules.
+  integrity digests, received copies, the history stored before a type was declared superseding, and the WHIZ135 and
+  WHIZ136 build rules.
 version: 1.0.0
 category: Core Concepts
 order: 18
@@ -27,6 +28,9 @@ codeReferences:
   - src/Whizbang.Generators/MessageTypeCatalogGenerator.cs
   - src/Whizbang.Generators/SupersedingEventAnalyzer.cs
   - src/Whizbang.Generators/Utilities/SupersedingResolver.cs
+  - src/Whizbang.Core/Configuration/SupersedingOptions.cs
+  - src/Whizbang.Data.Postgres/SupersedingHistoryReconcileStep.cs
+  - src/Whizbang.Data.Postgres/Migrations/345_SupersedingHistoryReconcile.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Lifecycle/SupersedingEventsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EventFlagsTests.cs
@@ -40,6 +44,8 @@ testReferences:
   - tests/Whizbang.Generators.Tests/SupersedingEventAnalyzerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SupersedingEventReaperSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSupersedingKeyTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/SupersedingHistoryReconcileSqlTests.cs
+  - tests/Whizbang.Generators.Tests/MessageTypeCatalogFingerprintTests.cs
 ---
 
 # Superseding Events
@@ -181,6 +187,57 @@ subscriber to acknowledge.
 |---|---|---|
 | A received payload of a superseding type with a key property is deserialized once, with the service's `JsonSerializerOptions` (or the combined registered contexts when none is registered), so the generated accessor can read the key. | The producer's accessor and the receiver's are the same code, so both store the same key; reading JSON property names directly would depend on the naming policy. Only superseding types with a key pay for it. | {verified: SupersedingEventsTests.KeyOf_AReceivedJsonPayload_IsReadThroughItsTypeName_AsTheTypedPayloadIsAsync, ReceivedInboxMessageBuilderSupersedingKeyTests.Build_WithNoOptionsGiven_ReadsTheKeyThroughTheRegisteredContextsAsync} |
 
+## History stored before the declaration {#history-stored-before-the-declaration}
+
+The write paths stamp the flag and the key when an event is stored, so the events a type stored before it was declared
+`[Superseding]` carry neither, and no newer event ever queues them. Maintenance brings them under the same rule: the
+`superseding-history-reconcile` step walks each superseding type's stored events, reads each event's key from its stored
+payload with the generated accessor the write paths use, stamps the flag and the key, and queues every event but the
+newest of each stream, type and key. From there the [reaper](#the-reaper) takes over: an old event is deleted only past
+every one of its gates, and the digests are adjusted as for any other reaped event. The step itself deletes nothing.
+
+{verified: SupersedingHistoryReconcileSqlTests.Reconcile_HistoryStoredBeforeTheDeclaration_IsReapedDownToTheNewestOfEachKey_OnceConsumedAsync, DapperSupersedingKeyTests.HistoryStoredBeforeTheDeclaration_IsReconciledByTheRegisteredStep_AndReapedToTheNewestAsync}
+
+It is on by default. Set `Whizbang:Superseding:ReconcileHistory` to `false` to keep the history as it was stored
+([configuration](../../operations/configuration/configuration-reference#superseding-options)).
+
+```json{
+title: "Keeping the history stored before the declaration"
+description: "Turns the history reconcile off; events stored after the declaration are still superseded as usual."
+framework: "NET10"
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["superseding", "configuration", "maintenance"]
+tests: ["ProcessWideOptionsBindingTests.Superseding_Unconfigured_ReconcilesHistory_AndTheKeyTurnsItOffAsync"]
+}
+{
+  "Whizbang": {
+    "Superseding": {
+      "ReconcileHistory": false
+    }
+  }
+}
+```
+
+| Choice | Reason | Verified |
+|---|---|---|
+| On by default: a type that becomes superseding has its earlier history reconciled with no setting. | The reconcile only stamps and queues; the reaper's gates (consumed, no cursor or snapshot on it, no destruction hold, stamped, not debug mode) stay the only path to deletion, so nothing goes that the reaper would not remove for an event stored after the declaration. Declaring the type superseding is the promise that its older events are redundant, and leaving them would keep the storage the declaration was meant to recover. | {verified: ProcessWideOptionsBindingTests.Superseding_Unconfigured_ReconcilesHistory_AndTheKeyTurnsItOffAsync, SupersedingHistoryReconcileSqlTests.Reconcile_OldEventsTheGatesProtect_StayAsync} |
+| The key is read from the stored payload by the same generated accessor and invariant-text rules as on the write paths; a null key is stamped without a key, and a payload whose key cannot be read is kept and logged. | A historical event must be keyed exactly as the same event stored today, or it would supersede, or be superseded by, the wrong events. Keeping an event whose key is unknown is the recoverable direction. | {verified: SupersedingHistoryReconcileSqlTests.Reconcile_ANullKey_IsStampedUnkeyed_AndNeverQueued_AKeylessTypeKeepsOnePerStreamAsync, SupersedingHistoryReconcileSqlTests.Reconcile_AnUnreadablePayload_IsStampedUnkeyed_AndLoggedAsync} |
+| An old event is queued whether it is stamped before or after the newer event of its key. | A newer event stored after the declaration was already keyed when the old one had no key, so it queued nothing; the old event queues itself when it is stamped. | {verified: SupersedingHistoryReconcileSqlTests.Reconcile_AnOldEventStampedAfterTheNewerOneOfItsKey_IsQueuedAsync} |
+| A maintenance step, not startup work. | It runs only once the service has settled (or the deferral limit forces the cycle), only after the maintainer turn, and in bounded batches, like every other step that rewrites stored rows. | {verified: SupersedingHistoryReconcileSqlTests.ThePostgresDriver_RegistersTheStepAsync, DapperSupersedingKeyTests.HistoryStoredBeforeTheDeclaration_IsReconciledByTheRegisteredStep_AndReapedToTheNewestAsync} |
+| The walk reads the event store by event id, 5,000 events per batch, each batch one transaction, at most 20 batches a cycle; a cursor per type (`wh_superseding_history`) lets the next cycle, or a restart after a crash, continue where the last committed batch stopped. | No index serves "the events of this type without the flag" without revisiting the stamped ones on every batch, and an index that did would be written by every append for the life of the store. The primary key reads each event once per walk, and a finished walk costs one row read per type per cycle. | {verified: SupersedingHistoryReconcileSqlTests.Reconcile_RunsInBoundedBatches_AndResumesFromItsCursor_AfterACrashAsync} |
+| One instance per type: the type's cursor row is taken with `SKIP LOCKED`, and an event row another transaction holds is left for the next batch, which stops the cursor just before it. | Two instances never do the same work, and the walk never waits on a writer or the reaper. | {verified: SupersedingHistoryReconcileSqlTests.Reconcile_WhileAnotherInstanceHoldsTheType_SkipsWithoutWaiting_AndDoesNoWorkAsync, SupersedingHistoryReconcileSqlTests.Reconcile_ARowAnotherTransactionHolds_IsLeftForTheNextBatch_WithoutWaitingAsync} |
+| Stamping takes the per-stream locks the write paths take, in stream id order. | A newer event of the same key stored at the same moment is either seen by the stamp or sees it, so no old event is left unqueued. | {verified: SupersedingHistoryReconcileSqlTests.Reconcile_AnOldEventStampedAfterTheNewerOneOfItsKey_IsQueuedAsync} |
+| A second run changes nothing. | A stamped event is never read again and a queued event is never queued twice. | {verified: SupersedingHistoryReconcileSqlTests.Reconcile_ASecondRun_ChangesNothingAsync} |
+| Only the types registered as superseding are walked, and only their Sourced events. | A type that is not, or is no longer, superseding keeps every event; an ephemeral event belongs to the ephemeral reaper. | {verified: SupersedingHistoryReconcileSqlTests.Reconcile_ATypeThatIsNotSuperseding_IsNotTouchedAsync, SupersedingHistoryReconcileSqlTests.Reconcile_AnEphemeralEventOfTheType_IsLeftToTheEphemeralReaperAsync} |
+| `[Superseding]` is part of a type's settings hash, and a walk starts again from the first event when the type-definition registry holds a newer definition of the type than the walk started under. | Becoming superseding is then recorded in the registry as a definition change, and a type that was briefly something else, and stored unflagged events meanwhile, is walked again. Every type that is not superseding keeps the hash it had. | {verified: MessageTypeCatalogFingerprintTests.SettingsHash_ChangesWhenATypeBecomesSuperseding_AndASourcedTypeKeepsItsHashAsync, SupersedingHistoryReconcileSqlTests.Reconcile_ANewerDefinitionOfTheType_WalksItAgainFromTheStartAsync} |
+| Each service reconciles its own store. | A received copy is reaped by the receiver's own gates, as on the live path. | {verified: SupersedingHistoryReconcileSqlTests.Reconcile_ReceivedCopies_AreReconciledInTheReceivingStoreAsync} |
+
+The step logs, per type and cycle, the events it stamped and queued and how many of the type's events are left to
+read, and one line when a type's walk reaches the end of the store.
+
+{verified: SupersedingHistoryReconcileSqlTests.Step_ReportsProgress_AndOneLineWhenATypeFinishesAsync}
+
 ## Build rules {#build-rules}
 
 | Diagnostic | Severity | When |
@@ -198,7 +255,14 @@ subscriber to acknowledge.
   do not carry `supersede_key`, so an event restored from an archive is never superseded. It is kept, which is the
   recoverable direction.
 - **The key property must be readable by generated code** in the event's assembly (public or internal).
-- **Events stored before the type was declared superseding** carry no key and are never reaped.
+- **An event stored by an instance that did not yet know the type is superseding, after the walk passed it** (for
+  example, by a replica still running the earlier code during a rolling deploy) stays unflagged and is kept. It is never
+  reaped wrongly, only kept. Deleting the type's row in `wh_superseding_history` walks the type again.
+- **A key property added after events were stored** reads as the property's default from those events (`null` for a
+  reference type, which keeps them, but the default value for a value type such as a `Guid`, which gives them all one
+  key per stream).
+- **Events stored under a former name of the type** are not walked: a newer event of the current name never supersedes
+  them.
 
 ## Related
 

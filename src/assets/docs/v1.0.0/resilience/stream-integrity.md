@@ -1763,7 +1763,7 @@ checkpoint advertises its control inbox. Messages a peer sends to the old addres
 
 Every directed integrity message carries a time to live, `Whizbang:StreamIntegrity:ControlMessageTimeToLiveMinutes`
 (default 60). The transports lift it to the broker's own expiry (see the
-[control-plane rail](../fundamentals/dispatcher/routing#control-class)), so a message nobody reads in time is dropped
+[control-plane rail](../fundamentals/dispatcher/routing#service-control-inbox)), so a message nobody reads in time is dropped
 by the broker instead of piling up. Integrity requests are regenerated every cycle, so an expired one costs nothing:
 the next checkpoint, audit or repair pass asks again. The value must be at least 1; a smaller one fails at host start
 naming the key.
