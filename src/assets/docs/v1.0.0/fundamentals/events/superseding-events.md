@@ -100,7 +100,7 @@ What the promise costs:
 ## The key {#the-key}
 
 The key names what an event holds the state of. A newer event supersedes an older one only when both are on the same
-stream, of the same type, with the same key.
+stream, of the same type (or the same [superseding group](#superseding-groups)), with the same key.
 
 - Mark one property `[SupersedingKey]`, on a property or on a record's primary-constructor parameter (which marks the
   property of the same name). A key on a base type is the derived type's key.
@@ -117,6 +117,75 @@ stream, of the same type, with the same key.
 | An event whose key property is `null` is stored with no key, and is never superseded and never supersedes another. | An unknown key must not merge with every other unknown key of its type; keeping the event is the recoverable direction. | {verified: SupersedingEventsTests.KeyOf_AKeyPropertyThatIsNull_IsNull_SoTheEventIsNeverSupersededAsync, SupersedingEventReaperSqlTests.Emit_Outbox_StampsTheKeyOnlyOnASupersedingEvent_AndQueuesTheOlderOneAsync} |
 | Only an event can be superseding; `[Superseding]` on a command is ignored. | Only an event is stored on a stream. | {verified: MessageTypeCatalogGeneratorTests.Generator_SupersedingEvent_StampsTheEntryAndRegistersTheKeyAsync} |
 | The flag name parser that reads `Flags` written as names (`"Superseding"`) knows the new bit. | A name it does not know is refused (22P02), which would refuse every superseding event written by a host that serializes enums as names. | {verified: SupersedingEventReaperSqlTests.Emit_FlagsWrittenAsNames_StampTheKeyOfASupersedingEventAsync} |
+
+### A key missing from the payload {#a-key-missing-from-the-payload}
+
+When a received message or a stored event is read from JSON, the key is taken from the payload. If the payload does
+not carry the key property at all, or carries it as `null`, the event has **no key**: it is still marked superseding,
+but it is never superseded and never supersedes another, so it is never reaped.
+
+This matters for a key of a value type such as `Guid` or `int`. Reading the payload as the event type would turn an
+absent key into the type's default (`00000000-0000-0000-0000-000000000000`, `0`), so every such event on a stream would
+share one key and all but the newest would be deleted. It happens in two places:
+
+- **History stored before the key property existed.** The [history reconcile](#history-stored-before-the-declaration)
+  stamps those events without a key and logs each one at Information ("has no superseding key in its payload"). They
+  are kept.
+- **A rolling deploy.** A message from an older producer that lacks the key is stored on the receiver without a key,
+  and kept.
+
+To bring such events under the superseding rule, give them a key first (for example with an upcaster). Until then they
+are kept.
+
+{verified: SupersedingEventsTests.KeyOf_AValueTypeKeyMissingFromTheJson_IsNull_ButAPresentDefaultIsAKeyAsync, ReceivedInboxMessageBuilderSupersedingKeyTests.Build_AReceivedEventMissingItsValueTypeKey_IsFlaggedButUnkeyed_APresentDefaultIsAKeyAsync, SupersedingHistoryReconcileSqlTests.Reconcile_AValueTypeKeyMissingFromThePayload_IsStampedUnkeyed_KeptAndLogged_APresentDefaultIsAKeyAsync, DapperSupersedingKeyTests.HistoryMissingAValueTypeKey_IsReconciledUnkeyed_AndNoneIsReapedAsync}
+
+| Choice | Reason | Verified |
+|---|---|---|
+| Absence decides, not the value. A key that is present is a real key even when it equals the type's default: two events that both carry `RegionId = Guid.Empty` supersede each other. | Only the payload knows whether the key was written. A default value can be a legitimate key; a missing one is unknown, and deleting history on an unknown key cannot be undone. | {verified: SupersedingEventsTests.KeyOf_AValueTypeKeyMissingFromTheJson_IsNull_ButAPresentDefaultIsAKeyAsync, ReceivedInboxMessageBuilderSupersedingKeyTests.Build_AReceivedEventMissingItsValueTypeKey_IsFlaggedButUnkeyed_APresentDefaultIsAKeyAsync} |
+| The check applies only to payloads read from JSON (receive and history). A typed event dispatched in process is unchanged. | A typed event always has its key property, so its value, default or not, was set by the code that raised it. | {verified: DispatcherSupersedingKeyTests.PublishAsync_ASupersedingEvent_CarriesTheFlagAndItsKey_AnOrdinaryEventNeitherAsync} |
+| The key is looked for under the name the serializer writes: its `[JsonPropertyName]`, or the naming policy's name, matched case-insensitively when the serializer options are (the framework's are). | A check under the wrong name would call every key missing and stop reclaiming anything. | {verified: SupersedingEventsTests.KeyOf_AKeyWithAJsonPropertyName_IsLookedForUnderThatNameAsync, SupersedingEventsTests.KeyOf_AContractWithAttributeProviders_HonorsItsNamingPolicyAsync} |
+| A nullable key behaves the same way: missing or `null` means no key. | One rule for every key type. | {verified: SupersedingEventsTests.KeyOf_ANullableKey_IsNullWhenMissingOrNull_AndItsValueWhenPresentAsync} |
+| The history reconcile logs a missing key at Information, the receive path does not log it. | Old history without the key is expected and can number in the thousands; the event is kept either way, so neither is a warning. | {verified: SupersedingHistoryReconcileSqlTests.Reconcile_AValueTypeKeyMissingFromThePayload_IsStampedUnkeyed_KeptAndLogged_APresentDefaultIsAKeyAsync} |
+| Code generated before this change (no registered key name) reads the payload as before. Rebuild against the current generator to get the check. | Older generated registrations carry only the key accessor, not the key's JSON name. | {verified: SupersedingEventsTests.KeyOf_ARegistrationWithoutAMappableKeyMember_ReadsThePayloadAsBeforeAsync} |
+
+## Superseding groups {#superseding-groups}
+
+Without a group, superseding works per stream, event type and key: a stream keeps the newest event of each superseding
+type. When several types each carry the whole state of the same thing (a created and an updated event that both hold the
+full value), put them in one **superseding group**:
+
+```csharp{title="Two event types in one superseding group" description="The newest of either type replaces the older events of both." framework="NET10" category="Events" difficulty="INTERMEDIATE" tags=["superseding", "groups"] tests=["SupersedingGroupSqlTests.Emit_ANewerEventOfAnotherTypeInTheGroup_QueuesTheOlder_InEitherOrderAsync"]}
+[Superseding(Group = "document-embedding")]
+public sealed record DocumentEmbeddingCreated([property: StreamId] Guid DocumentId, float[] Vector) : IEvent;
+
+[Superseding(Group = "document-embedding")]
+public sealed record DocumentEmbeddingUpdated([property: StreamId] Guid DocumentId, float[] Vector) : IEvent;
+```
+
+The newest event of **any** type in the group supersedes the older events of **every** type in it, per stream, group and
+key. The created event is reaped once a later updated event exists and every consumer has processed it.
+
+{verified: SupersedingGroupSqlTests.Emit_ANewerEventOfAnotherTypeInTheGroup_QueuesTheOlder_InEitherOrderAsync, SupersedingGroupSqlTests.Reap_AnEventSupersededByAnotherTypeOfItsGroup_IsDeleted_TheNewestIsKeptAsync, DapperSupersedingKeyTests.AppendAsync_GroupedTypes_SupersedeEachOther_AndTheOlderIsReapedAsync}
+
+**Full state across types.** The [full-state rule](#full-state-payloads-only) now applies across the group. Every event
+of every type in the group must carry everything a consumer needs for its key, because only the newest event of the
+group is kept, whatever its type. A perspective or receptor that handles several types of a group must produce the same
+state from whichever of them is newest, and must not depend on having seen the created event before an updated one:
+after the reaper runs, a rebuild or rewind replays only the newest event of the group.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The group is an explicit string, global, never derived from a type name. Types in different assemblies with the same name are in one group. An empty name means no group. | The group is stored with every event (`wh_event_store.supersede_group`, metadata `sg`), so renaming a class must not move its events to another group. | {verified: SupersedingEventsTests.GroupOf_AGroupedType_IsItsDeclaredGroup_AnUngroupedOrUnregisteredTypeHasNoneAsync, MessageTypeCatalogGeneratorTests.Generator_SupersedingEvent_StampsTheEntryAndRegistersTheKeyAsync} |
+| Every write path stamps the group: the dispatcher's outbox row, a received inbox row, and a direct append on both drivers. | One group, whatever path stored the event, the same as the key. | {verified: DispatcherSupersedingKeyTests.PublishAsync_AGroupedSupersedingEvent_CarriesItsGroup_AnUngroupedOneNoneAsync, ReceivedInboxMessageBuilderSupersedingKeyTests.Build_AReceivedGroupedEvent_CarriesItsGroup_AnUngroupedOneNoneAsync, SupersedingGroupSqlTests.Emit_Inbox_StampsTheGroup_AndQueuesAcrossTypesAsync, SupersedingGroupSqlTests.DirectAppend_StampsTheGroup_AndQueuesAcrossTypesAsync} |
+| A type without a group is its own group, exactly as before: two ungrouped types never supersede each other, and a grouped type never supersedes an ungrouped one or a type in another group. Events stored before groups existed need no migration. | Matching is on the group, falling back to the event type, so existing behavior and existing rows are unchanged. | {verified: SupersedingGroupSqlTests.Emit_UngroupedTypes_StillSupersedeOnlyTheirOwnTypeAsync, SupersedingGroupSqlTests.Emit_AGroupedAndAnUngroupedType_NeverSupersedeEachOtherAsync, SupersedingGroupSqlTests.Reap_AQueuedEventWhoseOnlyNewerEventIsOutsideItsGroup_IsKeptAsync} |
+| Keys still divide a group, and every type in a group must have no `[SupersedingKey]` or a key of the same type ([WHIZ138](../../operations/diagnostics/whiz138)). A `Guid?` key agrees with a `Guid` key. | An event replaces only older events of the group with the same key, so the key must mean the same thing for every type. A nullable key and its value type are stored as the same text. | {verified: SupersedingGroupSqlTests.Emit_KeysStillPartitionAGroupAsync, SupersedingEventAnalyzerTests.AGroupWhoseTypesDisagreeOnTheKey_ReportsWHIZ138OnEachAsync, SupersedingEventAnalyzerTests.AGroupWhoseTypesAgree_OrTypesOutsideAnyGroup_NoWHIZ138Async} |
+| An event whose key is [missing or null](#a-key-missing-from-the-payload) is never superseded, in a group or not. | A group never widens what an unknown key can delete. | {verified: SupersedingGroupSqlTests.Emit_AMissingKeyInAGroup_IsNeverSupersededAsync} |
+| When a type joins, leaves or changes a group, the [history reconcile](#history-stored-before-the-declaration) walks the type's stored events again and stamps them with the new group, so older events of the group from either type are queued and reaped behind the newest. | The walk records its group; a different group restarts it. This does not depend on the type-definition registry. | {verified: SupersedingGroupSqlTests.Reconcile_TypesThatJoinAGroupLater_AreReStamped_AndTheOlderEventOfTheGroupIsReapedAsync, SupersedingGroupSqlTests.Reconcile_HistoryStoredBeforeAGroupedTypeWasSuperseding_IsStampedWithItsGroupAsync, SupersedingGroupSqlTests.Ensure_AChangedGroup_RestartsTheWalk_TheSameGroupDoesNotAsync} |
+| The group lookup is served by an index on `(stream_id, COALESCE(supersede_group, event_type), supersede_key, version)` for keyed rows. | The queue and the reaper probe for a newer event of the same group on every superseding write and reap. | {verified: SupersedingGroupSqlTests.TheGroupProbe_IsServedByTheGroupIndexAsync} |
+
+**Limits.** WHIZ138 checks the types of one compilation; types in other assemblies that share a group name are not
+compared. A group named exactly like an ungrouped type's stored type name (`"Ns.Type, Assembly"`) would match that type,
+so do not use a type name as a group name.
 
 ## The reaper {#the-reaper}
 
