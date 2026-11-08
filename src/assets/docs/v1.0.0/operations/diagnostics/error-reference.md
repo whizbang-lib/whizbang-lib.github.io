@@ -160,7 +160,7 @@ Stream {streamId} is archived through version {lastVersion}; the append waits fo
 {verified: ArchiveLocationMismatchExceptionTests.TheLocationsConstructor_NamesTheStreamTheOperationBothLocationsAndTheRowAsync, ArchiveLocationMismatchExceptionTests.ARecordWithNoLocation_SaysSo_RatherThanNamingOneAsync, AzureBlobArchiveStoreTests.Read_Restore_Delete_InAnotherContainer_ThrowTheMismatch_AndTouchNoObjectAsync}
 
 ```text
-The {operation} of the archive of stream {streamId} was refused: its objects are recorded at location {locationId} ({recorded}), and this service is configured for {configured}. Nothing was read, restored or deleted. If the objects are expected in the configured location (the database was copied or restored, or the storage moved), repoint the record's location row in wh_archive_locations (or call the store's repoint operation); otherwise correct the configuration.
+The {operation} of the archive of stream {streamId} was refused: its objects are recorded at location {locationId} ({recorded}), and this service is configured for {configured}. Nothing was read, restored, written or deleted. If the objects are expected in the configured location (the database was copied or restored, or the storage moved), repoint the record's location row in wh_archive_locations (or call the store's repoint operation); otherwise correct the configuration.
 The {operation} of the archive of stream {streamId} was refused: an archive record of it records no location, and this service is configured for {configured}. ...
 ```
 
