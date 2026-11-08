@@ -158,9 +158,12 @@ since no second signal comes. And a rolled-back change still announced itself.
 Subscriptions are not tied to a scope: they go to the bus, as before.
 {verified: ScopeBoundAppSignalChannelTests.Subscribe_GoesToTheBus_AndTopicsAreValidatedAsBeforeAsync}
 
-**An oversized payload fails your transaction.** PostgreSQL rejects a notification payload over 8000 bytes. Sent
-inside your transaction, that error is raised inside it, so the transaction fails rather than committing without its
-signal. Keep payloads small: pass an id and let subscribers fetch.
+**An oversized payload fails your DbContext transaction.** PostgreSQL rejects a notification payload over 8000 bytes.
+Sent inside a DbContext transaction, that error is raised inside it, so the transaction rolls back rather than
+committing without its signal. Inside a `TransactionScope` the signal is sent only after the scope commits, so your work
+commits and the rejected send is logged as a warning naming the channel. Keep payloads small: pass an id and let
+subscribers fetch.
+{verified: AppSignalTransactionalPublishTests.AnOversizePayload_InsideADbContextTransaction_FailsThePublishAndTheTransactionAsync, DapperAppSignalTransactionTests.AnOversizePayload_InsideATransactionScope_DoesNotFailTheScope_TheSendAfterCommitFailsAndIsLoggedAsync}
 
 :::updated{version="1.0.0" type="breaking"}
 **Changed** ([#2076](https://github.com/whizbang-lib/whizbang/issues/2076)): a publish inside a transaction is delivered
@@ -168,7 +171,8 @@ on its commit; earlier releases sent it at once on a connection of their own, ev
 
 - A custom `ISignalTopicTransport` implements `PublishTopicAsync(topic, payload, DbTransaction? transaction, ...)`.
 - Code that resolved `IAppSignalChannel` and expected the `SignalBus` instance now receives a per-scope channel over it.
-- A payload PostgreSQL rejects (over 8000 bytes) published inside your transaction now fails that transaction.
+- A payload PostgreSQL rejects (over 8000 bytes) published inside your DbContext transaction now fails that transaction;
+  inside a `TransactionScope` your work commits and the rejected send is logged.
 :::
 
 ## Limitations
