@@ -46,6 +46,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Diagnostics/MessageParseCountFlowTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.RewindFailure.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.UnreadableRows.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerNoPerspectivesParkTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerCoverageTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -203,9 +205,52 @@ At the top of `ExecuteAsync` the worker:
 4. **Scans and repairs interrupted rewinds**
 5. **Spawns** `MaxConcurrentDrainConsumers` (default 4) parallel channel-consumer loops
 
+Steps 3 and 4 run only on a host that has a perspective registry. A host with none skips them and waits idle before
+step 5; see [a service with no perspectives](#no-perspective-registry).
+
 The channel dependencies (`IPerspectiveChannelWriter`, `IPerspectiveCompletionChannel`, `IFailureChannel`) are **required at runtime** — they are wired automatically by `AddWhizbang()` (which invokes `AddWhizbangWorkers()`). If they are missing, `ExecuteAsync` throws `InvalidOperationException`; the worker has no polling path of its own, because `ClaimWorker` claims perspective work and hands it over on these channels.
 
 Database readiness is handled by registration: the perspective worker, `ClaimWorker` and the flush workers are [registered with their start point](../startup/startup-status#add-whizbang-worker), Accept commands, so the host starts none of them before the instance's row says it is eligible for work, and perspective work only starts flowing after migrations complete.
+
+### A Service With No Perspectives {#no-perspective-registry}
+{verified: PerspectiveWorkerNoPerspectivesParkTests.NoRegistry_ParksCleanly_NoCoordinatorCalls_StartupScanCompletesAsync, PerspectiveWorkerCoverageTests.Worker_RegistryNotRegistered_ParksWithoutTakingWorkAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_HostWithNoPerspectiveRegistry_CompletesTheCollectiveRowsItsClaimLeases_WarnedAndCountedAsync}
+
+The core worker pipeline hosts the perspective worker on every service, including one that declares no perspectives
+of its own. Such a service has no `IPerspectiveRunnerRegistry` (the generator emits none), and the worker **waits
+idle on its drain channel**:
+
+- **No startup repair.** Orphaned-lifecycle reconciliation and the rewind scan are skipped, and the
+  [read-model barrier](../startup/startup-status#add-whizbang-worker) is released at once: there are no read models
+  to protect.
+- **Nothing while idle.** No drain loop, no poll cadence and no database connection until the claim hands it a
+  stream. The perspective NOTIFY handler is attached as on every host (step 1), but nothing runs on a signal until
+  the consumer loops start.
+- **The same drain once a stream arrives.** The first stream on the drain channel starts the ordinary consumer loops,
+  and the drain concludes what the claim leased exactly as it does on any other host.
+- **A stop ends it cleanly** while it waits, with no coordinator call and no channel-requirement error.
+
+| Case | Outcome | Verified |
+|---|---|---|
+| No registry, no work | The read-model barrier completes, the worker is still running, and a stop ends it without one coordinator call | {verified: PerspectiveWorkerNoPerspectivesParkTests.NoRegistry_ParksCleanly_NoCoordinatorCalls_StartupScanCompletesAsync} |
+| No registry, work queued before start | Nothing is taken from the channel until a stop; the barrier still completes | {verified: PerspectiveWorkerCoverageTests.Worker_RegistryNotRegistered_ParksWithoutTakingWorkAsync} |
+| No registry, the claim hands it a stream of `__collective__` rows | The drain runs: every row is completed, warned once per type and counted (see [unhandled collective events](#unhandled-collective-events)) | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_HostWithNoPerspectiveRegistry_CompletesTheCollectiveRowsItsClaimLeases_WarnedAndCountedAsync} |
+
+**Why it waits instead of ending.** The worker used to end at this point. That was right only if a service with no
+perspectives never had perspective work, and it does: a service stores the
+[collective events](../../fundamentals/messaging/collective-events#persistence-routing-and-dispatch) of every
+namespace it subscribes to, the store routes each one to the `__collective__` sink, and the claim leases those rows
+and hands their streams to the drain channel like any other. With the worker ended, nothing read that channel, so
+the rows were leased in batches, re-offered, released and leased again indefinitely, with nothing in the log, and the
+completion described under [unhandled collective events](#unhandled-collective-events) never ran on that service.
+The drain is the one place that concludes such a row, so it has to be reachable on every host that can be handed one.
+
+**What is kept.** The reason the worker idled on these services in the first place still holds: a service with no
+perspectives pays nothing for the perspective worker until there is work. Waiting on the channel is a pending read,
+not a loop, so an idle service runs no query and holds no connection, exactly as before. Only the arrival of a
+stream, which means the claim already leased rows here, starts any work.
+
+**Why startup repair stays skipped.** Orphaned lifecycles and interrupted rewinds belong to perspectives, and this
+host has none. The drain needs neither to conclude a row nothing here applies.
 
 ### Immediate Poll {#immediate-poll}
 
@@ -801,6 +846,9 @@ handler for the type is added
 | `__collective__` rows of two types no handler here applies | Every row completed; nothing applied or failed; one EventId 80 Warning per type with its count; the counter adds one per row | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_CollectiveRowsNoHandlerHereApplies_AreCompletedWithoutApplying_WarnedOncePerTypeAndCountedAsync} |
 | An unhandled `__collective__` row fetched with a readable event | The sink row is completed and the readable event is applied | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_UnhandledCollectiveRowFetchedWithAReadableEvent_IsCompleted_AndTheEventAppliedAsync} |
 | An ordinary perspective row of a type not registered here | Not completed and not failed; left for an instance that can read it | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_RowOfATypeThisServiceDoesNotKnow_IsNotFailedAsync} |
+| A service with no perspectives (no registry) is handed `__collective__` rows | Every row completed; nothing failed; one EventId 80 Warning with its count; the counter adds one per row; no `Drain mode` skip line | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_HostWithNoPerspectiveRegistry_CompletesTheCollectiveRowsItsClaimLeases_WarnedAndCountedAsync} |
+| A service whose registry lists no perspective is handed a `__collective__` row | The row is completed; nothing failed | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_HostWithAnEmptyPerspectiveRegistry_CompletesTheCollectiveRowsItsClaimLeasesAsync} |
+| No event store is registered | The batch is skipped before the fetch, so nothing is leased; one EventId 81 Warning with the stream count | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_HostWithNoEventStore_SkipsTheFetch_AndSaysWhyAsync} |
 
 **Why complete it, not leave it.** An unknown type on an ordinary perspective row is a rolling-deploy situation: a
 newer instance that can read it exists, so the row is left for that instance (see
@@ -819,6 +867,22 @@ nothing failed and nothing was lost.
 store. Adding a `[CollectiveApplyFor]` handler later and [rebuilding the perspective](../../fundamentals/messaging/collective-events#surviving-a-rebuild)
 applies those events then. Rows already stranded before the fix are concluded the same way on their next claim, which
 takes them first because they are the oldest.
+
+**Services with no perspectives conclude them too.** A service with no perspective registry, or with a registry that
+lists no perspective, still stores the collective events of the namespaces it subscribes to, so it gets the same
+sink rows. The worker [waits idle on its drain channel](#no-perspective-registry) rather than ending, and the drain no
+longer skips a batch because the host knows no event types or has no perspective map: it fetches what the claim
+leased, concludes the rows nothing here applies as above, and applies nothing else. Before, the first case left the
+drain channel unread and the second skipped every batch, and in both the rows were leased again indefinitely.
+
+**Only a missing event store skips a batch.** Without an `IEventStore` nothing on the host can read a leased row, so
+the drain does not fetch (a fetch leases) and logs `PerspectiveWorker` EventId 81 at Warning, once per batch, with
+how many streams it held. It is its own line, with its own EventId, so a host assembled without a store says so
+plainly instead of sharing a generic skip message with conditions that no longer skip.
+
+```text
+Drain mode skipped for {StreamCount} stream(s): no event store is registered, so the leased perspective rows cannot be read
+```
 
 **What to do about the Warning.** If the service should apply the event, add a `[CollectiveApplyFor]` handler and
 rebuild the affected perspectives. If it should not, the Warning and the counter are the whole cost: each such row
