@@ -63,6 +63,11 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageHostTests.cs
   - tests/Whizbang.Core.Tests/Startup/StartupStageHostLifecycleTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/HeartbeatStartPointTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/HeartbeatWorkerStartupBeatTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartingInstanceHeartbeatE2ETests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStartupHeartbeatTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/StandbyWatcherUpgradeStandDownTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HeartbeatPhaseOrderSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceTransitionSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RecordHeartbeatBackfillTests.cs
@@ -183,9 +188,12 @@ current stage is progress: it logs the line again and keeps the stage's entry ti
 
 ### Shutdown takes the run-control path {#shutdown-takes-the-run-control-path}
 
-When the host starts to stop, `StartupStageHostLifecycle.StoppingAsync` takes the
-[one run-control path](../../resilience/managed-resource-run-control#one-run-control-path) with the reason `Stop` and
-the host's stop token, before any hosted service stops. The path, not the host lifecycle, writes both shutdown stages:
+When the host starts to stop, `StartupStageHostLifecycle.StoppingAsync` completes the
+[one exit path](instance-exits) on the host's stop token, before any hosted service stops: the exit under way, or a
+`HostShutdown` when nothing asked for one. The exit takes the
+[one run-control path](../../resilience/managed-resource-run-control#one-run-control-path) with the reason `Stop`,
+writes the exit's one entry and row, and sets the exit code. The path, not the host lifecycle, writes both shutdown
+stages:
 
 1. The run permit closes: no worker takes new work, and every transport consumer pauses its subscriptions.
 2. **Draining** is written with `stopping, finishing in-flight work`. The instance stops being eligible for work at
@@ -196,7 +204,7 @@ the host's stop token, before any hosted service stops. The path, not the host l
 4. **Stopped** is written with `stopped`.
 
 Only then do the hosted services stop. `StoppedAsync` writes nothing, because the path has already confirmed the stop.
-{verified: StartupStageHostLifecycleTests.Stopping_TakesTheRunControlPathToStop_BoundedByTheHostsStopTokenAsync, WhizbangRunControllerTests.Halt_WithTheCallersBudgetAlreadySpent_StillClosesThePermitAndWritesBothPhasesAsync, WhizbangRunControllerTests.Halt_AReleaseThatBlocksUntilCanceled_IsCutShortByTheCallersToken_AndTheHaltCompletesAsync, StartupStageHostLifecycleTests.Stopped_WritesNothing_ThePathAlreadyConfirmedTheStopAsync, StartupStageHostTests.AGracefulStop_RecordsDraining_ThenStoppedAsync, StartupStageRunControlTests.APhaseThatIsAStage_EntersItAsync}
+{verified: StartupStageHostLifecycleTests.Stopping_CompletesTheExitPath_OnTheHostsStopTokenAsync, WhizbangInstanceExitTests.AHostStopNoCauseAskedFor_IsAHostShutdownAsync, WhizbangRunControllerTests.Halt_WithTheCallersBudgetAlreadySpent_StillClosesThePermitAndWritesBothPhasesAsync, WhizbangRunControllerTests.Halt_AReleaseThatBlocksUntilCanceled_IsCutShortByTheCallersToken_AndTheHaltCompletesAsync, StartupStageHostLifecycleTests.Stopped_WritesNothing_ThePathAlreadyConfirmedTheStopAsync, StartupStageHostTests.AGracefulStop_RecordsDraining_ThenStoppedAsync, StartupStageRunControlTests.APhaseThatIsAStage_EntersItAsync}
 
 **Why Stopped is written before the workers stop.** `Stopped` says the instance has finished: nothing is in hand and
 nothing is held. The path knows that once it has released the work and the roles; waiting for every hosted service to
@@ -255,7 +263,8 @@ Preflight on every database, fresh or current:
 | `lifecycle_phase` | `TEXT` | The stage's phase, or a [pause or stand-by](#pause-and-standby) recorded with the stage |
 | `library_version` | `TEXT` | The library version the instance runs; a write without one keeps the recorded value |
 | `application_version` | `TEXT` | The version of the application the instance runs (migration 316): SemVer text, `deploy:<n>` for a host-supplied deploy number, `NULL` when unknown. Recorded at registration, like `library_version`; see [Both versions](#both-versions) |
-| `liveness_window_seconds` | `INTEGER` | How old the instance's heartbeat may get before [the liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule) calls it not live, declared by the instance from its own cadence (migration 316); a beat without one keeps the recorded value, and `NULL` (an older build) is judged by 30 s |
+| `liveness_window_seconds` | `INTEGER` | How old the instance's heartbeat may get before [the liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule) calls it not live, declared by the instance from its own cadence (migration 316). Recorded at registration, with `connection_mode`, so the rule judges a starting instance by its own window from the moment its row exists; a beat without one keeps the recorded value, and `NULL` (an older build) is judged by 30 s |
+| `incompatibility_override` | `TEXT` | The reason Assess would have stood the instance down, when it started past that verdict with [the incompatibility override](rolling-upgrades#the-incompatibility-override) (migration 360); `NULL` on every other instance. Written once the instance registers; the heartbeat leaves it alone |
 
 The recorder returns whether the row was written, which is `false` for an instance that has no row yet. Writing a
 transition is not a heartbeat: it never touches `last_heartbeat_at`. Progress within a stage keeps
@@ -361,6 +370,13 @@ registration:
   the ladder and runs its own version.
 
 Every other beat leaves both as recorded and refreshes liveness only.
+
+**The registration records how the instance is judged.** The bootstrap registration at the end of Preflight records
+the instance's connection mode and liveness window (`InstanceRegistrationLiveness`), read the way the heartbeat reads
+them: the mode from the driver (pooled when it does not say) and the window from the heartbeat's cadence. Before, the
+registration recorded no window, so the rule judged a starting instance by the 30 seconds it gives a row that records
+none.
+{verified: SchemaBootstrapPhaseTests.ARegistration_RecordsTheConnectionModeAndTheLivenessWindowAsync, InstanceRegistrationLivenessTests.WithTheHostsSourceAndCadence_TheModeAndTheWindowAreTheHeartbeatsAsync, InstanceRegistrationLivenessTests.WithNeitherRegistered_TheModeIsPooled_AndTheWindowIsTheDefaultCadencesAsync, InstanceRegistrationLivenessTests.WithNoServices_NothingIsDeclaredAsync, DapperSchemaStartupTests.HostStart_RegistersThisInstance_WithItsConnectionModeAndLivenessWindowAsync}
 {verified: HeartbeatPhaseOrderSqlTests.ABeatAheadOfTheRow_DoesNotMoveThePhase_TheStageRecordIsItsOnlyWriterAsync, HeartbeatPhaseOrderSqlTests.APhaseOffTheLadder_OnABeat_IsNotWritten_EitherWayAsync, HeartbeatPhaseOrderSqlTests.APhaseTheDatabaseDoesNotKnow_OnABeat_IsNotWrittenAsync, HeartbeatPhaseOrderSqlTests.ABeat_NeverOverwritesARecordedVersionAsync, RecordHeartbeatBackfillTests.BeatWithANewPhase_KeepsTheRecordedOneAsync, DapperHeartbeatPhaseOrderTests.ABeat_NeverMovesTheRecordedPhase_EitherWayAsync, RecordHeartbeatBackfillTests.FirstBeat_CreatesTheRowWithPhaseAndVersionAsync, HeartbeatPhaseOrderSqlTests.ABeatOnARowThatRecordsNoPhaseOrVersion_FillsThemAsync, HeartbeatPhaseOrderSqlTests.ANewProcessUnderTheSameInstanceId_RecordsItsVersionAsync, HeartbeatPhaseOrderSqlTests.ARestartUnderTheSameInstanceId_StartsBehindTheOldProcess_AndIsNotEligibleAsync}
 
 **Why a beat may still register them.** A row needs a phase from the moment it exists: a row with none reads as an
@@ -384,6 +400,36 @@ process's own stage write. Default instance ids are new for every process.
 A row that a heartbeat or a claim creates again, after the instance's earlier row was removed, records its phase and
 version as a registration but no stage until the instance's next transition.
 :::
+
+### The startup beat {#the-startup-beat}
+
+The heartbeat starts when the instance registers, not when its schema is ready: the worker pipeline hosts
+`HeartbeatWorker` at Elect (`HeartbeatWorker.StartsAt`), the first stage after Preflight's registration. Until the
+schema-ready gate opens, each beat is a **startup beat**, `IWorkCoordinator.RecordStartupHeartbeatAsync`, which calls
+`wh_record_startup_heartbeat` (migration 362, in the bootstrap closure so it exists from Preflight on). A startup beat:
+
+- refreshes the heartbeat, the connection mode and the liveness window of the instance's existing row, and nothing else;
+- never inserts a row (a row without a phase reads as an older build, eligible for work);
+- never writes the stage or the lifecycle phase, which only the [stage record](#one-writer-of-the-phase) writes;
+- reaps no peer (a starting instance is not yet the fleet's reaper) and announces no join;
+- refuses an evicted instance, as the full heartbeat does, so a starting instance that was evicted
+  [exits](instance-exits#evictions).
+
+The first beat after the gate opens is due at once, not on the next cadence boundary, and is the full heartbeat, which
+registers, reaps and announces the join as before. Readiness is unchanged: a starting instance stays out of the claim
+ranking and the partition assignment, holds no role but the migrator, and reads as migrating in the fleet status, until
+it records Accept commands. On the Dapper driver, which applies no bootstrap closure and registers after its pass, a
+startup beat before the pass has created the function is accepted and writes nothing.
+
+| Behavior | Why | Verified by |
+|---|---|---|
+| The heartbeat starts at Elect, and a test fails if it moves later. | An instance registered at the end of Preflight and beat only once its schema was ready, so a peer's reap evicted an instance still electing or migrating once 30 seconds passed. | {verified: HeartbeatStartPointTests.TheHeartbeat_StartsAtElect_TheFirstStageAfterRegistrationAsync, HeartbeatStartPointTests.TheWorkerPipeline_HostsTheHeartbeatAtItsStartPoint_AndNowhereElseAsync, StartupHostedServiceAuditTests.HeldInMigrate_OnlyTheHeartbeatAndTheNotificationConnectionHaveStarted_NoRoleNorDataPlaneWorkerAsync} |
+| A starting instance held in Migrate past 30 seconds is not evicted by a live peer's reap. | The rule judges it by beats it really sends, against the window it declared at registration. | {verified: StartingInstanceHeartbeatE2ETests.AStartingInstanceHeldInMigrate_PastThirtySeconds_IsNotEvictedByALivePeersReapAsync, DapperStartupHeartbeatTests.AStartupBeat_KeepsAStartingInstanceLive_PastThirtySeconds_AndAPeersReapLeavesItAsync, SchemaBootstrapPhaseTests.AnEmptyDatabase_BeatsAStartingInstanceAfterTheBootstrap_BeforeAnyMigrationAsync} |
+| A startup beat never moves the stage or the phase, inserts no row, and keeps the instance ineligible for work. | The stage record is the one writer of the phase; a beat that wrote it could only bring back the races that rule removed. | {verified: StartingInstanceHeartbeatE2ETests.AStartingInstanceThatBeats_KeepsItsStageAndPhase_AndIsNotEligibleForWork_UntilItRecordsAcceptingCommandsAsync, StartingInstanceHeartbeatE2ETests.TheFleetReadModel_ShowsAStartingInstanceAsMigrating_LiveAndNotEvictedAsync, DapperStartupHeartbeatTests.AStartupBeat_NeverMovesTheStageOrThePhase_AndRecordsTheModeAndTheWindowAsync, DapperStartupHeartbeatTests.AStartupBeat_OfAnInstanceWithNoRow_InsertsNothingAsync, HeartbeatWorkerStartupBeatTests.BeforeTheSchemaIsReady_AnAcceptedBeat_IsRecorded_ButWritesNoStageAndAnnouncesNoJoinAsync} |
+| A startup beat of an evicted instance is refused. | An evicted instance learns it the same way whether it is starting or running. | {verified: DapperStartupHeartbeatTests.AStartupBeat_OfAnEvictedInstance_IsRefusedAsync, StartingInstanceHeartbeatE2ETests.AStartupBeat_OfAnEvictedInstance_IsRefused_AndOfAnUnregisteredOne_WritesNothingAsync, HeartbeatWorkerStartupBeatTests.BeforeTheSchemaIsReady_ARefusedBeat_EndsTheLoopAsEvictedAsync} |
+| Before the schema is ready a beat is the startup beat; once the gate opens the next beat is the full heartbeat, at once. | The full heartbeat needs tables the bootstrap closure does not create, and once they exist the row is registered and any held stage written without waiting a cadence. | {verified: HeartbeatWorkerStartupBeatTests.BeforeTheSchemaIsReady_ABeat_GoesThroughTheStartupHeartbeat_WithTheModeAndTheWindowAsync, HeartbeatWorkerStartupBeatTests.OnceTheGateOpens_TheNextBeatIsDueAtOnce_AndIsTheFullHeartbeatAsync, HeartbeatWorkerStartupBeatTests.WithAnOpenGate_EveryBeatIsTheFullHeartbeatAsync, HeartbeatWorkerStartupBeatTests.TheLoop_AfterAStartupBeat_BeatsInFullWhenTheGateOpens_WithoutWaitingForItsCadenceAsync, HeartbeatWorkerStartupBeatTests.TheWait_WhileTheGateIsClosed_EndsWhenTheGateOpensAsync, HeartbeatWorkerStartupBeatTests.TheWait_AfterAStartupBeat_WhenTheGateOpenedSinceThePlan_EndsAtOnceAsync} |
+| On Dapper, a startup beat before the pass created its function is accepted and writes nothing; any other failure throws. | The Dapper driver registers after its pass; a beat before then has no row to refresh, and a real failure must not be hidden. | {verified: DapperStartupHeartbeatTests.AStartupBeat_BeforeThePassCreatedItsFunction_IsAcceptedAndWritesNothingAsync, DapperStartupHeartbeatTests.AStartupBeat_ThatFailsForAnyOtherReason_ThrowsAsync} |
+| A custom `IWorkCoordinator` that does not override it sends the full heartbeat. | A coordinator with no schema to wait for has nothing to stage. | {verified: WorkCoordinatorDefaultInterfaceTests.RecordStartupHeartbeatAsync_DefaultImplementation_IsTheHeartbeatAsync} |
 
 ### Upgrading: the members this replaced {#upgrading-one-writer}
 
@@ -409,8 +455,8 @@ schema, because older builds call them during a [rolling upgrade](rolling-upgrad
 
 ### A stood-down instance stays in Preflight {#stood-down}
 
-An instance whose [Assess verdict](rolling-upgrades#standing-down) is `StandDown` (the schema is newer than its
-binary) never leaves Preflight. It records its stage as Preflight with the message `standing down: ` followed by the
+An instance whose [Assess verdict](rolling-upgrades#standing-down) is `StandDown` (a newer version is online, or the
+database holds a change applied since its version) never leaves Preflight. It records its stage as Preflight with the message `standing down: ` followed by the
 reason, which names the version the ledger records and the binary's own, and its phase as `Pausing`, then `StandingBy`,
 each a phase-only write like any [stand-by](#pause-and-standby): the stand-down takes the
 [run-control path](rolling-upgrades#stand-down-takes-the-run-control-path), which writes both. It registers at once, keeps its row alive on the heartbeat interval
@@ -427,6 +473,20 @@ the stand-down beat has no slow cadence), so it is never reaped between beats. E
 SELECT service_name, host_name, startup_stage_message, time_in_stage
 FROM wh_instance_startup_stages()
 WHERE startup_stage_message LIKE 'standing down: %';
+```
+
+**A stand-down while running keeps its stage.** An instance that [stands down while serving](rolling-upgrades#cluster-wide-stand-down)
+keeps the stage it reached (Running, say) and records why as the stage's message, before the run-control path writes
+`Pausing` and `StandingBy`: `standing down: ` followed by the reason, which names the newer version and the instance it
+runs on, or the changes the [rollback gate](rolling-upgrades#the-rollback-gate) found. When it
+[resumes](rolling-upgrades#resuming), the message becomes `resumed: ` followed by the reason the verdict now gives. The
+same query finds both:
+{verified: StandbyWatcherUpgradeStandDownTests.StandingDown_SaysWhyOnTheRow_BeforeThePhase_AndIsLoggedOnceAsync, StandbyWatcherUpgradeStandDownTests.TheNewerInstanceDies_TheStoodDownInstanceResumes_BecauseAFreshStartWouldServeAsync}
+
+```sql{title="Instances standing down or resumed while running" description="The stage message a runtime stand-down or resume records, with the reason" category="Operations" difficulty="BEGINNER" tags=["Startup","SQL","RollingUpgrades"] tests=["StandbyWatcherUpgradeStandDownTests.StandingDown_SaysWhyOnTheRow_BeforeThePhase_AndIsLoggedOnceAsync","StartupStageSqlTests.Stages_ListEveryInstance_WithItsPositionMessageAndTimeInStageAsync"]}
+SELECT service_name, host_name, stage_name, lifecycle_phase, startup_stage_message, time_in_stage
+FROM wh_instance_startup_stages()
+WHERE startup_stage_message LIKE 'standing down: %' OR startup_stage_message LIKE 'resumed: %';
 ```
 
 **Why Preflight and not a stage of its own.** The stage says how far startup got, and a stood-down instance got no
@@ -512,12 +572,12 @@ after the registration.
 
 | From | What starts | Why then |
 |---|---|---|
-| Elect (after Preflight registers the instance) | The notification connection: its `LISTEN`s and the instance's [alive-lock](../../fundamentals/workers/instance-liveness#alive-lock-source) claim. The [signal bus](../../fundamentals/signal-bus/signal-bus#hosting-self-test-and-liveness): its transports, its pull sources and its wire-route self-test. The `roles` [health component](../../resilience/managed-resource-health#roles) reads role assignments from here on. | The election that follows reads the alive-lock. The bus's self-test sends a loopback `NOTIFY` that comes back over the notification connection, so it can only pass once that connection is up. |
+| Elect (after Preflight registers the instance) | The notification connection: its `LISTEN`s and the instance's [alive-lock](../../fundamentals/workers/instance-liveness#alive-lock-source) claim. The [signal bus](../../fundamentals/signal-bus/signal-bus#hosting-self-test-and-liveness): its transports, its pull sources and its wire-route self-test. The heartbeat (`HeartbeatWorker`), whose beats are [startup beats](#the-startup-beat) until the schema is ready. The `roles` [health component](../../resilience/managed-resource-health#roles) reads role assignments from here on. | The election that follows reads the alive-lock. The bus's self-test sends a loopback `NOTIFY` that comes back over the notification connection, so it can only pass once that connection is up. The heartbeat starts once the row exists, so a peer's reap judges the instance by beats it really sends while it elects and migrates. |
 | Coordinate | The duty holder (the maintainer vote, and the vacuum it runs on winning) and the [partition assigner](../../fundamentals/work-coordinator/partition-assignment). | Both vote and write against the instance and role tables, which the migration may still be changing until then. |
-| The schema-ready gate opens (the end of Coordinate) | The work-available probes send their first query; until then each probe tick sends nothing. The work that keeps the instance alive and coordinated while it is not yet eligible for work: the heartbeat, the instance-lifecycle monitor, the standby watcher, the statistics collectors (table statistics, event-type bytes, notify debounce), the type-definition and message-type registry reconcilers, and the shutdown deregistration. | The schema exists from here on. The heartbeat keeps the row fresh, so the fleet sees the instance as alive while it is still converging, and Kubernetes is told it is degraded rather than unresponsive (see [Probes during a migration](../../resilience/managed-resource-health#probes-during-a-migration)). |
+| The schema-ready gate opens (the end of Coordinate) | The work-available probes send their first query; until then each probe tick sends nothing. The heartbeat's first full beat, due at once. The work that keeps the instance coordinated while it is not yet eligible for work: the instance-lifecycle monitor, the standby watcher, the statistics collectors (table statistics, event-type bytes, notify debounce), the type-definition and message-type registry reconcilers, and the shutdown deregistration. | The schema exists from here on. The full heartbeat registers, reaps and announces the join, so the fleet sees the instance as alive while it is still converging, and Kubernetes is told it is degraded rather than unresponsive (see [Probes during a migration](../../resilience/managed-resource-health#probes-during-a-migration)). |
 | Accept commands, once the instance's row records it | The data plane (claim, perspective, inbox dispatch, handler and drain, outbox publish and drain, the completion, failure and lease-renewal flushes, maintenance, coalesce ship, integrity, repair drain, subscription expansion, dead-letter recovery, the transport dead-letter drain, backup ticks, schedules, multi-stream commands, the orphan-inbox janitor, the commit-order stamper and the durable-signal workers) and the **transport consumer**. | Accept commands is the stage that makes the instance eligible for work, and the gate is told of it only after the row has been written, so nothing claims, drains or receives while the row still says the instance may not. The transport consumer receives while the read models catch up, rather than waiting for Running. |
 
-{verified: StartupStageWiringTests.TheNotificationConnection_StartsAtTheEndOfPreflight_OnceAsync, StartupStageWiringTests.TheSignalBus_StartsAtElect_WithTheNotificationConnection_OnceAsync, StartupPreflightHostTests.HeldInPreflight_TheSignalBusStartsNoTransport_AndStartsItAtElectAsync, StartupStageWiringTests.TheDutyHolderAndThePartitionAssigner_StartAtCoordinateAsync, StartupStageWiringTests.EveryWorkAvailableProbe_ReadsTheSchemaReadyGateAsync, StartupStageWiringTests.TheRolesHealthComponent_ReadsNothingBeforeElectAsync, PgWorkAvailablePollSourceSchemaGateTests.WhileTheSchemaGateIsClosed_ATickSendsNothing_AndOnceOpenItQueriesAsync, StartupPreflightHostTests.NothingVotesBeforeCoordinate_AndNoWorkerAsksForAnObjectThatDoesNotExistYetAsync, StartupPreflightHostTests.TheInstanceRow_IsRegisteredAtTheEndOfPreflight_BeforeElectAsync}
+{verified: HeartbeatStartPointTests.TheHeartbeat_StartsAtElect_TheFirstStageAfterRegistrationAsync, StartupStageWiringTests.TheNotificationConnection_StartsAtTheEndOfPreflight_OnceAsync, StartupStageWiringTests.TheSignalBus_StartsAtElect_WithTheNotificationConnection_OnceAsync, StartupPreflightHostTests.HeldInPreflight_TheSignalBusStartsNoTransport_AndStartsItAtElectAsync, StartupStageWiringTests.TheDutyHolderAndThePartitionAssigner_StartAtCoordinateAsync, StartupStageWiringTests.EveryWorkAvailableProbe_ReadsTheSchemaReadyGateAsync, StartupStageWiringTests.TheRolesHealthComponent_ReadsNothingBeforeElectAsync, PgWorkAvailablePollSourceSchemaGateTests.WhileTheSchemaGateIsClosed_ATickSendsNothing_AndOnceOpenItQueriesAsync, StartupPreflightHostTests.NothingVotesBeforeCoordinate_AndNoWorkerAsksForAnObjectThatDoesNotExistYetAsync, StartupPreflightHostTests.TheInstanceRow_IsRegisteredAtTheEndOfPreflight_BeforeElectAsync}
 
 The election for the migrator itself runs as before: it is what Elect is, run by schema initialization, and it waits
 for nothing.
@@ -628,7 +688,7 @@ lookup is the only way in.
 ### A host stopped before its schema is ready {#stopped-before-schema-ready}
 {verified: StartupStopBeforeReadyTests.AHostStoppedInPreflight_DoesNotDeregister_AndLogsNoWarningOrErrorAsync}
 
-Shutdown deregistration is hosted at schema ready, like the heartbeat. A host stopped during Preflight or Migrate never
+Shutdown deregistration is hosted at schema ready. A host stopped during Preflight or Migrate never
 started it, so it has nothing to deregister and ends quietly. Earlier releases ran the deregistration against instance
 tables that may not exist yet on a fresh database, and logged the failure at Warning.
 
@@ -650,8 +710,8 @@ database? There are five answers.
 
 | Starts | Hosted services | How |
 |---|---|---|
-| At Elect or Coordinate, through the stage wrapper | Elect: the notification connection (`PgSharedNotifyConnection`) and the signal bus (`SignalBusHostedService`). Coordinate: the duty holder (`DutyHolderWorker`) and the partition assigner (`PartitionAssignerWorker`). | The host starts a wrapper; the wrapper starts the service once the instance reaches the stage. |
-| At schema ready (`AddWhizbangWorkerAtSchemaReady`) | The heartbeat (`HeartbeatWorker`), the instance-lifecycle monitor, the standby watcher, the statistics collectors (`TableStatisticsCollector`, `EventTypeBytesSampler`, `NotifyDebounceStatsCollector`), the type-definition reconciler, the Dapper driver's message-type registry reconciler, and shutdown deregistration (`WhizbangShutdownService`). | The wrapper starts the worker when the schema-ready gate opens, at the end of Coordinate. |
+| At Elect or Coordinate, through the stage wrapper | Elect: the notification connection (`PgSharedNotifyConnection`), the signal bus (`SignalBusHostedService`) and the heartbeat (`HeartbeatWorker`, at `HeartbeatWorker.StartsAt`). Coordinate: the duty holder (`DutyHolderWorker`) and the partition assigner (`PartitionAssignerWorker`). | The host starts a wrapper; the wrapper starts the service once the instance reaches the stage. |
+| At schema ready (`AddWhizbangWorkerAtSchemaReady`) | The instance-lifecycle monitor, the standby watcher, the statistics collectors (`TableStatisticsCollector`, `EventTypeBytesSampler`, `NotifyDebounceStatsCollector`), the type-definition reconciler, the Dapper driver's message-type registry reconciler, and shutdown deregistration (`WhizbangShutdownService`). | The wrapper starts the worker when the schema-ready gate opens, at the end of Coordinate. |
 | At Accept commands (`AddWhizbangWorker`) | The data plane: claim, perspective, inbox dispatch, inbox handler, inbox drain, outbox publish, outbox drain, the outbox completion, perspective completion and failure flushes, lease renewal, maintenance, coalesce ship, integrity checkpoint, integrity audit, the integrity sweep scheduler, repair drain, subscription expansion, dead-letter recovery, the transport dead-letter drain, the backup-tick coordinator, schedules, multi-stream commands, the orphan-inbox janitor (opt-in), the commit-order stamper and the durable-signal tail and retention workers. And the transport consumer (`TransportConsumerWorker`). | The wrapper starts the worker once the instance's row records Accept commands. |
 | Preflight itself | Schema initialization (`WhizbangDatabaseInitializerService`), the startup pipeline, the stage lifecycle, the ready service, and the lifecycle and read-model drivers that move the instance into Accept commands and Running. | This is the work the stages are made of. |
 | No database work at start | Configuration and registration checks and startup log lines; in-memory receptor, tick and hook registrars; subscriptions on the notification connection, which only listen once it starts at Elect; in-process sweeps; the transport backlog peek, which reads the transport's management plane rather than the database; the rebuild worker, which is fed only by a command receptor whose dispatch is deferred until the schema-ready gate opens; the health-check publisher, which runs checks only for a publisher the application registers; and the services that work only when the host stops. | The service starts with the host because it has nothing to wait for. |
@@ -664,7 +724,7 @@ until its author decides when it may first touch the database, rather than start
 opt-in orphan-inbox janitor is checked by its own registration test, and `ServiceBusConsumerWorker` and
 `PerspectiveMigrationWorker` are hosted by the application (see
 [Upgrading](#upgrading-add-hosted-service)).
-{verified: StartupHostedServiceAuditTests.EveryHostedService_HasAPlaceInTheStageTable_AndTheStagedOnesStartAtTheirStageAsync}
+{verified: StartupHostedServiceAuditTests.EveryHostedService_HasAPlaceInTheStageTable_AndTheStagedOnesStartAtTheirStageAsync, StartupHostedServiceAuditTests.HeldInMigrate_OnlyTheHeartbeatAndTheNotificationConnectionHaveStarted_NoRoleNorDataPlaneWorkerAsync}
 
 ### The alive-lock on a fresh database
 
