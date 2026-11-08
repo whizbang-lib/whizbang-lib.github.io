@@ -212,6 +212,7 @@ Removed keys the library declares:
 | `Whizbang:ServiceName` (falls back to `ServiceName`) | — (string) | Automatic |
 | `Whizbang:ShowBanner` | — (bool) | Automatic |
 | `Whizbang:Application:Version`, `Whizbang:Application:DeployNumber` | none (read once, when the application version is first resolved) | Automatic (worker pipeline); see [Application version](#application-version) |
+| `Whizbang:Startup:OverrideIncompatibility` | none (read once, by the Assess verdict) | Automatic (both Postgres drivers); see [Incompatibility override](#incompatibility-override) |
 | `ConnectionStrings:*` | — (strings, naming conventions below) | Automatic |
 | `ConnectionPool:*` | — (generated DbContext registration) | Automatic |
 | `Whizbang:BodyOffload` | `MessageBodyOffloadOptions` (every key) | Automatic (`AddWhizbangBodyOffload()`, which every provider helper calls) |
@@ -383,6 +384,16 @@ being recorded as unknown. A blank `Version` is no override.
   }
 }
 ```
+
+### Incompatibility override {#incompatibility-override}
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `Whizbang:Startup:OverrideIncompatibility` | `bool` | `false` | `Whizbang__Startup__OverrideIncompatibility` | Lets an instance start when Assess would stand it down for an incompatibility (the schema newer than its build, or a change it cannot reverse applied since its version). It starts as `Current`, applies nothing and runs no migration; it logs at Error on every start and records the override on its instance row. It never lifts the stand-down for a newer version online. See [the incompatibility override](../startup/rolling-upgrades#the-incompatibility-override) |
+
+Only `true` turns it on. A value that is not a boolean fails startup naming the key, rather than being read as off.
+It is an emergency setting: turn it off once the incompatible build is gone.
+{verified: UpgradeOrderTests.TheOverride_IsOffUnlessTheHostTurnsItOnAsync, UpgradeOrderTests.AnOverrideThatIsNotABoolean_IsRefusedLoudly_NeverReadAsOffAsync, RollbackGateTests.TheOverride_LetsAnIncompatibleInstanceServe_WithoutAMigration_AndCarriesTheFullReasonAsync, RollbackGateTests.TheOverride_NeverOverridesANewerVersionOnlineAsync}
 
 ### ConnectionStrings Conventions
 
@@ -1396,6 +1407,7 @@ Operator rung of the row-retention override ladder. **Configure:** bound automat
 | `Retention.RecoveredDeadLetterDays` | `int?` | unset (database: `7`) | `Whizbang__Workers__Maintenance__Retention__RecoveredDeadLetterDays` | Days a recovered dead letter is kept after recovery. Publishes `dead_letter_retention_days` |
 | `Retention.AbandonedStreamHours` | `int?` | unset (database: `1`) | `Whizbang__Workers__Maintenance__Retention__AbandonedStreamHours` | Hours an owner-less active-stream row sits idle before it is purged. Publishes `abandoned_stream_hours` |
 | `Retention.InstanceEvictionTombstoneHours` | `int?` | unset (database: `24`) | `Whizbang__Workers__Maintenance__Retention__InstanceEvictionTombstoneHours` | Hours an instance-eviction tombstone is kept. Publishes `instance_eviction_retention_hours` |
+| `Retention.InstanceExitDays` | `int?` | unset (database: `30`) | `Whizbang__Workers__Maintenance__Retention__InstanceExitDays` | Days the record of an instance's exits (`wh_instance_exits`) is kept. Publishes `instance_exit_retention_days`; the next exit's write removes older rows, not the sweep. See [the exit record](../startup/instance-exits#the-exit-record) |
 | `Retention.OrphanPerspectiveEventGraceHours` | `int?` | unset (database: `1`) | `Whizbang__Workers__Maintenance__Retention__OrphanPerspectiveEventGraceHours` | Hours an unprocessed perspective event whose source event is missing is kept. Publishes `orphan_perspective_grace_hours` |
 | `Retention.CollectiveOrderingHeadDays` | `int?` | unset (database: `7`) | `Whizbang__Workers__Maintenance__Retention__CollectiveOrderingHeadDays` | Days an idle collective-ordering head is kept. Publishes `collective_ordering_head_retention_days` |
 | `Retention.LogDays` | `int?` | unset (database: `14`) | `Whizbang__Workers__Maintenance__Retention__LogDays` | Days a framework log entry (`wh_log`) is kept. Publishes `log_retention_days` |
@@ -2027,6 +2039,7 @@ each service database, rather than from the host's options. Each setting below i
 | `MaintenanceWorkerOptions.Retention.RecoveredDeadLetterDays` | `Whizbang__Workers__Maintenance__Retention__RecoveredDeadLetterDays` | `7` | `dead_letter_retention_days` |
 | `MaintenanceWorkerOptions.Retention.AbandonedStreamHours` | `Whizbang__Workers__Maintenance__Retention__AbandonedStreamHours` | `1` | `abandoned_stream_hours` |
 | `MaintenanceWorkerOptions.Retention.InstanceEvictionTombstoneHours` | `Whizbang__Workers__Maintenance__Retention__InstanceEvictionTombstoneHours` | `24` | `instance_eviction_retention_hours` |
+| `MaintenanceWorkerOptions.Retention.InstanceExitDays` | `Whizbang__Workers__Maintenance__Retention__InstanceExitDays` | `30` | `instance_exit_retention_days` |
 | `MaintenanceWorkerOptions.Retention.OrphanPerspectiveEventGraceHours` | `Whizbang__Workers__Maintenance__Retention__OrphanPerspectiveEventGraceHours` | `1` | `orphan_perspective_grace_hours` |
 | `MaintenanceWorkerOptions.Retention.CollectiveOrderingHeadDays` | `Whizbang__Workers__Maintenance__Retention__CollectiveOrderingHeadDays` | `7` | `collective_ordering_head_retention_days` |
 | `MaintenanceWorkerOptions.Retention.LogDays` | `Whizbang__Workers__Maintenance__Retention__LogDays` | `14` | `log_retention_days` |
