@@ -16,6 +16,8 @@ tags: >-
 codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Workers/PerspectiveStreamAffinityOptions.cs
+  - src/Whizbang.Core/Perspectives/CollectiveRouting.cs
+  - src/Whizbang.Core/Observability/CompositeMetrics.cs
   - src/Whizbang.Core/Workers/ClaimWorker.cs
   - src/Whizbang.Core/Workers/ProcessedEventCache.cs
   - src/Whizbang.Core/Workers/RecentlyProcessedEventCache.cs
@@ -766,6 +768,61 @@ perspective's own row holds a stored form no reader of this release takes. Its r
 dead-lettered at the same bound, and EventId 65 stays at Error as the cue that a
 [stored-form rewrite](../../fundamentals/perspectives/stored-form-migrations#recovery) is needed; see
 [why it stays at Error](../observability/logging-categories#kept-at-error).
+
+### Unhandled Collective Events {#unhandled-collective-events}
+{verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_CollectiveRowsNoHandlerHereApplies_AreCompletedWithoutApplying_WarnedOncePerTypeAndCountedAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_UnhandledCollectiveRowFetchedWithAReadableEvent_IsCompleted_AndTheEventAppliedAsync}
+
+The event store routes every [collective event](../../fundamentals/messaging/collective-events#persistence-routing-and-dispatch)
+it keeps to the fixed `__collective__` sink, driven by the event's flag alone and with no lookup of the handlers this
+service has. A service that subscribes to a namespace (it consumes some of that namespace's events) also receives and
+stores the namespace's collective events, so it can hold a `__collective__` row for a collective event type it has no
+`[CollectiveApplyFor]` handler for. That type is not among the service's event types, so the drain cannot read the row.
+
+Such a row is **completed without applying**, the same outcome as an event no perspective on the service consumes,
+which is never queued at all:
+
+- **The sink row is completed** by its `event_work_id`, through the same completion path an applied collective uses,
+  so the claim stops offering it. It is not failed, retried or dead-lettered. The event itself stays in the event store.
+- **Readable events fetched with it are applied** in the same pass.
+- **One Warning per event type per batch,** `PerspectiveWorker` EventId 80, names the service, the event type, how many
+  rows were completed and the first row's stream id, and says that a perspective rebuild applies them once a handler
+  for the type is added.
+- **The counter** `whizbang.collectives.unhandled` on the `Whizbang.Composites` meter counts every such row; see
+  [composites and collectives](../observability/metrics#composites-and-collectives).
+
+```text
+Service {ServiceName} has no local collective handler for {EventType}: completed {Count} __collective__ row(s)
+without applying them (first stream {StreamId}). A perspective rebuild applies them once a [CollectiveApplyFor]
+handler for the type is added
+```
+
+| Case | Outcome | Verified |
+|---|---|---|
+| `__collective__` rows of two types no handler here applies | Every row completed; nothing applied or failed; one EventId 80 Warning per type with its count; the counter adds one per row | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_CollectiveRowsNoHandlerHereApplies_AreCompletedWithoutApplying_WarnedOncePerTypeAndCountedAsync} |
+| An unhandled `__collective__` row fetched with a readable event | The sink row is completed and the readable event is applied | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_UnhandledCollectiveRowFetchedWithAReadableEvent_IsCompleted_AndTheEventAppliedAsync} |
+| An ordinary perspective row of a type not registered here | Not completed and not failed; left for an instance that can read it | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_RowOfATypeThisServiceDoesNotKnow_IsNotFailedAsync} |
+
+**Why complete it, not leave it.** An unknown type on an ordinary perspective row is a rolling-deploy situation: a
+newer instance that can read it exists, so the row is left for that instance (see
+[unreadable stored events](#unreadable-stored-events)). On the `__collective__` sink the same unknown type means no
+handler on this service applies the event, and no instance of this service ever will until the code changes. Left
+alone, the claim re-offered those rows on every poll, oldest first, so they took the front of every claim, the rest
+of the service's perspective backlog waited behind them, and the service never counted as idle. Completing them
+restores the parity the rest of the pipeline already has: an event nothing here consumes does no work here.
+
+**Why a Warning, once per type per batch.** A collective event that arrives with no handler is usually a missing
+handler or a subscription wider than intended, so it is worth a line an operator sees; one line per type with a count
+keeps a backlog of thousands from flooding the log, and the stream id gives one row to inspect. It is not an Error:
+nothing failed and nothing was lost.
+
+**Why a rebuild, not a retry.** The sink row is the only thing completed; the collective event stays in the event
+store. Adding a `[CollectiveApplyFor]` handler later and [rebuilding the perspective](../../fundamentals/messaging/collective-events#surviving-a-rebuild)
+applies those events then. Rows already stranded before the fix are concluded the same way on their next claim, which
+takes them first because they are the oldest.
+
+**What to do about the Warning.** If the service should apply the event, add a `[CollectiveApplyFor]` handler and
+rebuild the affected perspectives. If it should not, the Warning and the counter are the whole cost: each such row
+is completed once and does no further work.
 
 ---
 

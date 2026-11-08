@@ -64,6 +64,7 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/Collective/DapperCollectiveEventApplier.cs
   - src/Whizbang.Data.Postgres/Migrations/279_CollectiveApplyProgress.sql
 testReferences:
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.UnreadableRows.cs
   - tests/Whizbang.Core.Tests/Messaging/CollectiveEventContractTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EventFlagsWireFormTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StringEventFlagsStoreTests.cs
@@ -1162,7 +1163,7 @@ receive collective events pay no schema tax.
 > queries already use — **never in the apply path**. It is a general
 > tenant-scope index, not a collective-specific one.
 
-## Persistence, routing, and dispatch
+## Persistence, routing, and dispatch {#persistence-routing-and-dispatch}
 
 A collective event is a **first-class persisted `IEvent`**
 (`ICollectiveEvent : IEvent`), so it flows through the normal
@@ -1222,6 +1223,27 @@ sequenceDiagram
    sink rows with `processed_at = NULL`, so they were re-leased and the
    whole-cohort `UPDATE` re-dispatched every tick — a self-sustaining
    re-dispatch loop. That is fixed and regression-locked.)
+
+### A service subscribed to a namespace receives its collective events {#unhandled-collective-events}
+{verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_CollectiveRowsNoHandlerHereApplies_AreCompletedWithoutApplying_WarnedOncePerTypeAndCountedAsync}
+
+A service subscribes to the namespace of every event it consumes (see
+[event flow](../dispatcher/routing#outbox-routing)), and a namespace subscription carries every event published
+to that namespace, collective events included. Step 2 routes each stored collective event to the sink by its flag,
+not by the handlers the service has, so a service that consumes some of a namespace's events also gets a
+`__collective__` row for each of that namespace's collective events, whether or not it has a
+`[CollectiveApplyFor]` handler for the type.
+
+- **If the service should apply the event,** add a `[CollectiveApplyFor]` handler for it.
+- **If it has no handler,** the worker completes the sink row without applying it, counts it on
+  `whizbang.collectives.unhandled`, and logs one Warning per event type per batch (`PerspectiveWorker`
+  EventId 80) naming the service, the type, the count and a stream. The event stays in the event store, and a
+  [rebuild](#surviving-a-rebuild) applies it once a handler is added.
+
+Completing the row matches what happens to an event no perspective consumes. Before, the row could not be read and
+was never concluded, so the claim offered the oldest such rows again on every poll and the rest of the service's
+perspective backlog waited behind them. The details are under
+[unhandled collective events](../../operations/workers/perspective-worker#unhandled-collective-events).
 
 ### Failure semantics
 
