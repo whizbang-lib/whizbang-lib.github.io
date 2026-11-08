@@ -31,6 +31,9 @@ codeReferences:
   - src/Whizbang.Core/Configuration/SupersedingOptions.cs
   - src/Whizbang.Data.Postgres/SupersedingHistoryReconcileStep.cs
   - src/Whizbang.Data.Postgres/Migrations/345_SupersedingHistoryReconcile.sql
+  - src/Whizbang.Data.Postgres/Migrations/358_StreamsRememberWhenTheyStarted.sql
+  - src/Whizbang.Core/Perspectives/PerspectiveRowStart.cs
+  - src/Whizbang.Data.Postgres/StreamStartSql.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Lifecycle/SupersedingEventsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EventFlagsTests.cs
@@ -46,6 +49,9 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSupersedingKeyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SupersedingHistoryReconcileSqlTests.cs
   - tests/Whizbang.Generators.Tests/MessageTypeCatalogFingerprintTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRowStartTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamStartedAtSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/RebuildCreatedAtIntegrationTests.cs
 ---
 
 # Superseding Events
@@ -318,8 +324,47 @@ read, and one line when a type's walk reaches the end of the store.
 |---|---|---|
 | A type either rule refuses is not registered as superseding, even when the error is suppressed. | The generator cannot tell which key was meant, or whether the type belongs to the ephemeral reaper; keeping every event is the recoverable direction. | {verified: MessageTypeCatalogGeneratorTests.Generator_ASupersedingTypeAnAnalyzerRefuses_IsNotRegistered_SoEveryEventIsKeptAsync} |
 
+## What a rebuild keeps {#what-a-rebuild-keeps}
+
+A perspective row's `CreatedAt` is business time: the first event folded into the row. The runner folds a batch and
+writes the row once, and the write's own time, the last folded event's, is `UpdatedAt`. A row inserted by a write that
+folded several events is dated at the first of them, live or in a rebuild, so the value does not depend on batching. An
+update never moves `CreatedAt`.
+
+The reaper deletes an older event outright, the stream's first event included, so the store also remembers when each
+stream started. When the reaper or a prefix truncate removes a stream's first event (version 0 or 1), it first records
+that event's business time on the stream's ledger row (`wh_stream_lifecycle.first_event_at`). A row whose fold no longer
+begins its stream is dated at that start. The row's data still comes from the surviving events.
+
+| When | Event | Row `CreatedAt` |
+|---|---|---|
+| Mar 1 | v1 | Mar 1 |
+| Jun 5 | v2 (same key) | Mar 1 |
+| Jun 6 | reaper deletes v1, records Mar 1 | Mar 1 |
+| Nov 8 | perspective rebuilt | Mar 1 |
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A row a write inserts is dated at the first event the write folded, not the write's own time (the last folded event's, which is `UpdatedAt`). | `CreatedAt` is when the entity came into being; dated at the last event of its first batch, it depended on how events were batched and moved on every blue-green rebuild. | {verified: PerspectiveRowStartTests.ResolveAsync_AFoldThatBeginsTheStream_IsTheFirstEventsTime_NotTheLastsAsync, RebuildCreatedAtIntegrationTests.RebuildBlueGreen_AFullHistoryStream_DatesTheRowAtItsFirstEvent_AndUpdatedAtAtItsLastAsync, RebuildCreatedAtIntegrationTests.RebuildInPlace_AFullHistoryStream_InsertsTheRowDatedAtItsFirstEventAsync, RebuildCreatedAtIntegrationTests.LiveFirstBatch_OfSeveralEvents_DatesTheRowAtTheFirstAsync} |
+| The start is recorded when the first event is removed, not when it is appended. | No write path changes, so the append hot path pays nothing; only the reaper and the prefix truncate, both maintenance, do the extra write. | {verified: StreamStartedAtSqlTests.Reap_TheStreamsFirstEvent_RecordsItsBusinessTimeOnTheLedgerAsync, StreamStartedAtSqlTests.Reap_ALaterEvent_RecordsNothingAsync, StreamStartedAtSqlTests.Truncate_ThroughTheFirstEvent_RecordsItsBusinessTimeOnTheLedgerAsync} |
+| It is the first event's business time, not `first_appended_at`. | `first_appended_at` is the database clock when the event was stored; an imported or replayed event carries a business time well before it. The value is cut to the microsecond as the driver cuts a .NET time, so it equals what the row would have held. | {verified: StreamStartedAtSqlTests.BusinessTime_IsTheLastStoredHopsTimestamp_CutToTheMicrosecondAsync, StreamStartedAtSqlTests.BusinessTime_WithNoHop_IsNullAsync} |
+| A first event removed before this was recorded falls back to `first_appended_at`. | It is the closest start the ledger knows; the oldest surviving event is further from it. | {verified: StreamStartedAtSqlTests.StartedAt_AFirstEventRemovedWithNothingRecorded_IsTheFirstAppendAsync} |
+| A stream that still holds its first event is dated by the first event its row folds; the ledger is not consulted. | The record exists only for a removed first event. | {verified: StreamStartedAtSqlTests.StartedAt_AStreamHoldingItsFirstEvent_IsNullAsync, RebuildCreatedAtIntegrationTests.RebuildBlueGreen_AFullHistoryStream_DatesTheRowAtItsFirstEvent_AndUpdatedAtAtItsLastAsync} |
+| The store is asked only for a row that may be inserted and whose fold does not begin the stream. | An existing row keeps its `CreatedAt` on update, and a fold that holds the first event already dates the row; neither needs a round trip. | {verified: PerspectiveRowStartTests.ResolveAsync_ARowThatExists_AsksNothingAsync, RebuildCreatedAtIntegrationTests.RebuildInPlace_AnExistingRow_KeepsItsCreatedAtAsync} |
+| The start dates only the row it was resolved for, and only its insert. | One rebuild flow writes many rows; another stream's start never dates this one, and an update never moves `CreatedAt`. | {verified: PerspectiveRowStartTests.Begin_DatesThatRowOnly_UntilTheHandleIsDisposedAsync, BitemporalWritePathTests.Insert_InAFlowDatingAnotherRow_IsDatedByItsEventAsync, BitemporalWritePathTests.Insert_InAFlowDatingTheRowAtItsStreamsStart_TakesThatStart_AndAnUpdateKeepsItAsync} |
+| Blue-green and in-place rebuilds both apply it, after a reap and after a prefix truncate. | Both write the row through the same runner write. | {verified: RebuildCreatedAtIntegrationTests.RebuildBlueGreen_AfterTheFirstEventIsReaped_DatesTheRowAtTheStreamsStartAsync, RebuildCreatedAtIntegrationTests.RebuildInPlace_ARowItInserts_AfterTheFirstEventIsReaped_DatesTheRowAtTheStreamsStartAsync, RebuildCreatedAtIntegrationTests.RebuildBlueGreen_AfterAPrefixTruncate_DatesTheRowAtTheStreamsStartAsync} |
+| An event with no hop carries no business time; a row whose first event has none keeps the write's own time. | The runner reads business time from the last hop, as for every event. | {verified: PerspectiveRowStartTests.ResolveAsync_AFirstEventWithNoHop_LeavesTheRowToTheWritesOwnTimeAsync} |
+
+The start is the stream's, not the perspective's: once the first event is gone, a perspective that never folded that
+event is dated at the stream's start too.
+
 ## Limits {#limits}
 
+- **A row already stored keeps the date it was given.** Only a blue-green rebuild, which writes every row afresh,
+  re-dates rows written before rows were dated at their first event. A row resurrected from a snapshot after eviction is
+  dated at the first event after the snapshot.
+- **A stream archived through a prefix** records no first-event time; a row rebuilt from its snapshot is dated at the
+  time the stream's first event was stored.
 - **An archived and restored event loses its key.** The archive stores (`wh_event_archive` and the Azure Blob objects)
   do not carry `supersede_key`, so an event restored from an archive is never superseded. It is kept, which is the
   recoverable direction.
