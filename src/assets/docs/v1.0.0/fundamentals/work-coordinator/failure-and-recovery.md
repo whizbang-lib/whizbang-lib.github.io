@@ -63,7 +63,7 @@ What happens when each component fails, and how the system recovers.
 
 **Behavior:** logs critical warning. Other instances see this instance's `last_heartbeat_at` age out and treat it as stale, allowing them to claim its in-flight work after the lease expires. Standard orphan-reclaim semantics.
 
-**Recovery:** when this instance comes back before a peer reaped it, its next heartbeat is accepted and it resumes claiming new work. If a peer reaped and tombstoned it meanwhile, its next heartbeat is refused and it [exits](../../operations/startup/instance-exits.md#evictions) with `ClusterEviction`, exit code 3, so its host restarts it under a new instance id. Either way, in-flight items it lost during the outage have been re-leased to peers — those will run wherever they got reassigned.
+**Recovery:** when this instance comes back before a peer reaped it, its next heartbeat is accepted and it resumes claiming new work. If a peer reaped and tombstoned it meanwhile, its next heartbeat is refused and it [exits](../../operations/startup/instance-exits.md#evictions) with `ClusterEviction`, exit code 3, so its host restarts it under a new instance id. Either way, in-flight items it lost during the outage have been re-leased to peers, and those run wherever they got reassigned.
 
 ## Inbox handler bundle fails mid-commit
 

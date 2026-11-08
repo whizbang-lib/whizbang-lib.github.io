@@ -557,7 +557,7 @@ Migration **106** closes that:
 - The refusal travels through the **heartbeat itself** — the same call that used to let the zombie back in is now the one that tells it it may not. No new channel, no dependency on the signal bus, and notice is bounded by one heartbeat interval.
 - `HeartbeatWorker` **stops its loop** on a refused heartbeat, and the instance **exits** through the [one exit path](/v1.0.0/operations/startup/instance-exits#evictions) with `ClusterEviction`, exit code 3, so its host restarts it. Retrying can never succeed: the tombstone does not expire on the evicted instance's clock. A refused startup beat or claim registration exits the same way.
 
-The fence is per **process**, not per pod: instance ids are generated per process, so a restarted pod draws a fresh id and is unaffected — correct, because a restart means fresh state. The zombie keeps its id only until its next beat is refused; then it exits and its host starts a new process under a new id. Nothing re-registers in place.
+The fence is per **process**, not per pod: instance ids are generated per process, so a restarted pod draws a fresh id and is unaffected (correct, because a restart means fresh state). The zombie keeps its id only until its next beat is refused; then it exits and its host starts a new process under a new id. Nothing re-registers in place.
 {verified: HeartbeatWorkerStartupBeatTests.OnceTheSchemaIsReady_ARefusedBeat_ExitsOnce_AsAClusterEvictionAsync, StartingInstanceHeartbeatE2ETests.AnInstanceEvictedWhileRunning_ExitsOnce_WithCodeThree_AndRecordsWhoEvictedItAsync, ClaimWorkerLifecyclePhaseTests.ARefusedRegistration_ExitsAsAClusterEvictionAsync}
 
 **Why exit rather than stay sidelined.** An evicted instance that kept running held nothing, served nothing and could
@@ -593,12 +593,12 @@ The handshake reads the rule through `wh_instance_is_live(id)`. The rule is in P
 
 Every path out of standby is bounded:
 
-- **Committed** — the ledger now records the newer version; standing-by peers re-assess, see `StandDown`, and [exit](/v1.0.0/operations/startup/instance-exits) with `UpgradeStandDown`, exit code 0, as the handshake promises. The orchestrator replaces them.
+- **Committed**: the ledger now records the newer version; standing-by peers re-assess, see `StandDown`, and [exit](/v1.0.0/operations/startup/instance-exits) with `UpgradeStandDown`, exit code 0, as the handshake promises. The orchestrator replaces them.
 - **Rolled back** — the requester withdraws; the ledger is exactly as peers last read it. Revival is *not a second pipeline*: peers re-enter the re-entrant runner at `Assess`, find the schema unchanged, and resume.
 - **Dead migrator** — its heartbeat lapses, its request is void, revival begins. Nobody is stranded.
 - **Unresponsive peer** — eviction is the deliberate instrument (never an automatic consequence of slowness): `evict_instance` writes the tombstone the fence already honours, recording **who** issued it and why, and the handshake completes without the fenced peer — which can no longer heartbeat, win capabilities, or claim work.
 
-The verdict is also **not a startup-only fact**: the watcher re-assesses on a slow cadence, and at once when a newer version comes online or an instance goes away, so an instance that was current when it booted stands down when a newer peer serves or migrates underneath it — alive, not ready, reapable — and resumes if nothing newer is serving any more (see [cluster-wide stand-down](/v1.0.0/operations/startup/rolling-upgrades#cluster-wide-stand-down)).
+The verdict is also **not a startup-only fact**: the watcher re-assesses on a slow cadence, and at once when a newer version comes online or an instance goes away, so an instance that was current when it booted stands down when a newer peer serves or migrates underneath it, alive, not ready and reapable, and resumes if nothing newer is serving any more (see [cluster-wide stand-down](/v1.0.0/operations/startup/rolling-upgrades#cluster-wide-stand-down)).
 
 ## Migration touch points
 

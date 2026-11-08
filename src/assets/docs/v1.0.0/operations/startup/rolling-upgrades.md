@@ -459,7 +459,7 @@ A host gets the clock registered in its container. The worker pipeline registers
 
 ## Eviction: the fence behind the handshake
 
-Bounding the wait by liveness handles the *decision*; it does not handle the *process*, which may still be running — a pod paused by a long collection or a brief partition comes back and carries on against a schema that has moved. For a breaking migration that is not survivable, so the migrator (or an operator) **evicts** the unresponsive peer: a durable tombstone recording who issued it and when, delivered through the instance's own next heartbeat, and enforced where effect happens — [capability acquisition refuses an evicted instance](capabilities-and-duties#winning-a-duty). A restarted pod draws a new instance id and is unevicted. The zombie learns of its eviction on its next beat and [exits](instance-exits#evictions) with `ClusterEviction`, exit code 3, so its host restarts it under a new instance id; it never rejoins under the old one.
+Bounding the wait by liveness handles the *decision*; it does not handle the *process*, which may still be running: a pod paused by a long collection or a brief partition comes back and carries on against a schema that has moved. For a breaking migration that is not survivable, so the migrator (or an operator) **evicts** the unresponsive peer: a durable tombstone recording who issued it and when, delivered through the instance's own next heartbeat, and enforced where effect happens: [capability acquisition refuses an evicted instance](capabilities-and-duties#winning-a-duty). A restarted pod draws a new instance id and is unevicted. The zombie learns of its eviction on its next beat and [exits](instance-exits#evictions) with `ClusterEviction`, exit code 3, so its host restarts it under a new instance id; it never rejoins under the old one.
 
 The full mechanics live in [Instance Liveness](../../fundamentals/workers/instance-liveness#eviction-reaping-is-a-fence-not-just-a-deletion).
 
@@ -492,4 +492,4 @@ The behaviour above is fleet behaviour, so its tests are multi-instance end-to-e
 - [Migration Tracking](../infrastructure/migrations) — the ledger, version auditing, never-downgrade
 - [Instance Liveness](../../fundamentals/workers/instance-liveness) — heartbeats, standby, eviction
 - [The Startup Status Surface](startup-status) — watching a mixed-version rollout instance by instance
-- [Instance Exits](instance-exits) — the one exit path, an eviction's exit, and why a stood-down instance does not exit
+- [Instance Exits](instance-exits): the one exit path, an eviction's exit, and why a stood-down instance does not exit

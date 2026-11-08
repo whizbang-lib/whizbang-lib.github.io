@@ -283,7 +283,7 @@ take the library's exit path from application code, resolve `IWhizbangInstanceEx
 
 ## Related
 
-- [Managed-Resource Run-Control](../../resilience/managed-resource-run-control) — the halt every exit takes
-- [Instance Liveness](../../fundamentals/workers/instance-liveness) — the rule that decides an eviction
-- [Rolling Upgrades](rolling-upgrades) — stand-down, which does not exit, and the committed migration, which does
-- [The Startup Status Surface](startup-status) — the instance row and the startup beat
+- [Managed-Resource Run-Control](../../resilience/managed-resource-run-control): the halt every exit takes
+- [Instance Liveness](../../fundamentals/workers/instance-liveness): the rule that decides an eviction
+- [Rolling Upgrades](rolling-upgrades): stand-down, which does not exit, and the committed migration, which does
+- [The Startup Status Surface](startup-status): the instance row and the startup beat

@@ -174,7 +174,7 @@ on its commit; earlier releases sent it at once on a connection of their own, ev
 ## Limitations
 
 - **At-most-once with bounded latency**: notifications are best-effort. If the listener is disconnected when the notify fires, the signal is lost. Use this for "wake up and check" semantics, not for durable pub/sub.
-- **No payload size enforcement** beyond postgres's 8 KB notify limit, which fails your transaction when the publish is made inside one. Large payloads are an anti-pattern — pass an id and let subscribers fetch.
+- **No payload size enforcement** beyond postgres's 8 KB notify limit, which fails your transaction when the publish is made inside one. Large payloads are an anti-pattern: pass an id and let subscribers fetch.
 - **Single LISTEN connection per pod** (shared with internal listener). High-throughput app pub/sub may saturate this connection; for that, prefer a dedicated message bus (Service Bus, RabbitMQ).
 
 ## Without a notification connection {#noop-mode}
