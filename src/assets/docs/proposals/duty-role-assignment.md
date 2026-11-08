@@ -2,7 +2,26 @@
 title: Duty Role Assignment (Liveness-Tied Election)
 category: Architecture & Design
 order: 36
-tags: duties, capabilities, election, role-assignment, advisory-lock, fencing, epoch, lease, heartbeat, liveness, failover, rolling-deploy, maintainer, migrator, split-brain, drain, chaos, commit-stamper
+tags: duties, capabilities, election, role-assignment, advisory-lock, fencing, epoch, lease, heartbeat, liveness, progress-window, grant-watch, failover, rolling-deploy, maintainer, migrator, split-brain, drain, chaos, commit-stamper
+codeReferences:
+  - src/Whizbang.Data.Postgres/Migrations/355_RoleHoldersAreJudgedByTheLivenessRule.sql
+  - src/Whizbang.Data.Postgres/Migrations/184_RoleAssignmentResilience.sql
+  - src/Whizbang.Data.Postgres/Migrations/326_EveryDutyIsARoleAssignment.sql
+  - src/Whizbang.Data.Postgres/Notifications/PgRoleElector.cs
+  - src/Whizbang.Core/Startup/RoleAssignmentOptions.cs
+  - src/Whizbang.Core/Startup/IDutyElector.cs
+  - src/Whizbang.Core/Startup/DutyHolderWorker.cs
+testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleHolderLivenessSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleHolderLivenessE2ETests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/RoleHolderLivenessCostScenarioTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/CoordinationSourceGuardTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/DutyHolderWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Startup/DutyGrantContractTests.cs
+  - tests/Whizbang.Core.Tests/Startup/RoleAssignmentOptionsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleAssignmentSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleAssignmentResilienceSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleAssignmentElectorE2ETests.cs
 ---
 
 # Duty Role Assignment
@@ -10,7 +29,7 @@ tags: duties, capabilities, election, role-assignment, advisory-lock, fencing, e
 **The advisory lock decides only the vote. The role is a row: a liveness-tied assignment with an epoch that exclusive work presents as a fencing token.**
 
 :::new
-**Implemented, and the only way to hold a duty** (library migrations `173_RoleAssignments.sql`, `184_RoleAssignmentResilience.sql`, `326_EveryDutyIsARoleAssignment.sql` and `330_CoordinationOnTheSignalBus.sql`, `PgRoleElector`, `DutyHolderWorker`). Tracks GitHub issue #966; the design questions are decided on #968 (section 11). Since #2044 every duty is a role assignment: `maintainer`, `migrator`, the commit-order stamper's leadership and any duty a host names. The session-lock elector, the legacy-lock bridge and the stamper's own lock are gone, and there is no switch back (section 6). Section 10 lists the phases and what each one delivered; the released behavior is on [Capabilities and Duties](/v1.0.0/operations/startup/capabilities-and-duties#role-assignment-the-default).
+**Implemented, and the only way to hold a duty** (library migrations `173_RoleAssignments.sql`, `184_RoleAssignmentResilience.sql`, `326_EveryDutyIsARoleAssignment.sql`, `330_CoordinationOnTheSignalBus.sql` and `355_RoleHoldersAreJudgedByTheLivenessRule.sql`, `PgRoleElector`, `DutyHolderWorker`). Tracks GitHub issue #966; the design questions are decided on #968 (section 11). Since #2044 every duty is a role assignment: `maintainer`, `migrator`, the commit-order stamper's leadership and any duty a host names. The session-lock elector, the legacy-lock bridge and the stamper's own lock are gone, and there is no switch back (section 6). Since #2140 a holder past its lease is judged by [the one liveness rule](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule) plus a progress window, and every grant watches its assignment and cancels `IDutyGrant.LostToken` on a loss (section 5). Section 10 lists the phases and what each one delivered; the released behavior is on [Capabilities and Duties](/v1.0.0/operations/startup/capabilities-and-duties#role-assignment-the-default).
 :::
 
 ## 1. Why the session lock is not enough
@@ -50,7 +69,7 @@ Five pieces:
 
 1. **The vote.** A single SQL function, `wh_elect_role`, run as one statement. It takes a *transaction-scoped* advisory lock keyed on the role, re-reads the assignment, voids it if it has lapsed, and assigns the caller if the role is free. The lock is released when the statement commits. Because the whole vote is one statement, a client that stalls cannot hold the vote lock: the server runs the statement to completion without a round trip to the client.
 2. **The assignment.** `wh_role_assignments` has one row per role: holder instance id, epoch, `assigned_at`, `renewed_at`, `lease_expires_at`, the lease length, the election count, and the last vacancy (who, when, why). **That row is the authority from then on.** It is a virtual lock that needs no session and no pinned connection, and it survives a database restart.
-3. **Liveness.** The assignment is valid while its lease is unexpired **and** the holder is registered in `wh_service_instances` **and** is not tombstoned in `wh_instance_evictions`. The lease is extended only by the holder's own work loop (`VerifyStillHeldAsync` renews it), never by a separate timer. Reaping, eviction and a lapsed lease all void the assignment at the next vote.
+3. **Liveness.** The assignment is valid while the holder is registered in `wh_service_instances`, is not tombstoned in `wh_instance_evictions`, **and** either its lease is unexpired or, past the lease, [the one liveness rule](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule) calls it live and it renewed inside the progress window it declared for its epoch (section 5). The lease is extended only by the holder's own work loop (`VerifyStillHeldAsync` renews it), never by a separate timer. Reaping, eviction and a lapse all void the assignment at the next vote.
 4. **Fencing.** Every assignment carries an **epoch**, incremented on each new assignment and never reused. Exclusive work presents `(holder, epoch)` to `wh_assert_role_epoch` in the same transaction as its writes. A stale epoch raises SQLSTATE `WHF01` and the transaction's writes roll back. The check runs in SQL, where no paused process can argue with it.
 5. **Release.** A graceful shutdown releases the role (`wh_release_role`) so the next vote hands it off at once rather than after the lease lapses.
 
@@ -59,10 +78,10 @@ Five pieces:
 | Question | Session-lock model (released) | Role-assignment model (this proposal) |
 |---|---|---|
 | Who decides the holder | The session lock, for the whole tenure | The vote, under a transaction lock held for milliseconds |
-| What proves the holder is still the holder | The session is still open | The row: unexpired lease, registered, not tombstoned |
+| What proves the holder is still the holder | The session is still open | The row: registered, not tombstoned, and an unexpired lease or, past it, live by the one rule and renewing inside its progress window |
 | Connection needed while holding | One pinned direct connection per duty | None. Every call is one statement on any pooled connection |
-| A stuck-but-alive holder | Keeps the duty indefinitely | Stops renewing, lapses, loses the duty |
-| A hard-killed holder on a half-open socket | Keeps the lock until TCP keepalive (up to hours), bounded only by the reaper's definitive-dead cutoff | Lapses after one lease |
+| A stuck-but-alive holder | Keeps the duty indefinitely | Stops renewing and loses the duty at its progress window (2 minutes by default), learning it within one renew interval |
+| A hard-killed holder on a half-open socket | Keeps the lock until TCP keepalive (up to hours), bounded only by the reaper's definitive-dead cutoff | Replaced once the rule calls it dead, and never later than its progress window |
 | Database restart or failover | Every session lock is lost; election restarts from nothing | Rows survive; the holder renews the same epoch |
 | A paused holder that wakes up after losing the duty | Its session died, so its lock is gone; its writes are not fenced | Its writes present a stale epoch and are refused in SQL |
 
@@ -118,6 +137,21 @@ Migration 326 redefines `wh_vote_role`, `wh_renew_role_lease`, `wh_vote_roles` a
 
 The row gained the holder's version key, the drain request, the marked duty backend, the bridge session and whether the last involuntary vacancy was fleet-wide; `wh_role_candidates` records who is voting for each role, on which version.
 
+### Added in migration 355 (#2140)
+
+Also a bootstrap region, for the same reason. Section 5 explains each choice.
+
+| Object | What it does |
+|---|---|
+| `wh_role_assignments.progress_window`, `progress_epoch` | The window the holder declared, and the epoch that declared it. NULL: none declared, and the lease alone decides |
+| `_role_holder_kept_live(row, at)` | The one place the role asks the rule: true when the holder declared a window for this epoch, renewed inside it, and `wh_instance_is_live` calls it live |
+| `_role_lapse_reason(row)` | Redefined: past the lease, and with no marked duty backend running a statement, lapsed only when `_role_holder_kept_live` is false. The vote, the renewal, the status and the duty-backend mark all decide through it |
+| `wh_assert_role_epoch(role, instance, epoch)` | Redefined: the fence accepts an unexpired lease, a running marked duty backend, or a holder `_role_holder_kept_live` keeps, the same three the vote accepts |
+| `wh_declare_role_progress_window(role, instance, epoch, window)` | The holder declares its window once it holds an epoch; zero or NULL declares none. False when `(instance, epoch)` is not the current valid assignment |
+| `wh_role_is_held(role, instance, epoch)` | Whether `(instance, epoch)` is the current valid assignment, judged as the vote judges it. The grant watch's read; it writes nothing |
+
+{verified: RoleHolderLivenessSqlTests.DeclareProgressWindow_IsRefusedToAHolderThatDoesNotHoldTheRole_AndAZeroWindowTurnsItOffAsync, RoleHolderLivenessSqlTests.RoleHeld_AnswersForTheCurrentHolderAndEpochOnlyAsync, RoleHolderLivenessSqlTests.RoleHeld_ReadsTheAssignmentByItsPrimaryKeyAsync, CoordinationSourceGuardTests.ARoleHolder_IsJudgedPastItsLeaseByTheOneLivenessRuleAsync}
+
 ### The vote lock key
 
 `pg_advisory_xact_lock((table_oid << 32) | hashtext(role))`, where `table_oid` is the oid of this schema's `wh_role_assignments`. Keying on the table's oid makes the lock schema-scoped by construction (issue #962) with no schema name handled as text, which also absorbs the two migration runners' different `__SCHEMA__` substitutions. A collision with another advisory-lock family can only make a vote wait a few milliseconds longer. It can never change the outcome, because the row, not the lock, is the authority.
@@ -128,20 +162,106 @@ Every timestamp in the row is written with `now()` inside the statement, and eve
 
 The one place two clocks meet is a database failover, when the new primary's `now()` is compared with timestamps the old primary wrote. NTP-synchronized servers keep that skew to milliseconds, against leases measured in seconds.
 
-## 5. Liveness, lapse and hysteresis
+## 5. Liveness, lapse and hysteresis {#liveness}
 
-**The lease is renewed by the work loop, not by a timer.** `IDutyGrant.VerifyStillHeldAsync` was already the call "a long-tenure holder makes before each unit of exclusive work". In this model it renews the lease. A holder whose loop is stuck, whether blocked on a thread, awaiting a wedged connection, or paused by the operating system, stops calling it and lapses. A separate renewal timer would keep a stuck holder alive, which is the failure this is meant to remove.
+**Inside its lease a holder holds. Past its lease it is judged by the one liveness rule, plus a progress check of the role's own (#2140, migration 355).** A holder past its lease keeps the role only while all three hold:
+
+1. it declared a **progress window** for its current epoch;
+2. it **renewed inside that window** (its last renewal, which only its own work loop sends, is newer than the window);
+3. **[the one liveness rule](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule) calls its instance live** (`wh_instance_is_live`: a recent heartbeat, or a held alive-lock on its notification connection), the same rule the claim, the reap, the standby handshake and every other reader asks.
+
+All three are one helper, `_role_holder_kept_live`. `_role_lapse_reason`, which the vote, the renewal, the status and the duty-backend mark decide through, calls it, and so does the fence, `wh_assert_role_epoch`, so the fence treats a holder as live exactly when the vote does. The duty-backend backstop (section 11, decision 1) still holds the role open while the holder's marked statement runs. What remains role-specific is the epoch fence and the progress check; "is this instance alive" has one answer.
+{verified: RoleHolderLivenessSqlTests.Vote_AHolderPastItsLease_ThatTheRuleCallsLive_AndThatMadeProgressInsideItsWindow_KeepsTheRoleAsync, RoleHolderLivenessSqlTests.Vote_ADirectHolderHoldingItsAliveLock_DoesNotLapse_WhileItsHeartbeatIsPastOneBeatAsync, RoleHolderLivenessSqlTests.Status_ReportsAHolderKeptByTheRule_AsHeldAsync, CoordinationSourceGuardTests.ARoleHolder_IsJudgedPastItsLeaseByTheOneLivenessRuleAsync}
+
+```sql{
+title: "Whether a holder keeps its role past its lease"
+description: "_role_holder_kept_live from migration 355: the holder declared a progress window for this epoch, renewed inside it, and the one liveness rule calls it live. The progress check comes first, so the rule is asked only for a holder inside its window."
+category: "Design"
+difficulty: "ADVANCED"
+tags: ["role-assignment", "liveness", "progress-window", "fencing", "migration-355"]
+tests: ["RoleHolderLivenessSqlTests.Vote_AHolderPastItsLease_ThatTheRuleCallsLive_AndThatMadeProgressInsideItsWindow_KeepsTheRoleAsync", "RoleHolderLivenessSqlTests.Vote_AHolderTheRuleCallsDead_LapsesAtItsLease_InsideItsWindowAsync", "RoleHolderLivenessSqlTests.Vote_AConnectedButStuckHolder_LapsesAtItsProgressWindow_ThoughTheRuleCallsItLiveAsync", "RoleHolderLivenessSqlTests.ProgressWindow_CountsOnlyForTheEpochThatDeclaredItAsync"]
+}
+-- migration 355
+SELECT p_row.progress_window IS NOT NULL
+   AND p_row.progress_epoch = p_row.epoch
+   AND p_row.renewed_at + p_row.progress_window > p_at
+   AND wh_instance_is_live(p_row.holder_instance_id)
+```
+
+**Why the lease stopped being a liveness rule of its own.** Before #2140 a holder lapsed one lease (15 seconds) after its last renewal, and it renewed only when its work loop verified before a unit of exclusive work. A freshly elected holder busy with its startup, or inside one long unit of work, lapsed although every other reader of liveness called it live. A restart could move the `maintainer` role back and forth, and the old holder learned of the loss only on its next verify, minutes later, with two instances each believing it held the role. #2027 had already given every other reader one rule; the lease was the one left.
+
+**Why a progress check remains.** The rule answers whether the instance is there, not whether its duty loop is moving. The heartbeat comes from `HeartbeatWorker`, independent of the duty loop, so a holder whose loop is wedged keeps beating, and a direct one keeps its alive-lock. Judged by the rule alone it would keep the role for as long as its process lives. Progress is counted only from renewals, which only the work loop sends, so a holder that is connected but stuck loses the role at the end of its window.
+
+**The lease is renewed by the work loop, not by a timer.** `IDutyGrant.VerifyStillHeldAsync` was already the call "a long-tenure holder makes before each unit of exclusive work". In this model it renews the lease, and that renewal is the progress the window counts. A separate renewal timer would keep a stuck holder alive, which is the failure this is meant to remove; for the same reason the grant watch below only reads.
 
 Renewals are throttled locally: within one `RenewInterval` of the last successful renewal, measured on the monotonic clock from the moment that request was *sent*, `VerifyStillHeldAsync` answers from memory. That is safe because the database computed the lease from a later instant than the send, and `RenewInterval` is a fraction of the lease. The throttle only saves round trips. It never lets a write through, because writes are fenced in SQL.
 
 A renewal that fails for a transient reason (the database unreachable for a moment) answers false without giving up the grant, because the lease may still be valid and the next verify asks again. An explicit refusal (a lapsed lease, a wrong epoch, a tombstone) loses the grant for good, and a lost grant never asks the database again.
 
-**Hysteresis** has two parts:
+### The progress window {#progress-window}
 
-- **The lapse threshold is several missed beats.** `lease = RenewInterval × MissedRenewalsBeforeLapse` (defaults 5 s × 3 = 15 s). One slow renewal does not cost the role.
+`RoleAssignmentOptions.ProgressWindow` (configuration key `Whizbang:Database:RoleAssignment:ProgressWindow`, default 2 minutes) is how long a holder the rule calls live may go without renewing before it loses the role. Zero turns it off, and the lease alone decides, as before.
+
+- **Declared per epoch.** Right after a grant, the holder declares its window (`wh_declare_role_progress_window`), on both the single vote and the multi-role vote. The window counts only for the epoch that declared it, so a window left on the row by an earlier holder never keeps a later one.
+- **Never shorter than the role's lease** (`ProgressWindowFor`): a window shorter than the lease would never apply, since inside the lease the holder holds anyway.
+- **A declaration that fails is logged, not thrown.** Without a window the holder is judged by its lease alone, exactly as before, which can only shorten its tenure.
+- **An older release declares none**, so its holders are judged by their lease, exactly as before. One epoch is never judged by two rules in a mixed-version fleet.
+
+{verified: RoleAssignmentOptionsTests.ProgressWindow_DefaultsToTwoMinutesAsync, RoleAssignmentOptionsTests.ProgressWindowFor_IsNeverShorterThanTheRolesLease_AndZeroTurnsItOffAsync, RoleAssignmentOptionsTests.Validate_RefusesANegativeProgressWindowAsync, RoleHolderLivenessSqlTests.DeclareProgressWindow_IsRefusedToAHolderThatDoesNotHoldTheRole_AndAZeroWindowTurnsItOffAsync, RoleHolderLivenessSqlTests.ProgressWindow_CountsOnlyForTheEpochThatDeclaredItAsync, RoleHolderLivenessSqlTests.Vote_AHolderThatDeclaredNoWindow_LapsesAtItsLease_AsBeforeAsync, RoleHolderLivenessE2ETests.TheVoteManyPath_DeclaresTheWindowForEveryRoleItWinsAsync, RoleHolderLivenessE2ETests.WithTheProgressWindowOff_AHolderLapsesAtItsLease_AsBeforeAsync, RoleHolderLivenessE2ETests.AWatchCheck_ConfirmsTheRole_AndADeclarationThatFails_LeavesTheGrantHeldAsync}
+
+### When a holder loses the role {#when-a-holder-loses-the-role}
+
+With the defaults (renew interval 5 s, lease 15 s, progress window 2 minutes, one beat 30 s):
+
+| Holder | Loses the role | Verified |
+|---|---|---|
+| Renewing on time | Never | {verified: RoleHolderLivenessSqlTests.Vote_AHolderPastItsLease_ThatTheRuleCallsLive_AndThatMadeProgressInsideItsWindow_KeepsTheRoleAsync} |
+| Busy with a slow startup or one long unit of work, live by the rule | Not while it renews inside its window; its late verify renews it and it carries on | {verified: RoleHolderLivenessE2ETests.ARestartWithASlowStartup_KeepsOneHolder_AndTheHoldersLateVerifyRenewsItAsync} |
+| Connected but stuck: heartbeating, its work loop not verifying | At the end of its progress window after its last renewal, although the rule calls it live; it learns of the loss within one renew interval | {verified: RoleHolderLivenessSqlTests.Vote_AConnectedButStuckHolder_LapsesAtItsProgressWindow_ThoughTheRuleCallsItLiveAsync, RoleHolderLivenessE2ETests.AConnectedButStuckHolder_LosesTheRoleAtItsProgressWindow_AndLearnsItWithinOneRenewIntervalAsync} |
+| Crashed, direct | Once the rule calls it dead and not before its lease: its alive-lock goes with the process, so about one beat (30 s) | {verified: RoleHolderLivenessSqlTests.Vote_AHolderTheRuleCallsDead_LapsesAtItsLease_InsideItsWindowAsync} |
+| Crashed behind a transaction pooler | Once the rule calls it dead or its window ends, whichever is first; with the defaults its heartbeat window (150 s) outlasts the progress window, so about 2 minutes | {verified: RoleHolderLivenessSqlTests.Vote_AHolderTheRuleCallsDead_LapsesAtItsLease_InsideItsWindowAsync, RoleHolderLivenessSqlTests.Vote_AConnectedButStuckHolder_LapsesAtItsProgressWindow_ThoughTheRuleCallsItLiveAsync} |
+| Hard-killed on a half-open connection that still holds its alive-lock | At the end of its progress window, not at TCP keepalive | {verified: RoleHolderLivenessSqlTests.Vote_AConnectedButStuckHolder_LapsesAtItsProgressWindow_ThoughTheRuleCallsItLiveAsync} |
+| Evicted or unregistered | At the next vote, whatever its lease or window | {verified: RoleAssignmentSqlTests.Elect_WhenTheHolderIsTombstoned_VoidsItAsEvictedAsync} |
+| On an older release, or with the window off | At its lease (15 s), as before | {verified: RoleHolderLivenessSqlTests.Vote_AHolderThatDeclaredNoWindow_LapsesAtItsLease_AsBeforeAsync, RoleHolderLivenessE2ETests.WithTheProgressWindowOff_AHolderLapsesAtItsLease_AsBeforeAsync} |
+| Released gracefully | At once, with no cool-down | {verified: RoleAssignmentElectorE2ETests.GracefulRelease_HandsOffAtOnce_WithNoLapseWaitAsync} |
+
+So a dead holder is never replaced before its lease and never after its progress window; between the two, the rule decides.
+
+### Learning of a loss: the grant watch and `LostToken` {#grant-watch}
+
+Each role-assignment grant watches its own assignment. Once per `RenewInterval` it reads `wh_role_is_held(role, instance, epoch)`, which judges the assignment exactly as the vote does and writes nothing, so a watch tick never counts as progress. On a loss it cancels `IDutyGrant.LostToken`; a release or a disposal cancels it too.
+
+- **A watch that cannot reach the database** retries on the next tick. Once a whole lease has passed with no confirmation (a renewal or a watch check), it fences itself and cancels the token anyway, because by then another instance may be entitled to the role.
+- **Checks never pile up.** A tick that finds the previous check still running skips, and a tick behind a release finds the tenure ended and asks nothing.
+- **A schema without the watch** (before 355) answers that the function is missing; the watch stops, and the holder learns of a loss on its next verify, as before.
+- **Other grants** offer `LostToken` as a default member that is never canceled, so an `IDutyGrant` that cannot observe a loss on its own keeps working unchanged.
+
+The [holder loop](/v1.0.0/operations/startup/capabilities-and-duties#the-holder-loop) runs a role's acquisition and owed work under a token linked to `LostToken`. A loss observed mid-work cancels that work, the loop lets the role go, logs it once, and votes again on its next pass; `DutyHolderWorker.Holds(role)` answers false from the moment of the loss, without waiting for a pass. A host that is stopping is not mistaken for a loss: the role is kept for the host's own release.
+{verified: RoleHolderLivenessE2ETests.TheOldHolder_ObservesItsLossWithinOneRenewInterval_SoExclusiveWorkNeverOverlapsAsync, RoleHolderLivenessE2ETests.AGrantWhoseWatchCannotConfirmTheRoleForALease_FencesItselfAsync, RoleHolderLivenessE2ETests.AReleasedGrant_EndsItsWatch_AndCancelsItsTokenAsync, RoleHolderLivenessE2ETests.ATickWhileTheLastCheckIsStillRunning_Skips_SoChecksNeverPileUpAsync, RoleHolderLivenessE2ETests.AWatchTickBehindARelease_FindsTheTenureEnded_AndAsksNothingAsync, RoleHolderLivenessE2ETests.OnASchemaWithoutTheWatch_TheGrantKeepsItsRole_AndStopsWatchingAsync, RoleHolderLivenessSqlTests.RoleHeld_AnswersForTheCurrentHolderAndEpochOnlyAsync, DutyGrantContractTests.LostToken_OfAGrantThatCannotObserveALoss_IsNeverCanceledAsync, DutyHolderWorkerTests.AGrantLostMidAcquisitionWork_CancelsThatWork_AndTheWorkerLetsTheRoleGoAsync, DutyHolderWorkerTests.AGrantLostMidOwedWork_CancelsThatWork_AndRunsNoMoreAsync, DutyHolderWorkerTests.Holds_TurnsFalseTheMomentTheGrantIsLost_WithoutWaitingForAPassAsync, DutyHolderWorkerTests.StoppingDuringWork_IsNotMistakenForALostGrant_AndKeepsTheRoleForTheHostsStopAsync}
+
+### Design choices and trade-offs {#liveness-design-choices}
+
+| Choice | Reason, and what it costs | Verified |
+|---|---|---|
+| Past its lease, a holder is judged by `wh_instance_is_live`, through one helper the vote and the fence both call. | One definition of alive for every reader (#2027); a role that kept its own rule lapsed live holders and bounced the role on a restart. One helper means the fence can never accept a holder the vote voided, or the reverse. **Cost:** a crashed holder is replaced when the rule calls it dead, about one beat (30 s) for a direct instance, not at 15 s. Duties tolerate tens of seconds, and its writes are fenced by the epoch either way. | {verified: CoordinationSourceGuardTests.ARoleHolder_IsJudgedPastItsLeaseByTheOneLivenessRuleAsync, RoleHolderLivenessSqlTests.Vote_AHolderTheRuleCallsDead_LapsesAtItsLease_InsideItsWindowAsync} |
+| The role keeps a progress window, counted from renewals only. | The rule cannot see a wedged duty loop behind a healthy heartbeat. **Cost:** a connected but stuck holder keeps the role up to its window (2 minutes by default) instead of 15 s; lower `ProgressWindow` for a duty whose stalls cost more than its hand-offs. A crashed pooled holder, whose heartbeat window outlasts the progress window, is also replaced at about the window. | {verified: RoleHolderLivenessSqlTests.Vote_AConnectedButStuckHolder_LapsesAtItsProgressWindow_ThoughTheRuleCallsItLiveAsync, RoleHolderLivenessE2ETests.AConnectedButStuckHolder_LosesTheRoleAtItsProgressWindow_AndLearnsItWithinOneRenewIntervalAsync} |
+| The window is declared per epoch, and none declared means the lease alone. | A window must never outlive the holder that chose it, and an older release, which declares nothing, must be judged exactly as it judges itself. | {verified: RoleHolderLivenessSqlTests.ProgressWindow_CountsOnlyForTheEpochThatDeclaredItAsync, RoleHolderLivenessSqlTests.Vote_AHolderThatDeclaredNoWindow_LapsesAtItsLease_AsBeforeAsync} |
+| A lease comparison outside the role's two deciding functions fails a source guard. | Gravity: the next author cannot quietly reintroduce the lease as a liveness verdict. The allowlist names `_role_lapse_reason`, `wh_assert_role_epoch`, the fleet-wide-lapse classifier, 173's unused helper and the partition-assignment lease. | {verified: CoordinationSourceGuardTests.SqlLeaseVerdicts_AppearOnlyInTheAllowlistedFunctionsAsync} |
+| The grant watch reads once per renew interval and never renews. | A holder learns of a loss within one interval instead of on its next verify. A watch that renewed would be the renewal timer that keeps a stuck holder alive. **Cost:** one primary-key read per held role per interval. | {verified: RoleHolderLivenessE2ETests.TheOldHolder_ObservesItsLossWithinOneRenewInterval_SoExclusiveWorkNeverOverlapsAsync, RoleHolderLivenessSqlTests.RoleHeld_ReadsTheAssignmentByItsPrimaryKeyAsync} |
+| A watch that cannot confirm the role for a whole lease fences itself. | After a lease without a confirmation another instance may hold the role; stopping is the safe answer when the database cannot say. | {verified: RoleHolderLivenessE2ETests.AGrantWhoseWatchCannotConfirmTheRoleForALease_FencesItselfAsync} |
+| Exclusive work is canceled through `LostToken`, and database writes stay fenced by the epoch. | **Cost:** exclusive work may run on two instances for at most one renew interval plus the time the work takes to observe its cancellation. A database write in that window still presents a stale epoch and is refused, so only work outside the database can overlap. | {verified: RoleHolderLivenessE2ETests.TheOldHolder_ObservesItsLossWithinOneRenewInterval_SoExclusiveWorkNeverOverlapsAsync, RoleAssignmentSqlTests.AssertEpoch_WithAStaleEpoch_RaisesInSql_AndTheWriteBesideItRollsBackAsync} |
+
+**What it costs the database.** Measured with 500 registered instances (`RoleHolderLivenessCostScenarioTests`, 355's definitions against 184's): the vote's fast path went from 0.31 ms to 0.47 ms while the holder is inside its lease, and costs 1.32 ms when it finds the holder past its lease and kept live, where the rule reads the holder's instance row and the alive-locks. The buffers each statement touches inside the lease are unchanged, and nothing scales with the fleet beyond that one lookup. Buffers carry the gate; timings are recorded, never gated.
+{verified: RoleHolderLivenessCostScenarioTests.RoleStatements_JudgedByTheRule_VersusTheLeaseAlone_ReportAsync}
+
+### Hysteresis
+
+It has two parts:
+
+- **The lapse threshold is several missed beats.** `lease = RenewInterval × MissedRenewalsBeforeLapse` (defaults 5 s × 3 = 15 s). One slow renewal does not cost the role, and past the lease a live holder has its progress window.
 - **A cool-down after an involuntary lapse.** An instance whose assignment was voided as `lapsed` cannot be re-elected for `CooldownAfterLapse` (default 15 s), so a slow instance cannot win the role back the moment it recovers and bounce it again. A graceful release carries no cool-down, because it was not a health signal.
 
-**The failover bound** after a crash is therefore one lease plus the successor's next attempt, all measured in database time.
+**The failover bound** after a crash is therefore the moment the rule calls the holder dead, no earlier than its lease and no later than its progress window, plus the successor's next attempt, all measured in database time.
 
 ## 6. Mixed-version fleets: never both act
 
@@ -166,7 +286,7 @@ During a rolling deploy, an instance on an older release may hold a duty by its 
 
 **Upgrading.** A rolling deploy from a release that held duties by session lock needs nothing: its instances record their holdings, and the vote defers to them while they are live. A deploy from a release that already had role assignment on needs nothing either: the phase 1 entry points (`wh_elect_role`, `wh_renew_role`) keep working for the old instances, which count as the oldest version, so the role moves to the new release (section 11, decisions 2 and 3).
 
-**A host's own duty is replaced more slowly after a crash.** Under the session-lock elector a duty that was not a role was handed over the moment its holder's session ended. As a role it is replaced once its lease lapses or the liveness rule has the instance reaped, about 30 seconds for a direct instance. A clean release still hands it over at once.
+**A host's own duty is replaced more slowly after a crash.** Under the session-lock elector a duty that was not a role was handed over the moment its holder's session ended. As a role it is replaced once the liveness rule calls its holder dead, no earlier than its lease (section 5), about 30 seconds for a direct instance. A clean release still hands it over at once.
 {verified: DutyElectionE2ETests.DirtyDeath_JudgedByTheLivenessRule_HandsTheDutyOver_AndTheGrantKnowsItIsLostAsync, RoleAssignmentElectorE2ETests.GracefulRelease_HandsOffAtOnce_WithNoLapseWaitAsync}
 
 **The migrator** moved in phase 4. Its vote is part of the schema bootstrap closure (migration 184 is a bootstrap region, and so is the vote's redefinition in 326), so the assignment table and functions exist before the first migration. Migrator waiters watch the assignment row (`MigratorWatch`) and any holding recorded outside the table by a live migrator on an older release; since 326 they read no lock. The migrator holds its role for one migration and releases it, so the holder loop never holds it and the `roles` health component reports it only when it lapsed mid-run.
@@ -181,7 +301,7 @@ For the new holder to know what is pending, a duty-bound step declares its pendi
 ### As built (phase 2)
 
 - **Owing.** `wh_owe_role_work(role, work_key)` is idempotent: owing again moves `last_owed_at` and keeps `first_owed_at`. A startup step with `NonHolderBehavior.Skip` that an instance skips as a non-holder is owed automatically, so every new pod in a rolling deploy owes the step, and the pod that wins the role runs it once.
-- **Running.** `DutyHolderWorker` is the holder loop. Each pass verifies the role it holds (which renews the lease, so the loop is the liveness signal), or votes for one it does not, then runs every due piece of owed work it has a handler for. A pass runs once per renew interval and at once when a release is announced: `wh_release_role` publishes a `RoleReleasedSignal` through the signal bus's SQL publish (`wh_publish_signal`, migration 330), which notifies `wh_role_released` with the role and records the release durably, and the loop hears it through its subscription on the bus, from the notification or, if it missed that, from its durable-signal tail (see [Coordination signals](/v1.0.0/fundamentals/signal-bus/signal-bus#coordination-signals)). On stop, it releases what it holds.
+- **Running.** `DutyHolderWorker` is the holder loop. Each pass verifies the role it holds (which renews the lease, so the loop is the liveness signal), or votes for one it does not, then runs every due piece of owed work it has a handler for. A pass runs once per renew interval and at once when a release is announced: `wh_release_role` publishes a `RoleReleasedSignal` through the signal bus's SQL publish (`wh_publish_signal`, migration 330), which notifies `wh_role_released` with the role and records the release durably, and the loop hears it through its subscription on the bus, from the notification or, if it missed that, from its durable-signal tail (see [Coordination signals](/v1.0.0/fundamentals/signal-bus/signal-bus#coordination-signals)). On stop, it releases what it holds. Since #2140 a role's acquisition and owed work run under a token linked to the grant's `LostToken`, so a loss the grant watch observes stops that work at once (section 5).
 - **Completing.** `wh_complete_role_work` is fenced by `(holder, epoch)` and deletes the row only if nobody owed it again after the holder listed it. `wh_fail_role_work` records the error and backs the work off, doubling from `OwedWorkRetryBase` and capped at one hour. If the fence refuses either call, the loop drops the grant at once.
 - **One process, one tenure.** A second acquisition of a role this instance already holds returns another handle on the same tenure, so the holder loop and a startup step can hold the role together; the last handle to close releases it.
 - **Deferring.** A step owed while this instance's own startup pipeline is still running is deferred, not failed, so the loop never blocks and its lease keeps moving.
@@ -198,9 +318,9 @@ For the new holder to know what is pending, a duty-bound step declares its pendi
 
 | # | Requirement | Mechanism | Test (phase) |
 |---|---|---|---|
-| 1 | Never two holders acting at once | Epoch per assignment; `wh_assert_role_epoch(role, holder, epoch)` in the writer's transaction raises `WHF01` for a stale epoch; `FOR SHARE` keeps a re-vote from committing mid-write; holder is part of the fence, so an epoch reissued after an async-replica failover still fails | Stale epoch refused in SQL, its write rolled back (1) |
-| 2 | Holder crash or `kill -9` | Lease lapses in database time; the next vote voids it (`lapsed`) and assigns a new epoch. No session or TCP timeout is involved | Crashed holder voids after the lapse bound, time advanced in the database (1); kill -9 chaos run, work finished once by the next holder (4) |
-| 3 | Holder alive but stuck | Lease renewed only by `VerifyStillHeldAsync` from the work loop; no renewal thread. One long statement is covered by the duty-backend backstop, not by a timer | Unrenewed lease lapses although the instance still heartbeats (1); SIGSTOP mid-duty and partition chaos runs (4) |
+| 1 | Never two holders acting at once | Epoch per assignment; `wh_assert_role_epoch(role, holder, epoch)` in the writer's transaction raises `WHF01` for a stale epoch; `FOR SHARE` keeps a re-vote from committing mid-write; holder is part of the fence, so an epoch reissued after an async-replica failover still fails. Since #2140 the grant watch reads the assignment once per renew interval and cancels `IDutyGrant.LostToken` on a loss, and the holder loop's work is linked to it, so exclusive work outside the database overlaps the next holder's for at most one renew interval plus its cancellation | Stale epoch refused in SQL, its write rolled back (1); the old holder observes its loss within one renew interval (#2140) {verified: RoleAssignmentSqlTests.AssertEpoch_WithAStaleEpoch_RaisesInSql_AndTheWriteBesideItRollsBackAsync, RoleHolderLivenessE2ETests.TheOldHolder_ObservesItsLossWithinOneRenewInterval_SoExclusiveWorkNeverOverlapsAsync, DutyHolderWorkerTests.AGrantLostMidOwedWork_CancelsThatWork_AndRunsNoMoreAsync} |
+| 2 | Holder crash or `kill -9` | Past its lease the holder is kept only while [the one liveness rule](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule) calls it live and it renews inside its progress window (#2140). A dead holder is voided at the next vote once the rule says so (`lapsed`), or once the reap removes it (`unregistered`), and a new epoch is assigned: no earlier than its lease, no later than its progress window, about one beat (30 s) for a direct instance, whose alive-lock goes with its process. No session or TCP timeout is involved | Crashed holder voids after the lapse bound, time advanced in the database (1); kill -9 chaos run, work finished once by the next holder (4); a holder the rule calls dead lapses at its lease inside its window (#2140) {verified: RoleAssignmentElectorE2ETests.CrashedHolder_VoidsAfterTheLapseBound_AndTheNextVoteTakesOverAsync, RoleAssignmentChaosTests.KillNine_TheHolderVanishes_AndTheNextHolderFinishesTheWorkOnceAsync, RoleHolderLivenessSqlTests.Vote_AHolderTheRuleCallsDead_LapsesAtItsLease_InsideItsWindowAsync, DutyElectionE2ETests.DirtyDeath_JudgedByTheLivenessRule_HandsTheDutyOver_AndTheGrantKnowsItIsLostAsync} |
+| 3 | Holder alive but stuck | Progress is counted only from renewals `VerifyStillHeldAsync` sends from the work loop; no renewal thread, and the grant watch only reads. A holder the rule calls live but that stops renewing loses the role at the end of its progress window (2 minutes by default) and learns it within one renew interval; a busy holder that still renews inside the window keeps it. One long statement is covered by the duty-backend backstop, not by a timer | Unrenewed lease lapses although the instance still heartbeats, with the window off (1); SIGSTOP mid-duty and partition chaos runs (4); a connected but stuck holder loses the role at its window and learns it within one renew interval, and a slow startup keeps one holder (#2140) {verified: RoleHolderLivenessSqlTests.Vote_AConnectedButStuckHolder_LapsesAtItsProgressWindow_ThoughTheRuleCallsItLiveAsync, RoleHolderLivenessE2ETests.AConnectedButStuckHolder_LosesTheRoleAtItsProgressWindow_AndLearnsItWithinOneRenewIntervalAsync, RoleHolderLivenessE2ETests.ARestartWithASlowStartup_KeepsOneHolder_AndTheHoldersLateVerifyRenewsItAsync, RoleAssignmentChaosTests.Sigstop_TheHolderPausesMidDuty_TheNextHolderFinishes_AndTheWokenHolderIsFencedAsync} |
 | 4 | Clock skew | Every timestamp is `now()` in the statement; remaining lease is returned as a duration | Time advanced only in the database, never on the instance (1); an instance clock hours ahead neither extends nor shortens the lease (4) |
 | 5 | Flapping | Lease = several renew intervals; cool-down after an involuntary lapse, except a fleet-wide one | Lapsed holder refused during cool-down, another instance wins (1); a fleet-wide lapse skips the cool-down, one holder's own lapse keeps it (3) |
 | 6 | Graceful shutdown | Grant disposal and host shutdown call `wh_release_role`; no cool-down for a release; the release, a durable decision on the signal bus, wakes waiters | Release hands off at once, no lapse wait (1); NOTIFY delivered, loop wakes (2) |
@@ -211,7 +331,7 @@ For the new holder to know what is pending, a duty-bound step declares its pendi
 
 ### The chaos suite (phase 4)
 
-Kill the holder; pause it (`SIGSTOP`) mid-duty; partition it from the database; skew its clock; lose the database for longer than a lease; restart the database server; run a rolling deploy from the session-lock release and from an older role-assignment release; start ten instances at once. In every case: at most one epoch writes, a new holder appears once the lease lapses in database time and not before, and pending duty work completes exactly once.
+Kill the holder; pause it (`SIGSTOP`) mid-duty; partition it from the database; skew its clock; lose the database for longer than a lease; restart the database server; run a rolling deploy from the session-lock release and from an older role-assignment release; start ten instances at once. In every case: at most one epoch writes, a new holder appears once the lease lapses in database time and not before, and pending duty work completes exactly once. The suite pins the lease mechanics, so its electors run with the progress window off; a holder judged by the one liveness rule is covered by `RoleHolderLivenessSqlTests` and `RoleHolderLivenessE2ETests` (section 5).
 
 Each simulated instance is its own elector, owed-work store and holder loop over its own connections. The work writes its effect under the epoch fence in the same transaction, which is what "at most one epoch writes" counts. Database time is advanced by shifting stored instants back, a pause is a gate the test opens, a partition is a TCP forwarder the test cuts and heals, and the restart is a real one, of a server started for that test alone, whose readiness is read from its own log. Nothing sleeps. Tests: `RoleAssignmentChaosTests`, `RoleAssignmentDatabaseRestartChaosTests`.
 
@@ -224,6 +344,7 @@ Each simulated instance is its own elector, owed-work store and holder loop over
 | **3** | Default registration, with the options bound from `Whizbang:Database:RoleAssignment`; the commit-order stamper's leader as the `commit-stamper` role, renewed by its stamping loop, every stamp fenced; per-duty leases and the duty-backend backstop for one long statement; the multi-role vote; cooperative drain and the newest-version preference |
 | **4** | The chaos suite; the bridge kept on by default, with a renewal-time legacy check for when it was turned off; the migrator held by assignment, its vote in the bootstrap closure (migration 184), its waiters watching the row; ending a lapsed bridged holder's lock session; the fleet-wide lapse exempt from the cool-down |
 | **5** | #2044, migration 326: every duty a role assignment, a host's own included; the session-lock elector, the bridge and the stamper's own lock removed; an older release seen through its recorded holding, judged by the one liveness rule; the migrator watch reading no lock; no role function reading an advisory lock |
+| **#2140** | Migration 355: a holder past its lease judged by the one liveness rule plus a per-epoch progress window (`RoleAssignmentOptions.ProgressWindow`), one helper for the vote and the fence, the grant watch and `IDutyGrant.LostToken`, the holder loop's work linked to it, and a source guard on lease verdicts |
 
 ### The stamper's leader as a role
 

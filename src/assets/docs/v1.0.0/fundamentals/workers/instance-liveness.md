@@ -19,6 +19,7 @@ tags: 'liveness, eligibility, heartbeat, advisory-lock, recovery, workers, watch
 codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/316_OneDurableInstanceRecord.sql
   - src/Whizbang.Data.Postgres/Migrations/317_EveryReaderJudgesLivenessByTheRule.sql
+  - src/Whizbang.Data.Postgres/Migrations/355_RoleHoldersAreJudgedByTheLivenessRule.sql
   - src/Whizbang.Data.Postgres/Migrations/204_DirectInstancesAreLiveByTheirAliveLock.sql
   - src/Whizbang.Data.Postgres/Migrations/229_OnlyReadyInstancesAreEligibleForWork.sql
   - src/Whizbang.Data.Postgres/Notifications/PostgresNotificationsServiceCollectionExtensions.cs
@@ -35,6 +36,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceLivenessRuleSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/LivenessRuleReadersSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleHolderLivenessSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ListenLivenessSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/CoordinationSourceGuardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockLivenessSqlTests.cs
@@ -248,7 +250,35 @@ from its last definition with only the liveness check replaced, and the C# reade
 | The lifecycle monitor | `is_instance_alive` with its own derived threshold | `wh_instance_is_live`; the threshold only paces its scan. |
 | The standby handshake and `StandbyWatcher` | The heartbeat against the host's clock and `RequesterLivenessWindow`, or a held lock | `FleetInstanceStatus.IsLive` and `StandbyRequest.RequesterIsLive`, read through `wh_instance_is_live`. See [The standby handshake](#the-standby-handshake). |
 | The migrator's other-releases warning (`FleetVersions`) and the managed-schema fleet gate | A heartbeat inside 2 minutes | `wh_live_instance_ids()`. See [Managed schema objects](/v1.0.0/fundamentals/perspectives/managed-schema-objects#rolling-deploys). |
-| Role votes and bridge expiry | The registration | Unchanged: they read the registration, which the reap removes by the rule. |
+| Role votes, renewals, the role status and the epoch fence (`_role_lapse_reason`, `wh_assert_role_epoch`) | The registration, and the role's own lease: a holder lapsed 15 s after its last renewal whatever the rule said | The rule, through one helper, `_role_holder_kept_live` (migration 355): a holder past its lease keeps its role while the rule calls it live and it renewed inside its progress window. See [Role holders](#role-holders). |
+| Bridge expiry | The registration | Unchanged; since migration 326 it ends nothing. |
+
+### Role holders {#role-holders}
+{verified: RoleHolderLivenessSqlTests.Vote_AHolderPastItsLease_ThatTheRuleCallsLive_AndThatMadeProgressInsideItsWindow_KeepsTheRoleAsync, RoleHolderLivenessSqlTests.Vote_ADirectHolderHoldingItsAliveLock_DoesNotLapse_WhileItsHeartbeatIsPastOneBeatAsync, RoleHolderLivenessSqlTests.Vote_AHolderTheRuleCallsDead_LapsesAtItsLease_InsideItsWindowAsync, RoleHolderLivenessSqlTests.Vote_AConnectedButStuckHolder_LapsesAtItsProgressWindow_ThoughTheRuleCallsItLiveAsync, CoordinationSourceGuardTests.ARoleHolder_IsJudgedPastItsLeaseByTheOneLivenessRuleAsync, CoordinationSourceGuardTests.SqlLeaseVerdicts_AppearOnlyInTheAllowlistedFunctionsAsync}
+
+A duty's holder ([role assignment](/v1.0.0/operations/startup/capabilities-and-duties#role-assignment-the-default)) is
+the last reader that kept a rule of its own, and since [#2140](https://github.com/whizbang-lib/whizbang/issues/2140) it
+asks this one. Inside its lease a holder holds. Past its lease it keeps the role only while this rule calls its instance
+live **and** it renewed inside the progress window it declared for its epoch (`RoleAssignmentOptions.ProgressWindow`, 2
+minutes by default). The vote and the fence both decide through one helper, `_role_holder_kept_live`, so they never
+disagree about a holder.
+
+- **Why the rule.** A holder busy with startup, or inside one long unit of work, used to lapse 15 seconds after its last
+  renewal while every other reader called it live, and a restart could bounce the role between instances.
+- **Why a progress window as well.** This rule answers whether the instance is there, not whether its duty loop is
+  moving: the heartbeat comes from `HeartbeatWorker`, so a holder whose duty loop is wedged keeps beating. Progress is
+  counted from renewals, which only the duty loop sends, so a holder that is connected but stuck loses the role at the
+  end of its window.
+- **What it costs.** A crashed holder is replaced when this rule calls it dead, never before its lease: about one beat
+  (30 s) for a direct instance, whose alive-lock goes with its process, and at most the progress window for one behind a
+  transaction pooler, whose heartbeat window is longer. A holder on an older release declares no window and is judged
+  by its lease alone, as before.
+- **Gravity.** A lease comparison outside the role's two deciding functions fails
+  [the coordination source guard](../../../contributors/gravity.md#coordination-source-guard), so the lease cannot become
+  a liveness verdict again.
+
+The full model, the grant watch that tells a holder of its loss within one renew interval, and each trade-off are in
+[Duty Role Assignment](../../../proposals/duty-role-assignment#liveness).
 
 ### When a direct instance loses its lock {#lock-loss}
 {verified: AliveLockLivenessSqlTests.Rank_ADirectPeerWhoseLockIsReleased_IsCountedOutAtOnceAsync, AliveLockLivenessSqlTests.Reap_ADirectPeerHoldingItsLock_IsNeverReapedAsync, AliveLockLivenessSqlTests.Reap_ADirectPeerWhoseLockIsReleased_IsReapedOnTheNextPeerBeatAsync, AliveLockLivenessSqlTests.Vote_ARoleHeldByADirectInstanceHoldingItsLock_IsNotVotedAwayAsync, AliveLockLivenessSqlTests.Vote_ARoleHeldByADirectInstanceWhoseLockIsReleased_IsVotedAwayOnTheNextPeerBeatAsync}
@@ -518,11 +548,11 @@ Tombstones are bounded: `perform_maintenance` purges rows older than `instance_e
 
 ## Capabilities: won, recorded, and fenced
 
-A **capability** names what an instance may do; an exclusive one (`migrator`, `maintainer`) is a **duty**, held by one instance at a time. Capabilities are *won*, never handed out: an instance votes through `IDutyElector`, and the vote grants or refuses. Every duty is then a [role assignment](/v1.0.0/operations/startup/capabilities-and-duties#role-assignment-the-default), a row with a lease and an epoch; no duty is held by a session advisory lock. A holder that dies stops renewing, and the duty goes to the next vote once its lease lapses or this page's rule has the instance reaped. Its writes are fenced by the epoch, so a holder judged dead while still running cannot act beside its successor.
+A **capability** names what an instance may do; an exclusive one (`migrator`, `maintainer`) is a **duty**, held by one instance at a time. Capabilities are *won*, never handed out: an instance votes through `IDutyElector`, and the vote grants or refuses. Every duty is then a [role assignment](/v1.0.0/operations/startup/capabilities-and-duties#role-assignment-the-default), a row with a lease and an epoch; no duty is held by a session advisory lock. A holder that dies stops renewing, and the duty goes to the next vote once this page's rule calls it dead, no earlier than its lease (see [Role holders](#role-holders)). Its writes are fenced by the epoch, so a holder judged dead while still running cannot act beside its successor.
 
 Holdings are **recorded**: *the vote decides, the row reports.* `wh_instance_capabilities` is keyed `(instance, capability)` with `acquired_at`: "which instance is the migrator right now, and for how long" as a query (and in the startup status surface's fleet section, as a join). It rides the same rails as liveness: reaped instances cascade their holdings, so the record's only staleness window is the heartbeat lease the system already bounds.
 
-The eviction fence reaches acquisition: the vote refuses a tombstoned instance, and so does `record_capability`, so a zombie cannot hold a duty. Long-tenure holders fence themselves with `IDutyGrant.VerifyStillHeldAsync`: a grant that lapsed or was taken over reports lost before the next unit of exclusive work, because another instance may already hold it. During a rolling deploy, a holding that an older release records outside the role table counts only while this rule calls that instance live (see [a rolling deploy from a release that held duties by session lock](/v1.0.0/operations/startup/capabilities-and-duties#legacy-holder)).
+The eviction fence reaches acquisition: the vote refuses a tombstoned instance, and so does `record_capability`, so a zombie cannot hold a duty. Long-tenure holders fence themselves with `IDutyGrant.VerifyStillHeldAsync`: a grant that lapsed or was taken over reports lost before the next unit of exclusive work, because another instance may already hold it. Each grant also watches its assignment once per renew interval and cancels `IDutyGrant.LostToken` on a loss, so a holder learns of it without waiting for its next verify. During a rolling deploy, a holding that an older release records outside the role table counts only while this rule calls that instance live (see [a rolling deploy from a release that held duties by session lock](/v1.0.0/operations/startup/capabilities-and-duties#legacy-holder)).
 {verified: DutyElectionE2ETests.DirtyDeath_JudgedByTheLivenessRule_HandsTheDutyOver_AndTheGrantKnowsItIsLostAsync, RoleAssignmentElectorE2ETests.EvictedInstance_IsRefused_NotContendedAsync, RoleAssignmentResilienceSqlTests.Vote_DoesNotCountAHolderOutsideTheTable_ThatTheLivenessRuleCallsDeadAsync}
 
 ## The Standby Handshake {#the-standby-handshake}
@@ -556,6 +586,7 @@ The verdict is also **not a startup-only fact**: the watcher re-assesses on a sl
 | **316** (new) | [The liveness rule](#liveness-rule): `wh_instance_liveness(row, alive_lock_held)`, `wh_live_instance_ids()` and `wh_instance_is_live(id)`, with the `liveness_window_seconds` and `application_version` columns, all in the bootstrap region. `is_instance_alive` delegates to the rule; `record_heartbeat` records the window and the application version; `cleanup_stale_instances` removes exactly what the rule calls not live |
 | **317** (new) | Every SQL reader asks the rule: `claim_work`, `wh_claim_multi_stream_work`, `wh_partition_assignment_candidates` (now returns `is_live`), the three orphan claims, `get_stream_events`, `calculate_instance_rank`, `notify_instance_owners_with_payload`, `_notify_debounced` and `_notify_dead_letter_ready`. See [Who applies the rule](#liveness-readers) |
 | **330** (new) | `cleanup_stale_instances` redefined from 316, changing only how it wakes the live instances: each `orphan` wake goes through the signal bus's SQL publish, `wh_publish_signal`, as a best-effort doorbell (never recorded). Channel and payload are unchanged (`wh_work_i_<instance>`, `orphan`). See [Coordination signals](/v1.0.0/fundamentals/signal-bus/signal-bus#coordination-signals) |
+| **355** (new) | Role holders ask the rule: `_role_holder_kept_live` (the rule plus the holder's per-epoch progress window), called by the redefined `_role_lapse_reason` and `wh_assert_role_epoch`; `wh_declare_role_progress_window` and `wh_role_is_held`; the `progress_window` and `progress_epoch` columns on `wh_role_assignments`. All in the bootstrap region. See [Role holders](#role-holders) |
 
 ## Operator notes
 
@@ -589,7 +620,7 @@ After deploy + restart, the heartbeat UPDATE call count in `pg_stat_statements` 
 
 ## Related
 
-- [Capabilities and Duties](/v1.0.0/operations/startup/capabilities-and-duties): every duty a role assignment; a dead holder is replaced through this rule, and holdings ride the liveness rails.
+- [Capabilities and Duties](/v1.0.0/operations/startup/capabilities-and-duties): every duty a role assignment; a holder past its lease is judged by this rule, and holdings ride the liveness rails.
 - [Rolling Upgrades](/v1.0.0/operations/startup/rolling-upgrades) — the standby handshake and eviction in the deployment story.
 - [Pinned connection pool](./pinned-connection-pool.md) — also uses direct conn(s); future work may add a per-pinned-conn lock for redundancy.
 - [Worker classification](./worker-classification.md) — HeartbeatWorker is classified `E` (timed) with an adaptive twist.

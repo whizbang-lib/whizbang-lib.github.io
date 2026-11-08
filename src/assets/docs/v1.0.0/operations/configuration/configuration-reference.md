@@ -59,6 +59,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/RetentionSettingsWriter.cs
   - src/Whizbang.Core/Workers/DeadLetterLoggingOptions.cs
   - src/Whizbang.Core/Workers/DatabaseFailureEscalationOptions.cs
+  - src/Whizbang.Core/Startup/RoleAssignmentOptions.cs
+  - src/Whizbang.Core/Workers/MaintenanceWorker.cs
 testReferences:
   - tests/Whizbang.Archive.AzureBlob.Tests/AzureBlobArchiveLocationTests.cs
   - tests/Whizbang.Core.Tests/Archival/StreamLifecycleOptionsBinderTests.cs
@@ -99,6 +101,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/DeadLetterLoggingWiringTests.cs
   - tests/Whizbang.Core.Tests/Workers/DatabaseFailureEscalationOptionsTests.cs
   - tests/Whizbang.Core.Tests/Workers/DatabaseFailureEscalationWiringTests.cs
+  - tests/Whizbang.Core.Tests/Startup/RoleAssignmentOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Workers/WorkTableVacuumOnAcquisitionTests.cs
 ---
 
 This page lists **every configuration surface Whizbang exposes**: the sections the library binds from `IConfiguration` automatically, the sections you can opt into binding with a helper, and the (much larger) set of options classes that are configured in code — plus the recipe for making any of them configuration-driven. Each options class lists its properties, types, defaults, and a link to the page that covers it in depth.
@@ -323,8 +327,9 @@ Bound by the Postgres driver, which holds every duty (`maintainer`, `migrator`, 
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
-| `RenewInterval` | `TimeSpan` | `00:00:05` | `Whizbang__Database__RoleAssignment__RenewInterval` | How often a holder renews its lease from its own work loop |
-| `MissedRenewalsBeforeLapse` | `int` | `3` | `Whizbang__Database__RoleAssignment__MissedRenewalsBeforeLapse` | The default lease is this many renew intervals |
+| `RenewInterval` | `TimeSpan` | `00:00:05` | `Whizbang__Database__RoleAssignment__RenewInterval` | How often a holder renews its lease from its own work loop, and how often each grant checks it still holds its duty, so a loss is observed within one interval |
+| `MissedRenewalsBeforeLapse` | `int` | `3` | `Whizbang__Database__RoleAssignment__MissedRenewalsBeforeLapse` | The default lease is this many renew intervals. Past it, a holder is judged by the one liveness rule and `ProgressWindow` |
+| `ProgressWindow` | `TimeSpan` | `00:02:00` | `Whizbang__Database__RoleAssignment__ProgressWindow` | How long a holder past its lease, that the one liveness rule calls live, may go without renewing before it loses the duty. Bounds how long a connected but stuck holder keeps it, while a holder busy with startup or one long unit of work keeps it; never shorter than the duty's lease. `00:00:00` turns it off, and the lease alone decides. [Details](../../../proposals/duty-role-assignment#progress-window) {verified: RoleAssignmentOptionsTests.ProgressWindow_DefaultsToTwoMinutesAsync, RoleAssignmentOptionsTests.ProgressWindowFor_IsNeverShorterThanTheRolesLease_AndZeroTurnsItOffAsync, RoleAssignmentOptionsTests.Validate_RefusesANegativeProgressWindowAsync} |
 | `CooldownAfterLapse` | `TimeSpan` | `00:00:15` | `Whizbang__Database__RoleAssignment__CooldownAfterLapse` | How long an instance whose own assignment lapsed must wait before it can win it back. A fleet-wide lapse (a database outage) carries none |
 | `OwedWorkRetryBase` | `TimeSpan` | `00:00:30` | `Whizbang__Database__RoleAssignment__OwedWorkRetryBase` | Backoff after owed duty work fails, doubled per failure, capped at one hour |
 
@@ -1368,6 +1373,7 @@ Operator rung of the row-retention override ladder. **Configure:** bound automat
 | `OnlineRewriteMaxBytesPerCycle` | `long` | `1073741824` (1 GiB) | `Whizbang__Workers__Maintenance__OnlineRewriteMaxBytesPerCycle` | The most heap bytes one maintenance cycle rewrites online with `PgSqueeze`, or `PgRepack` in process, largest bloat first; a table that does not fit waits for a later cycle, and `0` rewrites nothing. [Online rewrite](../infrastructure/storage-maintenance#online-rewrite) {verified: OnlineTableRewriteStepTests.TheBudget_DefaultsToOneGibibyte_AndBindsFromConfigurationAsync, OnlineTableRewriteStepTests.Budget_SkipsATableThatWouldOverrunIt_AndTakesASmallerOneThatFitsAsync} |
 | `ReindexBloatThreshold` | `double` | `3.0` | `Whizbang__Workers__Maintenance__ReindexBloatThreshold` | How many times its expected size an index on a queue table that churns to empty may grow before the maintenance cycle rebuilds it with `REINDEX INDEX CONCURRENTLY`: one index per cycle across the fleet, the one with the most bytes to give back, at least 1 MiB, invalid leftovers of an interrupted rebuild dropped first. `0` turns it off; any other value must be finite and greater than 1, and start fails otherwise. [Rebuilding queue-table indexes](../infrastructure/storage-maintenance#queue-index-rebuild) {verified: QueueIndexReindexStepTests.TheThreshold_DefaultsToThree_AndBindsFromConfigurationAsync, QueueIndexReindexStepTests.TheThreshold_IsValidatedAsync} |
 | `MaintainOnReassignment` | `bool` | `true` | `Whizbang__Workers__Maintenance__MaintainOnReassignment` | Whether an instance that takes the maintainer duty over from another instance vacuums the work tables, as a first assignment always does ([details](../startup/capabilities-and-duties#vacuum-on-acquiring-the-maintainer-duty)) |
+| `SkipAcquisitionVacuumWithin` | `TimeSpan` | `00:10:00` | `Whizbang__Workers__Maintenance__SkipAcquisitionVacuumWithin` | A work table the database records as vacuumed (by any instance, or by autovacuum) within this long is not vacuumed again when an instance acquires the maintainer duty, so quick hand-offs vacuum once; `00:00:00` vacuums on every acquisition ([details](../startup/capabilities-and-duties#vacuum-on-acquiring-the-maintainer-duty)) {verified: WorkTableVacuumOnAcquisitionTests.SkipAcquisitionVacuumWithin_DefaultsToTenMinutesAsync, MaintainerAcquisitionVacuumTests.RepeatedQuickHandOffs_VacuumOnce_BecauseTheTablesWereJustVacuumedAsync} |
 | `IntervalMinutes` | `int` | `10` | `Whizbang__Workers__Maintenance__IntervalMinutes` | Minutes between maintenance runs |
 | `StuckRowSentinelEnabled` | `bool` | `true` | `Whizbang__Workers__Maintenance__StuckRowSentinelEnabled` | Emit a Warning per stuck outbox/inbox row once per cycle |
 | `StuckRowSentinelMaxAttempts` | `int` | `10` | `Whizbang__Workers__Maintenance__StuckRowSentinelMaxAttempts` | Stuck = `attempts > this` and unprocessed |
