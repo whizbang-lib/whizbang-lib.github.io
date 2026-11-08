@@ -545,6 +545,8 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ170 | Warning | [[InheritScope] on a Perspective Class Has No Effect](whiz170.md) |
 | WHIZ171 | Info | [[InheritScope] With All-None Flags Gives Rows No Scope](whiz171.md) |
 | WHIZ200 | Warning | [An array of records stores the perspective model as one opaque document](whiz200.md) |
+| WHIZ201 | Error | [A perspective model holds a circular reference and cannot be saved](whiz201.md) |
+| WHIZ202 | Info | [A recursive type stores the perspective model as one opaque document](whiz202.md) |
 | WHIZ300 | Error | [Inconsistent Perspective Model Types](whiz300.md) |
 | WHIZ302 | Warning | [Filtered Perspective Field Has No Index](whiz302.md) |
 | WHIZ303 | Warning | [Declared Index Cannot Be Built For This Field''s Type](whiz303.md) |
