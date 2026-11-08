@@ -24,7 +24,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/Redelivery.cs
   - src/Whizbang.Core/SystemEvents/AuditLedgerRebuild.cs
   - src/Whizbang.Data.EFCore.Postgres/AuditRebuildRequestReceptor.cs
-  - src/Whizbang.Core/Messaging/RedeliveryComposite.cs
+  - src/Whizbang.Core/Minting/RedeliveryComposite.cs
+  - src/Whizbang.Core/Messaging/RedeliveryAnswerWindow.cs
   - src/Whizbang.Core/Messaging/RedeliveryPump.cs
   - src/Whizbang.Core/Workers/SubscriptionExpansionWorker.cs
   - src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs
@@ -96,6 +97,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/346_MisattributedOriginCorrection.sql
   - src/Whizbang.Data.Postgres/Migrations/347_DigestWindowsReadTheirTypes.sql
   - src/Whizbang.Data.Postgres/Migrations/348_IdleLedgerRecheck.sql
+  - src/Whizbang.Data.Postgres/Migrations/357_AnAnswerMarksOnlyWhatItCovered.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileCoordinatorTests.cs
@@ -205,6 +207,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/MisattributedOriginTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MisattributedOriginCorrectionSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMisattributedOriginCorrectionTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RedeliveryAnswerCoverageTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAnswerCoverageSqlTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -390,7 +394,10 @@ repair never shipped. Raw carry removes the class — the origin needs **no type
 to repair, and the receive-side fan-out builds children directly from the raw payloads (the child
 envelope IS the inbox storage form; no serializer runs on the path). Original ids and continuity
 sequences ride as `RedeliveryComposite.InnerEventIds` / `OriginServiceId` /
-`InnerCommitSequences` — identity and gap-tracking are preserved; there is no dedicated
+`InnerCommitSequences`, so identity and gap-tracking are preserved. An answer to a request also echoes the window it
+answered (`RedeliveryComposite.AnswersWindow`, `AnsweredFromCommitSequence`, `AnsweredToCommitSequence`), stamped by
+`RedeliveryPump.PublishAnswerAsync`, so the receiver marks as unchangeable only the buckets the answer
+[covered](#an-answer-marks-only-what-it-covered); `PublishAsync` sends no window; there is no dedicated
 `redelivery` marker — the directed `tgt` (and, for backfill, state-only `sto`) envelope markers
 ride the composite and its fanned-out children. Ordering by stream version makes damaged streams
 append-only composites and wholly-missing streams (bootstrap) naturally init-first.
@@ -1858,7 +1865,10 @@ under its origin, with nothing to adopt, the redelivery changed nothing, and the
 same events again.
 
 The receiver records that on the bucket's ledger row (`wh_integrity_ledger.unhealable_at`) when the
-bundle's children commit ([below](#unhealable-recorded-at-commit)). From then on:
+bundle's children commit ([below](#unhealable-recorded-at-commit)), but only when the answer covered what the bucket is
+missing: an answer for a narrower window than the bucket's deficit cannot say the older gap is unrepairable, so it
+leaves the bucket repairable ([an answer marks only what it covered](#an-answer-marks-only-what-it-covered)). From
+then on:
 
 - neither the burst grant (`wh_integrity_try_begin_repair`) nor the paced drain
   (`wh_integrity_claim_repair_drain`) asks for the bucket again;
@@ -1878,6 +1888,114 @@ The checkpoint path keys its ledger rows by type and window rather than by strea
 [repair policy](#the-repair-decision-pipeline-as-wired) already stops a window whose count stopped
 improving, so it is unaffected by the mark.
 
+### An answer marks only what it covered {#an-answer-marks-only-what-it-covered}
+
+{verified: IntegrityAnswerCoverageSqlTests.RecordBundleAnswer_AWindowedAnswer_LeavesAWholeHistoryBucketRepairable_ButAnsweredAsync, IntegrityAnswerCoverageSqlTests.RecordBundleAnswer_AWholeHistoryAnswerThatStoredNothing_MarksAWholeHistoryBucketAsync, IntegrityAnswerCoverageSqlTests.RecordBundleAnswer_AWindowedBucket_IsMarkedOnlyByAnAnswerThatCoversItsWindowAsync, IntegrityAnswerCoverageSqlTests.RecordBundleAnswer_AnAnswerCarryingTheNamedMissingEvent_MarksHoweverNarrowItsWindowAsync, IntegrityAnswerCoverageSqlTests.MarkUnhealable_WithAWindow_MarksOnlyTheRowsTheAnswerCoveredAsync, RedeliveryAnswerCoverageTests.Reconcile_AWindowedAnswerThatChangedNothing_LeavesTheBucketRepairableAsync, RedeliveryAnswerCoverageTests.Reconcile_AWholeHistoryAnswerThatChangedNothing_MarksTheBucketAsync}
+
+A redelivery answer is a reply to one request, and a request names a window of the origin's commit sequences. Audit
+repairs and bulk backfills ask for the window their comparison looked at, often the recent one. An answer for a recent
+window carries only the stream's recent events, and a consumer that is missing older events usually holds the recent
+ones already. Such an answer stores nothing, which says only that nothing **inside its window** was missing. It says
+nothing about events before the window.
+
+Before this rule, a bundle that stored nothing marked every bucket it touched as [unhealable](#unhealable-buckets). A
+bucket whose missing events lay outside the window was marked too, and most of those were whole-history deficits (a
+ledger row with no stamped window) that had never had a repair request of their own: another request's answer had
+passed through their stream. Repair then stopped on real gaps, and the buckets stayed marked until a local change happened to re-arm
+them.
+
+**The origin says which window it answered.** Every bundle of an answer echoes the requested window:
+`RedeliveryComposite.AnswersWindow` is true, and `AnsweredFromCommitSequence` (exclusive, null = from the beginning)
+and `AnsweredToCommitSequence` (inclusive, null = to the head) carry the bounds, in the request's units. The origin
+publishes answers through `RedeliveryPump.PublishAnswerAsync`, which stamps the window on every bundle it builds. A
+[paced backfill](#paced-backfill) page echoes the commit sequences that page covered: from the previous page's last
+event through its own last event, or through the window's ceiling when the page ran out.
+{verified: RedeliveryPumpWindowTests.PublishAnswer_EchoesTheAnsweredWindowOnEveryBundle_AndPublishSaysNoneAsync, RedeliveryWindowAnswerTests.OrdinaryRequest_EveryBundleEchoesTheRequestedWindowAsync, RedeliveryWindowAnswerTests.OrdinaryRequest_NamingEvents_EchoesTheRequestedWindowOnTheNamedAndTheFallbackBundlesAsync, RedeliveryWindowAnswerTests.Window_EachPagesBundlesEchoTheSequencesThatPageCoveredAsync, RedeliveryAnswerCoverageTests.Composite_SaysItsWindow_OnlyWhenTheOriginEchoedOneAsync, RedeliveryAnswerCoverageTests.Window_IsWholeHistory_OnlyWithNeitherBoundAsync}
+
+**The coverage rule.** For a bundle that changed nothing, the receiver marks a bucket unhealable only when one of these
+holds:
+
+| The answer | Marks the bucket |
+| --- | --- |
+| Its window includes the ledger row's compared window (`window_from`, `window_until`) | Yes |
+| The row is whole-history (no stamped window) and the answer is whole-history too (neither bound set) | Yes |
+| It carried the row's [named missing event](#one-missing-event-is-named) (`missing_event_id`), however narrow its window | Yes |
+| The store refused to restore one of its events because the stream was truncated here | Yes, always: the refusal itself is the proof |
+| Anything else: a window narrower than the row's, or a windowed answer to a whole-history row | No: answered, still repairable |
+
+```mermaid{caption="How a bundle that stored nothing judges each bucket it touched: only an answer that covered the bucket's deficit marks it; any other bucket is answered and stays repairable." tests=["IntegrityAnswerCoverageSqlTests.RecordBundleAnswer_AWindowedAnswer_LeavesAWholeHistoryBucketRepairable_ButAnsweredAsync", "IntegrityAnswerCoverageSqlTests.RecordBundleAnswer_AWholeHistoryAnswerThatStoredNothing_MarksAWholeHistoryBucketAsync", "IntegrityAnswerCoverageSqlTests.RecordBundleAnswer_AWindowedBucket_IsMarkedOnlyByAnAnswerThatCoversItsWindowAsync", "IntegrityAnswerCoverageSqlTests.RecordBundleAnswer_AnAnswerCarryingTheNamedMissingEvent_MarksHoweverNarrowItsWindowAsync", "RedeliveryAnswerCoverageTests.Reconcile_AnAnswerThatDoesNotSayItsWindow_MarksAsBeforeAsync"]}
+flowchart TD
+  B[A bundle that changed nothing touches a bucket] --> R{Restore refused: stream truncated here?}
+  R -- yes --> M[Marked unhealable]
+  R -- no --> K{Did the origin say its window?}
+  K -- no, an older origin --> M
+  K -- yes --> N{Carried the row's named missing event?}
+  N -- yes --> M
+  N -- no --> C{Window includes the row's compared window?}
+  C -- yes --> M
+  C -- no --> A[Answered, still repairable]
+  classDef stopped fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+  classDef open fill:#d4edda,stroke:#28a745,stroke-width:2px
+  class M stopped
+  class A open
+```
+
+Why each choice:
+
+- **Coverage, not presence, decides.** "Every event the answer carried was already here" proves the bucket is beyond
+  repair only for the events the answer could have carried. Requiring the answer's window to include the row's
+  compared window keeps the mark for the case it was built for, an answer that covered the gap and still changed
+  nothing, and drops it everywhere else.
+- **A whole-history row needs a whole-history answer.** A row with no stamped window records a deficit somewhere in
+  the stream's history, so no bounded window can be shown to include it.
+- **The named missing event counts as coverage (#2103).** A row that names its one missing event is fully answered by
+  a bundle that carried that event: if it still stored nothing, the event is held under another origin or stream, and
+  asking again cannot change that.
+- **The answer is still recorded.** A bucket left repairable is marked answered all the same, so it stops
+  [waiting for its answer](#repair-waits-for-its-answer) and is claimed again only after the next comparison sights it.
+  Recording it costs nothing extra, and not recording it would leave the row waiting out `RepairAnswerTimeoutMinutes`
+  for an answer that already came.
+- **An origin that does not say its window marks as before.** A bundle from an origin on an earlier release has
+  `AnswersWindow` false (a missing field reads as false), and the receiver cannot tell what it covered, so it judges the
+  bucket as it always did. Guessing "not covered" would leave a real unhealable bucket asking forever; marking as before
+  keeps the existing behavior until the origin upgrades.
+  {verified: RedeliveryAnswerCoverageTests.Reconcile_AnAnswerThatDoesNotSayItsWindow_MarksAsBeforeAsync, RedeliveryAnswerCoverageTests.TheDrain_APayloadRecordedBeforeTheWindow_MarksAsBeforeAsync}
+- **The window travels with the deferred reconcile.** The commit-time answer and the maintainer's
+  [deferred reconcile](#unhealable-recorded-at-commit) both judge with the same window, so neither marks what the other
+  left repairable. A reconcile queued by an earlier release carries no window and marks as before.
+  {verified: RedeliveryAnswerCoverageTests.Reconcile_GivesTheCommitTimeRecordTheAnsweredWindowAsync, RedeliveryAnswerCoverageTests.TheDrain_ReadsTheWindowBack_AndAWindowedAnswerLeavesTheBucketRepairableAsync, CoordinatorIntegrityRepairLedgerUnhealableTests.MarkUnhealable_WithAWindow_GivesTheStoreTheWindowAndTheEventsAsync}
+- **Older pods keep working during a rolling upgrade.** Migration 357 adds the window to
+  `wh_integrity_record_bundle_answer` as trailing parameters with defaults, so a call from an earlier release still
+  resolves and marks as before. The reconcile's mark goes through a new function,
+  `wh_integrity_mark_unhealable_covered_batch`, rather than a second arity of `wh_integrity_mark_unhealable_batch`,
+  because the framework keeps exactly one overload per function. The rule itself lives in one helper,
+  `_wh_integrity_answer_covers`, which both call. It is evaluated only on ledger rows the call already found by primary
+  key, so the plan of the hot statement is unchanged.
+
+**The one-time correction.** Rows an earlier release marked this way do not repair themselves: an unhealable row is
+never asked for again until a local change re-arms it. Migration 357 therefore runs
+`wh_integrity_rearm_narrow_answers()` once per database (a `wh_settings` marker, `integrity_rearm_narrow_answers_version`,
+makes later runs change nothing). It clears the mark and the answer on every per-stream, whole-history row that is
+marked unhealable with no repair attempt of its own: such a row was marked by another request's answer, which never
+had to cover it. The paced drain then claims it and asks for its whole history; a whole-history answer that still
+stores nothing marks it again, correctly. Which answer marked a row is not recorded, so a row with attempts of its own,
+or a windowed row, is left alone; a wrongly marked one of those is re-armed by its next local change.
+{verified: IntegrityAnswerCoverageSqlTests.Correction_ReArmsWholeHistoryRowsMarkedWithoutAnAttemptOfTheirOwn_OnceAsync}
+
+The correction is a migration step, not a [maintenance](../operations/workers/housekeeping-arbitration.md#the-settledness-gate) step, on
+purpose. Maintenance waits for an idle service, and a service whose repair stalled this way, with a backlog of real gaps, may never be idle,
+which is exactly when the rows matter. The pass is bounded by the ledger, which is capped, reads it once and writes only
+the rows it re-arms.
+
+:::warning
+**Known limit.** An answer claims the full window it was asked for. An ordinary request that the origin capped at
+`MaxEventsPerRequest`, or split across bundles, still echoes the requested window on every bundle, so a capped answer
+that stored nothing can mark a bucket whose missing events lie past the cap. A capped ordinary answer is counted on
+`redelivery_answers_capped` with `kind=ordinary` ([an answer never stops short in silence](#answers-say-where-they-stopped));
+a non-zero rate there means some marks may rest on a window the answer did not fully ship. Paced backfill pages are not
+affected: each page echoes only what it covered.
+:::
+
 ### Repair waits for its answer {#repair-waits-for-its-answer}
 
 {verified: IntegrityRepairAnswerSqlTests.Claim_ABucketWithItsAnswerPending_IsNotClaimed_UntilTheAnswerTimeoutPassesAsync, IntegrityRepairAnswerSqlTests.TryBeginRepair_WhileItsOwnAnswerIsPending_IsRefusedAsync, IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ClearsThePending_AndTheBucketWaitsForTheNextComparisonAsync, IntegrityRepairAnswerSqlTests.Claim_PastTheAttemptBudget_StopsForGood_AndCountsAsExhaustedAsync, IntegrityRepairAnswerSqlTests.TryBeginRepair_PastTheAttemptBudget_IsRefusedForGoodAsync, RepairDrainWorkerTests.DrainTick_MarksTheDispatchedBucketsAnswerPending_ButNotAGroupWhoseSendFailedAsync, StreamIntegrityOptionsValidatorTests.RepairAnswerTimeout_DefaultsToThreeHoursAsync}
@@ -1893,7 +2011,7 @@ every repair ledger row moves through explicit states:
 | **Answer pending** | A request for the bucket was sent (`wh_integrity_ledger.answer_pending_until`) | Neither the drain nor the burst grant asks again until the answer lands or `RepairAnswerTimeoutMinutes` passes |
 | **Answered** | A redelivery bundle for the bucket committed (`answered_at`) | The drain does not claim it until the next comparison sights the bucket again; a heal deletes the row |
 | **Exhausted** | The claim or grant that spent the last of `MaxRepairAttemptsPerBucket` attempts (`exhausted_at`) | Never asked for again until a [reset](#what-resets-the-repair-ladder) |
-| **Unhealable** | A bundle for the bucket [changed nothing](#unhealable-buckets) | Never asked for again until a [reset](#what-resets-the-repair-ladder) |
+| **Unhealable** | A bundle for the bucket [changed nothing](#unhealable-buckets) and [covered its deficit](#an-answer-marks-only-what-it-covered) | Never asked for again until a [reset](#what-resets-the-repair-ladder) |
 
 ```mermaid{caption="The repair ladder of one ledger row: a request waits for its answer, an answered bucket waits for the next comparison, and only a local change or a grown deficit re-arms a bucket that spent its budget or that repair cannot change." tests=["IntegrityRepairAnswerSqlTests.Claim_ABucketWithItsAnswerPending_IsNotClaimed_UntilTheAnswerTimeoutPassesAsync", "IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ClearsThePending_AndTheBucketWaitsForTheNextComparisonAsync", "IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ABundleWhoseEventsWereAllStoredAlready_MarksTheBucketAtCommitAsync", "IntegrityRepairAnswerSqlTests.Claim_PastTheAttemptBudget_StopsForGood_AndCountsAsExhaustedAsync", "IntegrityRepairAnswerSqlTests.Report_TheLocalDigestMoved_ResetsTheLadder_AndLiftsTheMarkAsync", "IntegrityRepairAnswerSqlTests.Report_TheDeficitGrew_ResetsTheLadder_AndLiftsTheMarkAsync", "IntegrityRepairAnswerSqlTests.Report_OnlyTheOriginsDigestMoved_KeepsTheAttempts_AndTheMarkAsync"]}
 stateDiagram-v2
@@ -1902,7 +2020,7 @@ stateDiagram-v2
   AnswerPending --> Claimable: RepairAnswerTimeoutMinutes passes with no answer
   AnswerPending --> Answered: a redelivery bundle commits
   Answered --> Claimable: the next comparison still sees a deficit
-  Answered --> Unhealable: the bundle changed nothing (judged at commit)
+  Answered --> Unhealable: the bundle changed nothing and covered the deficit (judged at commit)
   AnswerPending --> Exhausted: the last attempt is spent and the bucket is not healed
   Exhausted --> Claimable: re-armed by a local change or a grown deficit
   Unhealable --> Claimable: re-armed by a local change or a grown deficit
@@ -2028,7 +2146,7 @@ A redelivery bundle's answer is recorded when its children commit, with one smal
 bundle's event ids: for each bucket, how many of its events the store already held, how many it did not
 (the bundle stores them), how many the store refused to restore, and how many present events could still
 take an origin. The covered rows become answered, and the buckets of a bundle that changed nothing are
-marked unhealable at once, each named in one Warning and counted once in `repairs_unhealable`. Adopting
+marked unhealable at once when the answer [covered their deficit](#an-answer-marks-only-what-it-covered), each named in one Warning and counted once in `repairs_unhealable`. Adopting
 origins and moving digests stay with the maintainer's deferred reconcile; an event stored without its
 origin is left for that reconcile to adopt, not marked.
 
