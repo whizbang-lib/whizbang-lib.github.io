@@ -62,8 +62,21 @@ codeReferences:
   - src/Whizbang.Data.Postgres/ConcurrentIndexBuild.cs
   - src/Whizbang.Data.EFCore.Postgres/FrameworkIndexBuildMaintenanceStep.cs
   - src/Whizbang.Data.Postgres/Migrations/334_PacedSubscriptionBackfill.sql
+  - src/Whizbang.Data.Postgres/MigrationHashUpgrade.cs
+  - src/Whizbang.Data.Postgres/EarlierReleaseMigrationText.cs
+  - src/Whizbang.Data.Postgres/MigrationBatchProgress.cs
+  - src/Whizbang.Data.Postgres/StartupProgress.cs
+  - src/Whizbang.Data.Postgres/MigratorDuty.cs
+  - src/Whizbang.Data.Postgres/MigratorPreLockPhase.cs
+  - src/Whizbang.Core/Startup/DutyGrantKeepalive.cs
+  - src/Whizbang.Data.Postgres/SchemaMigrationDeferral.cs
+  - scripts/Capture-LegacyMigrationLedger.ps1
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigratorKeepaliveStartupTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigratorPreLockPhaseTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationBatchProgressTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/DutyGrantKeepaliveTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationStepTransactionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/TableRewritePolicyRetiredTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaStepRunnerTests.cs
@@ -184,6 +197,43 @@ before it decides what to run, under the same lock the migrations run under:
 The rewrite is idempotent: later starts find nothing to rewrite, and two instances starting together
 rewrite each row once. No action is needed when upgrading.
 {verified: NormalizedMigrationHashTests.Upgrade_TheShippedMigrations_AppliesNothingAgainAsync, NormalizedMigrationHashTests.Upgrade_FromLegacyHashes_RewritesUnchangedFilesAndAppliesChangedOnesAsync, NormalizedMigrationHashUpgradeTests.Upgrade_FromLegacyHashes_RewritesThemAndAppliesNothingAsync, NormalizedMigrationHashUpgradeTests.Upgrade_TwoInstancesStartingTogether_RewriteOnceAsync, SchemaBootstrapPhaseTests.AClosureRecordedUnderItsLegacyHashIsCurrentAndRecordedAgainAsync}
+
+#### Upgrading from a release before #1681 {#upgrading-from-before-1681}
+
+Releases before [#1681](https://github.com/whizbang-lib/whizbang/issues/1681) (2026-10-23) hashed each migration's raw
+text, and the release that moved to normalized hashes also added a license header to every migration file. The
+rewrite above compared each recorded hash with the raw hash of **today's** headered text, which no earlier release ever
+recorded, so it recognized none of them: the first start after the upgrade re-ran every migration that release had
+applied (204 from v0.2623.1), including the full, single-transaction backfill in `087_StreamDigests.sql`, which could
+hold a service in Migrate longer than its restart window, so every restart started it over.
+
+The rewrite now recognizes every form an earlier release recorded for a file that has not changed
+([#2125](https://github.com/whizbang-lib/whizbang/issues/2125)):
+
+- the raw hash of the file **with or without** the license header (a header with CRLF line endings included);
+- on the EF Core driver, also without the indentation its generator gave the line the header displaced;
+- on the EF Core driver, for a context in a **named schema**, the text as the earlier schema qualifier rendered it,
+  which also qualified bare table names inside comments and literals (`EarlierReleaseMigrationText`).
+
+Matching rows are rewritten to the normalized hash without running the migration, and the count is logged at
+Information (EventId 1648): `Recognized <count> migration hash(es) in schema <schema> as recorded by an earlier release
+and rewrote them to the normalized form; none of those migrations changed, so none is applied again`. A file whose
+content really changed still runs. A database that has already been through the re-run needs nothing: its rows already
+hold normalized hashes.
+
+**Why the tests use hashes captured from real packages.** The test that should have caught this built its "legacy"
+hashes from today's headered text, so it could not fail. The upgrade tests now stand a database on the hashes
+v0.2623.1 and v0.2619.0 actually recorded, captured from their published packages by
+`scripts/Capture-LegacyMigrationLedger.ps1` (for example `./scripts/Capture-LegacyMigrationLedger.ps1 -Version 0.2623.1`),
+for the Dapper driver and for the EF Core driver in the public schema and in a named one. Never derive an earlier
+release's hashes from today's files.
+
+| Behavior | Why | Verified by |
+|---|---|---|
+| Every hash v0.2623.1 recorded is recognized from today's text, and an upgrade from it applies none of its migrations. | An upgrade must re-run only migrations whose content really changed; a re-run of a full-store backfill is an outage. | {verified: LegacyMigrationHashRecognitionTests.IsLegacyContentHash_EveryHashV0_2623_1Recorded_IsRecognizedFromTodaysTextAsync, NormalizedMigrationHashTests.Upgrade_FromV0_2623_1_AppliesNoneOfItsMigrationsAndRewritesTheirHashesAsync, NormalizedMigrationHashUpgradeTests.Upgrade_ANamedSchemaFromV0_2623_1_AppliesNoneOfItsMigrationsAsync} |
+| A file that really changed is not recognized, and only it and its closure run. | Recognizing a changed file would skip a migration that is owed. | {verified: LegacyMigrationHashRecognitionTests.IsLegacyContentHash_AFileThatReallyChanged_IsNotRecognizedAsync, NormalizedMigrationHashTests.Upgrade_FromV0_2623_1_WithAFileThatReallyChanged_AppliesOnlyThatFileAndItsClosureAsync} |
+| Only a whole header at the start is stripped; CRLF headers and an indented embedding's first line are handled. | Each form is one an earlier release really recorded; stripping more would recognize a file that differs. | {verified: LegacyMigrationHashRecognitionTests.LegacyContentHashes_IncludeTheRawHashOfTheTextAsItIsAsync, LegacyMigrationHashRecognitionTests.LegacyContentHashes_AHeaderWithCrlfLineEndings_IsStrippedAsync, LegacyMigrationHashRecognitionTests.LegacyContentHashes_TextWithoutTheHeader_HasOneFormAsync, LegacyMigrationHashRecognitionTests.LegacyContentHashes_TheHeaderLinesAfterTheStart_AreNotStrippedAsync, LegacyMigrationHashRecognitionTests.LegacyContentHashes_APartialHeader_IsNotStrippedAsync, LegacyMigrationHashRecognitionTests.LegacyContentHashes_AnIndentedEmbedding_StripsTheIndentationOfTheFormerFirstLineAsync, LegacyMigrationHashRecognitionTests.LegacyContentHashes_AnIndentedEmbeddingWithABlankFirstLine_KeepsItAsync, LegacyMigrationHashRecognitionTests.LegacyContentHashes_LoneCarriageReturnsAndTabIndentation_AreStrippedAsync} |
+| On the EF Core driver, the earlier schema qualifier's text is reproduced for a named schema. | That qualifier reached inside comments and literals, so its hashes cannot be derived from today's qualified text. | {verified: LegacyMigrationHashRecognitionTests.LegacyContentHashes_WithEarlierReleaseText_AddsItsFormsAsync, LegacyMigrationHashRecognitionTests.IsLegacyContentHash_TheEarlierDriversText_IsRecognizedAsync, EarlierReleaseMigrationTextTests.EFCore_NamedSchema_QualifiesBareTableNamesInCommentsAndLiteralsTooAsync, EarlierReleaseMigrationTextTests.EFCore_NamedSchema_LeavesARenameTargetUnqualifiedAsync, EarlierReleaseMigrationTextTests.EFCore_PublicSchema_SubstitutesWithoutQualifyingAsync} |
 
 ## Migration Statuses
 
@@ -464,6 +514,43 @@ Fewer deadlocks happen to begin with: [idempotent DDL takes no lock](#idempotent
 nothing to do, and the instance's own workers [start at the stage they need](../startup/startup-status#what-runs-in-each-stage)
 instead of running against the tables the migration is changing.
 
+## Progress of long startup work {#progress-of-long-startup-work}
+
+Long startup work used to run silently: the declared-key spelling scan and the required-member check said nothing
+above Debug, so a migrating instance could show minutes with no output, and a batched migration step (for example
+`087_StreamDigests.sql`'s backfill) logged its batches only at Debug, so an operator could not tell working from stuck
+and restarted it, which started it over. Each now reports at **Information on a steady cadence**,
+`StartupProgress.Cadence`, 15 seconds, measured on the clock it is given:
+
+```text{title="Progress lines of long startup work" description="What the declared-key scan, the required-member check and a batched migration step say while they run" category="Operations" difficulty="BEGINNER" tags=["Startup","Migrations","Logging"] tests=["DeclaredKeySpellingPassTests.BothScans_SayWhereTheyAre_AtInformation_EachTimeALineIsDueAsync","MigrationBatchProgressTests.ALongStep_SaysItsBatchRowsAndElapsedTime_OncePerCadence_ThenItsTotalsAsync"]}
+The declared-key spelling scan of public started: 42 perspective table(s) to look at
+The declared-key spelling scan of public: table 7 of 42 (public.wh_per_orders), 1200000 row(s) read in it, 3400000 in all, 1m 15s elapsed
+The declared-key spelling scan of public finished: 42 table(s) scanned, 9100000 row(s) read, 0 row(s) rewritten, in 6m 05s
+The required-member check of public finished: 42 table(s) checked, 9100000 row(s) read, 0 row(s) lacking a required member, in 2m 40s
+Migration 087_StreamDigests.sql: batch 31, 3100000 row(s) moved so far, 4m 30s elapsed
+Migration 087_StreamDigests.sql: backfilled 4210337 row(s) in 43 batch(es) of 100000, in 6m 02s
+```
+
+- **The scans** say when they start, which table of how many they are on with the rows read in it and in all, and their
+  totals when they finish. A start on which every table is settled says nothing.
+- **A batched migration step** (a [bounded data migration](#batched-regions)) says the batch it is on, the rows moved
+  and the time elapsed, then its totals (`MigrationBatchProgress`, on both drivers). A step shorter than the cadence
+  says only its totals, and a region that moved nothing says nothing.
+- **A table with rows that cannot be repaired is reported once.** A table with rows missing a required member, which
+  nothing at startup can repair, used to stay unsettled and be scanned again, and reported again, on every start. It is
+  now settled after the check, which reports the rows once at Error with their count and the table, and is not checked
+  again until what its readers declare changes (see
+  [Required members](../../fundamentals/perspectives/stored-form-migrations.md#declared-names-required)). A table whose
+  keys were rewritten on a start stays open and is checked on the next one, which reports what is missing then, once.
+
+| Behavior | Why | Verified by |
+|---|---|---|
+| Both scans say where they are at Information each time a line is due; a scan shorter than the cadence says only its first and last lines; a fully settled start says nothing. | An operator can tell working from stuck without Debug logging, and a normal restart stays quiet. | {verified: DeclaredKeySpellingPassTests.BothScans_SayWhereTheyAre_AtInformation_EachTimeALineIsDueAsync, DeclaredKeySpellingPassTests.AScanShorterThanTheCadence_SaysOnlyItsFirstAndLastLinesAsync, DeclaredKeySpellingPassTests.AStartWithEveryTableSettled_SaysNothingAsync} |
+| A long batched step says its batch, rows and elapsed time once per cadence, then its totals; a short one says only its totals; one that moved nothing says nothing. | The step that held a service in Migrate past its restart window logged nothing an operator could see. | {verified: MigrationBatchProgressTests.ALongStep_SaysItsBatchRowsAndElapsedTime_OncePerCadence_ThenItsTotalsAsync, MigrationBatchProgressTests.AStepShorterThanTheCadence_SaysOnlyItsTotalsAsync, MigrationBatchProgressTests.ARegionThatMovedNothing_SaysNothingAsync, MigrationBatchProgressTests.TheCadence_IsFifteenSecondsAsync} |
+| Unrepairable rows are reported once, and their table is not scanned again until its declarations change. | A table that can never settle was rescanned in full on every start, minutes of work for a report nobody could act on again. | {verified: DeclaredKeySpellingPassTests.UnrepairableRows_AreReportedOnce_AndTheirTableIsNotScannedAgainAsync, DeclaredKeySpellingPassTests.ATableRewrittenThisStart_ReportsItsMissingRowsOnTheNextStart_OnceAsync} |
+
+New overloads of `DeclaredKeySpellingPass.ApplyAsync`, `RewriteAsync` and `SettleAsync` take the clock.
+
 ## Idempotent DDL takes no lock when there is nothing to do {#idempotent-ddl-takes-no-lock}
 {verified: CatalogCheckedDdlPostgresTests.Unguarded_AnAddColumnOfAColumnThatExists_StillWaitsForTheWorkerAsync, CatalogCheckedDdlPostgresTests.Guarded_AnAddColumnOfAColumnThatExists_TakesNoLock_SoTheWorkerDoesNotHoldItUpAsync, CatalogCheckedDdlPostgresTests.Guarded_AnIndexThatExists_TakesNoLockAsync, CatalogCheckedDdlPostgresTests.Guarded_AMissingColumnAndIndex_AreCreated_AsTheStatementsCreateThemAsync, CatalogCheckedDdlPostgresTests.Guarded_AMissingTable_FailsAsTheStatementFailsAsync, MigrationAgainstRunningWorkersTests.ARerun_WhileAWorkerHoldsTheInstanceAndRoleTables_CompletesWithoutWaitingForItAsync, DapperSchemaAgainstRunningWorkersTests.ARestart_WhileAWorkerHoldsTheInstanceAndRoleTables_DoesNotWaitForItAsync}
 
@@ -589,6 +676,33 @@ WHERE instance_id IN (SELECT instance_id FROM wh_live_instance_ids());
 application version (`unknown` when none resolves), and the assembly name is in `notes`. A query that read the
 assembly from `application_version` reads `notes` instead. Rows written before this change keep what they recorded.
 :::
+
+### Who applied each change {#applied-version-id}
+
+`wh_schema_migrations.version_id` is rewritten by every pass, a pass that skips an unchanged file included, so it says
+which version last looked at a file, not which version changed the schema. Migration 359 adds
+`applied_version_id`, the version that **applied** each change, kept by a trigger so both drivers' ledger writers
+record it without a change:
+
+| Ledger write | `applied_version_id` |
+|---|---|
+| A row inserted, or its content hash changed (the file was applied, or a perspective table or application object was rebuilt) | Set to the row's `version_id` |
+| A skip, a status update, a re-stamp | Kept as it was |
+| A failure (status -1) | Kept: the failed step rolled back and applied nothing |
+
+Existing rows are not rewritten. While a row's `applied_version_id` is `NULL`, a row last applied (status 1, 2 or 4)
+names its applier in `version_id`, and the trigger carries it over on the row's next write; a row last skipped names
+nobody. Assess reads it for [the rollback gate](../startup/rolling-upgrades#the-rollback-gate).
+{verified: RollbackGateTests.TheLedger_RecordsWhoAppliedAChange_AndKeepsItThroughSkipsAndFailuresAsync, RollbackGateTests.ARowLastAppliedBeforeTheRecord_IsTakenAsAppliedByItsVersion_ThroughLaterSkipsAsync, RollbackGateTests.ARowLastAppliedBeforeTheRecord_AndNotWrittenSince_IsReadAsAppliedByItsVersionAsync}
+
+```sql{title="Who applied each change" description="The version that applied each ledger row, beside the version that last stamped it" category="Operations" difficulty="BEGINNER" tags=["Migrations","Versioning","SQL","RollingUpgrades"] tests=["RollbackGateTests.TheLedger_RecordsWhoAppliedAChange_AndKeepsItThroughSkipsAndFailuresAsync"]}
+SELECT m.file_name, applied.library_version AS applied_by_library,
+       applied.application_version AS applied_by_application, m.status
+FROM wh_schema_migrations m
+LEFT JOIN wh_schema_versions applied
+  ON applied.id = COALESCE(m.applied_version_id, CASE WHEN m.status IN (1, 2, 4) THEN m.version_id END)
+ORDER BY m.file_name;
+```
 
 ### An older instance never overwrites a newer one
 
@@ -910,8 +1024,75 @@ The migrator is a duty, and like every duty it is held by [role assignment](../s
 Registering is Preflight's last step, logged as `Stage 1 of 7: Preflight - the bootstrap closure is in place; registering this instance`, and Elect only votes (`Stage 2 of 7: Elect - voting for the migrator duty`). **Why register before Elect, and after the bootstrap.** The row is written once the instance and role tables it lives in are ready, and the capability function refuses an instance it cannot find, a refusal that would say nothing about contention. Earlier releases entered Elect and then registered as part of the election, so registration belonged to no stage. A registration that fails is logged, and the instance migrates under the schema lock alone without voting. See [what a restart records](../startup/startup-status#what-a-fresh-database-and-a-restart-record).
 {verified: StartupPreflightHostTests.TheInstanceRow_IsRegisteredAtTheEndOfPreflight_BeforeElectAsync, MigratorDutyStagingTests.Register_RunsTheRegistration_AndAnswersThatTheInstanceJoinedAsync, MigratorDutyStagingTests.Register_ThatFails_IsSaidAndAnsweredAsNotJoinedAsync, MigratorDutyStagingTests.Elect_AfterRegistering_AsksTheElectorOnce_AndHandsOverTheGrantAsync}
 
-An instance that lost the vote waits for the result instead of queuing behind the schema lock. It watches the migrator itself (`MigratorWatch`): the migrator's assignment row, plus any holding of the duty recorded outside the table by a migrator on an older release that held it by its own session lock, counted only while [the one liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule) calls that instance live. No lock is read: the watch never uses the lock probe, so a waiter sees an older migrator through the record it writes, and a dead one's record does not hold the waiter up. The migrator renews its assignment between phases and marks the backend running its DDL, so one long migration statement does not lose the duty; its lease is 30 seconds by default (`RoleAssignmentOptions.RoleLeases`). If the migrator dies, its assignment lapses and a waiter goes on to do the schema work itself, still under the schema lock, which keeps DDL to one instance at a time whatever the duty says.
+An instance that lost the vote waits for the result instead of queuing behind the schema lock. It watches the migrator itself (`MigratorWatch`): the migrator's assignment row, plus any holding of the duty recorded outside the table by a migrator on an older release that held it by its own session lock, counted only while [the one liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule) calls that instance live. No lock is read: the watch never uses the lock probe, so a waiter sees an older migrator through the record it writes, and a dead one's record does not hold the waiter up. The migrator's lease is 30 seconds by default (`RoleAssignmentOptions.RoleLeases`), and it marks the backend running its DDL as a backstop. If the migrator dies, its assignment lapses and a waiter goes on to do the schema work itself, still under the schema lock, which keeps DDL to one instance at a time whatever the duty says.
 {verified: MigratorWatchTests.AMigratorHoldingTheRole_IsMigrating_UntilItReleasesItAsync, MigratorWatchTests.AMigratorOnAnOlderRelease_IsSeenByItsRecordedHolding_WhileTheRuleCallsItLiveAsync, MigratorWatchTests.NothingHeld_IsNotMigratingAsync, CoordinationSourceGuardTests.NoDuty_IsHeldByAnAdvisoryLockAnywhereAsync, SchemaMigratorDeferralGenerationTests.AWaiterWatchesTheMigratorAsync, SchemaMigratorDeferralGenerationTests.TheMigratorRenewsItsRole_AndMarksTheBackendRunningTheMigrationAsync}
+
+#### The migrator keeps its role through every phase {#migrator-keepalive}
+
+The migrator's phases between Elect and the end of Migrate (the declared-key spelling scan, a wait for the schema
+lock, the stored-form rewrite, the index rebuild, the settle scan, a long migration step) can each run longer than the
+lease. Earlier releases renewed the grant only between phases, so a long one let the lease lapse; the renewal then
+refused the lapsed lease even when nobody had taken it, the migrator said it lost the role, and a waiting instance
+concluded the migrator was gone and did the same work (seen with one replica losing its own role, and with two both
+running the phases).
+
+Now schema initialization holds the grant in a `MigratorDuty` from the election until it returns, and holding it starts
+a `DutyGrantKeepalive`. The keepalive verifies the grant at half its role's renew interval (`IDutyGrant.RenewInterval`;
+a role-assignment grant reports `RoleAssignmentOptions.RenewInterval`, 5 seconds by default). A grant throttles its own
+renewals to one per interval, so the database sees one renewal per interval through every phase, and never more than
+one and a half intervals pass between two renewals, which every lease outlasts. The keepalive stops, and waits for a
+verify in flight, before the grant is released, so a released role is never renewed. A verify that answers false or
+throws is reported and asked again on the next tick.
+
+**Why a timer here, when a holder otherwise renews from its own work loop.** A work loop renews only when it makes
+progress, which is how a stuck holder loses its role. The migrator's startup phases have no loop to renew from, and the
+keepalive lives exactly as long as schema initialization, so a wedged startup still ends: its host's start fails or
+times out and the process exits (see [Duty role assignment](../../../proposals/duty-role-assignment)).
+
+| Behavior | Why | Verified by |
+|---|---|---|
+| A migrator holding a phase longer than its lease still holds the role; the same phase with nothing renewing loses it. | The control proves the test can fail: without the keepalive the lease lapses. | {verified: MigratorDutyLeaseTests.AMigrator_HoldingAPhaseLongerThanItsLease_StillHoldsTheRoleAsync, MigratorDutyLeaseTests.Control_TheSamePhaseWithNothingRenewing_LosesTheRoleAsync, MigratorDutyLeaseTests.ARoleAssignmentGrant_ReportsItsRoleRenewIntervalAsync} |
+| Every phase from Elect to the end of Migrate runs under the keepalive, and nothing renews after it. | A phase added later outside the keepalive would bring the lapse back; the test fails if one does. | {verified: MigratorKeepaliveStartupTests.EveryPhaseFromElectToTheEndOfMigrate_RunsUnderTheKeepalive_AndNothingRenewsAfterAsync} |
+| The keepalive verifies at half the renew interval while it runs, coalesces ticks while a verify is slow, and stops before the grant is released. | One renewal per interval reaches the database however slow it is, and a released role is never renewed behind its new holder. | {verified: DutyGrantKeepaliveTests.Start_OverALeasedGrant_VerifiesItAtHalfItsRenewInterval_ForAsLongAsItRunsAsync, DutyGrantKeepaliveTests.TicksWhileTheLastVerifyStillRuns_AreCoalescedIntoOneVerifyAfterItAsync, DutyGrantKeepaliveTests.Dispose_StopsTheTicks_SoNothingRenewsTheGrantAfterItAsync, DutyGrantKeepaliveTests.Dispose_WaitsForTheVerifyInFlight_BeforeItReturnsAsync, DutyGrantKeepaliveTests.ATickThatArrivesAfterTheStop_VerifiesNothingAsync} |
+| A verify that answers false or throws does not stop the keepalive; it is reported and asked again. | The grant itself says whether it lost the role or could not reach the database for a moment; the keepalive must not give up a role the database still grants. | {verified: DutyGrantKeepaliveTests.AVerifyThatAnswersFalse_DoesNotStopTheKeepaliveAsync, DutyGrantKeepaliveTests.AVerifyThatThrows_IsReported_AndTheNextTickAsksAgainAsync, DutyGrantKeepaliveTests.AVerifyCanceledByAnythingButTheDispose_IsReportedAsync, DutyGrantKeepaliveTests.AVerifyCanceledByTheDispose_IsNotReportedAsync} |
+| A grant without a lease, or no grant (a waiter), keeps nothing alive; a new election releases the old grant and keeps only the new one alive. | There is nothing to renew, and two grants kept alive would hold a role twice. | {verified: DutyGrantKeepaliveTests.Start_OverAGrantWithoutALease_KeepsNothingAliveAsync, DutyGrantKeepaliveTests.Start_WithNoGrant_KeepsNothingAliveAsync, MigratorDutyTests.AGrantWithNoLease_IsHeld_ButNeedsNoKeepaliveAsync, MigratorDutyTests.AWaiter_HoldsNoGrant_AndNothingIsKeptAliveAsync, MigratorDutyTests.HoldingANewElection_ReleasesTheOldGrant_AndKeepsOnlyTheNewOneAliveAsync, MigratorDutyTests.AHeldGrant_IsRenewedOnItsRoleInterval_UntilTheDutyIsDisposedAsync, MigratorDutyTests.Release_GivesTheGrantBack_AndTheDutyReadsUnstagedAsync} |
+
+#### The phases before the schema lock run only on the role holder {#pre-lock-phases}
+
+The phases before the schema lock (the declared-key scan, the stored-form rewrites, the index rebuild and the settle
+scan) take no schema lock for most of what they do, so the role is the only thing that keeps two instances from
+scanning and rewriting the same tables and from building and dropping the same indexes concurrently. They now run only
+on the instance holding the migrator role (`MigratorPreLockPhase`):
+
+- **The role holder** waits for the schema lock (a sibling's bootstrap or DDL), then does the work. It verifies its
+  grant first; a migrator that finds it no longer holds the role gives it up and votes again rather than working
+  without it.
+- **A waiter** watches its migrator. When the migrator finished, it does nothing. When the migrator is gone with the
+  schema still behind, it **votes for the role** and does the work only once it holds it; losing that vote makes it a
+  waiter for the winner. Repeated lost votes are paced (250 ms doubling to 5 seconds), so a waiter never spins.
+- **An instance that could not be staged at all** (no election was possible) still does the work, as every instance did
+  before an election existed: the schema lock that follows still excludes.
+
+The phases are announced to registered observers through
+[`ISchemaInitializationObserver.OnPreLockPhasesStartingAsync`](../../data/turnkey-initialization#pre-lock-phases-starting),
+not as a stage, since they also run on a restart against tables they find settled.
+
+| Behavior | Why | Verified by |
+|---|---|---|
+| With two replicas, only an instance holding the role runs the pre-lock phases. | Both replicas used to run them, scanning and rewriting the same tables concurrently. | {verified: MigratorKeepaliveStartupTests.TwoReplicas_OnlyAnInstanceHoldingTheRoleRunsThePreLockPhasesAsync, MigratorPreLockPhaseTests.TheRoleHolder_WaitsForTheSchemaLock_ThenDoesTheWork_WithoutVotingAgainAsync} |
+| A waiter whose migrator is gone votes, and works only once it holds the role; one that loses waits for the winner; lost votes are paced. | Taking over without the role was the double work this fixes; a waiter that never stops voting would hammer the role table. | {verified: MigratorKeepaliveStartupTests.AWaiterWhoseMigratorIsGone_RunsThePreLockPhasesOnlyAfterAVoteGrantsItTheRoleAsync, MigratorPreLockPhaseTests.AWaiter_WhoseMigratorIsGone_VotesForTheRole_AndWorksOnlyOnceItHoldsItAsync, MigratorPreLockPhaseTests.AWaiter_ThatLosesTheVote_WaitsForTheWinner_AndNeverDoesTheWorkAsync, MigratorPreLockPhaseTests.RepeatedLostVotes_ArePaced_SoAWaiterNeverSpinsAsync, MigratorPreLockPhaseTests.AWaiter_WhoseMigratorFinished_DoesNothingAsync} |
+| A migrator that no longer holds the role votes again before working; a waiter that cannot watch its migrator votes rather than working without the role. | Work under a role the instance does not hold is exactly what the role exists to prevent. | {verified: MigratorPreLockPhaseTests.AMigratorThatNoLongerHoldsTheRole_GivesItUp_AndVotesAgainBeforeWorkingAsync, MigratorPreLockPhaseTests.AWaiter_ThatCannotWatchItsMigrator_VotesRatherThanWorkingWithoutTheRoleAsync} |
+| An unstaged instance, or a vote that cannot be held, falls back to the schema lock alone and does the work. | A database where no election is possible must still migrate; the lock still keeps DDL to one instance. | {verified: MigratorPreLockPhaseTests.AnUnstagedInstance_DoesTheWork_AsEveryInstanceDidBeforeAnElectionExistedAsync, MigratorPreLockPhaseTests.AVoteThatCannotBeHeld_FallsBackToTheLockAlone_AndDoesTheWorkAsync, MigratorPreLockPhaseTests.TheRoleHolder_ThatCannotWatchTheSchemaLock_StillDoesTheWorkAsync, MigratorPreLockPhaseTests.Cancellation_DuringAWait_IsNotTreatedAsAnEndedWaitAsync} |
+
+#### Waiting between another instance's steps is not a takeover {#free-between-steps}
+
+The pass runs [one transaction per step](#one-transaction-per-step), so the schema lock is free for a moment between
+two steps of another instance's pass. Earlier releases read that moment as the migrator being gone, and logged
+`the migrator is gone, taking the work over` at Warning and `another instance is migrating` at Information for every
+step. The step-level wait now has its own outcome, `SchemaDeferralOutcome.FreeBetweenSteps`
+(`SchemaMigrationDeferral.WaitBetweenStepsAsync`), said at Debug. The migration-level wait still names a migrator that
+really is gone.
+{verified: SchemaMigrationDeferralTests.WaitBetweenSteps_ALockHeldThenFree_EndsFreeBetweenSteps_SaidOnlyAtDebugAsync, SchemaMigrationDeferralTests.WaitBetweenSteps_ACurrentSchema_IsAnotherInstanceFinishingAsync, SchemaMigrationDeferralTests.WaitBetweenSteps_AFailedLockProbe_ContendsForTheNextStepAsync, SchemaMigrationDeferralTests.Defer_TheMigrationLevelWait_StillNamesAMigratorThatIsGoneAsync, MigrationStepTransactionTests.AStepWaitingOutAnotherInstancesStep_IsNotReportedAsATakeoverAsync}
 
 ### Table rewrites run post-ready, under the maintainer duty
 
@@ -1482,6 +1663,40 @@ skips them all. A Dapper host, and an EF Core host whose schema is `public`, run
 The fix does not depend on the application's connection settings: the migrations run under the runner's own
 `search_path`, and the run-time functions name their schema, so both work whatever `search_path` the calling
 connection has. The rules for authors are in [Writing SQL migrations](../../../contributors/data-engines/writing-migrations.md).
+
+## Migrations in this release {#migrations-359-364}
+
+| Migration | What it does | In the bootstrap region |
+|---|---|---|
+| `359_TheLedgerRecordsWhoAppliedEachChange.sql` | Adds `wh_schema_migrations.applied_version_id` and the trigger that keeps it ([who applied each change](#applied-version-id)), read by [the rollback gate](../startup/rolling-upgrades#the-rollback-gate). Rewrites no row | no |
+| `360_TheInstanceRowRecordsAnOverriddenIncompatibility.sql` | Adds `wh_service_instances.incompatibility_override` ([the incompatibility override](../startup/rolling-upgrades#the-incompatibility-override)) | yes |
+| `361_RecursiveDocumentsStoredWhole.sql` | Changes nothing; its ledger row marks a database migrated by a release that stores recursive perspective models whole, which [the rebuild notice](../../fundamentals/perspectives/rebuild#recursive-models-after-upgrade) reads | no |
+| `362_TheHeartbeatStartsAtRegistration.sql` | `wh_record_startup_heartbeat`, [the startup beat](../startup/startup-status#the-startup-beat) | yes |
+| `363_EveryExitIsRecorded.sql` | `wh_instance_exits` and `wh_record_instance_exit` ([the exit record](../startup/instance-exits#the-exit-record)); `last_heartbeat_at` and `liveness_window_seconds` on `wh_instance_evictions`; `record_heartbeat` and `cleanup_stale_instances` record the reaper | yes |
+| `364_InstanceExitRetentionIsASetting.sql` | `wh_record_instance_exit` reads `wh_settings.instance_exit_retention_days` (30 days when unset) instead of a fixed 30 days | yes |
+
+## Upgrade notes {#upgrade-notes}
+
+Notes for upgrading a running deployment to this release. Each links to the page with the details.
+
+- **Upgrades from releases before #1681 no longer re-run every older migration.** The first start recognizes the hashes
+  those releases recorded and rewrites them without running anything; only a file whose content really changed runs.
+  A database that already went through the re-run needs nothing. See
+  [Upgrading from a release before #1681](#upgrading-from-before-1681).
+- **Perspectives whose models are recursive must be rebuilt after upgrading; the startup log names them.** Earlier
+  releases kept only the first level of a recursive member (a tree node's `Children`, for example) on the Entity
+  Framework driver, and dropped every level below it on write with no error. This release stores such a model whole,
+  so new writes keep every level, but rows written before the fix hold only the first level and nothing in the database
+  can restore the rest. Nothing is rebuilt automatically. On the first start against a database an earlier release
+  migrated, the instance doing the schema work logs one Warning per such perspective whose table holds rows (EventId
+  2112, `RecursivePerspectiveNeedsRebuild`), naming the perspective and its table; [rebuild](../../fundamentals/perspectives/rebuild#recursive-models-after-upgrade)
+  each one it names.
+- **A rollback with nothing migrated since now serves**, and one after a newer version applied a change stands down
+  naming the change. See [the rollback gate](../startup/rolling-upgrades#the-rollback-gate).
+- **An evicted instance exits with code 3**, a capability that is not ready exits with code 4 (it was 1), and the
+  killswitch's stop ends the process. See [Instance Exits](../startup/instance-exits).
+- **An app signal published inside a transaction is delivered on commit.** A custom `ISignalTopicTransport`
+  implements the new `PublishTopicAsync` overload. See [transactional publish](../../fundamentals/work-coordinator/app-signals#transactional-publish).
 
 ## Pre-v1.0 Note
 
