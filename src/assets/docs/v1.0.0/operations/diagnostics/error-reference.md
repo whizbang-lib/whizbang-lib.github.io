@@ -15,6 +15,8 @@ codeReferences:
   - src/Whizbang.Core/ReceptorNotFoundException.cs
   - src/Whizbang.Core/Messaging/StreamSealedException.cs
   - src/Whizbang.Core/Archival/StreamArchivedException.cs
+  - src/Whizbang.Core/Archival/ArchiveLocationMismatchException.cs
+  - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveStore.cs
   - src/Whizbang.Core/Dispatcher.cs
   - src/Whizbang.Core/Workers/TransportPublishStrategy.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
@@ -28,6 +30,8 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamSealingSqlTests.cs
+  - tests/Whizbang.Core.Tests/Archival/ArchiveLocationMismatchExceptionTests.cs
+  - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs
   - tests/Whizbang.Offloads.AzureBlob.Tests/AzureBlobMessageBodyStoreValidationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaBootstrapPhaseTests.cs
   - tests/Whizbang.Core.Tests/Schema/SchemaBootstrapRetryTests.cs
@@ -150,6 +154,28 @@ Stream {streamId} is archived through version {lastVersion}; the append waits fo
 **Trigger**: An event was appended to a stream archived whole. Under `Refuse` (the default) a direct append or an awaited outbox write throws and stores nothing, and a background write is dead-lettered alone. Under `AutoRestore` the framework restores the stream and retries an awaited write once, so the exception reaches a caller only when that restore did not put the stream back; a background write is dead-lettered awaiting the restore it queues.
 
 **Fix**: Restore the stream (`IArchiveStore.RestoreAsync`) and recover the dead letters, or declare `AppendToArchived: AutoRestore` for the stream's type. See [Archive Store](../../fundamentals/events/archive-store.md#appending-to-an-archived-stream).
+
+### The archive of a stream was refused: its location is not the configured one {#archive-location-mismatch}
+
+{verified: ArchiveLocationMismatchExceptionTests.TheLocationsConstructor_NamesTheStreamTheOperationBothLocationsAndTheRowAsync, ArchiveLocationMismatchExceptionTests.ARecordWithNoLocation_SaysSo_RatherThanNamingOneAsync, AzureBlobArchiveStoreTests.Read_Restore_Delete_InAnotherContainer_ThrowTheMismatch_AndTouchNoObjectAsync}
+
+```text
+The {operation} of the archive of stream {streamId} was refused: its objects are recorded at location {locationId} ({recorded}), and this service is configured for {configured}. Nothing was read, restored or deleted. If the objects are expected in the configured location (the database was copied or restored, or the storage moved), repoint the record's location row in wh_archive_locations (or call the store's repoint operation); otherwise correct the configuration.
+The {operation} of the archive of stream {streamId} was refused: an archive record of it records no location, and this service is configured for {configured}. ...
+```
+
+Each location reads `{provider}, endpoint {endpoint}, connection '{name}', container '{container}'`; a location written before migration 353 shows its endpoint and connection as `(not recorded)`.
+
+**Source**: `ArchiveLocationMismatchException` (namespace `Whizbang.Core.Archival`), thrown by `AzureBlobArchiveStore` from `ReadAsync`, `RestoreAsync`, `DeleteAsync` and `WriteAsync`. Its properties carry `StreamId`, `Operation`, `RecordedLocationId`, `Recorded` and `Configured`.
+
+**Trigger**: A record of the stream names an [archive location](../../fundamentals/events/archive-store.md#archive-locations) other than the one the store is configured for (another account endpoint, logical connection name or container), or no location at all. The usual cause is a database that moved without its configuration: a copy to another environment, a restore from a backup, or disaster recovery to another storage account; or a configuration pointed at another account or container. `Operation` is `read`, `restore`, `delete` or `write`; a `write` is refused when the stream's earlier objects are recorded elsewhere, so a stream never spans two locations.
+
+**What happens next**: Nothing. The store throws before any request reaches storage: no object is read, written or deleted, the manifest is unchanged and the stream stays as it was. The deletion queue likewise leaves rows of other locations queued, untouched.
+
+**Fix**:
+- If the objects are (or should be) in the configured location, copy them there first if needed, then repoint the location: update its row in `wh_archive_locations`, or call `AzureBlobArchiveStore.RepointLocationAsync(ex.RecordedLocationId)`. See [Repointing an environment](../../fundamentals/events/archive-store.md#repointing-an-environment).
+- If the configuration is wrong, correct `Whizbang:Archive:AzureBlob` (`ServiceUri` or `ConnectionString`, `ContainerName`, `ConnectionName`).
+- Or turn the check off with `Whizbang:Archive:AzureBlob:VerifyLocation = false`, accepting what that gives up. See [Turning the location check off](../../fundamentals/events/archive-store.md#verify-location).
 
 ## Dispatch & Receptors
 
