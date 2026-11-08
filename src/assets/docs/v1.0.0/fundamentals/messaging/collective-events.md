@@ -1239,6 +1239,9 @@ not by the handlers the service has, so a service that consumes some of a namesp
   `whizbang.collectives.unhandled`, and logs one Warning per event type per batch (`PerspectiveWorker`
   EventId 80) naming the service, the type, the count and a stream. The event stays in the event store, and a
   [rebuild](#surviving-a-rebuild) applies it once a handler is added.
+- **If the service has no perspectives at all,** the same applies: the perspective worker
+  [waits idle on its drain channel](../../operations/workers/perspective-worker#no-perspective-registry) instead of
+  ending, and concludes the sink rows the claim hands it.
 
 Completing the row matches what happens to an event no perspective consumes. Before, the row could not be read and
 was never concluded, so the claim offered the oldest such rows again on every poll and the rest of the service's
