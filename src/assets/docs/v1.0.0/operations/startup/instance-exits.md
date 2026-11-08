@@ -269,7 +269,7 @@ process, since the runtime does not end it either.
 | The crash exit is bounded by its budget and never throws into the runtime's handler. | The process is already dying; the exit may slow it by seconds, never hang it or replace the original failure with its own. | {verified: WhizbangInstanceExitCrashTests.AnExitThatNeverFinishes_DoesNotHoldTheDyingProcess_PastTheBudgetAsync, WhizbangInstanceExitCrashTests.NothingTheCrashExitDoes_Throws_IntoTheRuntimesHandlerAsync, WhizbangInstanceExitCrashTests.AClockThatFails_DoesNotLetTheCrashExitThrowAsync, WhizbangInstanceExitCrashTests.ACrashWithNoIdentity_OrNoCoordinator_StillExits_AndDeregistersNothingAsync} |
 | An unobserved faulted task is said at Error and does not exit. | The runtime does not end the process for it, so neither does the exit path; saying it once keeps it from being invisible. | {verified: WhizbangInstanceExitCrashTests.AnUnobservedTaskException_IsSaid_AndDoesNotExitAsync, WhizbangInstanceExitCrashTests.AnUnobservedTaskException_ThatCannotBeSaid_DoesNotEscapeAsync} |
 
-## Nothing else ends the process {#nothing-else-ends-the-process}
+## Nothing else ends the process {#one-exit-path}
 
 Library code can no longer stop the host or set the exit code anywhere but the exit path. `BannedSymbols.Exit.txt`
 bans `IHostApplicationLifetime.StopApplication`, `Environment.Exit`, `Environment.ExitCode` and
