@@ -35,6 +35,7 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/DapperPostgresPerspectiveCheckpointCompleter.cs
   - src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/RebuildCreatedAtIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveSnapshotFloorTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/RebuildProvenanceTests.cs
@@ -143,6 +144,12 @@ var result = await rebuilder.RebuildInPlaceAsync("OrderPerspective");
 ```
 
 **Best for**: Development, staging, or maintenance windows.
+
+A rebuild keeps a row's `CreatedAt`: in place it updates rows that exist and never moves it; a row it inserts (every row,
+blue-green) is dated at its first folded event, or at the stream's recorded start once the stream's first event was
+removed. See [What a rebuild keeps](../events/superseding-events#what-a-rebuild-keeps).
+
+{verified: RebuildCreatedAtIntegrationTests.RebuildInPlace_AnExistingRow_KeepsItsCreatedAtAsync, RebuildCreatedAtIntegrationTests.RebuildBlueGreen_AFullHistoryStream_DatesTheRowAtItsFirstEvent_AndUpdatedAtAtItsLastAsync}
 
 ### Selected Streams
 
