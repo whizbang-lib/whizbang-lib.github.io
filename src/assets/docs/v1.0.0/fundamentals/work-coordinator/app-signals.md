@@ -13,8 +13,15 @@ codeReferences:
   - src/Whizbang.Core/Signals/SignalBus.cs
   - src/Whizbang.Core/Signals/ISignalTopicTransport.cs
   - src/Whizbang.Data.Postgres/Notifications/PostgresSignalTransport.cs
+  - src/Whizbang.Core/Signals/ScopeBoundAppSignalChannel.cs
+  - src/Whizbang.Core/Signals/IAppSignalTransactionSource.cs
+  - src/Whizbang.Data.EFCore.Postgres/EFCoreAppSignalTransactionSource.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AppSignalsOnTheBusIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/AppSignalTransactionalPublishTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperAppSignalTransactionTests.cs
+  - tests/Whizbang.Core.Component.Tests/Signals/ScopeBoundAppSignalChannelTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreAppSignalTransactionSourceTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresSignalTransportTopicTests.cs
   - tests/Whizbang.Core.Component.Tests/Signals/SignalBusAppTopicTests.cs
   - tests/Whizbang.Core.Tests/Notifications/AppSignalTopicValidatorTests.cs
@@ -27,7 +34,9 @@ Whizbang exposes its NOTIFY/LISTEN infrastructure to application code via `IAppS
 ## The channel is the signal bus {#the-channel-is-the-bus}
 
 `IAppSignalChannel` is the [signal bus](../signal-bus/signal-bus): `SignalBus` implements it, and the container
-resolves `IAppSignalChannel` to the same `SignalBus` instance. The bus validates the topic and hands it to every
+resolves `IAppSignalChannel` to a channel over that one `SignalBus`, bound to the scope it was resolved in
+(`AddWhizbangAppSignalChannel`, which the Postgres driver calls), so a publish can join the scope's transaction (see
+[Publish inside a transaction](#transactional-publish)). The bus validates the topic and hands it to every
 transport that carries topics (`ISignalTopicTransport`); the Postgres transport carries each topic on
 `wh_app_<topic>`, on the same shared connection as the framework's own signals. `PgAppSignalChannel`, the separate
 Postgres implementation earlier releases registered, is deleted ([#2046](https://github.com/whizbang-lib/whizbang/issues/2046)).
@@ -115,16 +124,57 @@ public class FeatureFlagRefreshSubscriber : BackgroundService {
 await appSignalChannel.PublishAsync("feature_flag_refresh", "");
 ```
 
-## Publish is not transactional {#transactional-publish}
+## Publish inside a transaction {#transactional-publish}
 
-`PublishAsync` opens a short-lived connection of its own, issues `SELECT pg_notify(...)` and returns; the notification
-commits with that statement. It does not join a transaction you have open on your DbContext, so a publish made inside
-your transaction is delivered even if your transaction later rolls back. Publish after your transaction commits.
+**An app signal published inside a transaction is delivered when that transaction commits, and never when it rolls
+back.** Callers do not change: inject `IAppSignalChannel` and publish where the change is made.
+
+| Where the publish is made | When subscribers hear it |
+|---|---|
+| Through a channel resolved in a scope (a request, a handler) whose framework DbContext has a transaction open | Sent on that transaction's own connection, so PostgreSQL delivers it when the transaction commits, and discards it when the transaction, or the savepoint the publish was made in, rolls back |
+| Inside a `TransactionScope`, on EF Core or Dapper | Sent on a connection of its own once the scope commits; dropped when it rolls back |
+| Anywhere else: no transaction open, a channel held by a singleton or resolved from the root provider, or a transaction you began on a Dapper connection of your own | Sent at once, on a connection of its own, as before |
+
+Each scope's transaction is reported by an `IAppSignalTransactionSource`; the Postgres driver registers one for every
+framework DbContext, so no application wires one. A channel resolved in a scope asks each source in turn and sends a
+publish inside the first transaction one reports.
+
+**Why tie it to the transaction.** Publishing on a separate connection could deliver the signal before the caller
+committed, so a subscriber that re-read saw the old state, concluded nothing changed, and missed the change for good,
+since no second signal comes. And a rolled-back change still announced itself.
+
+| Behavior | Why | Verified by |
+|---|---|---|
+| Inside a DbContext transaction, heard only after commit; never after a rollback. | A subscriber that re-reads on the signal must see the change the signal announces. | {verified: AppSignalTransactionalPublishTests.InsideADbContextTransaction_IsHeardOnlyAfterCommitAsync, AppSignalTransactionalPublishTests.InsideARolledBackDbContextTransaction_IsNeverHeardAsync, ScopeBoundAppSignalChannelTests.InAScope_WithAnOpenTransaction_ThePublishCarriesItAsync, ScopeBoundAppSignalChannelTests.InAScope_TheFirstSourceReportingATransactionWinsAsync} |
+| A savepoint rolled back drops the publishes made in it; the rest commit. | The notification is part of the work it announces, at every level of nesting. | {verified: AppSignalTransactionalPublishTests.ASavepointRolledBack_DropsItsNotification_AndTheRestCommitAsync} |
+| Several publishes in one transaction: one per distinct payload; identical topic-and-payload publishes collapse into one. | PostgreSQL delivers identical notifications of one transaction once. Publish a distinct payload (an id) when each event must be heard. | {verified: AppSignalTransactionalPublishTests.SeveralPublishesInOneTransaction_OnePerDistinctPayload_IdenticalOnesCollapseAsync} |
+| Inside a `TransactionScope`, heard only after the scope commits, never after a rollback, on EF Core and Dapper. | The same guarantee for code that composes its work with `System.Transactions`. | {verified: AppSignalTransactionalPublishTests.InsideATransactionScope_OnEFCore_IsHeardOnlyAfterCommitAsync, AppSignalTransactionalPublishTests.InsideARolledBackTransactionScope_OnEFCore_IsNeverHeardAsync, DapperAppSignalTransactionTests.InsideATransactionScope_IsHeardOnlyAfterCommitAsync, DapperAppSignalTransactionTests.InsideARolledBackTransactionScope_IsNeverHeardAsync} |
+| Inside a `TransactionScope` the signal goes out on a connection of its own after the commit, not on an enlisted one; a send that fails after the commit is logged. | A second connection enlisted in one scope makes the commit two-phase, which PostgreSQL refuses unless prepared transactions are enabled, and would fail your commit. Nobody awaits a send after the commit, so it is logged rather than lost silently. | {verified: AppSignalTransactionalPublishTests.AfterATransactionScopeCommits_AFailedSend_IsLoggedAndSettlesUndeliveredAsync, AppSignalTransactionalPublishTests.AfterATransactionScopeCommits_WithNoConnectionResolved_SettlesUndeliveredAsync} |
+| With no transaction, or from the root or a singleton, it is heard at once, even while a scope holds a transaction. | A singleton serves every scope, so it has no scope's transaction to join; guessing one would tie its signal to someone else's work. | {verified: AppSignalTransactionalPublishTests.InAScopeWithNoTransaction_IsHeardAtOnceAsync, AppSignalTransactionalPublishTests.FromTheRootOrASingleton_IsHeardAtOnce_WhileAScopeHoldsATransactionAsync, ScopeBoundAppSignalChannelTests.FromTheRoot_ThePublishCarriesNoTransaction_AndReadsNoScopedSourceAsync, ScopeBoundAppSignalChannelTests.ASingletonsChannel_IsTheRootsEvenWhenFirstResolvedInsideAScopeAsync, ScopeBoundAppSignalChannelTests.RepeatedResolutions_KeepTheSameRootDecisionAsync, ScopeBoundAppSignalChannelTests.InAScope_WithNoOpenTransaction_ThePublishCarriesNoneAsync, DapperAppSignalTransactionTests.WithNoTransaction_IsHeardAtOnceAsync} |
+| A transaction you begin on a Dapper connection of your own is not joined: the publish is sent at once. | The framework does not track your connection, so it cannot know the transaction exists. Use a `TransactionScope`, or publish after your commit, when the signal must follow it. | {verified: DapperAppSignalTransactionTests.InsideAConnectionsOwnTransaction_IsSentAtOnce_TheDocumentedBoundaryAsync} |
+| Another provider's transaction is treated as none; an Npgsql transaction that already finished fails the publish. | A publish must never escape silently out of the transaction the caller asked for. | {verified: AppSignalTransactionalPublishTests.AnotherProvidersTransaction_IsSentAtOnceAsync, AppSignalTransactionalPublishTests.AFinishedNpgsqlTransaction_FailsThePublish_RatherThanSendingOutsideItAsync} |
+| The driver registers a transaction source for every framework DbContext; the channel registration is idempotent. | No application wires the transaction in; a host that registers twice still has one channel. | {verified: EFCoreAppSignalTransactionSourceTests.Postgres_RegistersTheContextsTransactionSource_WithNoApplicationWiringAsync, EFCoreAppSignalTransactionSourceTests.Register_OneSourceForEveryContext_AndAContextOnceAsync, ScopeBoundAppSignalChannelTests.AddWhizbangAppSignalChannel_IsIdempotent_AndRequiresServicesAsync} |
+
+Subscriptions are not tied to a scope: they go to the bus, as before.
+{verified: ScopeBoundAppSignalChannelTests.Subscribe_GoesToTheBus_AndTopicsAreValidatedAsBeforeAsync}
+
+**An oversized payload fails your transaction.** PostgreSQL rejects a notification payload over 8000 bytes. Sent
+inside your transaction, that error is raised inside it, so the transaction fails rather than committing without its
+signal. Keep payloads small: pass an id and let subscribers fetch.
+
+:::updated{version="1.0.0" type="breaking"}
+**Changed** ([#2076](https://github.com/whizbang-lib/whizbang/issues/2076)): a publish inside a transaction is delivered
+on its commit; earlier releases sent it at once on a connection of their own, even if the transaction rolled back.
+
+- A custom `ISignalTopicTransport` implements `PublishTopicAsync(topic, payload, DbTransaction? transaction, ...)`.
+- Code that resolved `IAppSignalChannel` and expected the `SignalBus` instance now receives a per-scope channel over it.
+- A payload PostgreSQL rejects (over 8000 bytes) published inside your transaction now fails that transaction.
+:::
 
 ## Limitations
 
 - **At-most-once with bounded latency**: notifications are best-effort. If the listener is disconnected when the notify fires, the signal is lost. Use this for "wake up and check" semantics, not for durable pub/sub.
-- **No payload size enforcement** beyond postgres's 8 KB notify limit. Large payloads are an anti-pattern — pass an id and let subscribers fetch.
+- **No payload size enforcement** beyond postgres's 8 KB notify limit, which fails your transaction when the publish is made inside one. Large payloads are an anti-pattern — pass an id and let subscribers fetch.
 - **Single LISTEN connection per pod** (shared with internal listener). High-throughput app pub/sub may saturate this connection; for that, prefer a dedicated message bus (Service Bus, RabbitMQ).
 
 ## Without a notification connection {#noop-mode}
