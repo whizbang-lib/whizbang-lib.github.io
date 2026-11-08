@@ -22,6 +22,11 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/278_OneWriterOfTheInstancePhase.sql
   - src/Whizbang.Data.Postgres/Migrations/184_RoleAssignmentResilience.sql
   - src/Whizbang.Data.Postgres/Migrations/326_EveryDutyIsARoleAssignment.sql
+  - src/Whizbang.Data.Postgres/Migrations/355_RoleHoldersAreJudgedByTheLivenessRule.sql
+  - src/Whizbang.Core/Startup/RoleAssignmentOptions.cs
+  - src/Whizbang.Core/Workers/MaintenanceWorker.cs
+  - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Data.Postgres/TableMaintenanceSql.cs
   - src/Whizbang.Data.Postgres/AdvisoryLockProbe.cs
   - src/Whizbang.Data.Postgres/Schema/ManagedSchemaReconciler.cs
   - src/Whizbang.Data.Postgres/Migrations/108_InstanceCapabilities.sql
@@ -54,6 +59,10 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaInitializationConcurrencyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ManagedSchemaReconcilerPoolerTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/CoordinationSourceGuardTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleHolderLivenessE2ETests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleHolderLivenessSqlTests.cs
+  - tests/Whizbang.Core.Tests/Startup/DutyGrantContractTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperTableMaintenanceTests.cs
 ---
 
 # Capabilities and Duties
@@ -117,7 +126,7 @@ registration too.
 
 ## Winning a duty
 
-```csharp{title="The elector seam" description="Attempt acquisition: the vote grants, or refuses with a reason" category="Implementation" difficulty="INTERMEDIATE" tags=["Startup","Duties"] tests=["DutyElectionE2ETests.Contention_ExactlyOneWins_AndTheRowReportsTheLockHolderAsync","DutyElectionE2ETests.DirtyDeath_JudgedByTheLivenessRule_HandsTheDutyOver_AndTheGrantKnowsItIsLostAsync","StartupPipelineRunnerDutyTests.AwaitDutyStep_WhoseDutyIsNeverGrantable_FailsBoundedlyInsteadOfHangingAsync"]}
+```csharp{title="The elector seam" description="Attempt acquisition: the vote grants, or refuses with a reason" category="Implementation" difficulty="INTERMEDIATE" tags=["Startup","Duties"] tests=["DutyElectionE2ETests.Contention_ExactlyOneWins_AndTheRowReportsTheLockHolderAsync","DutyElectionE2ETests.DirtyDeath_JudgedByTheLivenessRule_HandsTheDutyOver_AndTheGrantKnowsItIsLostAsync","StartupPipelineRunnerDutyTests.AwaitDutyStep_WhoseDutyIsNeverGrantable_FailsBoundedlyInsteadOfHangingAsync","DutyGrantContractTests.LostToken_OfAGrantThatCannotObserveALoss_IsNeverCanceledAsync","RoleHolderLivenessE2ETests.TheOldHolder_ObservesItsLossWithinOneRenewInterval_SoExclusiveWorkNeverOverlapsAsync"]}
 public interface IDutyElector {
   // Grants, or refuses WITH A REASON — losing the race is the only refusal worth retrying,
   // and a caller that cannot tell the reasons apart retries the unretryable forever.
@@ -147,6 +156,11 @@ public interface IDutyGrant : IAsyncDisposable {
   Task<bool> VerifyStillHeldAsync(CancellationToken ct);
 
   long? Epoch => null;   // the fencing token exclusive writes present
+
+  // Canceled the moment the grant stops holding the duty: the elector observed the loss (a
+  // role-assignment grant checks once per renew interval), or the grant was released. Exclusive
+  // work links its token to this one. A grant that cannot observe a loss never cancels it.
+  CancellationToken LostToken => CancellationToken.None;
 }
 ```
 
@@ -200,7 +214,7 @@ Staying up is also the more informative outcome, and fail-closed is what makes i
 
 ## Every duty is a role assignment {#role-assignment-the-default}
 
-With the Postgres driver every duty is held by **role assignment**: `maintainer`, `migrator`, the commit-order stamper's leadership (`commit-stamper`), the partition assigner's, and any duty a host names for its own steps. There is no other way to hold a duty, and no setting that turns it off. The vote is a single statement, and its transaction-scoped lock only serializes votes for the same role; it is released when the statement commits. From then on the duty is a row in `wh_role_assignments` with a holder, an **epoch** and a **lease** in database time. The holder's own work loop renews the lease through `VerifyStillHeldAsync`, so a holder that is stuck, paused or partitioned stops renewing and loses the duty after one lease, and exclusive work presents `(holder, epoch)` to the database (`wh_assert_role_epoch`), so a holder that lost the duty cannot write. The grant carries the epoch as `IDutyGrant.Epoch`.
+With the Postgres driver every duty is held by **role assignment**: `maintainer`, `migrator`, the commit-order stamper's leadership (`commit-stamper`), the partition assigner's, and any duty a host names for its own steps. There is no other way to hold a duty, and no setting that turns it off. The vote is a single statement, and its transaction-scoped lock only serializes votes for the same role; it is released when the statement commits. From then on the duty is a row in `wh_role_assignments` with a holder, an **epoch** and a **lease** in database time. The holder's own work loop renews the lease through `VerifyStillHeldAsync`. Past its lease a holder is judged by [the one liveness rule](../../fundamentals/workers/instance-liveness#role-holders) plus a progress window: it keeps the duty while the rule calls it live and it renewed inside `RoleAssignmentOptions.ProgressWindow` (2 minutes by default), so a holder that is stuck stops renewing and loses the duty at the end of its window, and a holder the rule calls dead loses it once the rule says so. Each grant watches its assignment once per renew interval and cancels `IDutyGrant.LostToken` on a loss. Exclusive work presents `(holder, epoch)` to the database (`wh_assert_role_epoch`), so a holder that lost the duty cannot write. The grant carries the epoch as `IDutyGrant.Epoch`.
 
 `RoleAssignmentOptions.Roles` lists the duties the [holder loop](#the-holder-loop) holds and the `roles` health component reports. A duty not listed there is still held by assignment whenever something asks for it.
 
@@ -210,7 +224,9 @@ With the Postgres driver every duty is held by **role assignment**: `maintainer`
 |---|---|---|
 | Every duty, a host's own included, is voted in the role table. No duty is held by a session advisory lock (#2044). | One way to hold a duty means one place that says who holds it, one fence and one takeover rule. A session lock needs a pinned direct connection for the whole tenure, cannot be taken from a holder that is alive but stuck, and is lost on every database restart. | {verified: RoleAssignmentElectorE2ETests.EveryDuty_IsHeldByAssignment_EvenOneTheHolderLoopDoesNotHoldAsync, DutyElectionE2ETests.TwoPipelines_RaceADutyStep_ExactlyOneInstanceRunsItAsync, CoordinationSourceGuardTests.NoDuty_IsHeldByAnAdvisoryLockAnywhereAsync} |
 | Exclusive work presents `(holder, epoch)`, and a stale epoch is refused in SQL, in the writer's own transaction. | A holder that wakes after losing the duty cannot argue with a check the database runs. | {verified: RoleAssignmentSqlTests.AssertEpoch_WithAStaleEpoch_RaisesInSql_AndTheWriteBesideItRollsBackAsync, RoleAssignmentElectorE2ETests.StaleHolder_AfterLosingTheRole_FailsVerification_AndTheDatabaseRefusesItsWriteAsync} |
-| A holder that dies without releasing is replaced once its lease lapses or [the one liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule) has it reaped, about 30 seconds for a direct instance, not the moment its connection drops. | Nothing is held by a session, so there is nothing for the server to free. The rule is the one definition of dead every reader uses, and the lease bounds a holder that is alive but stuck. Earlier releases handed a host's own duty over the instant its session ended; a slower takeover is the cost of one mechanism with a fence. | {verified: DutyElectionE2ETests.DirtyDeath_JudgedByTheLivenessRule_HandsTheDutyOver_AndTheGrantKnowsItIsLostAsync, RoleAssignmentElectorE2ETests.CrashedHolder_VoidsAfterTheLapseBound_AndTheNextVoteTakesOverAsync, RoleAssignmentChaosTests.KillNine_TheHolderVanishes_AndTheNextHolderFinishesTheWorkOnceAsync} |
+| A holder that dies without releasing is replaced once [the one liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule) calls it dead, never before its lease and never after its progress window: about 30 seconds for a direct instance, not the moment its connection drops, and not at its 15 second lease (#2140). | Nothing is held by a session, so there is nothing for the server to free. The rule is the one definition of dead every reader uses; a lease of its own lapsed holders the rule called live, and a restart could bounce the duty. Earlier releases handed a host's own duty over the instant its session ended, and a lease-only holder at 15 seconds; a slower takeover is the cost of one mechanism with a fence, and the epoch still refuses a dead holder's writes. | {verified: DutyElectionE2ETests.DirtyDeath_JudgedByTheLivenessRule_HandsTheDutyOver_AndTheGrantKnowsItIsLostAsync, RoleAssignmentElectorE2ETests.CrashedHolder_VoidsAfterTheLapseBound_AndTheNextVoteTakesOverAsync, RoleAssignmentChaosTests.KillNine_TheHolderVanishes_AndTheNextHolderFinishesTheWorkOnceAsync, RoleHolderLivenessSqlTests.Vote_AHolderTheRuleCallsDead_LapsesAtItsLease_InsideItsWindowAsync} |
+| A live holder past its lease keeps the duty while it renews inside its progress window (`ProgressWindow`, 2 minutes by default; zero turns it off). | A holder busy with a slow startup or one long unit of work is live, and handing its duty to another instance mid-work is the bounce #2140 removed. Progress is counted from renewals, which only the work loop sends, so a holder that is connected but stuck still loses the duty; the cost is that it keeps the duty up to the window instead of 15 seconds. An older release declares no window and is judged by its lease, as before. | {verified: RoleHolderLivenessE2ETests.ARestartWithASlowStartup_KeepsOneHolder_AndTheHoldersLateVerifyRenewsItAsync, RoleHolderLivenessE2ETests.AConnectedButStuckHolder_LosesTheRoleAtItsProgressWindow_AndLearnsItWithinOneRenewIntervalAsync, RoleHolderLivenessSqlTests.Vote_AHolderThatDeclaredNoWindow_LapsesAtItsLease_AsBeforeAsync} |
+| Each grant reads its assignment once per renew interval (`wh_role_is_held`) and cancels `IDutyGrant.LostToken` on a loss, or after a whole lease without a confirmation. | A holder used to learn of a loss only on its next verify, minutes later inside a long unit of work, with two instances each believing it held the duty. The read writes nothing, so it never keeps a stuck holder. Exclusive work can overlap the next holder's for at most one renew interval plus its cancellation, and a database write in that window is still refused by the epoch. | {verified: RoleHolderLivenessE2ETests.TheOldHolder_ObservesItsLossWithinOneRenewInterval_SoExclusiveWorkNeverOverlapsAsync, RoleHolderLivenessE2ETests.AGrantWhoseWatchCannotConfirmTheRoleForALease_FencesItselfAsync, RoleHolderLivenessE2ETests.AReleasedGrant_EndsItsWatch_AndCancelsItsTokenAsync} |
 | A clean release hands the duty over at once and announces it as a `RoleReleasedSignal` on the [signal bus](../../fundamentals/signal-bus/signal-bus#coordination-signals) (channel `wh_role_released`, payload the role). | A release is not a health signal, so it carries no lapse wait and no cool-down. | {verified: RoleAssignmentElectorE2ETests.GracefulRelease_HandsOffAtOnce_WithNoLapseWaitAsync, RoleAssignmentSqlTests.Release_NotifiesWaiters_SoTheyReVoteAtOnceAsync} |
 | The release is a decision, so it is recorded durably with the role and replayed to an instance that missed the notification. | A waiter that missed it would otherwise vote only on its next renew interval; a release that rolls back announces nothing. | {verified: RoleAssignmentSqlTests.Release_IsRecordedDurably_SoAnInstanceThatMissedTheNotificationIsStillToldAsync, CoordinationSignalsSqlTests.TheTail_ReplaysAMissedDecision_WithItsPayloadAsync, CoordinationSignalsSqlTests.PublishSignal_InsideATransactionThatRollsBack_LeavesNoTraceAsync} |
 | The grant holds no connection. Each vote, renewal and release is one statement on any connection, a pooled one included. | A transaction pooler serves it, and a database restart does not cost the duty: the row survives, and the next renewal presents the same epoch. | {verified: RoleAssignmentElectorE2ETests.Assignment_SurvivesEveryConnectionBeingTerminated_WithTheSameEpochAsync, RoleAssignmentDatabaseRestartChaosTests.DatabaseRestart_TheAssignmentSurvives_AndTheHolderKeepsItsEpochAsync} |
@@ -219,6 +235,7 @@ With the Postgres driver every duty is held by **role assignment**: `maintainer`
 A few more behaviors to know:
 
 - **A newer release takes over cooperatively.** An instance on a newer library version asks an older holder to drain (`IDutyGrant.DrainRequested`); the holder finishes its current step and releases. A vacant duty goes to the newest version voting for it.
+- **A busy holder does not lose the duty.** Past its lease a holder the liveness rule calls live keeps the duty while it renews inside its progress window, so a slow startup or one long unit of work does not hand the duty away.
 - **One long statement does not lose the duty.** Each duty may declare its own lease, and a holder that marks the backend running its statement (`PgRoleElector.MarkDutyBackendAsync`) stays live while that statement runs.
 - **A database outage does not cool anyone down.** After an involuntary lapse an instance waits `CooldownAfterLapse` before winning the duty back, unless every holder lapsed together.
 
@@ -260,14 +277,14 @@ An instance never looks up whether it has been *assigned* a capability; it votes
 
 1. The holder holds the assignment and renews its lease from its work loop; its record names the capability.
 2. The holder releases cleanly, which vacates the row at once and announces it; or it dies, and stops renewing.
-3. After a death the row is stale until its lease lapses in database time or the liveness rule has the instance reaped.
+3. After a death the row is stale until the liveness rule calls the holder dead (no earlier than its lease, in database time, and no later than its progress window) or the reap removes the instance.
 4. Another instance votes: on a release announcement, on its next poll, or prompted by `InstanceDiedSignal`.
 5. The vote voids the lapsed or orphaned assignment and grants a new epoch. The new holder **is the holder from that instant**; the old epoch's writes are refused.
 6. Its record is written; the dead instance's rows are reaped and cascade away.
 
 No session or TCP timeout is involved at any step: a hard kill on a half-open connection is bounded by the lease and the rule, not by keepalive.
 
-For `Migrate`, waiters watch the migrator directly (`MigratorWatch`): its assignment row, and any holding recorded outside the table by a live migrator on an older release. A migrator that stops cleanly releases its duty, so a waiter that finds the schema current exits at once; a migrator that dies is noticed when its lease lapses (30 seconds by default, held open while its migration statement runs), and the schema lock still guarantees that only one instance applies DDL at a time. The duties that rely on signal-plus-poll re-attempt (`maintainer` among them) are precisely the ones for which tens of seconds is immaterial.
+For `Migrate`, waiters watch the migrator directly (`MigratorWatch`): its assignment row, and any holding recorded outside the table by a live migrator on an older release. A migrator that stops cleanly releases its duty, so a waiter that finds the schema current exits at once; a migrator that dies is noticed once the liveness rule calls it dead, no earlier than its lease (30 seconds by default, held open while its migration statement runs), and the schema lock still guarantees that only one instance applies DDL at a time. The duties that rely on signal-plus-poll re-attempt (`maintainer` among them) are precisely the ones for which tens of seconds is immaterial.
 {verified: MigratorWatchTests.AMigratorHoldingTheRole_IsMigrating_UntilItReleasesItAsync, MigratorWatchTests.AMigratorOnAnOlderRelease_IsSeenByItsRecordedHolding_WhileTheRuleCallsItLiveAsync, SchemaInitializationConcurrencyTests.Staged_AKilledDutyHolderIsTakenOverAsync}
 
 ## Acquiring a duty {#acquiring-a-duty}
@@ -276,7 +293,7 @@ Some work belongs to *winning* a duty rather than to holding it. An `IDutyAcquis
 
 The grant tells the handler where the role came from. `IDutyGrant.PreviousHolderInstanceId` is the instance that held the role before, when this grant took it over (a hand-off or a takeover after a lapse), and `null` for a first assignment. It is the last holder the role recorded, so after the whole fleet stops, the next cold start counts as a takeover from the last instance that held it.
 
-A handler runs on the holder loop, so it is bounded the same way owed work is: one that hangs stops the loop and the role lapses to another instance. A failure is logged with the handler and the role, and the role is kept. Handlers need the holder loop; a host without one holds no duty from the loop, and no handler runs. A role held only for its acquisition work is still woken at once when its holder releases it, like any other role (see [what starts a pass](#what-starts-a-pass)).
+A handler runs on the holder loop, so it is bounded the same way owed work is: one that hangs stops the loop, which stops renewing, and the role goes to another instance at the end of its progress window; the handler's token is linked to the grant's `LostToken`, so the loss cancels it. A failure is logged with the handler and the role, and the role is kept. Handlers need the holder loop; a host without one holds no duty from the loop, and no handler runs. A role held only for its acquisition work is still woken at once when its holder releases it, like any other role (see [what starts a pass](#what-starts-a-pass)).
 
 ### Vacuum on acquiring the maintainer duty {#vacuum-on-acquiring-the-maintainer-duty}
 
@@ -313,6 +330,15 @@ tags: ["maintenance", "vacuum", "maintainer-duty", "configuration"]
 ```
 
 Turn `MaintainOnReassignment` off when hand-offs are frequent and the maintenance cycle is enough between them.
+
+**A table vacuumed recently is left alone** ([#2140](https://github.com/whizbang-lib/whizbang/issues/2140)). An acquisition skips a work table the database records as vacuumed, manually or by autovacuum and by any instance, within `MaintenanceWorkerOptions.SkipAcquisitionVacuumWithin` (key `Whizbang:Workers:Maintenance:SkipAcquisitionVacuumWithin`, default 10 minutes; zero vacuums on every acquisition). The acquisition's log line counts the tables it vacuumed and the ones already vacuumed within the window, and a skipped table is not a warning: nothing was left undone.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The window is read from the database's own record (`pg_stat_user_tables.last_vacuum` and `last_autovacuum`), not from what this instance remembers. | A restart can move the duty more than once in a minute, and each acquisition vacuumed every work table again. The record is the fleet's memory, so a hand-off right after a takeover on another instance finds the tables just vacuumed. A statistics reset forgets the record, which errs toward vacuuming. | {verified: MaintainerAcquisitionVacuumTests.RepeatedQuickHandOffs_VacuumOnce_BecauseTheTablesWereJustVacuumedAsync, WorkTableVacuumTests.ATableVacuumedWithinTheWindow_IsLeftAlone_AndReportedAsRecentAsync, DapperTableMaintenanceTests.VacuumWorkTables_LeavesATableVacuumedWithinTheWindow_AndReportsItAsRecentAsync} |
+| An autovacuum inside the window counts. | It did the same work. **Cost:** a table that bloated again after a recent autovacuum waits for autovacuum or the maintenance cycle, which carry the tables between acquisitions anyway. | {verified: WorkTableVacuumOnAcquisitionTests.EveryAcquisition_AsksTheCoordinatorToSkipTablesVacuumedWithinTheWindowAsync, WorkTableVacuumOnAcquisitionTests.SkipAcquisitionVacuumWithin_DefaultsToTenMinutesAsync} |
+| A skipped table is reported as `WorkTableVacuum.RecentlyVacuumed`, not as a failure. | The non-owner warning above must stay a signal that work was left undone. | {verified: WorkTableVacuumOnAcquisitionTests.ATableVacuumedWithinTheWindow_IsCountedAsRecent_NotWarnedAboutAsync} |
+| The window is a new `IWorkCoordinator.VacuumWorkTablesAsync(TimeSpan, CancellationToken)` overload whose default member vacuums every table. | A host's own coordinator keeps compiling and keeps vacuuming every table, as before. | {verified: WorkTableVacuumOnAcquisitionTests.ACoordinatorWithoutTheWindow_VacuumsEveryTable_AsBeforeAsync} |
 
 ## The maintainer duty governs fleet-wide work {#the-maintainer-duty-governs-fleet-wide-work}
 
@@ -352,6 +378,11 @@ also wait for the service to be idle, under [housekeeping arbitration](../worker
 
 Under role assignment, `DutyHolderWorker` holds every duty this instance has work for: owed duty work (an `IDutyWorkHandler`), or [work that runs on acquiring the duty](#acquiring-a-duty). Each pass keeps every duty it holds by verifying it, which renews the lease, and votes in one call for every duty it does not hold. Then, for each duty it holds, it runs the acquisition work if this pass won the duty, then the owed work that is due, then a drain if a newer release asked for one.
 
+**A lost duty stops its work at once** ([#2140](https://github.com/whizbang-lib/whizbang/issues/2140)). A duty's acquisition and owed work run under a token linked to the grant's `IDutyGrant.LostToken`, which the grant cancels within one renew interval of a loss (see [the grant watch](../../../proposals/duty-role-assignment#grant-watch)). The loop then lets the duty go, logs it once as a warning, and votes again on its next pass. `Holds(duty)` answers false from the moment of the loss, without waiting for a pass, so a caller such as the [maintainer check](#the-maintainer-duty-governs-fleet-wide-work) stops at once. A host that is stopping is not mistaken for a loss: the duty is kept for the host's own release.
+{verified: DutyHolderWorkerTests.AGrantLostMidAcquisitionWork_CancelsThatWork_AndTheWorkerLetsTheRoleGoAsync, DutyHolderWorkerTests.AGrantLostMidOwedWork_CancelsThatWork_AndRunsNoMoreAsync, DutyHolderWorkerTests.Holds_TurnsFalseTheMomentTheGrantIsLost_WithoutWaitingForAPassAsync, DutyHolderWorkerTests.StoppingDuringWork_IsNotMistakenForALostGrant_AndKeepsTheRoleForTheHostsStopAsync}
+
+The trade-off: exclusive work may still run on two instances for up to one renew interval plus the time it takes to observe its cancellation. Work that writes to the database presents the epoch, so a write in that window is refused; work with effects outside the database should check its token between steps.
+
 ```mermaid{caption="One pass of the holder loop: keep what is held, vote for the rest, then run each held duty's work. A pass starts on the renew interval or at once on a release." tests=["DutyHolderWorkerTests.TheHostedLoop_PassesOnItsInterval_WakesOnARelease_AndReleasesOnStopAsync","DutyHolderWorkerTests.APass_VotesForEveryRoleItDoesNotHold_InOneCallAsync","DutyHolderWorkerTests.WinningTheRole_RunsTheAcquisitionHandlerOnce_WithTheGrantThatWonItAsync"]}
 graph TB
     Wait["Wait<br/>RenewInterval, or a wake"]
@@ -380,6 +411,7 @@ graph TB
 | The same release, for a duty held only for its acquisition work | A pass runs at once, as for any other duty | {verified: DutyHolderWorkerTests.TheHostedLoop_ARelease_OfARoleHeldOnlyForItsAcquisitionWork_WakesAPassAsync} |
 | A release of a duty this instance has no work for | Nothing; the duty is not this instance's to take | {verified: DutyHolderWorkerTests.TheHostedLoop_PassesOnItsInterval_WakesOnARelease_AndReleasesOnStopAsync} |
 | `DutyHolderWorker.Wake()` | A pass runs at once | {verified: DutyHolderWorkerTests.TheHostedLoop_PassesOnItsInterval_WakesOnARelease_AndReleasesOnStopAsync} |
+| The grant observes it was lost | No pass: the duty's running work is canceled and the duty is let go, and the next pass votes for it again | {verified: DutyHolderWorkerTests.AGrantLostMidOwedWork_CancelsThatWork_AndRunsNoMoreAsync} |
 | The host stops | Every held duty is released, which announces it to the rest of the fleet | {verified: DutyHolderWorkerTests.TheHostedLoop_PassesOnItsInterval_WakesOnARelease_AndReleasesOnStopAsync} |
 
 The loop hears a release through its subscription on the [signal bus](../../fundamentals/signal-bus/signal-bus#coordination-signals): `DutyHolderWorker` takes an `ISignalBus` where earlier releases took the shared notification connection, and owns no channel. The release arrives by the notification, or, if this instance missed it, by its durable-signal tail. Once the host stops, the loop has left the bus and a later release wakes nothing.

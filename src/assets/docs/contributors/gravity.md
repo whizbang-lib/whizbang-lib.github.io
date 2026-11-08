@@ -85,6 +85,7 @@ of these mechanisms appears outside an allowlist:
 | A coordination channel's name (`wh_committed`, `wh_role_released`, `wh_partition_assignment`, `wh_multi_stream_work`) | C# under `src` | The typed coordination signal; only the bus's wire, `PgSignalWire.cs`, names the channel |
 | An advisory lock (any `pg_advisory_*` call in C#; a session lock in SQL) | The same | A role assignment with a lease and an epoch |
 | A liveness check (a comparison against `last_heartbeat_at` or `LastHeartbeatAt`, `is_instance_alive`, `pg_stat_activity`, `pg_locks`) | The same | The one liveness rule |
+| A lease verdict in SQL (a comparison against `lease_expires_at`, or `lease_expires_at IS NULL`); reporting the time left on a lease is not one ([#2140](https://github.com/whizbang-lib/whizbang/issues/2140)) | Each SQL function's latest definition | The role's lease, and past it the one liveness rule through `_role_holder_kept_live`; only `_role_lapse_reason` and the fence `wh_assert_role_epoch` decide on a role's lease ([role holders](/v1.0.0/fundamentals/workers/instance-liveness#role-holders)) {verified: CoordinationSourceGuardTests.SqlLeaseVerdicts_AppearOnlyInTheAllowlistedFunctionsAsync, CoordinationSourceGuardTests.ARoleHolder_IsJudgedPastItsLeaseByTheOneLivenessRuleAsync} |
 
 The C# scan reads every source file under `src` with its comments removed. The SQL scan reads the migration corpus and
 judges only each function's **last** definition, the one a database runs, also without comments, so a history of old
