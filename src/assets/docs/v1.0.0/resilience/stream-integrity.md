@@ -668,6 +668,13 @@ sequenceDiagram
 - **An answer applies only to the window awaiting it.** A late answer to an earlier window, or a duplicate, changes
   nothing and counts nothing, so a retried window can never move the position twice.
   {verified: SubscriptionBackfillStoreTests.RecordAnswer_LateDuplicateOrForAnotherWindow_ChangesNothingAsync, BackfillWindowAnswerReceptorTests.AnAnswerThatAppliesToNothing_CountsNothingAsync, BackfillWindowAnswerReceptorTests.FinalAnswer_EndsTheBackfill_AndCountsItCompleteAsync}
+- **A window is recorded as requested before it is sent.** An answer applies only to a window already recorded as
+  waiting, and an owner can answer before the requester's publish returns, on a fast transport or when the requester
+  is busy. Recording after the send dropped that answer as late, and the window then cost a timeout and an attempt.
+  A send that fails withdraws the record, putting the row back as it was asked from, so a broker failure still costs
+  no attempt. The withdraw applies only while that request is still the latest and still waiting: an answer that
+  landed meanwhile, a later request or an ended backfill stands.
+  {verified: SubscriptionBackfillWorkerTests.Tick_RecordsTheWindowAsRequested_BeforeItLeaves_SoAnAnswerThatOutrunsThePublishFindsItAsync, PacedBackfillEndToEndTests.AnAnswerThatLandsBeforeThePublishReturns_IsApplied_AndTheBackfillCompletesAsync, SubscriptionBackfillStoreTests.Withdraw_PutsANewWindowThatNeverLeftBack_AsTheAnsweredStateItWasAskedFromAsync, SubscriptionBackfillStoreTests.Withdraw_PutsAReAskThatNeverLeftBack_AsTheUnansweredStateItWasAskedFromAsync, SubscriptionBackfillStoreTests.Withdraw_AfterAnAnswerLandedMeanwhile_LeavesTheAnswerAsItAppliedAsync, SubscriptionBackfillStoreTests.Withdraw_AfterALaterRequestFollowed_LeavesTheLaterRequestAsync}
 - **A token bucket paces events, not windows.** Every window spends its full `BackfillWindowSize` from a bucket that
   refills at `BackfillEventsPerMinute` and holds at most one minute's worth, or one window when a window is larger, so
   the rate bounds the events asked for whatever the window size, and a window larger than a minute's rate can still be
