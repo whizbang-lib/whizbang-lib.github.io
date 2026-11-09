@@ -818,6 +818,8 @@ than a pattern silently disappearing.
 
 ### Excluded Event Types {#excluded-event-types}
 
+**Performance:** Azure Service Bus evaluates a SQL filter rule more slowly than the default match-all rule, so a subscription with a non-empty opt-out list has a somewhat lower maximum throughput at the broker. Only subscriptions with a list pay it, and it is small next to the delivery, storage and purge work the excluded events no longer cost. A subscription with an empty list keeps `$Default` and pays nothing.
+
 A service can name event types it does not want in an opt-out list
 (`RoutingOptions.ExcludeEventType<TEvent>()` or `Whizbang:Routing:ExcludedEventTypes`; see
 [excluded event types](../../fundamentals/dispatcher/routing#excluded-event-types) for the API, the
