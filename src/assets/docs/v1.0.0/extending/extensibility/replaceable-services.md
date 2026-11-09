@@ -42,7 +42,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRunnerRegistryContributionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/MultiAssemblyPerspectiveRunnerRegistryTests.cs
   - tests/Whizbang.Core.Tests/RegistrationCollisionsTests.cs
-  - tests/Whizbang.Core.Tests/RegistrationCollisionStartupValidatorTests.cs
+  - tests/Whizbang.Core.Component.Tests/RegistrationCollisionStartupValidatorTests.cs
   - tests/Whizbang.Core.Tests/Messaging/ReceptorRegistryContributionTests.cs
   - tests/Whizbang.Core.Tests/PinnedIdRegistryContributionTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveInvokerContributionTests.cs
