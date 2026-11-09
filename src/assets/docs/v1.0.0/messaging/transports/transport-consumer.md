@@ -272,7 +272,8 @@ are written) but settled: processed at arrival, with status Stored and Published
 `discarded on receive: <reason>` in `wh_inbox_state.error` (migration 242). A settled row is never
 claimed, copied into the event store or dispatched, so it rings no doorbell, pins no stream and is never
 returned as new work. It stays readable until maintenance purges completed inbox rows, or, in debug mode,
-until an operator removes it. Each skip is counted by `whizbang.transport.inbox.messages_discarded`,
+until an operator removes it. That purge is the only thing that removes a settled row, and it takes at most a batch
+per maintenance cycle ([the completed-inbox purge is bounded](../../operations/infrastructure/maintenance#completed-inbox-purge-is-bounded)). Each skip is counted by `whizbang.transport.inbox.messages_discarded`,
 tagged `reason` and `message_type` (see [metrics](../../operations/observability/metrics#transport)).
 
 Since migration 368 the settled row keeps no body: its envelope (`event_data`) and metadata are stored as
