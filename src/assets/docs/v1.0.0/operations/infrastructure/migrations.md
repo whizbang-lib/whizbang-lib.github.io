@@ -60,6 +60,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/CatalogCheckedDdl.cs
   - src/Whizbang.Data.Postgres/MigrationDeadlockRetry.cs
   - src/Whizbang.Data.Postgres/ConcurrentIndexBuild.cs
+  - src/Whizbang.Data.Postgres/Migrations/371_RepairAnswersAreCapped.sql
   - src/Whizbang.Data.EFCore.Postgres/FrameworkIndexBuildMaintenanceStep.cs
   - src/Whizbang.Data.Postgres/Migrations/334_PacedSubscriptionBackfill.sql
 testReferences:
@@ -113,6 +114,7 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSchemaAgainstRunningWorkersTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ConcurrentIndexBuildTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PacedBackfillIndexTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAnswerPendingCountSqlTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -952,8 +954,17 @@ holds a lock that blocks every write to the table until the build commits. On a 
 but it cannot run inside a transaction at all. So a framework index on such a table is never created by a migration.
 It is declared in `ConcurrentIndexBuild.FrameworkIndexes` and built after the migrations by the `framework-index-build`
 [maintenance step](../../fundamentals/workers/maintenance-steps#framework-index-build), which the EF Core Postgres
-driver registers. The first is `idx_event_store_type_commit_sequence`, which the
-[paced subscription backfill](../../resilience/stream-integrity#paced-backfill-index) reads one type's history through.
+driver registers. There are two:
+
+| Index | Table | What reads it |
+| --- | --- | --- |
+| `idx_event_store_type_commit_sequence` | `wh_event_store` | The [paced subscription backfill](../../resilience/stream-integrity#paced-backfill-index), reading one type's history in commit order |
+| `idx_integrity_ledger_answer_pending` | `wh_integrity_ledger` | The paced repair drain's count of the [repair answers it is waiting for](../../resilience/stream-integrity#outstanding-repair-answers-are-capped), on every tick it has tokens to spend |
+
+The ledger is far smaller than the event store, but the drain's claims and the comparisons write to it continuously,
+so its index is kept out of the migration (371) for the same reason: a build inside the migration's transaction would
+hold every one of those writes until it committed.
+{verified: IntegrityAnswerPendingCountSqlTests.Count_OnceTheIndexIsBuilt_IsAnsweredFromItAsync}
 
 | What the step finds | What it does |
 | --- | --- |
@@ -992,10 +1003,10 @@ The log lines name the index and schema: `built concurrently` (Information), `dr
 interrupted concurrent build` (Information), `an index build is in progress on its table; this run steps aside`
 (Debug), and `could not be built concurrently` (Warning). To check one by hand:
 
-```sql{title="Is the backfill index built and valid?" category="Operations" difficulty="BEGINNER"}
+```sql{title="Are the framework indexes built and valid?" category="Operations" difficulty="BEGINNER"}
 SELECT c.relname, i.indisvalid
 FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
-WHERE c.relname = 'idx_event_store_type_commit_sequence';
+WHERE c.relname IN ('idx_event_store_type_commit_sequence', 'idx_integrity_ledger_answer_pending');
 ```
 
 ## The stored-form rewrite

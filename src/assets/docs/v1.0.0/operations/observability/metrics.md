@@ -952,6 +952,7 @@ Meter name: `Whizbang.StreamIntegrity` (`StreamIntegrityMetrics`)
 | `whizbang.stream_integrity.redelivery_answers_capped` | Counter\<long\> | Redelivery answers an origin stopped at its event bound with more selected; tagged by `kind` (window \| ordinary) |
 | `whizbang.stream_integrity.digest_buckets_verified` | Counter\<long\> | Settled digest buckets checked by the trust-but-verify sweep |
 | `whizbang.stream_integrity.digest_drift_healed` | Counter\<long\> | Digest buckets the sweep healed; tagged by `kind` (updated \| removed \| added) |
+| `whizbang.stream_integrity.repair_drain_holds` | Counter\<long\> | Times the paced repair drain stopped claiming because `MaxOutstandingRepairAnswers` buckets awaited their answer; counted once per hold, not per tick ([outstanding repair answers are capped](../../resilience/stream-integrity#outstanding-repair-answers-are-capped)) |
 | `whizbang.stream_integrity.redelivery_requests_received` | Counter\<long\> | Re-delivery requests served as an origin (repair + backfill flows) |
 
 ## Whizbang.Capabilities {#capabilities}

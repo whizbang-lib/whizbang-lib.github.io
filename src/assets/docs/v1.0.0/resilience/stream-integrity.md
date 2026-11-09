@@ -99,6 +99,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/348_IdleLedgerRecheck.sql
   - src/Whizbang.Data.Postgres/Migrations/357_AnAnswerMarksOnlyWhatItCovered.sql
   - src/Whizbang.Data.Postgres/Migrations/370_LedgerForgetsANonOwnersRows.sql
+  - src/Whizbang.Data.Postgres/Migrations/371_RepairAnswersAreCapped.sql
+  - src/Whizbang.Data.Postgres/Migrations/372_LedgerAgesOutUnownedTypes.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileCoordinatorTests.cs
@@ -174,6 +176,10 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsCoverageTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerIntegrityGaugeTests.cs
   - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerBranchCoverageTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAnswerPendingCountSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerUnownedAgeOutSqlTests.cs
+  - tests/Whizbang.Core.Component.Tests/Messaging/IntegrityOwnershipRuleSourceGuardTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorDefaultsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/ConsumedMessageTypesTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerForgetUnconsumedSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerForgetNonOwnerSqlTests.cs
@@ -1532,6 +1538,10 @@ per second, 10,000 rows is a little over half an hour of dispatch. The admission
 `AutoRepairCapped` with the drain on: at `ReportOnly` the drain sends nothing, and the burst path keeps
 its own cap.
 
+These caps bound what is **queued**. What the drain is **waiting for** has its own cap: the drain claims nothing while
+`MaxOutstandingRepairAnswers` (default 500) requested buckets await their answer, because answers can land hours after
+their requests. See [outstanding repair answers are capped](#outstanding-repair-answers-are-capped).
+
 :::updated
 **Before this was fixed ([#1792](https://github.com/whizbang-lib/whizbang/issues/1792)),** the cap was
 consulted only on the burst path. With the drain on, a comparison wrote every deficit bucket of every
@@ -2088,6 +2098,78 @@ of the group's windows, which re-shipped every stream over the widest range any 
 comparison stamped share their window, so the change costs few extra requests. A row recorded before
 windows were (a null window) asks for the stream's whole history on its own, without widening its
 windowed neighbors.
+
+### Outstanding repair answers are capped {#outstanding-repair-answers-are-capped}
+
+{verified: RepairDrainWorkerTests.DrainTick_AtTheOutstandingAnswerCap_ClaimsNothing_AndSaysSoOnceAsync, RepairDrainWorkerTests.DrainTick_UnderTheCap_ClaimsNoMoreThanTheRoomLeftAsync, RepairDrainWorkerTests.DrainTick_WhenThePendingCountFallsUnderTheCap_ResumesAndSaysSoOnceAsync, RepairDrainWorkerTests.DrainTick_WithTheCapOff_NeverCountsTheAnswersAsync, RepairDrainWorkerTests.DrainTick_AtTheCap_OnAHostWithoutMetrics_StillHoldsAsync, RepairDrainWorkerTests.Options_MaxOutstandingRepairAnswers_DefaultsTo500Async, IntegrityAnswerPendingCountSqlTests.Count_TheBucketsAwaitingAnAnswer_AtTheDrainsInstantAsync, IntegrityAnswerPendingCountSqlTests.Count_ReadsNoFurtherThanTheCapAsync, IntegrityAnswerPendingCountSqlTests.Count_OnceTheIndexIsBuilt_IsAnsweredFromItAsync, StreamIntegrityOptionsValidatorTests.Validate_ANegativeOutstandingAnswerCap_FailsNamingTheKeyAsync}
+
+`RepairDrainRatePerSecond` paces the **requests**. It does not pace the **answers**: a redelivery bundle can land up to
+`RepairAnswerTimeoutMinutes` (three hours by default) after its request, because it waits in the origin's idle-gated
+integrity queue and then in this service's inbox. Answers to requests sent over hours can therefore arrive together,
+and every one of them is written into this service's store. At the default 5 rows a second, three hours of requests is
+54,000 buckets whose answers could land at once, however slowly they were asked for.
+
+So the drain also bounds what it is waiting for. Before each claim it counts the ledger buckets whose answer is on its
+way (a request left, and neither the answer landed nor the timeout passed: the same rows `repair_answer_pending_buckets`
+reports), and:
+
+- **at the cap**, it claims nothing this tick and sends nothing;
+- **under the cap**, it claims at most the room left (`MaxOutstandingRepairAnswers` minus the count), and never more
+  than its tokens and `RepairDrainBatchSize` already allow;
+- **with the cap off** (`MaxOutstandingRepairAnswers = 0`), it does not count at all, and runs as before.
+
+```mermaid {caption="One drain tick with the outstanding-answer cap: the count is read only up to the cap, a full cap claims nothing, and otherwise the claim is bounded by the room left" tests=["RepairDrainWorkerTests.DrainTick_AtTheOutstandingAnswerCap_ClaimsNothing_AndSaysSoOnceAsync","RepairDrainWorkerTests.DrainTick_UnderTheCap_ClaimsNoMoreThanTheRoomLeftAsync","RepairDrainWorkerTests.DrainTick_WhenThePendingCountFallsUnderTheCap_ResumesAndSaysSoOnceAsync","RepairDrainWorkerTests.DrainTick_WithTheCapOff_NeverCountsTheAnswersAsync"]}
+flowchart TD
+  T[Drain tick with at least one token] --> O{MaxOutstandingRepairAnswers<br/>is 0?}
+  O -- yes --> C[Claim up to tokens and batch size]
+  O -- no --> N[Count buckets awaiting an answer,<br/>reading no further than the cap]
+  N --> F{Count at the cap?}
+  F -- yes --> H[Claim nothing<br/>first held tick: Warning + repair_drain_holds]
+  F -- no --> R[Claim up to the room left<br/>first tick after a hold: Information]
+  R --> C
+```
+
+**The default is 500.** At the default rate, 500 answers is 100 seconds of requests. A drain whose answers land within
+that never meets the cap and runs at `RepairDrainRatePerSecond`. When answers lag, the drain is paced to the rate they
+land at instead, and the load late answers put on the store is bounded by the cap, not by how long they lagged. The cap
+counts **every origin**, because every answer lands in this service's store, whoever sent it.
+
+**A hold is visible once, not every second.** The tick that first finds the cap reached logs a Warning naming the count
+and the cap and adds one to `whizbang.stream_integrity.repair_drain_holds`; the ticks after it stay silent while the
+hold lasts. The first tick that finds the count back under the cap logs an Information line saying the drain resumed. A
+rising `repair_drain_holds` means answers lag their requests; read it alongside `repair_answer_pending_buckets`, which
+sits at the cap during a hold.
+
+**The count is bounded and indexed.** `wh_integrity_count_answer_pending` (migration 371) reads no further than the cap,
+because the drain only needs to know whether the cap is reached. It is answered from the partial index
+`idx_integrity_ledger_answer_pending` (`answer_pending_until`, only rows with a request out). That index is not created
+by the migration: it is one of the framework indexes [built concurrently after the migrations](../operations/infrastructure/migrations#indexes-built-after-the-migrations),
+so no write to the ledger waits on the build. Until it is built, the bounded count reads the ledger, which
+`MaxRepairDrainBacklog` and the admission rule keep small.
+
+**A count that cannot be read claims nothing.** The count is not best-effort: when it fails, the tick fails, is logged,
+and claims nothing; the next tick tries again. The cap never opens because the store could not say how many answers are
+out.
+
+`MaxOutstandingRepairAnswers` must not be negative; host start fails otherwise, naming the key. Zero is allowed and
+turns the cap off.
+
+#### Design choices {#outstanding-repair-answers-design-choices}
+
+Each choice below is locked by the test beside it, which fails if the behavior flips.
+
+| Choice | Why | Verified |
+|---|---|---|
+| Cap the answers awaited, not only the request rate | Answers land up to the answer timeout after their requests, so the rate alone does not bound what arrives together | {verified: RepairDrainWorkerTests.DrainTick_AtTheOutstandingAnswerCap_ClaimsNothing_AndSaysSoOnceAsync} |
+| Under the cap, claim at most the room left | A tick with a full token bucket could otherwise overshoot the cap by a whole batch | {verified: RepairDrainWorkerTests.DrainTick_UnderTheCap_ClaimsNoMoreThanTheRoomLeftAsync} |
+| Default 500, which is 100 seconds of requests at the default rate | A drain whose answers keep up never notices the cap; only lagging answers hold it | {verified: RepairDrainWorkerTests.Options_MaxOutstandingRepairAnswers_DefaultsTo500Async} |
+| 0 turns the cap off and skips the count | An operator who wants the old behavior pays no read for it | {verified: RepairDrainWorkerTests.DrainTick_WithTheCapOff_NeverCountsTheAnswersAsync, StreamIntegrityOptionsValidatorTests.Validate_AnOutstandingAnswerCapOfZeroOrMore_SucceedsAsync} |
+| A negative cap fails host start | A negative value has no meaning, and silently treating it as off would hide a typo | {verified: StreamIntegrityOptionsValidatorTests.Validate_ANegativeOutstandingAnswerCap_FailsNamingTheKeyAsync} |
+| One Warning and one count per hold, one Information when it ends | A hold lasts many one-second ticks; a line per tick would bury the signal | {verified: RepairDrainWorkerTests.DrainTick_AtTheOutstandingAnswerCap_ClaimsNothing_AndSaysSoOnceAsync, RepairDrainWorkerTests.DrainTick_WhenThePendingCountFallsUnderTheCap_ResumesAndSaysSoOnceAsync} |
+| The hold does not depend on metrics | A host without the integrity meter still must not over-claim | {verified: RepairDrainWorkerTests.DrainTick_AtTheCap_OnAHostWithoutMetrics_StillHoldsAsync} |
+| The count reads no further than the cap | The drain asks every tick it has tokens; a full count would grow with the ledger | {verified: IntegrityAnswerPendingCountSqlTests.Count_ReadsNoFurtherThanTheCapAsync} |
+| Its index is built concurrently after the migrations | A `CREATE INDEX` in a migration would block every ledger write until it committed | {verified: IntegrityAnswerPendingCountSqlTests.Count_OnceTheIndexIsBuilt_IsAnsweredFromItAsync} |
+| An engine with no ledger counts nothing | Nothing awaits an answer where nothing is requested | {verified: WorkCoordinatorDefaultsTests.IntegrityCountAnswerPendingAsync_WithoutProviderSupport_CountsNothingAsync} |
 
 ### What resets the repair ladder {#what-resets-the-repair-ladder}
 
@@ -3107,9 +3189,11 @@ The map is used for three things:
 
 1. **Re-attribution** of the store's own pre-origin history to its author (see [re-attribution](#re-attribution)).
 2. **Directing repair and backfill at the owner.** A consumer neither verifies a checkpoint bucket nor
-   compares a manifest digest against an origin when another service owns the type: an older origin still
-   advertising a type it received is not authoritative for it, and asking it for repair would only ship
-   events every receiver refuses. A pending gap recorded before the owner was known is dropped once it is.
+   compares a manifest digest against an origin that does not own the type (another service owns it, or this
+   service does): an older origin still advertising a type it received is not authoritative for it, and asking
+   it for repair would only ship events every receiver refuses. A pending gap recorded before the owner was known
+   is dropped once it is. Every one of these paths asks the same rule,
+   [`IsNotAuthoritative`](#one-ownership-judgment).
 3. **Answering redelivery only for owned domains**, on the answering side, from the service's own
    declaration.
 
@@ -3349,8 +3433,10 @@ service also owns**: two services claiming one domain is a contest the checkpoin
 **The sweep.** Each audit cycle, after [rows outside the surface are forgotten](#rows-outside-the-surface-are-forgotten),
 the integrity audit:
 
-1. lists the distinct (origin, type) pairs the ledger holds (`wh_integrity_ledger_origin_types`, migration 370);
-2. judges each pair once with `IsNotAuthoritative`, using the domain claims and this service's own owned domains;
+1. lists the distinct (origin, type) pairs the ledger holds, each with its origin's last report
+   (`wh_integrity_ledger_origin_types`, migration 370, given the last report by 372);
+2. judges each pair once with `IsNotAuthoritative`, using the domain claims and this service's own owned domains,
+   and ages out the pairs of [a type no service owns](#a-type-no-service-owns) whose origin has fallen silent;
 3. forgets every row of the judged pairs, in every tenant and stream (`wh_integrity_forget_origin_types`), and logs
    the count at Information.
 
@@ -3359,8 +3445,9 @@ disagree with the comparison. The second statement is skipped when nothing is ju
 cannot reach the ledger it logs a Warning, forgets nothing, and the next cycle tries again. A store with no ledger
 forgets nothing.
 
-**The comparison follows the same rule.** A manifest's digests that are not authoritative under `IsNotAuthoritative`
-are not compared, so an origin that has not upgraded cannot re-create a row the sweep forgot.
+**The comparisons follow the same rule.** A manifest's digests that are not authoritative under `IsNotAuthoritative`
+are not compared, and neither are the checkpoint buckets the gap tracker would count, so an origin that has not
+upgraded cannot re-create a row the sweep forgot. See [one ownership judgment](#one-ownership-judgment).
 
 **After upgrading.** Migration 370 adds the two functions and changes no data. The rows already on a ledger are
 forgotten on the first audit cycle after the upgrade, so no one-time data step is needed, and nothing is configured.
@@ -3379,6 +3466,81 @@ Each choice below is locked by the test beside it, which fails if the behavior f
 | Ownership is judged in application code; the SQL only lists pairs and deletes the judged ones | One helper decides for the sweep and the comparison, so they cannot disagree and the SQL does not restate the nested-domain rule | {verified: IntegrityLedgerForgetNonOwnerSqlTests.Forget_WhenNothingIsJudged_RemovesNothingAsync, IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_LedgerRowsOfAnOriginThatDoesNotOwnTheType_AreForgottenAsync} |
 | A sweep every audit cycle, no one-time data step | Existing rows go on the first cycle after upgrade, and any row an older origin leaves later goes on the next | {verified: IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_LedgerRowsOfAnOriginThatDoesNotOwnTheType_AreForgottenAsync} |
 | A failed sweep forgets nothing and does not throw | The audit cycle keeps running; the next cycle sweeps | {verified: IntegrityLedgerForgetNonOwnerSqlTests.Forget_WithTheFunctionsUnavailable_ForgetsNothing_AndDoesNotThrowAsync, IntegrityLedgerForgetNonOwnerSqlTests.Forget_ACanceledCall_IsCanceled_NotSwallowedAsync} |
+
+#### A type no service owns {#a-type-no-service-owns}
+{verified: IntegrityDomainOwnershipTests.HasNoOwner_ATypeNoClaimAndNoOwnDomainContains_HasNoOwnerAsync, IntegrityDomainOwnershipTests.HasNoOwner_WithoutTheLocalDomains_ThrowsAsync, IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_UnownedTypeRowsOfAnOriginSilentPastTheThreshold_AreForgottenAsync, IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_UnownedTypeRowsOfThisServicesOwnDomain_AreForgottenWhateverTheOriginsSilenceAsync, IntegrityLedgerUnownedAgeOutSqlTests.Read_ReportsEachPairsOriginLastReport_TheLaterOfItsCheckpointAndItsRowsAsync, IntegrityLedgerUnownedAgeOutSqlTests.Forget_ThePairsTheJudgeAgesOut_GoesWithTheOthersInOneSweepAsync, StreamIntegrityOptionsValidatorTests.UnownedTypeOriginSilence_DefaultsToSevenDaysAsync, StreamIntegrityOptionsValidatorTests.Validate_AnUnownedTypeSilenceBelowOneDay_FailsNamingTheKeyAsync}
+
+The sweep above forgets rows whose origin is **not** the owner. A third case is a type with **no** owner: no claim in
+the ownership map contains it (or the most specific one is contested), and it is outside this service's own owned
+domains (`IntegrityDomainOwnership.HasNoOwner`). Such a type is compared against the origin that reports it, taking
+that origin at its word, so while the origin keeps reporting, its next comparison heals or refreshes the row.
+
+**Why those rows could stay for good.** Once that origin stops reporting (it was retired, renamed, or moved its events
+to another service), nothing compares the row again, and there is no owner to repair it. The row holds
+`whizbang.stream_integrity.unhealed_buckets` up exactly like a non-owner's row.
+
+**The rule.** In the same sweep, the audit also forgets every row of an (origin, type) pair when the type has no owner
+**and** the origin's last report is older than `Whizbang:StreamIntegrity:UnownedTypeOriginSilenceDays` (default
+**7**). The origin's last report is the later of:
+
+- its last checkpoint (`wh_integrity_known_origins.last_checkpoint_at`), the origin's liveness clock; and
+- the pair's own last report on the ledger (`last_reported_at`, or `first_seen_at` for a row never reported again),
+  which covers an origin whose last checkpoint was never recorded.
+
+`last_touched` is deliberately not used: the drain's claims and pending marks move it while the origin says nothing.
+
+Migration 372 re-creates `wh_integrity_ledger_origin_types` with this third column, so the audit still reads the
+ledger's pairs once and judges each once, in application code, and hands every judged pair, non-owner or silent, to
+the same `wh_integrity_forget_origin_types` call. The Information line the sweep logs names the silence threshold.
+
+**Why seven days.** A week outlasts a weekend outage or a paused deployment, so an origin that is only down for a while
+keeps its rows. An origin that comes back after the rows are forgotten loses nothing: its next audit finds the
+divergence again and records it afresh. The threshold must be at least one day; host start fails otherwise, naming the
+key, because below a day an origin between two checkpoints could read as silent.
+
+Rows filed under an origin that does not own the type are forgotten at once, whatever the threshold says. A type in
+this service's own owned domains is never "no one's": a row for it under another origin goes at once, as above.
+
+##### Design choices {#a-type-no-service-owns-design-choices}
+
+| Choice | Why | Verified |
+|---|---|---|
+| A type no service owns is forgotten only after its origin is silent | While the origin reports, its comparison heals or refreshes the row, and no owner exists to judge it otherwise | {verified: IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_UnownedTypeRowsOfAnOriginSilentPastTheThreshold_AreForgottenAsync} |
+| "No owner" means no claim **and** outside this service's own domains | A service's own types are judged by `IsNotAuthoritative` and go at once, whatever the silence | {verified: IntegrityDomainOwnershipTests.HasNoOwner_ATypeNoClaimAndNoOwnDomainContains_HasNoOwnerAsync, IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_UnownedTypeRowsOfThisServicesOwnDomain_AreForgottenWhateverTheOriginsSilenceAsync} |
+| Silence is the later of the last checkpoint and the row's last report | The checkpoint is the liveness clock; the row's report covers an origin whose checkpoint was never kept; `last_touched` moves without the origin | {verified: IntegrityLedgerUnownedAgeOutSqlTests.Read_ReportsEachPairsOriginLastReport_TheLaterOfItsCheckpointAndItsRowsAsync} |
+| Folded into the non-owner sweep, one read and one delete | Ownership stays judged in one place in application code, and the ledger is read once per cycle | {verified: IntegrityLedgerUnownedAgeOutSqlTests.Forget_ThePairsTheJudgeAgesOut_GoesWithTheOthersInOneSweepAsync} |
+| Default 7 days, at least 1 | Outlasts a weekend outage; below a day an origin between checkpoints would read as silent | {verified: StreamIntegrityOptionsValidatorTests.UnownedTypeOriginSilence_DefaultsToSevenDaysAsync, StreamIntegrityOptionsValidatorTests.Validate_AnUnownedTypeSilenceBelowOneDay_FailsNamingTheKeyAsync} |
+
+#### One ownership judgment {#one-ownership-judgment}
+{verified: IntegrityOwnershipRuleSourceGuardTests.ComparisonPaths_JudgeOwnershipOnlyThroughTheSharedRuleAsync, IntegrityOwnershipRuleSourceGuardTests.TheMapOnlyCheck_IsUsedNowhereAsync, IntegrityOwnershipRuleSourceGuardTests.EverySiteThatBuildsTheMap_IsClassifiedAsync, IntegrityOwnershipRuleSourceGuardTests.OnlyAttributionSites_ReadTheOwnerDirectlyAsync, IntegrityCheckpointReceptorTests.Checkpoint_ABucketOfATypeThisServiceOwns_IsNotVerifiedAgainstAnotherOriginAsync, IntegrityCheckpointReceptorTests.Checkpoint_APendingGapOfATypeThisServiceOwns_IsDroppedAsync, IntegrityManifestReceptorTests.ManifestReceptor_DigestsOfATypeThisServiceOwns_AreNotComparedAsync}
+
+Whether an origin's count of a type stands is decided in exactly one place, `IntegrityDomainOwnership.IsNotAuthoritative`.
+Three paths ask it, and none judges ownership any other way:
+
+| Path | What a non-authoritative origin means there |
+| --- | --- |
+| The checkpoint gap tracker | Its checkpoint buckets for the type are not verified, and a pending gap of the type recorded under it is dropped |
+| The manifest comparison | Its digests for the type are not compared, so no ledger row is written for them |
+| The ledger sweep | Its ledger rows for the type are forgotten |
+
+Before this, the gap tracker used an older, map-only check that knew nothing of this service's own owned domains. A
+checkpoint from an older origin that still counted a type this service owns was verified against that origin, so the
+gap tracker could report and request repair for a gap the manifest comparison already ignored. Now all three paths
+agree for every type.
+
+A source guard reads the integrity engine's source and fails when a comparison path judges ownership another way: when
+it does not call the shared rule, when it reads the map's owner by hand, or when any code still calls the map-only
+check. Every file that builds the ownership map must be listed either as a comparison path or with the attribution
+question it answers instead (who wrote an event, whom to ask for it), so a new comparison path cannot be added
+unclassified. Each scan is checked against a fact it must find, so a scan looking in the wrong place fails instead of
+passing on nothing.
+
+:::updated
+**`IntegrityDomainOwnership.IsOwnedByAnother` is removed ([#2186](https://github.com/whizbang-lib/whizbang/issues/2186)).**
+It answered from the ownership map alone. A caller of `IsOwnedByAnother(type, origin)` calls
+`IsNotAuthoritative(type, origin, ownedDomains)`, passing this service's own owned domains
+(`RoutingOptions.OwnedDomains`). An empty list gives the old answer.
+:::
 
 ## Observability
 
@@ -3417,7 +3579,7 @@ maximum across its instances), never a sum.
 | `unhealed_buckets` | Divergent `(origin, tenant, type, stream)` buckets currently tracked by the ledger — **the reconciliation backlog**. Falls as buckets heal (the heal deletes the row). |
 | `repair_exhausted_buckets` | Unhealed buckets that spent their repair budget (`MaxRepairAttemptsPerBucket`) and are no longer asked for until a local change or a grown deficit [resets them](#what-resets-the-repair-ladder). These need an operator, not patience: the one number worth an alert. Raising the budget does not lower it. |
 | `oldest_unhealed_age_seconds` | Age of the longest-standing unhealed divergence. Distinguishes a transient blip from a stuck bucket. |
-| `repair_answer_pending_buckets` | Buckets whose repair request is out and whose answer has not landed. They are not asked for again until the answer lands or `RepairAnswerTimeoutMinutes` passes ([repair waits for its answer](#repair-waits-for-its-answer)). A value that stays high for longer than the timeout means answers are not arriving: the origin is not serving requests (`ReportOnly`, or its own integrity queue is behind) or its bundles are not reaching this service. |
+| `repair_answer_pending_buckets` | Buckets whose repair request is out and whose answer has not landed. They are not asked for again until the answer lands or `RepairAnswerTimeoutMinutes` passes ([repair waits for its answer](#repair-waits-for-its-answer)). The paced drain claims nothing while this is at `MaxOutstandingRepairAnswers` ([outstanding repair answers are capped](#outstanding-repair-answers-are-capped)). A value that stays high for longer than the timeout means answers are not arriving: the origin is not serving requests (`ReportOnly`, or its own integrity queue is behind) or its bundles are not reaching this service. |
 | `repair_answered_buckets` | Buckets a redelivery bundle answered that wait for the next comparison to decide healed or still divergent. Rises after a repair burst and falls at the next audit; a value that never falls means comparisons are not running for those buckets. |
 | `deliveries_pending` | [Integrity deliveries](#integrity-deliveries-are-queued) recorded and waiting for the maintainer's drain: received checkpoints, manifest requests and chunks, redelivery requests and bundle reconciles. Near zero on a healthy service. |
 | `oldest_delivery_age_seconds` | How long the oldest waiting integrity delivery has waited (0 when none). Under load the drain is deferred by the idle gate for up to `Whizbang:Housekeeping:MaxDeferral`, so an age above that, or one that keeps climbing, means the drain is not running: check which instance holds the maintainer duty. |
@@ -3439,6 +3601,7 @@ maximum across its instances), never a sum.
 | `divergences_detected` (tags `origin`, `event_type`, `reason`) | Divergent buckets per comparison. `reason` carries the taxonomy: `deficit` (repairable), `identity_mismatch` / `local_extra` (alarm-only — see [the divergence taxonomy](#the-divergence-taxonomy)). |
 | `repairs_requested` (tags `source`, `origin`) | Directed repair asks. `source=audit` is the per-stream path; `source=bulk` is the threshold-triggered whole-window state-only backfill. |
 | `repairs_deferred` (tags `origin`, `reason`) | Deficit buckets a comparison deferred instead of adding to the paced repair drain's ledger: `per_audit_cap` (the comparison already added `MaxAutoRepairRequestsPerAudit`) or `backlog_cap` (the ledger holds `MaxRepairDrainBacklog` rows). Sustained growth means discovery outpaces the drain; raise `RepairDrainRatePerSecond` or accept the pace. See [repair caps](#repair-caps). |
+| `repair_drain_holds` | Times the paced repair drain stopped claiming because `MaxOutstandingRepairAnswers` buckets awaited their answer, counted once per hold (each hold is also one Warning when it starts and one Information line when it ends). A rising count means answers lag their requests and the drain is pacing itself to the rate they land at. See [outstanding repair answers are capped](#outstanding-repair-answers-are-capped). |
 | `compares_declined` (tag `origin`) | Manifest chunks declined at the non-queueing compare gate. Sustained growth = comparisons losing to arrivals; read alongside `manifest_compare_duration`. |
 | `manifest_pages_followed` / `manifest_pages_capped` (tag `origin`) | Windowed stream pages walked via the resume cursor, and follow chains stopped at `MaxManifestPagesPerAudit`. Persistent capping means lanes are wider than the per-audit page budget — raise the cap or accept the pace. |
 | `redelivery_events_shipped` | Events selected and shipped in redelivery bundles, as an origin. |
