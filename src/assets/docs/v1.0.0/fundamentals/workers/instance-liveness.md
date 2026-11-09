@@ -30,6 +30,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Notifications/PgSharedNotifyConnection.cs
   - src/Whizbang.Data.Postgres/Notifications/PgInstanceLifecycleMonitor.cs
   - src/Whizbang.Core/Workers/IInstanceAliveLockSource.cs
+  - src/Whizbang.Core/Notifications/WhizbangNotificationOptions.cs
   - src/Whizbang.Core/Workers/HeartbeatWorker.cs
   - src/Whizbang.Core/Workers/HeartbeatLivenessThreshold.cs
   - src/Whizbang.Core/Observability/InstanceLivenessMetrics.cs
@@ -45,6 +46,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockSourcePostgresTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageWiringTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockSourceRegistrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/NpgsqlWaitTimeoutTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PgSharedNotifyConnectionCoverageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/AliveLockRankCostScenarioTests.cs
   - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerAdaptiveCadenceTests.cs
   - tests/Whizbang.Core.Tests/Workers/HeartbeatLivenessThresholdTests.cs
@@ -212,6 +215,46 @@ instance's liveness signal, as for any instance not holding its lock.
 :::updated
 Earlier releases took the alive-lock but never registered the shared connection as the lock source, so every instance beat on the fast cadence and the slow cadence below was dormant. Registering it is what puts direct instances on the slow cadence, and the rule above is what makes that safe: without it, a reader comparing heartbeat age against its own window would take a direct instance for dead between two slow beats.
 :::
+
+### The LISTEN connection's keepalive {#listen-keepalive}
+{verified: PgSharedNotifyConnectionCoverageTests.Keepalive_DuringIdlePeriod_IssuesSelectOneAndStaysAvailableAsync, PgSharedNotifyConnectionCoverageTests.Keepalive_WhoseWakeIsLost_RunsSelectOneOnceTheWaitTimesOutAsync, PgSharedNotifyConnectionCoverageTests.Resync_WhoseWakeIsLost_IsListenedOnceTheWaitTimesOutAsync}
+
+The shared LISTEN connection spends almost all of its time parked in Npgsql's wait for a notification. Two things
+must interrupt that wait even when nothing is sent: the keepalive, which runs `SELECT 1` to prove the connection is
+still alive (and makes the deferred alive-lock claim described above), and a resync, which LISTENs on a channel
+subscribed after the connection came up.
+
+**The bound.** Every wait carries a timeout equal to `Whizbang:Database:ListenKeepaliveInterval` (default 30 s). A
+wait that times out runs the keepalive, and the next pass of the loop syncs any subscription still waiting to be
+LISTENed before it parks again. So a dead connection is noticed, and a late subscription is LISTENed, within one
+keepalive interval. A new subscription still cancels the wait as a fast path, which in the usual case LISTENs at once;
+the timeout is the guarantee behind it.
+
+**What a timeout does.** A timed-out wait returns `false`; it does not throw. The connection stays open on the same
+server session and its LISTENs stay in place, so the `SELECT 1` that follows runs on it and a notification sent
+afterward still arrives. This is verified on a real PostgreSQL server, because it is the driver behavior the keepalive
+depends on: if an Npgsql upgrade turned a timed-out wait into a broken connection, every keepalive would recycle the
+LISTEN connection, and those tests fail first.
+{verified: NpgsqlWaitTimeoutTests.WaitAsync_TimeoutElapses_ReturnsFalseAndLeavesTheSameSessionOpenAsync, NpgsqlWaitTimeoutTests.WaitAsync_NotificationAfterATimeout_ArrivesOnTheSameConnectionAsync}
+
+:::updated
+Earlier releases woke the wait for the keepalive and for a resync by canceling its token. Npgsql 10.0.1 can lose a
+cancellation that lands as the wait begins: it checks the token, then re-arms the read's own cancellation source, which
+discards a cancel delivered in between. A lost wake left the wait on an idle socket until the server sent something,
+so a subscription made after the connection came up could stay unlistened (every notification on its channel lost),
+and a dead connection could go unnoticed. The stop path was fixed separately, by ending the pass on the stopping token
+itself ([#2150](https://github.com/whizbang-lib/whizbang/issues/2150)). The keepalive and the resync are now bounded
+by the wait's timeout ([#2155](https://github.com/whizbang-lib/whizbang/issues/2155)).
+:::
+
+#### Design choices {#listen-keepalive-design-choices}
+
+| Choice | Reason | Verified |
+|--------|--------|----------|
+| The wait is bounded by a timeout, not woken by a cancel. | Npgsql arms its read timeout afresh on every read, after the reset that can lose a cancel, so a timeout cannot be lost; a token cancel can. | {verified: PgSharedNotifyConnectionCoverageTests.Keepalive_WhoseWakeIsLost_RunsSelectOneOnceTheWaitTimesOutAsync, NpgsqlWaitTimeoutTests.WaitAsync_TimeoutElapses_ReturnsFalseAndLeavesTheSameSessionOpenAsync} |
+| The timeout is `ListenKeepaliveInterval`, and the keepalive has no timer of its own. | One interval already decided how often the connection is checked; the same interval bounds a lost resync, so there is one setting to reason about and no second cancellation source that could itself be lost. | {verified: PgSharedNotifyConnectionCoverageTests.Keepalive_DuringIdlePeriod_IssuesSelectOneAndStaysAvailableAsync} |
+| A resync still cancels the wait, and every pass drains the resync request before it parks. | The cancel usually works and LISTENs at once; when it is lost, the timed-out pass drains it, so the subscription is LISTENed within one interval instead of never. | {verified: PgSharedNotifyConnectionCoverageTests.Resync_WhoseWakeIsLost_IsListenedOnceTheWaitTimesOutAsync} |
+| Rejected: waking the wait with a NOTIFY sent to itself from another connection. | It needs a second connection for every wake, in a topology that keeps direct connections scarce (one per instance), and it cannot detect a dead LISTEN connection: a NOTIFY never reaches a dead socket, so a timeout is still needed, and the timeout alone covers both cases. | {verified: PgSharedNotifyConnectionCoverageTests.Keepalive_WhoseWakeIsLost_RunsSelectOneOnceTheWaitTimesOutAsync, NpgsqlWaitTimeoutTests.WaitAsync_NotificationAfterATimeout_ArrivesOnTheSameConnectionAsync} |
 
 ### The lock check: `wh_direct_alive_lock_holders` {#wh-direct-alive-lock-holders}
 {verified: AliveLockLivenessSqlTests.Holders_ADirectInstanceHoldingItsLock_IsListedAsync, AliveLockLivenessSqlTests.Holders_APooledInstanceHoldingALock_IsNotListedAsync, AliveLockLivenessSqlTests.Holders_ADirectInstanceWhoseLockIsReleased_IsNotListedAsync}
