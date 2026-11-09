@@ -199,6 +199,16 @@ Removed keys the library declares:
 | `Whizbang:Database:Stamper:AdvisoryLockKey` | Nothing. The commit-order stamper takes no lock of its own; it leads through the `commit-stamper` role. See [Commit sequence](../../fundamentals/work-coordinator/commit-sequence#leadership) |
 | `Whizbang:StandbyWatcher:RequesterLivenessWindow` | `Whizbang:Workers:Heartbeat:IntervalSeconds`: the standby watcher keeps no window of its own; [the liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule) judges the requester by the window it declares from its heartbeat cadence. See [Rolling Upgrades](../startup/rolling-upgrades#the-standby-handshake) |
 
+## Registrations two assemblies share are reported at startup {#registration-collisions}
+
+When two different assemblies register the same item (a perspective, a lifecycle receptor, a model for the same
+DbContext), the latest registration is used and startup logs a warning naming the item and both assemblies. See
+[registration collisions](../../extending/extensibility/replaceable-services#registration-collisions).
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `Whizbang:Startup:RegistrationCollisions` | `Warn` \| `Fail` | `Warn` | `Whizbang__Startup__RegistrationCollisions` | `Warn` logs one warning per collision and starts with the latest registration of each. `Fail` logs the same warnings, then fails host start naming every collision |
+
 ## Quick Map
 
 | Configuration section | Options class | Binding |

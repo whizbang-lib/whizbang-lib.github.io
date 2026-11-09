@@ -22,6 +22,14 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveRunnerRegistry.cs
   - src/Whizbang.Core/Perspectives/PerspectiveRunnerRegistryServiceCollectionExtensions.cs
   - src/Whizbang.Core/Perspectives/CompositePerspectiveRunnerRegistry.cs
+  - src/Whizbang.Core/RegistrationCollision.cs
+  - src/Whizbang.Core/RegistrationCollisionStartupValidator.cs
+  - src/Whizbang.Core/Messaging/ReceptorRegistryServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Messaging/CompositeReceptorRegistry.cs
+  - src/Whizbang.Core/CompositePinnedIdRegistry.cs
+  - src/Whizbang.Core/Perspectives/CompositePerspectiveInvoker.cs
+  - src/Whizbang.Core/ServiceRegistrationCallbacks.cs
+  - src/Whizbang.Data.EFCore.Postgres/ModelRegistrationRegistry.cs
   - src/Whizbang.Core/Messaging/IDeadLetterStore.cs
   - src/Whizbang.Core/Notifications/INotifySignalingGate.cs
   - src/Whizbang.Core/Messaging/DetachedLifecycleWork.cs
@@ -33,6 +41,14 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/MultiAssemblyEventTypeProviderTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRunnerRegistryContributionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/MultiAssemblyPerspectiveRunnerRegistryTests.cs
+  - tests/Whizbang.Core.Tests/RegistrationCollisionsTests.cs
+  - tests/Whizbang.Core.Tests/RegistrationCollisionStartupValidatorTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/ReceptorRegistryContributionTests.cs
+  - tests/Whizbang.Core.Tests/PinnedIdRegistryContributionTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveInvokerContributionTests.cs
+  - tests/Whizbang.Core.Tests/ServiceRegistrationCallbacksAccumulateTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ModelRegistrationRegistryTests.cs
+  - tests/Whizbang.Generators.Tests/PerAssemblyRegistrationGuardTests.cs
 ---
 
 # Replaceable Services
@@ -152,7 +168,7 @@ Plain `TryAddSingleton` would lose to the placeholder when your extension runs a
 | `IProcessedEventCacheObserver` | `NullProcessedEventCacheObserver` | the host | Cache activity is not observed |
 
 ### Event types: every perspective assembly contributes {#event-type-provider-contributions}
-{verified: EventTypeProviderContributionTests.TwoAssemblies_TheServedProvider_ListsBothAssembliesTypes_CollectiveIncludedAsync, EventTypeProviderContributionTests.TwoAssemblies_AfterTheDefaults_TheServedProviderIsTheUnionAndAvailableAsync, EventTypeProviderContributionTests.TheDefaults_AfterTheContributions_DoNotDisplaceThemAsync, EventTypeProviderContributionTests.AnAssemblyRegisteredTwice_ContributesItsTypesOnceAsync, EventTypeProviderContributionTests.AHostsOwnProvider_RegisteredFirst_IsTheOneServedAsync, EventTypeProviderContributionTests.OnlyUnavailableContributions_TheServedProviderReportsUnavailableAsync, MultiAssemblyEventTypeProviderTests.TwoPerspectiveAssemblies_TheServedProvider_ListsBothAsync}
+{verified: EventTypeProviderContributionTests.ATypeTwoAssembliesKnow_IsNoCollisionAsync, EventTypeProviderContributionTests.TwoAssemblies_TheServedProvider_ListsBothAssembliesTypes_CollectiveIncludedAsync, EventTypeProviderContributionTests.TwoAssemblies_AfterTheDefaults_TheServedProviderIsTheUnionAndAvailableAsync, EventTypeProviderContributionTests.TheDefaults_AfterTheContributions_DoNotDisplaceThemAsync, EventTypeProviderContributionTests.AnAssemblyRegisteredTwice_ContributesItsTypesOnceAsync, EventTypeProviderContributionTests.AHostsOwnProvider_RegisteredFirst_IsTheOneServedAsync, EventTypeProviderContributionTests.OnlyUnavailableContributions_TheServedProviderReportsUnavailableAsync, MultiAssemblyEventTypeProviderTests.TwoPerspectiveAssemblies_TheServedProvider_ListsBothAsync}
 
 `IEventTypeProvider` lists the events a service's perspectives fold, plus the collective events it knows. Unlike
 the other seams in the table, it has more than one supplier: every assembly that declares perspectives generates a
@@ -171,8 +187,9 @@ var eventTypes = serviceProvider.GetRequiredService<IEventTypeProvider>().GetEve
 ```
 
 - **Every assembly contributes.** The resolved `IEventTypeProvider` is a `CompositeEventTypeProvider` over every
-  contribution: their event types in contribution order, each type listed once. An assembly registered twice
-  contributes once.
+  contribution: their event types, the latest registered contribution's first ([the rule](#registration-collisions)),
+  each type listed once. An assembly registered twice contributes once. A type two assemblies both know is not a
+  collision: both name the same type, so neither registration is hidden.
 - **Order does not matter.** The union replaces the `NullEventTypeProvider` placeholder whether the contributions are
   registered before or after `AddWhizbang()`, the same way `TryAddSingletonOverNullDefault` works for the seams
   above.
@@ -189,7 +206,7 @@ it. A union keeps the single provider every consumer reads, and no assembly can 
 the host composes them in.
 
 ### Perspective runners: every perspective assembly contributes {#perspective-runner-registry-contributions}
-{verified: PerspectiveRunnerRegistryContributionTests.TwoAssemblies_EachAssemblysRunnerIsFound_WhicheverRegisteredLastAsync, PerspectiveRunnerRegistryContributionTests.APerspectiveNoAssemblyDeclares_IsNotFoundAsync, PerspectiveRunnerRegistryContributionTests.TwoAssemblies_TheServedRegistry_ListsBothAssembliesPerspectivesInContributionOrderAsync, PerspectiveRunnerRegistryContributionTests.SamePerspectiveInTwoAssemblies_TheFirstContributionAnswers_AndIsListedOnceAsync, PerspectiveRunnerRegistryContributionTests.AnAssemblyRegisteredTwice_ListsItsPerspectivesOnceAsync, PerspectiveRunnerRegistryContributionTests.TwoAssemblies_EventTypes_AreTheUnion_OnTheRegistryAndTheServedProviderAsync, PerspectiveRunnerRegistryContributionTests.TwoAssemblies_LifecycleStagesWithReceptors_AreTheUnionAsync, PerspectiveRunnerRegistryContributionTests.AHostsOwnRegistry_RegisteredFirst_IsTheOneServedAsync, MultiAssemblyPerspectiveRunnerRegistryTests.TwoPerspectiveAssemblies_TheServedRegistry_FindsBothAssembliesRunnersAsync}
+{verified: PerspectiveRunnerRegistryContributionTests.TwoAssemblies_EachAssemblysRunnerIsFound_WhicheverRegisteredLastAsync, PerspectiveRunnerRegistryContributionTests.APerspectiveNoAssemblyDeclares_IsNotFoundAsync, PerspectiveRunnerRegistryContributionTests.TwoAssemblies_TheServedRegistry_ListsBothAssembliesPerspectives_LatestRegisteredFirstAsync, PerspectiveRunnerRegistryContributionTests.SamePerspectiveInTwoAssemblies_TheLatestContributionAnswers_AndIsListedOnceAsync, PerspectiveRunnerRegistryContributionTests.SamePerspectiveInTwoAssemblies_IsReportedAsACollisionAsync, PerspectiveRunnerRegistryContributionTests.AnAssemblyRegisteredTwice_ListsItsPerspectivesOnceAsync, PerspectiveRunnerRegistryContributionTests.TwoAssemblies_EventTypes_AreTheUnion_OnTheRegistryAndTheServedProviderAsync, PerspectiveRunnerRegistryContributionTests.TwoAssemblies_LifecycleStagesWithReceptors_AreTheUnionAsync, PerspectiveRunnerRegistryContributionTests.AHostsOwnRegistry_RegisteredFirst_IsTheOneServedAsync, MultiAssemblyPerspectiveRunnerRegistryTests.TwoPerspectiveAssemblies_TheServedRegistry_FindsBothAssembliesRunnersAsync}
 
 `IPerspectiveRunnerRegistry` finds the runner for a perspective by name. Like `IEventTypeProvider`, it has one
 supplier per assembly that declares perspectives, and it has no default: a host with no perspectives registers none.
@@ -207,13 +224,13 @@ var runner = serviceProvider.GetRequiredService<IPerspectiveRunnerRegistry>()
 ```
 
 - **Every assembly's runners are found.** The resolved registry is a `CompositePerspectiveRunnerRegistry`. A lookup
-  asks each contribution in registration order and returns the first runner found, and a name no assembly declares
-  is not found, as before. The listing of registered perspectives, the event types and the lifecycle stages with
+  asks each contribution, the latest registered first, and returns the first runner found, and a name no assembly
+  declares is not found, as before. The listing of registered perspectives, the event types and the lifecycle stages with
   receptors cover every contribution. An assembly registered twice contributes once.
-- **The first declaration answers.** When two assemblies declare a perspective with the same CLR type name, the first
-  contribution registered answers for it and is the one listed. This is the rule the event-type union applies to a
-  type two assemblies both know. Avoid the situation: the name keys the perspective's rows and cursors, so the two
-  would share them.
+- **The latest declaration answers, and the other is reported.** When two assemblies declare a perspective with the
+  same CLR type name, the latest contribution registered answers for it and is the one listed, and startup logs a
+  warning naming the perspective and both assemblies ([the rule](#registration-collisions)). Avoid the situation:
+  the name keys the perspective's rows and cursors, so the two would share them.
 - **A host's own registry wins when it comes first.** A host that registers its own `IPerspectiveRunnerRegistry`
   before the perspective registrations run is served that one, and the contributions do not override it.
 
@@ -222,6 +239,90 @@ stream disposition step each resolve a single `IPerspectiveRunnerRegistry`. When
 registry as that service, the last registration displaced the others: in a host with two perspective assemblies, no
 runner for any perspective the other assembly declared could be found, whatever order the host composed them in.
 
+### Every per-assembly registration: the latest wins, and a hidden one is reported {#registration-collisions}
+{verified: RegistrationCollisionsTests.TheLatestAssemblyWins_EachEarlierAssemblyIsHiddenAsync, RegistrationCollisionsTests.AnItemOneAssemblyListsTwice_IsNotACollisionAsync, RegistrationCollisionsTests.AContribution_ComposesLatestRegisteredFirstAsync, RegistrationCollisionsTests.AContributionWithItems_ReportsAnItemTwoAssembliesShare_NamingBothAsync, RegistrationCollisionStartupValidatorTests.ACollision_UnderWarn_IsLoggedNamingBothAssemblies_AndStartsAsync, RegistrationCollisionStartupValidatorTests.CollisionsUnderFail_StopStartup_NamingEveryCollision_AfterWarningForEachAsync, RegistrationCollisionStartupValidatorTests.SeveralSources_ShareOneCheckAsync, PerAssemblyRegistrationGuardTests.EveryGeneratedRegistrationOfAHostWideService_GoesThroughAContributionAsync}
+
+Every assembly compiled with the Whizbang generators registers its own part of several services the host resolves
+once. All of them follow one rule, through one mechanism:
+
+- **Every assembly's registration is used.** Each assembly contributes, and the host serves one composite over every
+  contribution. An assembly registered twice contributes once.
+- **When two different assemblies register the same item, the latest registration wins.** The composite asks the
+  latest registered contribution first, so its item is the one used and the earlier one is hidden.
+- **A hidden registration is reported.** At startup, one warning per collision names the item and both assemblies
+  and says which one was hidden (logger category `Whizbang.Core.RegistrationCollisionStartupValidator`, event id 1):
+  `IPerspectiveRunnerRegistry 'Orders.OrderSummaryPerspective' is registered by both Orders and Billing. Billing was
+  registered latest and is used; Orders's registration is hidden`.
+- **One setting decides whether a collision stops startup.**
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `Whizbang:Startup:RegistrationCollisions` | `Warn` \| `Fail` | `Warn` | `Whizbang__Startup__RegistrationCollisions` | `Warn` logs one warning per collision and starts with the latest registration of each. `Fail` logs the same warnings, then fails host start with an error naming every collision |
+
+The registrations that follow the rule, and what counts as the same item in each:
+
+| Registration | Contributed through | The same item |
+|---|---|---|
+| Perspective runners (`IPerspectiveRunnerRegistry`) | `AddPerspectiveRunnerRegistryContribution<T>()` ([above](#perspective-runner-registry-contributions)) | A perspective's CLR type name |
+| Event types (`IEventTypeProvider`) | `AddEventTypeProviderContribution<T>()` ([above](#event-type-provider-contributions)) | Never a collision: two assemblies that know a type name the same type |
+| Lifecycle receptors (`IReceptorRegistry`) | `AddReceptorRegistryContribution<T>()` ([below](#receptor-registry-contributions)) | A receptor's id (its class name) |
+| Pinned identities (`IPinnedIdRegistry`) | `AddPinnedIdRegistryContribution<T>()` ([below](#pinned-id-registry-contributions)) | A pinned type |
+| Perspective invokers (`IPerspectiveInvoker`) | `AddPerspectiveInvokerContribution<T>()` ([below](#perspective-invoker-contributions)) | Reported by the runner registry, which names the same perspective |
+| Raw receptors, lenses, perspective services | each assembly's startup callback ([below](#startup-callbacks)) | Each assembly registers its own types; nothing is shared |
+| EF Core perspective models | `ModelRegistrationRegistry.RegisterModels` ([below](#ef-core-model-registrations)) | A model type in one DbContext |
+
+**Why one rule and one mechanism.** Each of these began as a plain registration that let the last assembly displace
+the others, or as a single startup slot the next assembly overwrote, and each was found separately (#2146, #2191,
+#2197 to #2201). A shared contribution mechanism makes the correct registration the only one the generated code
+makes, and a generator test fails when a generated registration of a host-wide service bypasses it, so a new
+per-assembly registration gets the rule by construction.
+
+### Lifecycle receptors: every assembly contributes {#receptor-registry-contributions}
+{verified: ReceptorRegistryContributionTests.TwoAssemblies_EachAssemblysLifecycleReceptorFires_WhicheverRegisteredLastAsync, ReceptorRegistryContributionTests.AReceptorTwoAssembliesDeclare_AnswersOnce_FromTheLatestAsync, ReceptorRegistryContributionTests.RuntimeRegistrations_GoToTheLatestContribution_AndAreAskedThereAsync, ReceptorRegistryContributionTests.TheContributions_ReplaceTheNullDefault_WhicheverComesFirstAsync}
+
+Each assembly's generated dispatcher registration contributes its `GeneratedReceptorRegistry` through
+`AddReceptorRegistryContribution<T>()`, and the host serves one `CompositeReceptorRegistry`. A lookup returns every
+assembly's receptors for the message and stage, and a receptor two assemblies declare under one id runs once, from
+the latest registration. **Runtime registrations go to the latest contribution**: `Register`, `Unregister` and the
+runtime queries all go to it, so a receptor registered once is found once and unregistered from where it was
+registered. Before this, the last assembly's registry displaced the others, and no lifecycle receptor (`[FireAt]`)
+declared in any other assembly fired at a worker stage.
+
+### Pinned identities: every assembly contributes {#pinned-id-registry-contributions}
+{verified: PinnedIdRegistryContributionTests.TwoAssemblies_EachAssemblysPinnedTypeIsKnownAsync, PinnedIdRegistryContributionTests.ATypeTwoAssembliesPin_AnswersFromTheLatest_AndIsListedOnceAsync}
+
+Whizbang.Core pins types of its own, so every host has at least two pinned-identity registries: Whizbang.Core's and
+its own. Each assembly's registry is contributed through `AddPinnedIdRegistryContribution<T>()`, and the host serves
+one `CompositePinnedIdRegistry` that knows every assembly's pinned types.
+
+### Perspective invokers: every assembly contributes {#perspective-invoker-contributions}
+{verified: PerspectiveInvokerContributionTests.TwoAssemblies_AnEventReachesEveryAssemblysInvokerAsync, PerspectiveInvokerContributionTests.EachScope_GetsItsOwnInvokersAsync}
+
+Each assembly's generated perspective invoker runs only that assembly's perspectives. It is contributed through
+`AddPerspectiveInvokerContribution<T>()`, and each scope gets one `CompositePerspectiveInvoker` that queues every
+event with, and invokes, every assembly's invoker. An event store that invokes perspectives inline (the Dapper event
+store) runs every assembly's perspectives.
+
+### Startup callbacks: every assembly's runs {#startup-callbacks}
+{verified: ServiceRegistrationCallbacksAccumulateTests.RawReceptors_RunsEveryAssemblysCallback_InTheOrderSetAsync, ServiceRegistrationCallbacksAccumulateTests.PinnedIdRegistry_RunsEveryAssemblysCallback_InTheOrderSetAsync, ServiceRegistrationCallbacksAccumulateTests.LensServices_RunsEveryAssemblysCallback_InTheOrderSetAsync, ServiceRegistrationCallbacksAccumulateTests.PerspectiveServices_RunsEveryAssemblysCallback_InTheOrderSetAsync}
+
+`AddWhizbang()` registers what each assembly's generated module initializer hands it through
+`ServiceRegistrationCallbacks`: raw receptors, pinned identities, lenses and perspective services, as it already did
+for dispatchers and message-type catalogs. Each slot accumulates: every assembly's callback runs, in the order the
+assemblies loaded. A single-valued slot used to keep only the last assembly's, so raw receptors, lenses and
+perspective services declared in every other assembly were never registered.
+
+### EF Core perspective models: every assembly's are registered {#ef-core-model-registrations}
+{verified: ModelRegistrationRegistryTests.InvokeRegistration_EveryAssemblysRegistrar_RunsAsync, ModelRegistrationRegistryTests.RegisterModels_TheSameAssemblyAgain_ReplacesOnlyItsOwnEntryAsync, ModelRegistrationRegistryTests.InvokeRegistration_AModelTwoAssembliesRegister_IsReportedAsync}
+
+Each assembly's generated model registration registers itself with `ModelRegistrationRegistry`, keyed by the
+assembly, together with the models it registers for each DbContext. The driver runs every assembly's registration
+for its DbContext, in the order the assemblies registered, so the latest assembly's registration of a model is the
+one the container serves, and a model two assemblies both register for the same DbContext is reported at startup. A
+re-registration from the same assembly (a test calling the generated `Initialize()` again, or a hot reload) replaces
+only that assembly's own entry. Before this, only the latest registration ran, and models declared in every other
+assembly were not registered.
+
 ## How this is enforced
 
 - WHIZ501 reports an optional interface-typed constructor parameter at its declaration. It
@@ -229,3 +330,6 @@ runner for any perspective the other assembly declared could be found, whatever 
   `IReadOnlyList<T>`, which describe a value rather than a collaborator.
 - A repository test walks every `TryAdd`/`Add` registration under `src/`, and fails if the
   interface it registers lacks a `<docs>` tag or the tag points at a page that does not exist.
+- A generator test runs every Whizbang generator over a source that declares every kind of per-assembly item and
+  fails if the generated code registers a host-wide service directly instead of contributing to it
+  ([the rule](#registration-collisions)).
