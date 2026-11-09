@@ -98,6 +98,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/347_DigestWindowsReadTheirTypes.sql
   - src/Whizbang.Data.Postgres/Migrations/348_IdleLedgerRecheck.sql
   - src/Whizbang.Data.Postgres/Migrations/357_AnAnswerMarksOnlyWhatItCovered.sql
+  - src/Whizbang.Data.Postgres/Migrations/370_LedgerForgetsANonOwnersRows.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileCoordinatorTests.cs
@@ -175,6 +176,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerBranchCoverageTests.cs
   - tests/Whizbang.Core.Tests/Messaging/ConsumedMessageTypesTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerForgetUnconsumedSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerForgetNonOwnerSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ConsumedEventReachesEventStoreTests.cs
   - tests/Whizbang.Core.Tests/Workers/RepairTopicResolverTests.cs
   - tests/Whizbang.Core.Tests/Transports/IntegrityControlDestinationTests.cs
@@ -3306,6 +3308,77 @@ so a consumer that has received none (checkpoints off at the origins, or a consu
 checkpoint rides) neither applies the receive rule nor corrects anything. Nothing is wrong there until it does: the
 first checkpoint from each owner adds its domains, the fingerprint changes, and the correction walks the store again.
 :::
+
+#### Ledger rows filed under an origin that does not own the type {#non-owner-ledger-rows}
+{verified: IntegrityLedgerForgetNonOwnerSqlTests.Forget_RemovesEveryRowOfAJudgedPair_AndKeepsTheRestAsync, IntegrityLedgerForgetNonOwnerSqlTests.Forget_WhenNothingIsJudged_RemovesNothingAsync, IntegrityLedgerForgetNonOwnerSqlTests.Forget_AnEmptyPairList_RemovesNothingAsync, IntegrityLedgerForgetNonOwnerSqlTests.Forget_ANullJudge_ThrowsAsync, IntegrityLedgerForgetNonOwnerSqlTests.Forget_ACanceledCall_IsCanceled_NotSwallowedAsync, IntegrityLedgerForgetNonOwnerSqlTests.Forget_ThroughAThroughputGatedCoordinator_ForgetsAsync, IntegrityLedgerForgetNonOwnerSqlTests.Forget_WithTheFunctionsUnavailable_ForgetsNothing_AndDoesNotThrowAsync, IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_LedgerRowsOfAnOriginThatDoesNotOwnTheType_AreForgottenAsync, IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_WithNoNonOwnerRows_LogsNothingAboutThemAsync, IntegrityDomainOwnershipTests.IsNotAuthoritative_ATypeAnotherServiceOwns_IsNotTheAdvertisingOriginsAsync, IntegrityDomainOwnershipTests.IsNotAuthoritative_ATypeThisServiceOwns_IsNoOtherOriginsAsync, IntegrityDomainOwnershipTests.IsNotAuthoritative_AnOriginTheMapNamesAsOwner_StandsEvenInADomainThisServiceAlsoOwnsAsync, IntegrityDomainOwnershipTests.IsNotAuthoritative_WithoutTheLocalDomains_ThrowsAsync, IntegrityManifestReceptorTests.ManifestReceptor_DigestsOfATypeThisServiceOwns_AreNotComparedAsync}
+
+The receive rule and the correction fix **events**. A second leftover is in the **repair ledger**. Before comparisons
+ignored a non-owner's digests (see [ownership is exchanged on the checkpoint](#ownership-is-exchanged-on-the-checkpoint)),
+a service that held events it had only received still reported them as its own, and consumers recorded deficit rows
+under that service: for types another service owns, and for types the consumer owns itself. The consumer holds exactly
+the events the owner reports; only the row is wrong.
+
+**Why those rows never cleared.** Nothing compares them again:
+
+- An origin's answer now leaves out every type it does not own, so a re-check or a repair answer from the non-owner
+  carries nothing for the row's type.
+- A comparison only touches the buckets an answer names, and the owner's answers land under the owner's id, not the
+  non-owner's.
+- The [idle re-check](#idle-ledger-recheck) asks only origins that still send checkpoints, and gets the same answer.
+
+With automatic repair on, the repair stores nothing new, so the row is [marked unhealable](#unhealable-buckets) and
+holds `whizbang.stream_integrity.unhealed_buckets` up for good.
+
+**Why a re-arm would not help.** Re-arming clears a row's marks and attempts so it is claimed again, which is right
+for a bucket whose events were moved (the correction above does that). For these rows nothing was misfiled: re-armed,
+the row is claimed, the non-owner is asked, its answer leaves the type out, and the row is marked unhealable again.
+The row itself is the error, so it is forgotten.
+
+**The rule: `IntegrityDomainOwnership.IsNotAuthoritative`.** An origin's count of a type does not stand when:
+
+- the ownership map names **a different owner** for the type; or
+- the map names **no owner** and the type is in one of **this service's own owned domains**
+  (`RoutingOptions.OwnedDomains`).
+
+The second case closes a self-announcement gap. The map is built from the checkpoints **other** services send; a
+service never announces its own domains to itself, so for its own types the map is silent, and without the local
+check any older origin reporting them would stand. An origin the map does name as owner **stands even in a domain this
+service also owns**: two services claiming one domain is a contest the checkpoint reports
+(`ownership_conflicts`), not a verdict either way.
+
+**The sweep.** Each audit cycle, after [rows outside the surface are forgotten](#rows-outside-the-surface-are-forgotten),
+the integrity audit:
+
+1. lists the distinct (origin, type) pairs the ledger holds (`wh_integrity_ledger_origin_types`, migration 370);
+2. judges each pair once with `IsNotAuthoritative`, using the domain claims and this service's own owned domains;
+3. forgets every row of the judged pairs, in every tenant and stream (`wh_integrity_forget_origin_types`), and logs
+   the count at Information.
+
+Ownership is decided in application code, so the SQL never restates the nested-domain rule and the sweep can never
+disagree with the comparison. The second statement is skipped when nothing is judged. The sweep is best-effort: if it
+cannot reach the ledger it logs a Warning, forgets nothing, and the next cycle tries again. A store with no ledger
+forgets nothing.
+
+**The comparison follows the same rule.** A manifest's digests that are not authoritative under `IsNotAuthoritative`
+are not compared, so an origin that has not upgraded cannot re-create a row the sweep forgot.
+
+**After upgrading.** Migration 370 adds the two functions and changes no data. The rows already on a ledger are
+forgotten on the first audit cycle after the upgrade, so no one-time data step is needed, and nothing is configured.
+Expect `whizbang.stream_integrity.unhealed_buckets` (and possibly `oldest_unhealed_age_seconds`) to drop by those rows
+on that cycle; the drop is the false backlog leaving, not a heal.
+
+##### Design choices {#non-owner-ledger-rows-design-choices}
+
+Each choice below is locked by the test beside it, which fails if the behavior flips.
+
+| Choice | Why | Verified |
+|---|---|---|
+| A non-owner's ledger rows are forgotten, not re-armed | Its answers leave the type out, so a re-armed row is asked again, answered with nothing and marked unhealable again | {verified: IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_LedgerRowsOfAnOriginThatDoesNotOwnTheType_AreForgottenAsync, IntegrityLedgerForgetNonOwnerSqlTests.Forget_RemovesEveryRowOfAJudgedPair_AndKeepsTheRestAsync} |
+| A type in this service's own owned domains is no other origin's to report | A service never announces its own domains to itself, so the map alone is silent for its own types | {verified: IntegrityDomainOwnershipTests.IsNotAuthoritative_ATypeThisServiceOwns_IsNoOtherOriginsAsync, IntegrityManifestReceptorTests.ManifestReceptor_DigestsOfATypeThisServiceOwns_AreNotComparedAsync} |
+| An origin the map names as owner stands, even in a domain this service also owns | A double claim is a contest to fix in configuration, not a verdict against either claimant | {verified: IntegrityDomainOwnershipTests.IsNotAuthoritative_AnOriginTheMapNamesAsOwner_StandsEvenInADomainThisServiceAlsoOwnsAsync} |
+| Ownership is judged in application code; the SQL only lists pairs and deletes the judged ones | One helper decides for the sweep and the comparison, so they cannot disagree and the SQL does not restate the nested-domain rule | {verified: IntegrityLedgerForgetNonOwnerSqlTests.Forget_WhenNothingIsJudged_RemovesNothingAsync, IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_LedgerRowsOfAnOriginThatDoesNotOwnTheType_AreForgottenAsync} |
+| A sweep every audit cycle, no one-time data step | Existing rows go on the first cycle after upgrade, and any row an older origin leaves later goes on the next | {verified: IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_LedgerRowsOfAnOriginThatDoesNotOwnTheType_AreForgottenAsync} |
+| A failed sweep forgets nothing and does not throw | The audit cycle keeps running; the next cycle sweeps | {verified: IntegrityLedgerForgetNonOwnerSqlTests.Forget_WithTheFunctionsUnavailable_ForgetsNothing_AndDoesNotThrowAsync, IntegrityLedgerForgetNonOwnerSqlTests.Forget_ACanceledCall_IsCanceled_NotSwallowedAsync} |
 
 ## Observability
 
