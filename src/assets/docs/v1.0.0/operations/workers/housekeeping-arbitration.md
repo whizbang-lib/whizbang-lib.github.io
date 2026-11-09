@@ -26,6 +26,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/IntegrityAuditWorker.cs
   - src/Whizbang.Core/Workers/RepairDrainWorker.cs
   - src/Whizbang.Core/Workers/IntegrityCheckpointWorker.cs
+  - src/Whizbang.Data.Postgres/CoordinatorFleetSql.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/HousekeepingCoordinatorTests.cs
   - tests/Whizbang.Core.Tests/Workers/HousekeepingCooldownTests.cs
@@ -33,6 +34,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/HousekeepingIntegrityAdmissionTests.cs
   - tests/Whizbang.Core.Tests/Workers/IntegrityTimerWorkersOnTheMaintainerTests.cs
   - tests/Whizbang.Core.Tests/Workers/IntegrityDeliveryWorkerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CountServiceBacklogSqlTests.cs
 ---
 
 # Housekeeping Arbitration
@@ -74,6 +76,29 @@ that was genuinely idle. Integrity work has been gated the same way since
 A gate that cannot measure must not silently disable what it gates: when the backend reports
 no backlog measurement at all, the activity proceeds with the distinct `ProceedUnmeasured`
 verdict rather than waiting on evidence that will never arrive.
+
+### A live lease counts only while its row is unprocessed {#live-lease-unprocessed-only}
+
+{verified: CountServiceBacklogSqlTests.AProcessedRowStillCarryingALiveLease_IsNotAnActiveLeaseAsync, CountServiceBacklogSqlTests.TheCount_ReadsTheInboxStateTableOnlyThroughItsIndexes_WhateverItRetainsAsync}
+
+The active-lease part of the backlog counts inbox rows that are leased to an instance, whose lease
+has not expired, **and that are still unprocessed**. Two reasons, either one enough on its own:
+
+- **A completed row is not in-flight work.** The store pass can complete a refused event where it
+  stands (a sealed, archived or mixed stream) and leave the claim's lease on the row. Nobody is
+  dispatching it. Counting it held the service unsettled until the leftover lease expired, deferring
+  every gated activity for no reason.
+- **The count must be answered by an index.** The integrity checkpoint measures the backlog on every
+  checkpoint, so the count runs constantly. Every index on the inbox state table covers unprocessed
+  rows only, so without the unprocessed filter no index could answer the count and each call read the
+  whole table, every processed row it retains included: about 126 ms per call on a service retaining
+  1.6 million processed rows. With the filter the count is read through the index of owned, unprocessed rows
+  (`idx_inbox_state_expired`) and costs the same whatever history the table keeps; on a copy of that
+  table the whole count went from 27 ms to 1 ms.
+
+The rule this follows: a count over a work table carries the predicate of the partial index that is
+meant to answer it, and its test seeds the rows that predicate excludes, because an empty table hides
+the scan.
 
 ### Integrity is idle-gated {#integrity-is-idle-gated}
 

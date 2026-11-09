@@ -16,6 +16,8 @@ codeReferences:
   - src/Whizbang.Core/NullDefaultServiceCollectionExtensions.cs
   - src/Whizbang.Core/Workers/IMessagePublishStrategy.cs
   - src/Whizbang.Core/Messaging/IEventTypeProvider.cs
+  - src/Whizbang.Core/Messaging/EventTypeProviderServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Messaging/CompositeEventTypeProvider.cs
   - src/Whizbang.Core/Messaging/IDeadLetterStore.cs
   - src/Whizbang.Core/Notifications/INotifySignalingGate.cs
   - src/Whizbang.Core/Messaging/DetachedLifecycleWork.cs
@@ -23,6 +25,8 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Documentation/InjectedExtensibilityPointsAreDocumentedTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/OptionalInjectedParameterAnalyzerTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/EventTypeProviderContributionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/MultiAssemblyEventTypeProviderTests.cs
 ---
 
 # Replaceable Services
@@ -126,7 +130,7 @@ Plain `TryAddSingleton` would lose to the placeholder when your extension runs a
 | Interface | Null default | Supplied by | Behavior while null |
 |---|---|---|---|
 | `IMessagePublishStrategy` | `NullMessagePublishStrategy` (`IsConfigured`) | a transport package | Publish workers log once and idle |
-| `IEventTypeProvider` | `NullEventTypeProvider` (`IsAvailable`) | generated perspective registrations | Event-type-driven subscriptions and repairs skip |
+| `IEventTypeProvider` | `NullEventTypeProvider` (`IsAvailable`) | every assembly's generated perspective registration, as a contribution to one union ([below](#event-type-provider-contributions)) | Event-type-driven subscriptions and repairs skip |
 | `IMessageTypeCatalog` | `NullMessageTypeCatalog` (`IsAvailable`) | generated registrations | Catalog-driven passes skip |
 | `IReceptorRegistry` | `NullReceptorRegistry` | generated registrations | No receptors; `Register` throws |
 | `INotifySignalingGate` | `NullNotifySignalingGate` (`IsConfigured`; `IsAvailable` is the transport's health) | a notification transport | Workers poll at their normal cadence |
@@ -140,6 +144,41 @@ Plain `TryAddSingleton` would lose to the placeholder when your extension runs a
 | `IPinnedConnectionPool` | `NoOpPinnedConnectionPool` | a storage driver | No connection pinning |
 | `IOccurrencePublishGate` | `NoOpOccurrencePublishGate` | a notification transport | Every occurrence publishes |
 | `IProcessedEventCacheObserver` | `NullProcessedEventCacheObserver` | the host | Cache activity is not observed |
+
+### Event types: every perspective assembly contributes {#event-type-provider-contributions}
+{verified: EventTypeProviderContributionTests.TwoAssemblies_TheServedProvider_ListsBothAssembliesTypes_CollectiveIncludedAsync, EventTypeProviderContributionTests.TwoAssemblies_AfterTheDefaults_TheServedProviderIsTheUnionAndAvailableAsync, EventTypeProviderContributionTests.TheDefaults_AfterTheContributions_DoNotDisplaceThemAsync, EventTypeProviderContributionTests.AnAssemblyRegisteredTwice_ContributesItsTypesOnceAsync, EventTypeProviderContributionTests.AHostsOwnProvider_RegisteredFirst_IsTheOneServedAsync, EventTypeProviderContributionTests.OnlyUnavailableContributions_TheServedProviderReportsUnavailableAsync, MultiAssemblyEventTypeProviderTests.TwoPerspectiveAssemblies_TheServedProvider_ListsBothAsync}
+
+`IEventTypeProvider` lists the events a service's perspectives fold, plus the collective events it knows. Unlike
+the other seams in the table, it has more than one supplier: every assembly that declares perspectives generates a
+provider of its own. So its generated registration does not register that provider as the service. It calls
+`AddEventTypeProviderContribution<T>()`:
+
+```csharp{title="How a perspective assembly contributes its event types" description="Each assembly's generated registration adds its provider as a contribution, and the container serves one provider over every contribution." category="Extensibility" difficulty="ADVANCED" tags=["dependency-injection", "perspectives", "event-types", "replaceable-services"] tests=["MultiAssemblyEventTypeProviderTests.TwoPerspectiveAssemblies_TheServedProvider_ListsBothAsync", "EventTypeProviderContributionTests.AnAssemblyRegisteredTwice_ContributesItsTypesOnceAsync"]}
+// What each perspective assembly's generated AddPerspectiveRunners does (you do not write this):
+services.AddSingleton<PerspectiveRunnerRegistry>();
+services.AddEventTypeProviderContribution<PerspectiveRunnerRegistry>();
+
+// What every consumer resolves: one provider listing every contribution's types.
+var eventTypes = serviceProvider.GetRequiredService<IEventTypeProvider>().GetEventTypes();
+```
+
+- **Every assembly contributes.** The resolved `IEventTypeProvider` is a `CompositeEventTypeProvider` over every
+  contribution: their event types in contribution order, each type listed once. An assembly registered twice
+  contributes once.
+- **Order does not matter.** The union replaces the `NullEventTypeProvider` placeholder whether the contributions are
+  registered before or after `AddWhizbang()`, the same way `TryAddSingletonOverNullDefault` works for the seams
+  above.
+- **A host's own provider wins when it comes first.** A host that registers its own `IEventTypeProvider` before the
+  perspective registrations run is served that one, and the contributions do not override it.
+- **Available when a contribution is.** The union reports `IsAvailable` true when at least one contribution does, so
+  a host whose contributions are all unavailable keeps the "no event types known" path.
+
+**Why a union and not one registration.** The perspective worker and its drain, the inbox pre-filter and the
+polymorphic event reader each resolve a single `IEventTypeProvider`. When each assembly registered its provider as
+that service, the last registration displaced the others: in a host with two perspective assemblies, every event
+(collective events included) that only the other assembly knew was invisible to all of them, and nothing reported
+it. A union keeps the single provider every consumer reads, and no assembly can hide another's types, whatever order
+the host composes them in.
 
 ## How this is enforced
 

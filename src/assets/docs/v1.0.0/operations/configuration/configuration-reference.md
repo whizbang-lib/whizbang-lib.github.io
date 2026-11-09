@@ -297,7 +297,7 @@ Bound during Postgres driver registration with a hand-rolled binder. Controls th
 | `DisableNotifications` | `bool` | `false` | `Whizbang__Database__DisableNotifications` | Kill switch forcing polling-only mode |
 | `PollingFallbackInterval` | `TimeSpan` | `00:00:30` | `Whizbang__Database__PollingFallbackInterval` | Safety-net polling cadence while the listener is healthy |
 | `SignalRetention` | `TimeSpan` | `7.00:00:00` | `Whizbang__Database__SignalRetention` | How long a durable signal is kept before the retention sweep may delete it; never past a signal an instance has not delivered. Zero or less is rejected at startup ([retention](../../fundamentals/signal-bus/signal-bus#retention)). Once `wh_signals` is partitioned, also the window past which a daily partition is dropped ([partitioned ledgers](../infrastructure/partitioned-ledgers#row-sweeps)) |
-| `ListenKeepaliveInterval` | `TimeSpan` | `00:00:30` | `Whizbang__Database__ListenKeepaliveInterval` | Cadence of `SELECT 1` keepalive on the listener connection |
+| `ListenKeepaliveInterval` | `TimeSpan` | `00:00:30` | `Whizbang__Database__ListenKeepaliveInterval` | Cadence of `SELECT 1` keepalive on the listener connection. Also the timeout of the connection's wait for notifications, so it bounds how long a dead connection goes unnoticed and how long a subscription made after the connection came up can wait to be LISTENed when its wake-up is lost ([the LISTEN connection's keepalive](../../fundamentals/workers/instance-liveness#listen-keepalive)) Must be greater than zero; zero or a negative value is refused at startup, naming the key. |
 | `ListenReconnectInitialDelay` | `TimeSpan` | `00:00:01` | `Whizbang__Database__ListenReconnectInitialDelay` | First reconnect attempt delay after a disconnect |
 | `ListenReconnectMaxDelay` | `TimeSpan` | `00:00:30` | `Whizbang__Database__ListenReconnectMaxDelay` | Cap on reconnect backoff |
 | `ListenReconnectBackoffMultiplier` | `double` | `2.0` | `Whizbang__Database__ListenReconnectBackoffMultiplier` | Exponential growth factor for reconnect backoff |
@@ -1404,6 +1404,7 @@ Operator rung of the row-retention override ladder. **Configure:** bound automat
 | `SettledFoldClaimWindowHours` | `int` | `24` | `Whizbang__Workers__Maintenance__SettledFoldClaimWindowHours` | Minimum hours between settled folds service-wide |
 | `Retention.DeduplicationDays` | `int?` | unset (database: `30`) | `Whizbang__Workers__Maintenance__Retention__DeduplicationDays` | Days a message id stays in the deduplication ledger. Publishes `dedup_retention_days` ([database-side settings](#database-side-settings)) |
 | `Retention.StuckInboxDays` | `int?` | unset (database: `7`) | `Whizbang__Workers__Maintenance__Retention__StuckInboxDays` | Days an inbox message that was never processed is kept. Publishes `stuck_inbox_retention_days` |
+| `Retention.CompletedInboxPurgeBatchSize` | `int?` | unset (database: `50000`) | `Whizbang__Workers__Maintenance__Retention__CompletedInboxPurgeBatchSize` | The most completed inbox rows one maintenance cycle purges; the rest wait for later cycles, so the purge always fits the maintenance call's command budget. Must be `1` or greater (refused at startup otherwise). Publishes `completed_inbox_purge_batch_size` ([the completed-inbox purge is bounded](../infrastructure/maintenance#completed-inbox-purge-is-bounded)) {verified: RetentionSettingsBridgeTests.EachIntegerOption_PublishesItsKeyAsAnIntegerLiteralAsync, RetentionSettingsValidationTests.ACompletedInboxPurgeBatchBelowOne_IsRejectedByNameAsync, MaintenanceTests.PerformMaintenance_PurgesAtMostTheBatchOfCompletedInboxRows_AndTheRestOnTheNextCycleAsync} |
 | `Retention.RecoveredDeadLetterDays` | `int?` | unset (database: `7`) | `Whizbang__Workers__Maintenance__Retention__RecoveredDeadLetterDays` | Days a recovered dead letter is kept after recovery. Publishes `dead_letter_retention_days` |
 | `Retention.AbandonedStreamHours` | `int?` | unset (database: `1`) | `Whizbang__Workers__Maintenance__Retention__AbandonedStreamHours` | Hours an owner-less active-stream row sits idle before it is purged. Publishes `abandoned_stream_hours` |
 | `Retention.InstanceEvictionTombstoneHours` | `int?` | unset (database: `24`) | `Whizbang__Workers__Maintenance__Retention__InstanceEvictionTombstoneHours` | Hours an instance-eviction tombstone is kept. Publishes `instance_eviction_retention_hours` |
@@ -2025,7 +2026,9 @@ each service database, rather than from the host's options. Each setting below i
 - **`debug_mode` is always published,** in both directions, from `Whizbang:WorkCoordinator:DebugMode`. A stale
   `true` would switch the purge off for good.
 - **A negative value is rejected at startup,** naming the key. A negative window would put the sweep's cutoff in
-  the future and make every row of the table eligible at once. `0` is allowed.
+  the future and make every row of the table eligible at once. `0` is allowed for a window. The completed-inbox
+  purge batch (`CompletedInboxPurgeBatchSize`) must be `1` or greater, since a batch of zero would never purge; a
+  value below `1` stored in SQL is treated as `1` ([the completed-inbox purge is bounded](../infrastructure/maintenance#completed-inbox-purge-is-bounded)).
 - **A failed write never fails the cycle.** It is logged as a warning naming the keys it was publishing, and the
   sweep keeps the values already stored.
 - **Both the EF Core and the Dapper engines publish them,** with the same statement. Rows the framework wrote
@@ -2036,6 +2039,7 @@ each service database, rather than from the host's options. Each setting below i
 | `WorkCoordinatorOptions.DebugMode` | `Whizbang__WorkCoordinator__DebugMode` | `false` | `debug_mode` (always published) |
 | `MaintenanceWorkerOptions.Retention.DeduplicationDays` | `Whizbang__Workers__Maintenance__Retention__DeduplicationDays` | `30` | `dedup_retention_days` |
 | `MaintenanceWorkerOptions.Retention.StuckInboxDays` | `Whizbang__Workers__Maintenance__Retention__StuckInboxDays` | `7` | `stuck_inbox_retention_days` |
+| `MaintenanceWorkerOptions.Retention.CompletedInboxPurgeBatchSize` | `Whizbang__Workers__Maintenance__Retention__CompletedInboxPurgeBatchSize` | `50000` | `completed_inbox_purge_batch_size` (at least `1`) |
 | `MaintenanceWorkerOptions.Retention.RecoveredDeadLetterDays` | `Whizbang__Workers__Maintenance__Retention__RecoveredDeadLetterDays` | `7` | `dead_letter_retention_days` |
 | `MaintenanceWorkerOptions.Retention.AbandonedStreamHours` | `Whizbang__Workers__Maintenance__Retention__AbandonedStreamHours` | `1` | `abandoned_stream_hours` |
 | `MaintenanceWorkerOptions.Retention.InstanceEvictionTombstoneHours` | `Whizbang__Workers__Maintenance__Retention__InstanceEvictionTombstoneHours` | `24` | `instance_eviction_retention_hours` |
