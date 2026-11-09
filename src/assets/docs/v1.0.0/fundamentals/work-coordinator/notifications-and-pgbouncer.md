@@ -20,7 +20,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/143_NotifyStateNeverWaits.sql
   - src/Whizbang.Data.Postgres/Migrations/146_DoorbellsRingAfterCommit.sql
   - src/Whizbang.Data.Postgres/Migrations/317_EveryReaderJudgesLivenessByTheRule.sql
+  - src/Whizbang.Data.Postgres/Migrations/369_RepairAnswersAreAbsorbedCheaply.sql
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceiveDoorbellCostSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ListenLivenessSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DoorbellsRingAfterCommitSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AdvisoryLockReleaseTests.cs
@@ -214,6 +216,51 @@ Migration 143 states the rule: **a doorbell never waits on another writer's tran
 The asymmetry behind every branch: a spurious doorbell is absorbed by the drain's refetch-until-empty loop, a lost wakeup is not, and waiting is the storm. So every contended case rings.
 
 **Residual.** An `INSERT ... ON CONFLICT DO NOTHING` waits when a concurrent transaction holds an uncommitted insert of the same key. Debounce creators are serialized by the advisory lock, so they never meet that way. The only other creator is `claim_work`'s watermark stamp, so the wait is bounded by one claim tick and happens at most once per `(instance, kind)` row lifetime.
+
+### Liveness is read once per doorbell call {#liveness-read-once-per-notify}
+{verified: ReceiveDoorbellCostSqlTests.NotifyOwners_ManyOwners_JudgesLivenessOnceNotPerOwnerAsync, ReceiveDoorbellCostSqlTests.NotifyOwners_ALiveOwnerDraining_IsSuppressed_ButADeadOneIsRungAsync}
+
+Only a live target may be suppressed: a dead owner's fresh watermark must not strand work, so its doorbell
+fires and the deterministic re-target path takes over. The debounce therefore needs each target's
+liveness, judged by [the liveness rule](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule).
+
+`notify_instance_owners_with_payload` reads the live instances once per call (`wh_live_instance_ids()`)
+and hands each target's answer to `_wh_notify_debounced_for(instance, kind, payload, window, live)`, which
+holds the suppress-or-fire logic. The same read supplies the deterministic rank for streams no instance
+owns yet. `_notify_debounced(instance, kind, payload, window)` keeps its signature for a caller ringing a
+single target: it asks the rule for that one instance and delegates.
+
+**Design choice: a doorbell call judges liveness once, however many owners it rings.** Why: the rule reads
+`pg_locks`, whose cost grows with the server's connection limit rather than with the work, and
+`wh_instance_is_live` is a SQL function the planner cannot inline (its body has a subquery). Asked per
+target, as before migration 369, the rule was planned and run again for every owner rung, so a burst of
+stored work toward many owners paid a `pg_locks` read per owner. The test that holds the choice counts
+calls to `wh_instance_is_live` during a fan-out to three owners and fails if there is even one.
+
+### A stream is rung once per stored batch {#rung-once-per-stored-batch}
+{verified: ReceiveDoorbellCostSqlTests.CommitHandlerResult_AChildOnAStreamWithNoPendingWork_RingsItsOwnerOnceAsync, ReceiveDoorbellCostSqlTests.CommitHandlerResult_AChildAlreadySeen_RingsNoOneAsync, ReceiveDoorbellCostSqlTests.CommitHandlerResult_AChildOnAStreamWithPendingWork_RingsNoOneAsync}
+
+The ring for stored inbox work belongs to `store_inbox_messages`, and nothing rings it again. The store
+rings exactly the streams that need it: a stream whose queue was empty before the batch ([the
+empty-to-non-empty edge](#doorbell-empty-to-non-empty-edge)), and never for a message
+deduplication already saw, because a duplicate is no new work. A stream with pending work already has an
+owner that was rung for it.
+
+A handler that stores inbox messages of its own (a composite's children, a redelivery bundle's among them)
+goes through `commit_handler_result`, which calls the same store. Since migration 369 the commit leaves the
+inbox ring to the store, as every other inbox path does. Before, the commit, which predates the edge rule,
+also rang the owner of every inbox stream it stored: twice for a stream the store had already rung, and once
+for every duplicate and every busy stream, which the store had rightly left alone. A repair answer is mostly
+duplicates, so absorbing one woke owners for work that did not exist. The commit's outbox and perspective
+rings are unchanged.
+
+**Design choice: one function owns each ring, and a caller that delegates the store delegates the ring.**
+Why: the store is the only place that knows which streams went from empty to non-empty and which messages
+were duplicates; a caller that rings again can only ring too much. Delivery is unaffected either way,
+since a spurious doorbell is absorbed by the drain, but every extra ring is a debounce decision, a state row
+write and a liveness check. The tests that hold the choice commit a handler result with one inbox child and
+fail if its owner is rung more than once, or rung at all when the child is a duplicate or its stream
+already has pending work.
 
 ## Doorbells ring after commit
 {verified: DoorbellsRingAfterCommitSqlTests.Doorbell_InsideAHotTransaction_QueuesInsteadOfNotifyingAsync, DoorbellsRingAfterCommitSqlTests.HotStore_DoesNotTakeTheNotifySerializationLockAsync, DoorbellsRingAfterCommitSqlTests.RingDoorbells_DeliversQueuedRingsAndCoalescesDuplicatesAsync, DoorbellsRingAfterCommitSqlTests.RingDoorbells_TwoRingersDoNotDoubleRingOrBlockEachOtherAsync}
@@ -439,7 +486,7 @@ For 50 pods × 11 services in production (illustrative numbers — scale to your
 - [App signals](app-signals.md)
 - [Contributor: implementing notifications](../../../contributors/data-engines/implementing-notifications.md)
 
-## When the doorbell rings: the empty→non-empty edge
+## When the doorbell rings: the empty→non-empty edge {#doorbell-empty-to-non-empty-edge}
 
 A store-level NOTIFY fires exactly when a store call creates a stream's **first pending row** — the moment its queue transitions from empty to non-empty, judged per category (`outbox`, `inbox`, `perspective`) by the **same eligibility predicate the drain fetch uses**. Rows that pile up behind already-pending work are silent: a wake is already owed, and the drain loop's refetch will carry them. A stream whose queue drained to empty **re-arms the edge**, so the next store — seconds or weeks later — rings again.
 

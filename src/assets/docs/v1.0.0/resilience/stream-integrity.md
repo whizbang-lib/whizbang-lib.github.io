@@ -98,6 +98,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/347_DigestWindowsReadTheirTypes.sql
   - src/Whizbang.Data.Postgres/Migrations/348_IdleLedgerRecheck.sql
   - src/Whizbang.Data.Postgres/Migrations/357_AnAnswerMarksOnlyWhatItCovered.sql
+  - src/Whizbang.Data.Postgres/Migrations/369_RepairAnswersAreAbsorbedCheaply.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileCoordinatorTests.cs
@@ -209,6 +210,8 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMisattributedOriginCorrectionTests.cs
   - tests/Whizbang.Core.Tests/Messaging/RedeliveryAnswerCoverageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAnswerCoverageSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBundleCatalogChurnSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceiveDoorbellCostSqlTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -2161,17 +2164,45 @@ uses it instead of its own reading. A reconcile recorded by a version without th
 judges by presence as before. If recording the answer fails, a Warning says so, the buckets wait out
 their answer timeout, and the reconcile judges the bundle without the commit's view.
 
-#### Per-bundle work keeps its working table for the connection {#per-bundle-work-table}
+#### Recording an answer creates no temporary table {#per-bundle-work-table}
 
-{verified: RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_ASecondCallOnTheConnection_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBundle_ASecondCallOnTheConnection_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_TwiceInOneTransaction_AnswersEachBundleForItsOwnEventsAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBundle_TwiceInOneTransaction_StartsFromAnEmptyWorkingTableAsync}
+{verified: RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_AfterTheSessionIsReset_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_ASecondCallOnTheConnection_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_TwiceInOneTransaction_AnswersEachBundleForItsOwnEventsAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBundle_ASecondCallOnTheConnection_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBundle_TwiceInOneTransaction_StartsFromAnEmptyWorkingTableAsync}
 
-The commit-time answer and the deferred reconcile each gather a bundle's rows in a temporary working
-table. The table is created once per database connection and emptied at commit, not created and dropped
-by every call. A consumer can receive hundreds of small bundles a minute, and a table created per call
-cost far more than the bundle's own work: system catalog rows written and deleted on every bundle, cache
-invalidations sent to every other connection to the database, and every statement in the function planned
-again because each call's table was a new one. Each call empties the table before it starts, so a second
-bundle in the same transaction sees only its own rows.
+The commit-time answer runs once for every redelivery bundle a consumer absorbs, and answers to repair
+requests can arrive in bulk long after the requests left, since [repair waits for its
+answer](#repair-waits-for-its-answer). So the receive side, not the request rate, is where repair spends the
+database, and a cost paid per call that bears no relation to the bundle's size multiplies by every bundle.
+
+Since migration 369 the answer gathers the bundle's children into arrays with one statement, and writes
+nothing to the system catalog. Its logic and its results are unchanged; the array form was checked against
+the table form on 1,500 recorded bundles with identical answers.
+
+Before, the answer gathered the children in a temporary working table. Migration 321 kept that table for
+the life of the database connection instead of creating and dropping it per call, but a pooled connection
+is reset each time the pool hands it out (`DISCARD ALL`), and the reset drops every temporary table the
+session made. In practice the table was created again on almost every bundle, and each creation:
+
+- wrote and later deleted about 70 system catalog rows;
+- sent a cache invalidation to every other session of the database;
+- planned every statement that read the table again, because each call's table was a new one;
+- added a new statement-statistics entry for each of those statements, since the table's identity changed
+  every time, which keeps an extension that tracks statements evicting entries for the whole server.
+
+Measured on one call, recording an answer went from 1.443 ms to 0.705 ms, and from about 70 catalog rows
+written to none.
+
+**The rule (design choice): a function the framework calls per message, per bundle or per commit does not
+create a temporary table.** It holds its working set in arrays, a CTE or a single statement. Why: the
+framework does not own the session. Behind a connection pool or a transaction pooler, any session state
+(temporary tables, prepared plans tied to them) can be discarded between two calls, so a temporary table
+"kept for the connection" is a temporary table created per call, with catalog writes and invalidations that
+reach every other session. The test that holds the rule resets the session between two calls, as the pool
+does, and fails if the second call writes a single catalog row.
+
+The deferred reconcile still keeps its working table for the connection. It runs on the maintainer [as a
+batch](#redelivery-reconciles-run-as-a-batch), many bundles per call, so a table created once per batch is
+not a cost paid per bundle. Each call empties the table before it starts, so a second batch in the same
+transaction sees only its own rows.
 
 ---
 
