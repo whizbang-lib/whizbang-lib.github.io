@@ -20,6 +20,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/316_OneDurableInstanceRecord.sql
   - src/Whizbang.Data.Postgres/Migrations/317_EveryReaderJudgesLivenessByTheRule.sql
   - src/Whizbang.Data.Postgres/Migrations/355_RoleHoldersAreJudgedByTheLivenessRule.sql
+  - src/Whizbang.Data.Postgres/Migrations/369_RepairAnswersAreAbsorbedCheaply.sql
   - src/Whizbang.Data.Postgres/Migrations/204_DirectInstancesAreLiveByTheirAliveLock.sql
   - src/Whizbang.Data.Postgres/Migrations/229_OnlyReadyInstancesAreEligibleForWork.sql
   - src/Whizbang.Data.Postgres/Notifications/PostgresNotificationsServiceCollectionExtensions.cs
@@ -38,6 +39,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceLivenessRuleSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/LivenessRuleReadersSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleHolderLivenessSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceiveDoorbellCostSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ListenLivenessSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/CoordinationSourceGuardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockLivenessSqlTests.cs
@@ -288,7 +290,7 @@ from its last definition with only the liveness check replaced, and the C# reade
 | `wh_partition_assignment_candidates` and the partition assigner | The heartbeat's age, judged by the assigner's own two windows | The function returns `is_live`; the assigner reads it. See [Partition assignment](/v1.0.0/fundamentals/work-coordinator/partition-assignment). |
 | `claim_orphaned_outbox`, `claim_orphaned_inbox`, a stream's owner | A heartbeat inside the caller's cutoff, or a connection named for the owner in `pg_stat_activity` | The rule. A named connection is no longer a signal; see [LISTEN as heartbeat](/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer#listen-as-heartbeat). |
 | `claim_orphaned_perspective_events`, `get_stream_events` | Any row at all, or a named connection | The rule. An owner whose row the reap has not removed yet, but whom the rule calls dead, no longer holds its streams. |
-| `calculate_instance_rank`, `notify_instance_owners_with_payload`, `_notify_debounced` | A heartbeat inside a fixed 30 s | The rule. |
+| `calculate_instance_rank`, `notify_instance_owners_with_payload`, `_notify_debounced` | A heartbeat inside a fixed 30 s | The rule. Since migration 369 a doorbell call reads it once (`wh_live_instance_ids()`) for every owner it rings and passes each answer to `_wh_notify_debounced_for`; `_notify_debounced` asks it for its one target. See [Liveness is read once per doorbell call](/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer#liveness-read-once-per-notify). |
 | `_notify_dead_letter_ready` | A heartbeat inside 5 minutes | The rule. |
 | The stale-peer reap (`cleanup_stale_instances`) and the heartbeat's opportunistic reap | The caller's cutoff and its definitive-dead cutoff, sparing a held lock | Removes exactly what the rule calls not live and wakes exactly what it calls live; the cutoff parameters stay for older callers and are not read. The heartbeat's cheap pre-check asks the rule by heartbeat alone (no lock read) before calling the reap. |
 | `is_instance_alive` | A held lock or the caller's threshold | Delegates to the rule; the threshold is not read. |
