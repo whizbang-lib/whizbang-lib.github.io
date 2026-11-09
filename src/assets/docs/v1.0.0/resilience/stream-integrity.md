@@ -99,6 +99,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/348_IdleLedgerRecheck.sql
   - src/Whizbang.Data.Postgres/Migrations/357_AnAnswerMarksOnlyWhatItCovered.sql
   - src/Whizbang.Data.Postgres/Migrations/369_RepairAnswersAreAbsorbedCheaply.sql
+  - src/Whizbang.Data.Postgres/Migrations/375_LedgerRowsWithoutAWindowAreRechecked.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileCoordinatorTests.cs
@@ -205,6 +206,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WindowedDigestTypeIndexTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/LedgerRecheckWorkerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerRecheckSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerUnconfirmedHoldSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.TypeLaneHeal.cs
   - tests/Whizbang.Core.Tests/Messaging/MisattributedOriginTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MisattributedOriginCorrectionSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMisattributedOriginCorrectionTests.cs
@@ -1587,7 +1590,7 @@ with many of them could fill the backlog and defer real deficits.
 :::
 
 ### Idle ledger re-check {#idle-ledger-recheck}
-{verified: LedgerRecheckWorkerTests.RecheckTick_AStaleRow_IsAskedForAgainAsAStreamLevelRecheck_NeverARepairAsync, LedgerRecheckWorkerTests.RecheckTick_ClaimsTheStalestRows_BoundedPerTick_OlderThanTheThresholdAsync, LedgerRecheckWorkerTests.RecheckTick_RowsThatShareAWindow_AreAskedInOneRequest_OthersInTheirOwnAsync, LedgerRecheckWorkerTests.RecheckTick_WhileTheServiceIsBusy_ClaimsAndSendsNothingAsync, LedgerRecheckWorkerTests.RecheckTick_DisabledOrAuditOff_DoesNothingAsync, LedgerRecheckWorkerTests.RecheckTick_WithNoOriginWhoseAddressIsKnown_ClaimsNothingAsync, LedgerRecheckWorkerTests.RecheckTick_NothingStale_SendsNothingAsync, LedgerRecheckWorkerTests.ExecuteAsync_ATickThatFails_IsLogged_AndTheNextTickRunsAsync, LedgerRecheckWorkerTests.TheWorker_IsRegisteredWithTheIntegrityWorkersAsync, StreamIntegrityOptionsValidatorTests.LedgerRecheck_DefaultsAreOn_EveryMinute_FiveHundredRows_TwoHoursAsync, StreamIntegrityOptionsValidatorTests.Validate_ALedgerRecheckBoundBelowOne_FailsNamingTheKeyAsync}
+{verified: LedgerRecheckWorkerTests.RecheckTick_AStaleRow_IsAskedForAgainAsAStreamLevelRecheck_NeverARepairAsync, LedgerRecheckWorkerTests.RecheckTick_ClaimsTheStalestRows_BoundedPerTick_OlderThanTheThresholdAsync, LedgerRecheckWorkerTests.RecheckTick_RowsThatShareAWindow_AreAskedInOneRequest_OthersInTheirOwnAsync, LedgerRecheckWorkerTests.RecheckTick_WhileTheServiceIsBusy_ClaimsAndSendsNothingAsync, LedgerRecheckWorkerTests.RecheckTick_ARowWithNoWindow_IsAskedForAWholeHistoryRecomputeAsync, LedgerRecheckWorkerTests.RecheckTick_DisabledOrAuditOff_DoesNothingAsync, LedgerRecheckWorkerTests.RecheckTick_WithNoOriginWhoseAddressIsKnown_ClaimsNothingAsync, LedgerRecheckWorkerTests.RecheckTick_NothingStale_SendsNothingAsync, LedgerRecheckWorkerTests.ExecuteAsync_ATickThatFails_IsLogged_AndTheNextTickRunsAsync, LedgerRecheckWorkerTests.TheWorker_IsRegisteredWithTheIntegrityWorkersAsync, StreamIntegrityOptionsValidatorTests.LedgerRecheck_DefaultsAreOn_EveryMinute_FiveHundredRows_TwoHoursAsync, StreamIntegrityOptionsValidatorTests.Validate_ALedgerRecheckBoundBelowOne_FailsNamingTheKeyAsync}
 
 A ledger row clears only when a comparison sees its bucket again, and the routine audit compares a bucket at most once
 a day. After an upgrade that changes the compare rule, rows written under the old rule otherwise wait for that daily
@@ -1604,11 +1607,13 @@ address: like every integrity request, a re-check is directed or not sent.
 **What one tick does.**
 
 1. It claims up to `LedgerRecheckRowsPerTick` rows (default 500), oldest report first, whose last report is older than
-   `LedgerRecheckAfterMinutes` (default 120) (`wh_integrity_claim_ledger_recheck`, migration 348).
+   `LedgerRecheckAfterMinutes` (default 120) (`wh_integrity_claim_ledger_recheck`, migration 348, re-created by
+   migration 375 to claim [rows with no window](#recheck-rows-with-no-window) too).
 2. Rows of one origin, type and window are asked in one request, because one stream-level answer covers every tenant
    and stream of a type over a window: a directed, windowed, stream-level `RequestIntegrityManifest` over the row's
-   window, marked `Recheck`, at background priority. A tick therefore sends at most that many requests, usually far
-   fewer.
+   window, marked `Recheck`, at background priority. A row with no window is asked over the whole history instead:
+   an unwindowed request answered from the origin's recompute. A tick therefore sends at most that many requests,
+   usually far fewer.
 3. The origin answers as it answers any stream-level request and echoes the flag (`IntegrityManifest.Recheck`); a
    followed page of the answer is a re-check too.
 4. The comparison removes the rows that now match or are undecided **exactly as the audit removes them**, and a
@@ -1621,13 +1626,53 @@ When no row is that old, the claim returns nothing and the tick sends nothing: t
 attempt is spent, no backoff moves and no pending answer is set, so a re-check cannot push a real deficit toward
 exhaustion. A row is claimed again only once its stamp, like its last report, is older than the threshold, so a row a
 re-check finds still divergent is reported again and waits the threshold before its next re-check instead of being
-asked every tick. `last_touched` could not serve, because every report, drain claim and pending mark moves it. Only
-rows stamped with their compared window are claimed, never the synthetic type lane, and concurrent claimers skip each
-other's locked rows. No index was added: the ledger is bounded by `MaxRepairDrainBacklog` and the report caps, and the
+asked every tick. `last_touched` could not serve, because every report, drain claim and pending mark moves it. Rows
+with a stamped window and rows with none are claimed alike, never the synthetic type lane (a type-level match
+[heals that row](#a-matching-type-heals-its-type-lane) instead), and concurrent claimers skip each other's locked
+rows. No index was added: the ledger is bounded by `MaxRepairDrainBacklog` and the report caps, and the
 claim runs at most once a tick on an idle service.
 
-**Rows the re-check leaves to the audit.** A row without a stamped window (a row from before windows were stamped, or a
-divergence that is not a deficit) has no window to ask about, and the next audit that covers its bucket decides it.
+#### Rows with no window {#recheck-rows-with-no-window}
+{verified: LedgerRecheckWorkerTests.RecheckTick_ARowWithNoWindow_IsAskedForAWholeHistoryRecomputeAsync, IntegrityLedgerRecheckSqlTests.Claim_ARowWithNoWindow_IsClaimed_AndComesBackWithoutOneAsync, IntegrityLedgerRecheckSqlTests.Claim_SkipsRowsItCannotAsk_AndSpendsNothingAsync, IntegrityLedgerUnconfirmedHoldSqlTests.Hold_ALegacyRowWithNoWindow_WaitsForAComparisonBeforeTheDrainRepairsIt_OnceAsync}
+
+A per-stream row with no window (`window_from` and `window_until` both null) was compared over the whole history: a
+full-history answer, or a row written before windows were stamped. Many such rows were written by older releases under
+compare rules since fixed, most of them while this service held nothing of the stream, and the consumer now holds
+every event. Before [#2208](https://github.com/whizbang-lib/whizbang/issues/2208) the re-check claimed only windowed
+rows, so these were never compared again, and the paced drain kept claiming them and asking origins to redeliver
+events already held.
+
+**The whole-history ask.** The re-check now claims such a row like any other (still bounded, oldest report first, never
+the type lane) and returns it without bounds. The worker asks its origin for a full-history answer computed fresh: an
+unwindowed, stream-level request from the origin's recompute, with no digest cap. It is deliberately not a window
+opened from sequence 0, because the origin [caps a windowed answer](#audit-window-cap) at `MaxAuditWindowSequences`
+and the slice it returned would prove only itself. The normal comparison then removes every stream the consumer holds
+completely and reports again the ones it does not. A row the answer never mentions stays as it was, and is asked again
+once its stamp is older than `LedgerRecheckAfterMinutes` (every 120 minutes by default) while the service is idle.
+
+**The one-time hold.** Migration 375 runs `wh_integrity_hold_unconfirmed_rows` once per database (gated by the
+`integrity_hold_unconfirmed_rows_version` setting): every per-stream deficit row with no window that the ledger holds
+at the upgrade is marked answered (`answered_at`). The drain already skips an [answered](#repair-waits-for-its-answer)
+row until a comparison sights its bucket again or a heal deletes it, which is exactly the confirmation these rows
+lack. Rows already answered, [unhealable](#unhealable-buckets) or exhausted are left alone, since the drain does not
+claim them either, and rows reported after the upgrade were compared under the current rule and are repaired as
+before. The hold runs in the migration, not in maintenance, because maintenance is idle-gated and a busy service is
+where needless repairs cost most.
+
+**What it does to the gauges.** A held row counts on `repair_answered_buckets`, so that gauge
+[jumps at the upgrade](#integrity-gauges) by the number of rows held, then falls as the re-check and the daily audit
+reach each type. `unhealed_buckets` does not move at the upgrade; it falls as the comparisons clear the rows.
+
+**Why reuse the answered mark rather than add a column.** "Answered, waiting for the next comparison" is precisely the
+state these rows are in: their last comparison is not trusted, and only a fresh one should send them back to the drain.
+The answered mark already has that meaning, is already skipped by the drain claim, is already
+cleared by every report (`wh_integrity_try_begin_report`) and deleted by every heal, and is already counted on a gauge.
+A new column would have needed its own claim condition, index change, clearing rule and gauge to say the same thing,
+and every one of those is a place for the two marks to disagree. The cost is that the answered gauge mixes held rows
+with rows a redelivery answered for a while after the upgrade, which is why the jump is documented here.
+
+A row that is not a deficit (an identity mismatch or a local surplus) is not held, because the drain never claims it;
+the re-check compares it like any other no-window row.
 
 **Why each default.**
 
@@ -1646,6 +1691,45 @@ the loop spins, below one row nothing is re-checked, and below one minute a row 
 together while the stale rows clear, then fall to near zero. Rechecked rising with cleared flat means the buckets are
 still divergent under the current rule: the rows are real, and the drain and audit handle them as before.
 {verified: IntegrityLedgerRecheckSqlTests.Claim_TakesTheStalestRowsFirst_BoundedAsync, IntegrityLedgerRecheckSqlTests.Claim_ARowItClaimed_IsNotClaimedAgainUntilTheThresholdPassesAsync, IntegrityLedgerRecheckSqlTests.Claim_SkipsRowsItCannotAsk_AndSpendsNothingAsync, IntegrityManifestReceptorTests.ManifestReceptor_ARecheckAnswer_RemovesTheRowWhoseBucketNowMatches_AndCountsItAsync, IntegrityManifestReceptorTests.ManifestReceptor_ARecheckAnswer_RemovesAnUndecidedRow_AndCountsItAsync, IntegrityManifestReceptorTests.ManifestReceptor_ARecheckAnswer_WithADeficit_NeverAsksForARepairAsync, IntegrityManifestReceptorTests.ManifestReceptor_AnOrdinaryAnswer_DoesNotCountAsARecheckAsync, IntegrityManifestReceptorTests.ManifestReceptor_ARecheckPage_FollowsItsCursorAsARecheckAsync, IntegrityManifestReceptorTests.RequestReceptor_EchoesTheRecheckFlag_OnItsAnswerAsync}
+
+### A matching type heals its type lane {#a-matching-type-heals-its-type-lane}
+{verified: IntegrityManifestReceptorTests.TypeLevel_AFullHistoryMatch_HealsTheTypeLaneRow_AndRecordsTheHealAsync, IntegrityManifestReceptorTests.TypeLevel_AWindowAtTheSeal_ThatReachedTheSettledHead_HealsTheTypeLaneRowAsync, IntegrityManifestReceptorTests.TypeLevel_AMatchingWindowAboveTheSeal_LeavesTheTypeLaneRowAsync, IntegrityManifestReceptorTests.TypeLevel_AMatchingWindowTheOriginCapped_LeavesTheTypeLaneRowAsync, IntegrityManifestReceptorTests.TypeLevel_AnUndecidedType_LeavesTheTypeLaneRowAsync, IntegrityManifestReceptorTests.TypeLevel_OneTypeMatchesAndAnotherDiverges_HealsOnlyTheMatchingTypesLaneAsync, IntegrityManifestReceptorTests.TypeLevel_AnUnstampedWindowStartWithNoMetrics_StillHealsTheTypeLaneRowAsync}
+
+A bulk backfill or a checkpoint gap records its deficit for a whole (tenant, type) on the **type lane**: the ledger row
+whose stream id is the empty uuid. Before [#2207](https://github.com/whizbang-lib/whizbang/issues/2207) that row was
+deleted only by a later checkpoint window heal for the same type. The type-level comparison moved on after a match
+without touching it, and the [idle re-check](#idle-ledger-recheck) skips the type lane, so a type with no new traffic
+kept its row, often written under an older compare rule, in `unhealed_buckets` for good.
+
+**What heals.** When the type-level comparison finds a (tenant, type) whose roll-up matches, it deletes that type's
+type-lane row and records the heal's age on `bucket_heal_seconds`, like every other heal. It does so only when the
+whole history of the type was counted on both sides:
+
+- a **full-history answer** (no window, as the daily sweep asks), or
+- a **window that starts at or below this service's seal** for the origin (everything beneath the seal was already
+  verified) **and was not capped** (`IntegrityManifest.WindowCapped` is false, so the answer reached the origin's
+  settled head).
+
+A window with no recorded start counts as starting at 0, and the heal is recorded whether or not the metrics are
+registered.
+
+**What heals nothing.**
+
+| Case | Why it is not proof |
+| --- | --- |
+| A matching window that starts above the seal | It proves only its own slice; the recorded deficit may lie below it, in history no comparison has verified |
+| A matching window the origin [capped](#audit-window-cap) | It stopped short of the settled head; the deficit may lie past where it stopped |
+| An undecided type ([events held without the origin's sequence](#events-held-without-an-origin-sequence) fill the count but not the fold) | The verdict is not a match, so nothing is proven |
+| A diverging type | Its type-lane row is the true record; a matching neighbor in the same answer heals only its own lane |
+
+**Why only whole-history counts heal a type lane.** A type-lane row carries no stream and often no window that bounds
+where its deficit sits: a backfill or a gap request asks for the whole type. Deleting it on a narrower match would turn
+"this slice agrees" into "the type agrees", the exact mistake a reconciliation ledger exists to avoid, and the row would
+vanish while events were still missing below or beyond the window. A count over the whole history on both sides is the
+only answer that covers wherever the deficit might be. A genuinely missing stream tail makes the type roll-up mismatch,
+so the type lane never heals while events are actually missing.
+
+No migration: the heal uses the ledger's existing batch heal (`MarkHealedBatchWithAgesAsync`).
 
 ### Report-only is bilateral {#report-only-is-bilateral}
 
@@ -2081,7 +2165,8 @@ of that type inside it. So:
 - when a type-lane request is granted and sent, it marks its own row and every per-stream row of the
   type whose window lies inside the request's window as answer pending, so the drain does not ask for
   the same events stream by stream;
-- the checkpoint path's type-lane row is forgotten when its gap heals.
+- the checkpoint path's type-lane row is forgotten when its gap heals, and any type-lane row is healed by a
+  [type-level match over the whole history](#a-matching-type-heals-its-type-lane).
 
 **One request per window.** The drain groups the rows it claims by origin, tenant, event type and window,
 and sends one request per group. Before, it sent one request per origin, tenant and type over the union
@@ -3376,7 +3461,7 @@ maximum across its instances), never a sum.
 | `repair_exhausted_buckets` | Unhealed buckets that spent their repair budget (`MaxRepairAttemptsPerBucket`) and are no longer asked for until a local change or a grown deficit [resets them](#what-resets-the-repair-ladder). These need an operator, not patience: the one number worth an alert. Raising the budget does not lower it. |
 | `oldest_unhealed_age_seconds` | Age of the longest-standing unhealed divergence. Distinguishes a transient blip from a stuck bucket. |
 | `repair_answer_pending_buckets` | Buckets whose repair request is out and whose answer has not landed. They are not asked for again until the answer lands or `RepairAnswerTimeoutMinutes` passes ([repair waits for its answer](#repair-waits-for-its-answer)). A value that stays high for longer than the timeout means answers are not arriving: the origin is not serving requests (`ReportOnly`, or its own integrity queue is behind) or its bundles are not reaching this service. |
-| `repair_answered_buckets` | Buckets a redelivery bundle answered that wait for the next comparison to decide healed or still divergent. Rises after a repair burst and falls at the next audit; a value that never falls means comparisons are not running for those buckets. |
+| `repair_answered_buckets` | Buckets a redelivery bundle answered that wait for the next comparison to decide healed or still divergent. Rises after a repair burst and falls at the next audit; a value that never falls means comparisons are not running for those buckets. **Jumps once at the upgrade to the release with migration 375:** existing per-stream deficit rows with no window are [held as answered](#recheck-rows-with-no-window) until a comparison confirms them, then the gauge falls as the idle re-check and the daily audit reach each type. |
 | `deliveries_pending` | [Integrity deliveries](#integrity-deliveries-are-queued) recorded and waiting for the maintainer's drain: received checkpoints, manifest requests and chunks, redelivery requests and bundle reconciles. Near zero on a healthy service. |
 | `oldest_delivery_age_seconds` | How long the oldest waiting integrity delivery has waited (0 when none). Under load the drain is deferred by the idle gate for up to `Whizbang:Housekeeping:MaxDeferral`, so an age above that, or one that keeps climbing, means the drain is not running: check which instance holds the maintainer duty. |
 | `sealed_through` (tag `origin_service_id`) | The per-origin **verified watermark** — the exclusive end of the highest window that audited clean and complete. This is the top-level convergence needle: a lane is provably in sync exactly as far as its seal. Each origin is its own series; one aggregated number would hide a stuck lane. |
