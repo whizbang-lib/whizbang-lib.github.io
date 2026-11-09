@@ -11,7 +11,8 @@ description: >-
   subscriptions - AOT-compatible with correlation filters
 tags: >-
   transports, azure-service-bus, messaging, topics, subscriptions,
-  correlation-filters, aspire, aot, sessions, adaptive-acceptors
+  correlation-filters, aspire, aot, sessions, adaptive-acceptors,
+  excluded-event-types
 codeReferences:
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs
   - src/Whizbang.Transports.AzureServiceBus/AsbReceiveDecisionMaker.cs
@@ -25,6 +26,7 @@ codeReferences:
   - src/Whizbang.Transports.AzureServiceBus/IServiceBusAdminClient.cs
   - src/Whizbang.Transports.AzureServiceBus/ServiceBusAdminClientWrapper.cs
   - src/Whizbang.Transports.AzureServiceBus/ServiceBusInfrastructureProvisioner.cs
+  - src/Whizbang.Transports.AzureServiceBus/ServiceBusEntityProvisioning.cs
   - src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusSubscriptionExtensions.cs
 testReferences:
   - >-
@@ -59,6 +61,14 @@ testReferences:
     tests/Whizbang.Transports.AzureServiceBus.Component.Tests/AzureServiceBusTransportThrottleAndAdaptiveTests.cs
   - >-
     tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusProcessorStopsReceivingTests.cs
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusExcludedEventTypesTests.cs
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusExcludedEventTypesSubscribeTests.cs
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusAdminClientDefaultsTests.cs
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusAdminClientWrapperTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -805,6 +815,96 @@ than a pattern silently disappearing.
 - Manifest provisioning converges an existing subscription's rules too, not only a new one's, so a command inbox subscription created with the match-all rule stops receiving commands its service does not handle
 - Only applied when `RoutingPatterns` metadata is present
 - Requires `AutoProvisionInfrastructure = true` (default)
+
+### Excluded Event Types {#excluded-event-types}
+
+A service can name event types it does not want in an opt-out list
+(`RoutingOptions.ExcludeEventType<TEvent>()` or `Whizbang:Routing:ExcludedEventTypes`; see
+[excluded event types](../../fundamentals/dispatcher/routing#excluded-event-types) for the API, the
+startup checks and why the list is opt-out only). On Azure Service Bus each event subscription then
+carries one rule that drops those types at the broker. A subscription that excludes nothing keeps its
+`$Default` match-all rule and is never touched.
+
+**The rule.** The rule is named `ExcludedEventTypes` and lists only the subjects published to that
+subscription's topic, with single quotes doubled:
+{verified: ServiceBusExcludedEventTypesTests.BuildExpression_Subjects_NotInWithANullGuardAsync, ServiceBusExcludedEventTypesTests.BuildExpression_QuoteInASubject_IsDoubledAsync, AzureServiceBusExcludedEventTypesSubscribeTests.Subscribe_ExcludedSubjects_AppliesTheRuleAsync}
+
+```sql{title="The excluded event types rule on one event subscription" description="A SQL filter that delivers every event except the excluded subjects, and still delivers a message published without a subject." tests=["ServiceBusExcludedEventTypesTests.BuildExpression_Subjects_NotInWithANullGuardAsync"]}
+sys.Label IS NULL OR NOT (sys.Label IN ('myapp.inventory.events.inventorylevelsampledevent', 'myapp.inventory.events.outer+pricetickevent'))
+```
+
+**Why the `IS NULL` guard.** In a SQL filter, `NULL IN (...)` is unknown, and a filter that evaluates to
+unknown drops the message. Without the guard, a message published with no subject would be dropped,
+where the `$Default` rule it replaces delivered it.
+
+#### Reconciling the rule {#excluded-event-types-reconcile}
+
+The rule is reconciled on every subscribe, idempotently, so every instance converges the shared
+subscription on the list it runs with:
+
+| Starting state | What the reconcile does | Verified |
+|----------------|-------------------------|----------|
+| Nothing excluded, never excluded | Writes nothing: `$Default` stays as it is | {verified: ServiceBusExcludedEventTypesTests.Apply_NothingExcluded_NeverExcluded_TouchesNothingAsync, AzureServiceBusExcludedEventTypesSubscribeTests.Subscribe_EmptyList_LeavesDefaultAndLogsTheEffectiveRuleAsync} |
+| Types excluded, only `$Default` present | Creates `ExcludedEventTypes` first, then deletes `$Default` | {verified: ServiceBusExcludedEventTypesTests.Apply_Excluded_FromDefault_CreatesTheRuleThenRemovesDefaultAsync} |
+| Types excluded, rule already carries this list | Touches nothing | {verified: ServiceBusExcludedEventTypesTests.Apply_Excluded_AlreadyConverged_TouchesNothingAsync} |
+| Types excluded, rule carries another list or another filter kind | Replaces the rule's filter in place | {verified: ServiceBusExcludedEventTypesTests.Apply_Excluded_DifferentList_ReplacesTheRuleInPlaceAsync, ServiceBusExcludedEventTypesTests.Apply_Excluded_RuleHasAnotherFilterKind_ReplacesItInPlaceAsync, ServiceBusExcludedEventTypesTests.Apply_Excluded_RuleMatchAllAndDefaultPresent_UpdatesThenRemovesDefaultAsync} |
+| Another instance created the rule between the read and the create | The lost create (409) becomes an update of the rule the other instance created | {verified: ServiceBusExcludedEventTypesTests.Apply_Excluded_CreateRacesAnotherInstance_UpdatesTheRuleItCreatedAsync} |
+| Another instance already deleted `$Default` | The 404 is the wanted state and is tolerated | {verified: ServiceBusExcludedEventTypesTests.Apply_Excluded_DefaultAlreadyRemovedByAnotherInstance_IsToleratedAsync} |
+| The list is emptied after types were excluded | The rule is **kept** and its filter replaced in place by a match-all filter, rather than deleted | {verified: ServiceBusExcludedEventTypesTests.Apply_NothingExcluded_PreviouslyExcluded_ReplacesTheRuleInPlaceWithMatchAllAsync, ServiceBusExcludedEventTypesTests.Apply_NothingExcluded_RuleAlreadyMatchAll_TouchesNothingAsync, ServiceBusExcludedEventTypesTests.Apply_NothingExcluded_RuleIsSqlOneEqualsOne_TouchesNothingAsync, ServiceBusExcludedEventTypesTests.Apply_NothingExcluded_RuleHasAnotherFilterKind_ReplacesItWithMatchAllAsync} |
+| Another rule the reconcile does not manage remains | **Warning**: that rule can still deliver an excluded type | {verified: ServiceBusExcludedEventTypesTests.Apply_Excluded_ForeignRuleRemains_WarnsThatItCanStillDeliverAsync} |
+| A create, update or delete fails for another reason | **Warning**; the subscription keeps delivering what its current rules match | {verified: ServiceBusExcludedEventTypesTests.Apply_Excluded_CreateFails_LogsAWarningAndKeepsDefaultAsync, ServiceBusExcludedEventTypesTests.Apply_Excluded_DeleteFailsWithAnotherStatus_LogsAWarningAsync, ServiceBusExcludedEventTypesTests.Apply_Excluded_CreateFailsWithAnotherConflictStatus_LogsAWarningAsync} |
+
+**Never zero rules.** Rules are only ever created or replaced in place before anything is deleted, and
+`$Default` is deleted only once the `ExcludedEventTypes` rule carries its filter. A subscription with no
+rule delivers nothing, so at no point can a reconcile, or two instances reconciling at once, leave one.
+This is also why an emptied list keeps its rule with a match-all filter: deleting it could race another
+instance deleting `$Default` and leave the subscription with no rule at all.
+
+Each subscribe logs the effective rule at Information: the SQL filter, or that the subscription
+delivers every event.
+
+#### Filter length limit {#excluded-event-types-length-limit}
+{verified: ServiceBusExcludedEventTypesTests.Apply_Excluded_ExpressionOverTheBrokerLimit_LogsAnErrorAndTouchesNothingAsync}
+
+A SQL filter is limited to 1,024 characters. Unlike [routing pattern filters](#routing-filters), the
+exclusion cannot be split across rules: the broker delivers a message when **any** rule matches, so a
+second rule would deliver everything the first excludes. When one topic's rule would be longer than the
+limit, **nothing is excluded**, the subscription is left as it is (still delivering every event), and an
+Error names the topic, the count and the length. Exclude fewer types on that topic.
+
+#### When the rule is not applied {#excluded-event-types-not-applied}
+{verified: AzureServiceBusExcludedEventTypesSubscribeTests.Subscribe_AutoProvisionDisabled_WithSubjects_WarnsAndTouchesNothingAsync, AzureServiceBusExcludedEventTypesSubscribeTests.Subscribe_AutoProvisionDisabled_EmptyList_IsSilentAsync, AzureServiceBusExcludedEventTypesSubscribeTests.Subscribe_NoAdminClient_WithSubjects_WarnsAsync, AzureServiceBusExcludedEventTypesSubscribeTests.Subscribe_DestinationWithoutTheKey_NeverReadsRulesAsync, AzureServiceBusExcludedEventTypesSubscribeTests.Subscribe_KeyIsNotAnArray_IsIgnoredAsync}
+
+Rule writes need the management plane, like every other rule this transport writes. With no
+[admin client](#admin-client), or with `AutoProvisionInfrastructure = false`, a non-empty list logs a
+Warning and the subscription keeps delivering every event; an empty list is silent. Only event
+destinations carry the excluded subjects, so an inbox or a custom destination is never touched.
+
+**`IServiceBusAdminClient.UpdateRuleAsync`.** Replacing a rule's filter in place is one broker operation,
+so the subscription is never without the rule, unlike a delete followed by a create. The interface gains
+`UpdateRuleAsync(topicName, subscriptionName, rule, cancellationToken)`, which the built-in wrapper passes
+through to `ServiceBusAdministrationClient.UpdateRuleAsync`. Its default implementation throws
+`NotSupportedException`, so a custom admin client written before it keeps compiling; the reconcile then
+logs a Warning and the subscription keeps delivering every event.
+{verified: ServiceBusAdminClientDefaultsTests.UpdateRuleAsync_Default_IsNotSupportedAsync, ServiceBusAdminClientWrapperTests.UpdateRuleAsync_PassesTheRuleThroughAsync}
+
+#### Changing the list during a rollout {#excluded-event-types-rollout}
+
+All instances of a service share one subscription per topic, and each one reconciles the rule to its
+own list when it subscribes. While a deployment that changes the list is rolling out, **the last
+instance to subscribe wins**: an instance still on the old list can put the old rule back, until every
+instance runs the new list. A version of the library without this feature does not touch the rule, so
+rolling back past it leaves the last rule in place; to remove it, empty the list on a version that has
+the feature.
+
+:::warning
+**Adding a handler for a type that is currently excluded.** Startup refuses a list that excludes a type
+the service consumes, so the type has to leave the list in the same release that adds its handler. During
+that rollout, an old instance can still re-apply the exclusion, and the broker then drops events the new
+handler is waiting for; they are never delivered or recorded. Take it in two releases instead: first
+remove the type from the list (it is delivered and discarded at the receive boundary), and add the
+handler once every instance runs without the exclusion.
+:::
 
 ---
 

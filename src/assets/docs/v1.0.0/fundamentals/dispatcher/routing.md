@@ -13,7 +13,7 @@ description: >-
   service's own commands local while its events still broadcast, with transport-layer echo suppression
   storing self-delivered copies settled, never processed. Absorbed namespaces keep events nothing here
   consumes yet in the local event store, so a perspective added later can rebuild from them.
-tags: 'routing, namespace-routing, message-routing, inbox, topics, pub-sub, owned-domains, echo-suppression, absorbed-namespaces'
+tags: 'routing, namespace-routing, message-routing, inbox, topics, pub-sub, owned-domains, echo-suppression, absorbed-namespaces, excluded-event-types, opt-out'
 codeReferences:
   - src/Whizbang.Core/Routing/RoutingOptions.cs
   - src/Whizbang.Core/Routing/NamespaceRoutingStrategy.cs
@@ -37,6 +37,11 @@ codeReferences:
   - src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
   - src/Whizbang.Core/Routing/MessageDiscardPolicy.cs
+  - src/Whizbang.Core/Routing/EventSubject.cs
+  - src/Whizbang.Core/Routing/ExcludedEventTypePlanner.cs
+  - src/Whizbang.Core/Routing/RoutingOptionsConfigurationBinder.cs
+  - src/Whizbang.Core/Routing/TransportSubscriptionBuilder.cs
+  - src/Whizbang.Core/Workers/TransportPublishStrategy.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOwnedDomainTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCoverageSweepRoutedCascadeTests.cs
@@ -66,6 +71,12 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/ServiceBusConsumerWorkerDropGateTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AbsorbedEventReachesEventStoreTests.cs
+  - tests/Whizbang.Core.Tests/Routing/EventSubjectTests.cs
+  - tests/Whizbang.Core.Tests/Routing/ExcludedEventTypePlannerTests.cs
+  - tests/Whizbang.Core.Tests/Routing/RoutingOptionsExcludedEventTypesTests.cs
+  - tests/Whizbang.Core.Tests/Routing/TransportSubscriptionBuilderExcludedEventTypesTests.cs
+  - tests/Whizbang.Core.Tests/Workers/TransportPublishStrategyCoverageTests.cs
+  - tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusExcludedEventTypesTests.cs
 lastMaintainedCommit: '62abd3a45'
 ---
 
@@ -352,6 +363,107 @@ A manual subscription to a namespace this service also **owns** is refused at st
 discovery would otherwise discard it silently. See
 [Owned and subscribed namespaces](#owned-and-subscribed) for the rule and the two remedies.
 :::
+
+### Excluded event types {#excluded-event-types}
+
+An event subscription delivers every event published to its topic. That stays the default: an event the
+service does not consume is discarded at the receive boundary and recorded (see
+[skipped messages](../../messaging/transports/transport-consumer#skipped-messages)), so nothing is lost
+silently and nothing has to be declared. When a topic carries high-volume event types a service never
+wants, it can name them in an **opt-out list**, and only those types are excluded at the broker. Every
+other event on the topic, including types added to the topic later, is still delivered.
+
+```csharp{title="Opt out of event types at the broker" description="Names event types this service does not want; they are excluded on the subscription of the topic each one is published to, while every other event on the topic is still delivered." category="Architecture" difficulty="INTERMEDIATE" tags=["Dispatcher", "Routing", "Excluded Event Types", "Subscriptions"] tests=["RoutingOptionsExcludedEventTypesTests.ExcludeEventType_Generic_RecordsTheWireFormAsync", "RoutingOptionsExcludedEventTypesTests.ExcludeEventType_NestedType_RecordsTheWireFormAsync", "RoutingOptionsExcludedEventTypesTests.ExcludeEventTypes_Names_StripVersionAndSkipBlankAsync", "RoutingOptionsExcludedEventTypesTests.ExcludeEventTypes_ReturnsTheSameOptionsForChainingAsync"]}
+.WithRouting(routing => {
+  routing
+    .ExcludeEventType<InventoryLevelSampledEvent>()             // by type
+    .ExcludeEventType(typeof(PriceTickEvent))                   // by Type
+    .ExcludeEventTypes("MyApp.Telemetry.Events.HeartbeatEvent"); // by name (wire or CLR form)
+})
+```
+
+| API | Accepts | Verified |
+|-----|---------|----------|
+| `ExcludeEventType<TEvent>()` | An `IEvent` type | {verified: RoutingOptionsExcludedEventTypesTests.ExcludeEventType_Generic_RecordsTheWireFormAsync} |
+| `ExcludeEventType(Type)` | A `Type`, including a nested type; `null` throws | {verified: RoutingOptionsExcludedEventTypesTests.ExcludeEventType_NestedType_RecordsTheWireFormAsync, RoutingOptionsExcludedEventTypesTests.ExcludeEventType_NullType_ThrowsAsync} |
+| `ExcludeEventTypes(params string[])` | Names in the wire form (`"MyApp.Events.Noisy, MyApp"`) or the CLR form (`"MyApp.Events.Outer+Noisy"`); version details are stripped and blank entries skipped | {verified: RoutingOptionsExcludedEventTypesTests.ExcludeEventTypes_Names_StripVersionAndSkipBlankAsync, RoutingOptionsExcludedEventTypesTests.ExcludeEventTypes_NullArray_ThrowsAsync} |
+| `ExcludedEventTypes` | The merged list, empty by default | {verified: RoutingOptionsExcludedEventTypesTests.ExcludedEventTypes_ByDefault_IsEmptyAsync} |
+
+#### Configuration {#excluded-event-types-configuration}
+{verified: RoutingOptionsExcludedEventTypesTests.WithRouting_ConfigurationList_IsMergedWithTheCodeListAsync, RoutingOptionsExcludedEventTypesTests.WithRouting_ConfigurationSectionWithoutTheList_LeavesTheCodeListAsync}
+
+The same list can be set with the configuration key `Whizbang:Routing:ExcludedEventTypes`, a string array
+in either name form, read when `.WithRouting(…)` is called. It is **merged** with the code list: a type
+named in either is excluded. A routing section without the key leaves the code list as it is.
+
+```json{title="Excluded event types in appsettings.json" description="The opt-out list bound from configuration; merged with the types named in code."}
+{
+  "Whizbang": {
+    "Routing": {
+      "ExcludedEventTypes": [
+        "MyApp.Inventory.Events.InventoryLevelSampledEvent, MyApp.Contracts",
+        "MyApp.Telemetry.Events.HeartbeatEvent"
+      ]
+    }
+  }
+}
+```
+
+As environment variables: `Whizbang__Routing__ExcludedEventTypes__0`, `Whizbang__Routing__ExcludedEventTypes__1`, and so on.
+See the [configuration reference](../../operations/configuration/configuration-reference#routing).
+
+#### The subject an event is filtered on {#excluded-event-types-subject}
+{verified: EventSubjectTests.For_WireForm_IsTheLowercasedClrFormAsync, EventSubjectTests.For_VersionedForm_DropsTheAssemblyDetailsAsync, EventSubjectTests.For_ClrForm_IsLowercasedAsync, EventSubjectTests.For_Type_IsTheSubjectOfItsWireFormAsync, TransportPublishStrategyCoverageTests.ResolveEntityDestination_EventRow_IsPublishedUnderItsEventSubjectAsync}
+
+The broker filters on the message subject (Azure Service Bus `Subject`, `sys.Label` in a SQL filter). A
+publisher stamps every event with its **full CLR name, lowercased**, without the assembly:
+`MyApp.Events.Outer+OrderPlaced, MyApp` is published as `myapp.events.outer+orderplaced`. One rendering,
+`EventSubject.For(string)` or `EventSubject.For(Type)`, produces it for both the publish path and the
+exclusion rule, so the two cannot disagree on a nested or renamed type.
+
+#### Which subscription a type is excluded on {#excluded-event-types-per-topic}
+{verified: ExcludedEventTypePlannerTests.Plan_ExcludedTypes_LandOnlyOnTheTopicTheyArePublishedTo_OrderedAndDistinctAsync, ExcludedEventTypePlannerTests.Plan_NothingExcluded_EveryTopicExcludesNothingAndNothingIsLoggedAsync, TransportSubscriptionBuilderExcludedEventTypesTests.BuildEventDestinations_ExcludedType_IsOnlyOnItsOwnTopicAsync, TransportSubscriptionBuilderExcludedEventTypesTests.BuildEventDestinations_NothingExcluded_EveryDestinationCarriesAnEmptyListAsync, TransportSubscriptionBuilderExcludedEventTypesTests.AddTransportConsumer_ExcludedType_LandsOnTheConsumerDestinationAsync}
+
+An event is published to the topic named by its namespace, lowercased, so each excluded type lands only
+on the rule of that one topic's subscription. Each event destination the
+[transport subscription builder](#transport-subscription-builder) produces carries its own excluded
+subjects, ordered and distinct, under the metadata key
+`TransportSubscriptionBuilder.ExcludedEventSubjectsMetadataKey` (`ExcludedEventSubjects`). A destination
+that excludes nothing carries an empty list, which tells the transport to deliver every event on the
+topic, so a subscription converges back when a type leaves the list.
+
+#### Startup checks {#excluded-event-types-startup-checks}
+
+The list is checked every time event destinations are built, so a bad list fails the service before it
+subscribes to anything.
+
+| Condition | Result | Verified |
+|-----------|--------|----------|
+| An excluded type is one this service consumes: a compile-time receptor or perspective, a tag consumer, a receptor registered at startup, or any type the receive boundary would keep | **Startup fails**, naming the type. An excluded type is never delivered, so a consumed one would silently stop arriving | {verified: ExcludedEventTypePlannerTests.Plan_ExcludedTypeConsumedByACompileTimeConsumer_FailsStartupAsync, ExcludedEventTypePlannerTests.Plan_ExcludedTypeConsumedByARuntimeSubscription_FailsStartupAsync, ExcludedEventTypePlannerTests.Plan_ExcludedTypeTheReceiveBoundaryKeeps_FailsStartupAsync, TransportSubscriptionBuilderExcludedEventTypesTests.BuildDestinations_ExcludedTypeThisServiceConsumes_FailsAsync, TransportSubscriptionBuilderExcludedEventTypesTests.AddTransportConsumer_ExcludedTypeThisServiceConsumes_FailsWhenTheConsumerOptionsResolveAsync} |
+| An excluded type is in an [absorbed namespace](#absorbed-namespaces) | **Startup fails**: an absorbed event is meant to be stored even with no consumer, and an excluded one would never arrive. *This rule is under review and may change.* | {verified: ExcludedEventTypePlannerTests.Plan_ExcludedTypeOnAnAbsorbedNamespace_FailsStartupAsync} |
+| Several types break the rules above | One failure names **every** offending type, so one fix covers them all | {verified: ExcludedEventTypePlannerTests.Plan_SeveralViolations_AreAllNamedInOneFailureAsync} |
+| An excluded type is not a message type the application declares | **Warning** (check for a typo). It is still excluded, in case a peer publishes it. Skipped when no message catalog is available | {verified: ExcludedEventTypePlannerTests.Plan_ExcludedTypeUnknownToTheApplication_IsAWarningAndStillExcludedAsync, ExcludedEventTypePlannerTests.Plan_NoCatalogAvailable_DoesNotWarnUnknownAsync, ExcludedEventTypePlannerTests.Plan_NullCatalog_DoesNotWarnUnknownAsync} |
+| An excluded type is published to a topic this service does not subscribe to, or its name has no namespace | **Warning**. It is never delivered here anyway, so it is excluded nowhere | {verified: ExcludedEventTypePlannerTests.Plan_ExcludedTypeOnATopicThisServiceDoesNotSubscribeTo_IsAWarningAndExcludedNowhereAsync, ExcludedEventTypePlannerTests.Plan_NameWithoutNamespace_IsAWarningAndExcludedNowhereAsync} |
+| The list is valid | **Information** log per subscription naming the subjects it excludes; nothing is logged when the list is empty | {verified: ExcludedEventTypePlannerTests.Plan_ExcludedTypes_LandOnlyOnTheTopicTheyArePublishedTo_OrderedAndDistinctAsync, ExcludedEventTypePlannerTests.Plan_NothingExcluded_EveryTopicExcludesNothingAndNothingIsLoggedAsync} |
+
+The consumed check compares subjects, the broker's own comparison, so a type that differs from a
+consumed one only by assembly or version is still caught.
+
+#### Transport support {#excluded-event-types-transports}
+
+- **Azure Service Bus** excludes the types with one SQL rule per event subscription. The rule form, how
+  it is reconciled across instances, the filter length limit and rollout behavior are on the
+  [Azure Service Bus page](../../messaging/transports/azure-service-bus#excluded-event-types).
+- **RabbitMQ** ignores the list. A binding has no "not" filter, so an excluded event still arrives and is
+  discarded at the receive boundary like any other event the service does not consume. The startup
+  checks still run.
+
+#### Design choices {#excluded-event-types-design-choices}
+
+| Choice | Reason | Verified |
+|--------|--------|----------|
+| Event subscriptions keep `$Default` (deliver everything); a service may only name types to **exclude**, never a list of types to receive. | Stability and guaranteed delivery. A filter generated from the consumed set would have to be complete forever: a type missing from it (a runtime receptor, a new handler, a type a generator did not see) is dropped silently at the broker, before the service can record it. With an opt-out list the failure mode is the reverse: a type left off the list is delivered and discarded, which costs a little traffic and is recorded. A subscription that excludes nothing is never touched. | {verified: ExcludedEventTypePlannerTests.Plan_ExcludedTypeConsumedByACompileTimeConsumer_FailsStartupAsync, ServiceBusExcludedEventTypesTests.Apply_NothingExcluded_NeverExcluded_TouchesNothingAsync} |
+| Excluding a type the service consumes fails startup instead of being ignored. | The list is the one place a consumed type could be dropped at the broker, so the contradiction is refused where it is made, using the same consumer data as the receive boundary. | {verified: ExcludedEventTypePlannerTests.Plan_ExcludedTypeConsumedByACompileTimeConsumer_FailsStartupAsync, ExcludedEventTypePlannerTests.Plan_ExcludedTypeTheReceiveBoundaryKeeps_FailsStartupAsync} |
 
 ## System Commands {#system-commands}
 
