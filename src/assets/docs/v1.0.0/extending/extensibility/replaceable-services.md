@@ -18,6 +18,10 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IEventTypeProvider.cs
   - src/Whizbang.Core/Messaging/EventTypeProviderServiceCollectionExtensions.cs
   - src/Whizbang.Core/Messaging/CompositeEventTypeProvider.cs
+  - src/Whizbang.Core/ContributionServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveRunnerRegistry.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveRunnerRegistryServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Perspectives/CompositePerspectiveRunnerRegistry.cs
   - src/Whizbang.Core/Messaging/IDeadLetterStore.cs
   - src/Whizbang.Core/Notifications/INotifySignalingGate.cs
   - src/Whizbang.Core/Messaging/DetachedLifecycleWork.cs
@@ -27,6 +31,8 @@ testReferences:
   - tests/Whizbang.Generators.Tests/Analyzers/OptionalInjectedParameterAnalyzerTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EventTypeProviderContributionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/MultiAssemblyEventTypeProviderTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRunnerRegistryContributionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/MultiAssemblyPerspectiveRunnerRegistryTests.cs
 ---
 
 # Replaceable Services
@@ -150,11 +156,13 @@ Plain `TryAddSingleton` would lose to the placeholder when your extension runs a
 
 `IEventTypeProvider` lists the events a service's perspectives fold, plus the collective events it knows. Unlike
 the other seams in the table, it has more than one supplier: every assembly that declares perspectives generates a
-provider of its own. So its generated registration does not register that provider as the service. It calls
-`AddEventTypeProviderContribution<T>()`:
+provider of its own. So its generated registration does not register that provider as the service. It contributes
+it through `AddEventTypeProviderContribution<T>()`, which the generated registration reaches through
+`AddPerspectiveRunnerRegistryContribution<T>()` ([below](#perspective-runner-registry-contributions)):
 
 ```csharp{title="How a perspective assembly contributes its event types" description="Each assembly's generated registration adds its provider as a contribution, and the container serves one provider over every contribution." category="Extensibility" difficulty="ADVANCED" tags=["dependency-injection", "perspectives", "event-types", "replaceable-services"] tests=["MultiAssemblyEventTypeProviderTests.TwoPerspectiveAssemblies_TheServedProvider_ListsBothAsync", "EventTypeProviderContributionTests.AnAssemblyRegisteredTwice_ContributesItsTypesOnceAsync"]}
-// What each perspective assembly's generated AddPerspectiveRunners does (you do not write this):
+// What a contribution of event types amounts to. Each perspective assembly's generated AddPerspectiveRunners
+// reaches this through AddPerspectiveRunnerRegistryContribution<PerspectiveRunnerRegistry>() (you do not write this):
 services.AddSingleton<PerspectiveRunnerRegistry>();
 services.AddEventTypeProviderContribution<PerspectiveRunnerRegistry>();
 
@@ -179,6 +187,40 @@ that service, the last registration displaced the others: in a host with two per
 (collective events included) that only the other assembly knew was invisible to all of them, and nothing reported
 it. A union keeps the single provider every consumer reads, and no assembly can hide another's types, whatever order
 the host composes them in.
+
+### Perspective runners: every perspective assembly contributes {#perspective-runner-registry-contributions}
+{verified: PerspectiveRunnerRegistryContributionTests.TwoAssemblies_EachAssemblysRunnerIsFound_WhicheverRegisteredLastAsync, PerspectiveRunnerRegistryContributionTests.APerspectiveNoAssemblyDeclares_IsNotFoundAsync, PerspectiveRunnerRegistryContributionTests.TwoAssemblies_TheServedRegistry_ListsBothAssembliesPerspectivesInContributionOrderAsync, PerspectiveRunnerRegistryContributionTests.SamePerspectiveInTwoAssemblies_TheFirstContributionAnswers_AndIsListedOnceAsync, PerspectiveRunnerRegistryContributionTests.AnAssemblyRegisteredTwice_ListsItsPerspectivesOnceAsync, PerspectiveRunnerRegistryContributionTests.TwoAssemblies_EventTypes_AreTheUnion_OnTheRegistryAndTheServedProviderAsync, PerspectiveRunnerRegistryContributionTests.TwoAssemblies_LifecycleStagesWithReceptors_AreTheUnionAsync, PerspectiveRunnerRegistryContributionTests.AHostsOwnRegistry_RegisteredFirst_IsTheOneServedAsync, MultiAssemblyPerspectiveRunnerRegistryTests.TwoPerspectiveAssemblies_TheServedRegistry_FindsBothAssembliesRunnersAsync}
+
+`IPerspectiveRunnerRegistry` finds the runner for a perspective by name. Like `IEventTypeProvider`, it has one
+supplier per assembly that declares perspectives, and it has no default: a host with no perspectives registers none.
+Each assembly's generated registration calls `AddPerspectiveRunnerRegistryContribution<T>()`, which contributes the
+registry's runners and its event types in one call:
+
+```csharp{title="How a perspective assembly contributes its runners" description="Each assembly's generated registration adds its runner registry as a contribution, and the container serves one registry over every contribution." category="Extensibility" difficulty="ADVANCED" tags=["dependency-injection", "perspectives", "runners", "replaceable-services"] tests=["MultiAssemblyPerspectiveRunnerRegistryTests.TwoPerspectiveAssemblies_TheServedRegistry_FindsBothAssembliesRunnersAsync", "PerspectiveRunnerRegistryContributionTests.TwoAssemblies_EachAssemblysRunnerIsFound_WhicheverRegisteredLastAsync"]}
+// What each perspective assembly's generated AddPerspectiveRunners does (you do not write this):
+services.AddSingleton<PerspectiveRunnerRegistry>();
+services.AddPerspectiveRunnerRegistryContribution<PerspectiveRunnerRegistry>();
+
+// What the perspective worker, the rebuilder and the maintenance worker resolve: one registry over every contribution.
+var runner = serviceProvider.GetRequiredService<IPerspectiveRunnerRegistry>()
+  .GetRunner(perspectiveName, scope.ServiceProvider);
+```
+
+- **Every assembly's runners are found.** The resolved registry is a `CompositePerspectiveRunnerRegistry`. A lookup
+  asks each contribution in registration order and returns the first runner found, and a name no assembly declares
+  is not found, as before. The listing of registered perspectives, the event types and the lifecycle stages with
+  receptors cover every contribution. An assembly registered twice contributes once.
+- **The first declaration answers.** When two assemblies declare a perspective with the same CLR type name, the first
+  contribution registered answers for it and is the one listed. This is the rule the event-type union applies to a
+  type two assemblies both know. Avoid the situation: the name keys the perspective's rows and cursors, so the two
+  would share them.
+- **A host's own registry wins when it comes first.** A host that registers its own `IPerspectiveRunnerRegistry`
+  before the perspective registrations run is served that one, and the contributions do not override it.
+
+**Why one registry over every contribution.** The perspective worker, the rebuilder, the maintenance worker and the
+stream disposition step each resolve a single `IPerspectiveRunnerRegistry`. When each assembly registered its
+registry as that service, the last registration displaced the others: in a host with two perspective assemblies, no
+runner for any perspective the other assembly declared could be found, whatever order the host composed them in.
 
 ## How this is enforced
 
