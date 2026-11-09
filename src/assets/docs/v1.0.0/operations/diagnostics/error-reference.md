@@ -450,6 +450,7 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ026 | Info | [No Topic Filters Found](whiz026.md) |
 | WHIZ027 | Info | [Perspective Runner Generated](whiz027.md) |
 | WHIZ028 | Info | [Perspective Runner Registry Generated](whiz028.md) |
+| WHIZ029 | Warning | [WhizbangId AcceptAnyVersion Disagrees](whiz029.md) |
 | WHIZ030 | Error | [Perspective Event Missing StreamId](whiz030.md) |
 | WHIZ031 | Error | [Multiple StreamId Attributes](whiz031.md) |
 | WHIZ032 | Error | [Perspective Name Collision](whiz032.md) |

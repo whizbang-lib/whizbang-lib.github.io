@@ -38,6 +38,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdVersionAcceptanceTests.cs
+  - tests/Whizbang.Generators.Tests/WhizbangIdAcceptAnyVersionTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderRegistryTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdServiceCollectionExtensionsTests.cs
@@ -667,7 +668,7 @@ Guid underlyingGuid = orderId.Value;
 Some identities are not UUIDv7 and never will be: name-derived ids (UUIDv5 or v8), ids derived from a hash, and
 v4 ids issued by an external identity provider. Declare those ids with `AcceptAnyVersion = true`:
 
-```csharp{title="Accepting any Guid version" description="An id that takes any non-empty Guid, such as one issued by an external identity provider" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "AcceptAnyVersion"] tests=["WhizbangIdVersionAcceptanceTests.AnyVersion_FromGuid_RoundTripsAsync", "WhizbangIdVersionAcceptanceTests.AnyVersion_New_StillProducesUuidV7Async", "WhizbangIdVersionAcceptanceTests.AnyVersion_EmptyGuid_IsRejectedEverywhereAsync", "WhizbangIdVersionAcceptanceTests.Strict_NonV7_IsRejectedByFromParseCastAndJsonAsync"]}
+```csharp{title="Accepting any Guid version" description="An id that takes any non-empty Guid, such as one issued by an external identity provider" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "AcceptAnyVersion"] tests=["WhizbangIdVersionAcceptanceTests.AnyVersion_FromGuid_RoundTripsAsync", "WhizbangIdVersionAcceptanceTests.AnyVersion_New_StillProducesUuidV7Async", "WhizbangIdVersionAcceptanceTests.AnyVersion_EmptyGuid_IsRejectedByTheCheckedEntryPointsAsync", "WhizbangIdVersionAcceptanceTests.Strict_NonV7_IsRejectedByFromParseCastAndJsonAsync"]}
 using Whizbang.Core;
 
 [WhizbangId(AcceptAnyVersion = true)]
@@ -683,22 +684,55 @@ var fresh = ExternalUserId.New();
 ExternalUserId.From(Guid.Empty);
 ```
 
-With the option, every way into the id takes any Guid except `Guid.Empty`, and they all agree:
+With the option, the checked entry points take any Guid except `Guid.Empty`:
 
 | Way in | Default (`AcceptAnyVersion = false`) | `AcceptAnyVersion = true` |
 |--------|--------------------------------------|---------------------------|
 | `From(Guid)`, `From(TrackedGuid)` | UUIDv7 only | any non-empty Guid |
 | `Parse(string)` | UUIDv7 only | any non-empty Guid |
 | Explicit cast from `Guid` | UUIDv7 only | any non-empty Guid |
-| JSON reader (every serialization profile) | UUIDv7 only | any non-empty Guid |
-| Public constructor, `Value` initializer | not checked | any non-empty Guid |
+| Transport JSON reader | UUIDv7 only | any non-empty Guid |
+| Public constructor, `Value` initializer | not checked | not checked |
 | `New()` | makes a UUIDv7 | makes a UUIDv7 |
 
 Every rejection throws `ArgumentException` (the JSON reader fails the deserialization), and the message names the id
 type, for example `ExternalUserId requires a non-empty Guid`.
 
+The public constructor and the `Value` initializer are the load path: EF Core materialization and the persistence
+converter go through them, and they store whatever was persisted, on every id. A read model row whose id field was
+never set holds `Guid.Empty`, and it still loads. Values arriving from outside your system should come in through
+`From`, `Parse`, the cast or the transport JSON reader, which are the checked entry points.
+
+```csharp{title="The load path stays unchecked" description="The constructor and the Value initializer take an empty Guid on an opt-in id, so a stored row whose id was never set still loads" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "AcceptAnyVersion"] tests=["WhizbangIdVersionAcceptanceTests.AnyVersion_ConstructorAndValueInit_TakeAnEmptyGuidAsync"]}
+var loaded = new ExternalUserId(Guid.Empty);         // does not throw: the load path
+var initialized = new ExternalUserId { Value = Guid.Empty }; // does not throw either
+
+ExternalUserId.From(Guid.Empty);                     // throws ArgumentException: a checked entry point
+```
+
+#### What the option costs
+
+On an id declared with `AcceptAnyVersion = true`, values are no longer known to be UUIDv7, so:
+
+- `CompareTo` and the `<`, `<=`, `>` and `>=` operators still compare the Guids, but the order no longer reflects
+  creation time.
+- For a value that is not UUIDv7, `IsTimeOrdered` (`GetIsTimeOrdered()` on the id) is `false`, and `GetTimestamp()`
+  returns a time read from bits that do not hold one.
+- Database indexes on that id lose the locality that time-ordered values give them.
+
+The framework's own ordering guarantees are unaffected: they rely on the message and event ids the framework mints.
+A stream id you supply is only hashed for partitioning and sorted for lock ordering, and neither depends on its
+version.
+
 The default stays strict, so declare the option only on ids whose values come from outside. For ids your system
 creates, keep the default, so they stay UUIDv7 and sort by creation time.
+
+#### Declare the option the same way everywhere
+
+An id can be declared through more than one `[WhizbangId]`: on the struct, on a property, or on a constructor
+parameter. When some of those set `AcceptAnyVersion = true` and others do not, the id keeps the UUIDv7 rule, whatever
+order the attributes are found in, and [WHIZ029](../../operations/diagnostics/whiz029) is reported at each
+`AcceptAnyVersion = true` that is ignored.
 
 ## Strongly-Typed ID Providers
 
