@@ -23,6 +23,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/InboxReceiveDiscard.cs
   - src/Whizbang.Core/Transports/ReceivedEnvelopeReader.cs
   - src/Whizbang.Data.Postgres/Migrations/242_SkippedArrivalsAreStoredSettled.sql
+  - src/Whizbang.Data.Postgres/Migrations/368_DiscardedArrivalsKeepNoBody.sql
   - src/Whizbang.Core/Workers/ReceiveConsumerGate.cs
   - src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs
   - src/Whizbang.Core/Routing/MessageDiscardPolicy.cs
@@ -46,6 +47,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerBodyOffloadTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerStoresBeforeSkippingTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InboxDiscardedOnReceiveSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/InboxDiscardedOnReceiveKeepsNoBodySqlTests.cs
   - tests/Whizbang.Core.Tests/Transports/ReceivedEnvelopeReaderTests.cs
   - tests/Whizbang.Core.Tests/Workers/ReceiveConsumerGateTests.cs
   - tests/Whizbang.Core.Tests/Routing/MessageDiscardPolicyTests.cs
@@ -273,8 +275,30 @@ returned as new work. It stays readable until maintenance purges completed inbox
 until an operator removes it. Each skip is counted by `whizbang.transport.inbox.messages_discarded`,
 tagged `reason` and `message_type` (see [metrics](../../operations/observability/metrics#transport)).
 
+Since migration 368 the settled row keeps no body: its envelope (`event_data`) and metadata are stored as
+`'{}'`. It keeps what the row is for:
+
+- **Deduplication.** The message id, so a redelivery of the same message is still recognized as a
+  duplicate and is neither stored again nor dispatched, whatever the redelivery carries.
+- **Operator diagnostics.** The reason in `wh_inbox_state.error`, the message type, stream and scope, so
+  an operator can see what was skipped, why, and on which stream; and the handler, flags, priority,
+  source service, commit sequence and timestamps.
+
+The body is not kept because nothing reads it. A settled row is never claimed, copied or dispatched;
+deduplication goes by `wh_message_deduplication`; dead-letter recovery and the stream integrity restore
+only check that the row exists; and redelivery reconciliation reads only its stream, scope and type.
+Keeping the body cost storage and nothing else: on a service with heavy fan-out, which receives many
+types it does not consume, those bodies can add up to gigabytes and most of the inbox's size until the
+purge removes them. The body is not even extracted from the batch for a discarded message, so the store
+also copies less on the hot path.
+
+Only a first arrival that is discarded is stored without its body. A discarded redelivery of a message
+already stored is a duplicate and leaves the stored row, and its body, as it was. Rows stored before
+migration 368 are not rewritten; the bounded completed-inbox purge removes them in its usual course.
+{verified: InboxDiscardedOnReceiveKeepsNoBodySqlTests.AMessageDiscardedOnReceive_IsStoredWithoutItsBody_AndIsStillADuplicateOnRedeliveryAsync, InboxDiscardedOnReceiveKeepsNoBodySqlTests.AMessageDiscardedOnReceive_RedeliveredForProcessing_IsStillADuplicate_AndNotDispatchedAsync, InboxDiscardedOnReceiveKeepsNoBodySqlTests.AnOrdinaryArrival_KeepsItsBodyAsync, InboxDiscardedOnReceiveKeepsNoBodySqlTests.ADiscardedRedelivery_OfAProcessedMessage_LeavesItsStoredBodyAloneAsync}
+
 Expect more inbox rows than before: a service that receives many messages it does not consume now keeps a
-settled row for each until the next purge.
+small settled row for each until the next purge.
 
 The non-durable receive of the control class is unchanged: those messages are still handled without an
 inbox row.
