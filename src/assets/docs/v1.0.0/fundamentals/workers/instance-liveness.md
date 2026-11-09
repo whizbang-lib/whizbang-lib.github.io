@@ -247,6 +247,8 @@ itself ([#2150](https://github.com/whizbang-lib/whizbang/issues/2150)). The keep
 by the wait's timeout ([#2155](https://github.com/whizbang-lib/whizbang/issues/2155)).
 :::
 
+The interval must be greater than zero. Zero would mean an unbounded wait to the driver, which is exactly the lost-wake hang this bound exists to prevent, so a zero or negative `Whizbang:Database:ListenKeepaliveInterval` is refused when the options are first read, with an error naming the key.
+
 #### Design choices {#listen-keepalive-design-choices}
 
 | Choice | Reason | Verified |

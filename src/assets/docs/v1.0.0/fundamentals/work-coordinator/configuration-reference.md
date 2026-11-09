@@ -115,7 +115,7 @@ Whizbang:Workers:OutboxCompletionFlush:Flusher:MaxBatchSize=500
 |---|---|---|---|
 | `Whizbang:Database:DisableNotifications` | bool | false | Kill switch; forces polling-only. |
 | `Whizbang:Database:PollingFallbackInterval` | TimeSpan | `00:00:30` | Safety-net polling cadence when listener healthy. |
-| `Whizbang:Database:ListenKeepaliveInterval` | TimeSpan | `00:00:30` | `SELECT 1` keepalive on listener connection. Also the timeout of the connection's wait for notifications: a dead connection is noticed, and a late subscription whose wake-up is lost is LISTENed, within one interval. See [the LISTEN connection's keepalive](../workers/instance-liveness#listen-keepalive). |
+| `Whizbang:Database:ListenKeepaliveInterval` | TimeSpan | `00:00:30` | `SELECT 1` keepalive on listener connection. Also the timeout of the connection's wait for notifications: a dead connection is noticed, and a late subscription whose wake-up is lost is LISTENed, within one interval. See [the LISTEN connection's keepalive](../workers/instance-liveness#listen-keepalive). Must be greater than zero; zero or a negative value is refused at startup, naming the key. |
 | `Whizbang:Database:ListenReconnectInitialDelay` | TimeSpan | `00:00:01` | First reconnect attempt delay. |
 | `Whizbang:Database:ListenReconnectMaxDelay` | TimeSpan | `00:00:30` | Reconnect backoff cap. |
 | `Whizbang:Database:ListenReconnectBackoffMultiplier` | double | 2.0 | Exponential growth factor. |
