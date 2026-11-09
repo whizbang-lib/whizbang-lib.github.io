@@ -100,6 +100,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/357_AnAnswerMarksOnlyWhatItCovered.sql
   - src/Whizbang.Data.Postgres/Migrations/369_RepairAnswersAreAbsorbedCheaply.sql
   - src/Whizbang.Data.Postgres/Migrations/375_LedgerRowsWithoutAWindowAreRechecked.sql
+  - src/Whizbang.Data.Postgres/Migrations/382_LargeWindowsAreWalkedAcrossAudits.sql
+  - src/Whizbang.Data.Postgres/Migrations/383_AWholeTypeAnswerThatBringsNothingStopsTheAsking.sql
+  - src/Whizbang.Data.Postgres/Migrations/384_AProvenTypeForgetsItsStreamRows.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileCoordinatorTests.cs
@@ -215,6 +218,13 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAnswerCoverageSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBundleCatalogChurnSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceiveDoorbellCostSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityDrillCursorSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.DrillCursor.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityTypeLaneAnswerSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityTypeHealSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.PhantomHeal.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CoordinatorIntegrityRepairLedgerTypeHealTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/IntegrityRepairLedgerTypeHealTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -987,6 +997,90 @@ behind a stuck difference or to catch up faster; lower it to bound one audit's l
 at least 1, and host start fails naming the key otherwise: a window below one sequence covers nothing, so no seal
 could ever advance, and an audit is at least its first window.
 
+#### A large window is walked across audits {#a-large-window-is-walked-across-audits}
+{verified: IntegrityManifestReceptorTests.DrillCursor_AWalkStoppedByThePageBudget_ResumesWhereItStopped_AtTheNextAuditsDrillDownAsync, IntegrityManifestReceptorTests.DrillCursor_TheResumedWalkEnds_TheNextDrillDownStartsFromTheFirstStreamAsync, IntegrityManifestReceptorTests.DrillCursor_ADrillDownStartsAFreshPageBudget_ForItsWindowAsync, IntegrityManifestReceptorTests.DrillCursor_ARecheckWalkStoppedByThePageBudget_KeepsNoCursorAsync, IntegrityManifestReceptorTests.DrillCursor_AnUnwindowedDrillDown_TakesNoCursorAsync, IntegrityManifestReceptorTests.DrillCursor_ADrillDownWithoutTheOriginsAddress_LeavesTheCursorForTheNextAuditAsync, IntegrityDrillCursorSqlTests.Take_AKeptCursor_ReturnsItOnce_ThenNothingAsync, IntegrityDrillCursorSqlTests.Take_WithNothingKept_IsNullAsync, IntegrityDrillCursorSqlTests.Save_AgainForTheSameWindow_KeepsTheLaterCursorAsync, IntegrityDrillCursorSqlTests.Cursors_OfOtherWindowsAndOrigins_AreKeptApartAsync, IntegrityDrillCursorSqlTests.Save_ForgetsTheOriginsCursorsOfWindowsBelowItsSealAsync, IntegrityDrillCursorSqlTests.Cursor_UnreachableStore_TakesNothing_AndKeepingDoesNotThrowAsync}
+
+A type-level window that disagrees is drilled down to a stream-level walk of the same window. The origin answers the
+window's streams in stream-id order, a page at a time (`MaxDigestsPerManifest`, default 500 streams), and returns a
+resume cursor while streams remain. The consumer follows at most `MaxManifestPagesPerAudit` (default 8) further pages
+of one window, so one walk compares about 4,500 streams.
+
+**Why a large window's tail was never compared.** Before [#2211](https://github.com/whizbang-lib/whizbang/issues/2211)
+the walk dropped its cursor when the page cap stopped it, and every drill-down request carried no resume cursor, so the
+next audit's walk started again at the window's first stream. The page budget is also kept in process memory and
+resets only after a full audit interval, so a later walk in the same interval often stopped after its first page. In a
+window with more streams than one walk covers, the same leading streams were compared and repaired at every audit and
+the streams after them never were. A collective type, where every event is its own stream, reaches that size quickly,
+and its missing tail stayed missing however many audits ran.
+
+**The drill cursor.** Migration 382 adds `wh_integrity_drill_cursors`, one row per (origin, window start):
+
+- **Saved only when the page cap stops a walk.** The row records the last stream the stopped walk compared. Saving
+  again for the same window replaces the earlier cursor.
+- **Taken once.** The next drill-down of that window reads and deletes the cursor in one statement and asks the origin
+  to resume after it (`RequestIntegrityManifest.ResumeAfterStreamId`).
+- **None left after a walk reaches the end.** A walk that reaches the window's last stream, or is dropped on the way,
+  saves nothing, so the next drill-down starts from the first stream again. Every stream of the window is reached in
+  turn, across as many audits as the window needs.
+- **A fresh page budget per drill-down.** A drill-down starts a new walk of its window, so it clears that window's page
+  count instead of inheriting what an earlier walk spent.
+- **Cursors below the seal are deleted.** Saving a cursor deletes the origin's cursors of windows that start below its
+  [seal](#negotiated-scope-and-the-two-dimensional-cursor): the audit starts at the seal, so those windows are never
+  drilled again. The table holds at most one row per window being walked and is read and written by primary key.
+- **A store failure falls back to the old behavior.** If the cursor cannot be read, the drill-down starts from the
+  window's first stream; if it cannot be kept, the next drill-down does. Both are logged at Warning, and neither stops
+  the audit.
+
+| Case | What happens to the cursor |
+| --- | --- |
+| A walk the page cap stops | Saved for its (origin, window start) |
+| The next drill-down of that window | Taken and used as the resume point; nothing is left behind |
+| A walk that reaches the window's end | Nothing saved; the next walk starts at the first stream |
+| A [re-check](#idle-ledger-recheck) walk the page cap stops | Nothing saved: a re-check walks the window of its own rows |
+| An unwindowed (legacy) drill-down | No cursor taken: there is no window to name it by |
+| A drill-down without the origin's request address | Skipped before the cursor is taken, so the next audit still resumes |
+
+```mermaid{caption="A window wider than the page budget is walked across audits: a walk the cap stops keeps its place, the next drill-down takes it once, and a walk that reaches the end leaves nothing, so the next starts from the first stream." tests=["IntegrityManifestReceptorTests.DrillCursor_AWalkStoppedByThePageBudget_ResumesWhereItStopped_AtTheNextAuditsDrillDownAsync", "IntegrityManifestReceptorTests.DrillCursor_TheResumedWalkEnds_TheNextDrillDownStartsFromTheFirstStreamAsync", "IntegrityDrillCursorSqlTests.Take_AKeptCursor_ReturnsItOnce_ThenNothingAsync"]}
+sequenceDiagram
+  participant C as Consumer
+  participant S as wh_integrity_drill_cursors
+  participant O as Origin
+  Note over C: Audit 1: the window disagrees
+  C->>S: take cursor (origin, window start)
+  S-->>C: none
+  C->>O: stream-level request from the first stream
+  O-->>C: pages 1 to 9, cursor still set
+  C->>S: page cap reached: save the last stream compared
+  Note over C: Audit 2: the window still disagrees
+  C->>S: take cursor
+  S-->>C: the saved stream (row deleted)
+  C->>O: stream-level request resuming after it
+  O-->>C: the remaining pages, no cursor
+  Note over C,S: The walk reached the end: nothing saved
+  Note over C: Audit 3 starts from the first stream again
+```
+
+Why each choice:
+
+- **Keyed by origin and window start.** The audit asks from the seal, and the seal does not move past a window that
+  disagrees, so the window's start stays the same across audits; its end moves as the origin's settled head moves. A
+  cursor keyed by the end would be lost every time the head advanced.
+- **Durable, not in memory.** The audit can land on any replica after a restart or a maintainer change. A cursor in the
+  store is found by whichever replica drills next; one in memory would restart the walk on every other replica.
+- **Single use.** Taking the cursor deletes it, so a walk that is dropped mid-way, or reaches the end, never leaves a
+  stale resume point. The worst case of a lost cursor is the old behavior, one walk from the first stream; the worst
+  case of a stale one would be streams before it skipped for good.
+- **Saved only at the cap.** A walk that ends had nothing left to resume, and keeping a cursor then would skip the
+  window's leading streams on the next walk.
+- **A fresh budget per drill-down.** The budget bounds one walk's read load. Charging a new walk with an earlier walk's
+  pages is what stopped later walks after one page, which made the cursor useless.
+- **The address check comes first.** A drill-down that cannot be sent leaves the cursor in place, so the walk is not
+  silently restarted by a request that never left.
+
+The trade-off: a window with N streams needs about N / 4,500 audits for one full pass at the defaults. Raise
+`MaxManifestPagesPerAudit` to cover a wide window in fewer audits at more read load per audit; `manifest_pages_capped`
+rising on every audit means a pass spans several audits, which is now progress rather than a stall.
+
 ### One missing event is named {#one-missing-event-is-named}
 
 {verified: SingleMissingEventTests.OneEventMissing_IsNamedByTheXorOfTheIdLanesAsync, SingleMissingEventTests.NothingHeldLocally_AndTheOriginHoldsOne_NamesItAsync, SingleMissingEventTests.TwoEventsMissing_NameNothingAsync, SingleMissingEventTests.NothingMissing_OrALocalSurplus_NamesNothingAsync, SingleMissingEventTests.EitherSideWithoutIdLanes_NamesNothingAsync, SingleMissingEventTests.AnXorOfZero_NamesNothingAsync, SingleMissingEventTests.PlacingHeldEvents_CarriesTheirIdLanes_SoTheMissingOneIsStillNamedAsync, IntegrityManifestReceptorTests.Repair_AStreamMissingOneEvent_AsksForThatEventOnlyAsync, IntegrityManifestReceptorTests.Repair_WithoutIdLanes_OrMoreThanOneMissing_AsksForTheWholeStreamAsync, IntegrityManifestReceptorTests.Repair_NamedAndWholeStreams_GoInSeparateRequests_AndManyNamedEventsArePagedAsync, IntegrityManifestReceptorTests.Repair_AStreamOfThreeTypes_ComparesOnlyTheTypeThisServiceKeepsAsync, IntegrityManifestReceptorTests.DrainMode_RecordsEachDeficitsMissingEvent_OrNullAsync, IntegrityRepairAnswerSqlTests.RecordMissingEvents_TheClaimCarriesEachRowsNamedEvent_OrNoneAsync, IntegrityRepairAnswerSqlTests.RecordMissingEvents_ALaterComparisonThatNamesNone_ClearsTheIdAsync, RepairDrainWorkerTests.DrainTick_ARowThatNamesItsMissingEvent_AsksForThatEventOnly_ApartFromWholeStreamRowsAsync, RedeliveryRequestReceptorTests.Receptor_NamedEvents_ShipsExactlyThoseEventsAsync, RedeliveryRequestReceptorTests.Receptor_ANamedEventItDoesNotHold_AnswersThatStreamOverTheWindowAsync, RedeliveryRequestReceptorTests.Receptor_EveryNamedEventFound_SyncsNoStreamWholeAsync, SelectRedeliveryEventsTests.Select_EventIds_SelectsOnlyThoseEvents_WithinTheOtherFiltersAsync, StreamDigestIdLaneReadsSqlTests.TheWindowedStreamAnswer_CarriesTheIdLanesAsync, StreamDigestIdLaneReadsSqlTests.AStoredBucketWithoutIdLanes_ReadsAsNullAsync}
@@ -1693,7 +1787,7 @@ still divergent under the current rule: the rows are real, and the drain and aud
 {verified: IntegrityLedgerRecheckSqlTests.Claim_TakesTheStalestRowsFirst_BoundedAsync, IntegrityLedgerRecheckSqlTests.Claim_ARowItClaimed_IsNotClaimedAgainUntilTheThresholdPassesAsync, IntegrityLedgerRecheckSqlTests.Claim_SkipsRowsItCannotAsk_AndSpendsNothingAsync, IntegrityManifestReceptorTests.ManifestReceptor_ARecheckAnswer_RemovesTheRowWhoseBucketNowMatches_AndCountsItAsync, IntegrityManifestReceptorTests.ManifestReceptor_ARecheckAnswer_RemovesAnUndecidedRow_AndCountsItAsync, IntegrityManifestReceptorTests.ManifestReceptor_ARecheckAnswer_WithADeficit_NeverAsksForARepairAsync, IntegrityManifestReceptorTests.ManifestReceptor_AnOrdinaryAnswer_DoesNotCountAsARecheckAsync, IntegrityManifestReceptorTests.ManifestReceptor_ARecheckPage_FollowsItsCursorAsARecheckAsync, IntegrityManifestReceptorTests.RequestReceptor_EchoesTheRecheckFlag_OnItsAnswerAsync}
 
 ### A matching type heals its type lane {#a-matching-type-heals-its-type-lane}
-{verified: IntegrityManifestReceptorTests.TypeLevel_AFullHistoryMatch_HealsTheTypeLaneRow_AndRecordsTheHealAsync, IntegrityManifestReceptorTests.TypeLevel_AWindowAtTheSeal_ThatReachedTheSettledHead_HealsTheTypeLaneRowAsync, IntegrityManifestReceptorTests.TypeLevel_AMatchingWindowAboveTheSeal_LeavesTheTypeLaneRowAsync, IntegrityManifestReceptorTests.TypeLevel_AMatchingWindowTheOriginCapped_LeavesTheTypeLaneRowAsync, IntegrityManifestReceptorTests.TypeLevel_AnUndecidedType_LeavesTheTypeLaneRowAsync, IntegrityManifestReceptorTests.TypeLevel_OneTypeMatchesAndAnotherDiverges_HealsOnlyTheMatchingTypesLaneAsync, IntegrityManifestReceptorTests.TypeLevel_AnUnstampedWindowStartWithNoMetrics_StillHealsTheTypeLaneRowAsync}
+{verified: IntegrityManifestReceptorTests.TypeLevel_AFullHistoryMatch_HealsTheTypeLaneRow_AndRecordsTheHealAsync, IntegrityManifestReceptorTests.TypeLevel_AWindowAtTheSeal_ThatReachedTheSettledHead_HealsTheTypeLaneRowAsync, IntegrityManifestReceptorTests.TypeLevel_AMatchingWindowAboveTheSeal_LeavesTheTypeLaneRowAsync, IntegrityManifestReceptorTests.TypeLevel_AMatchingWindowTheOriginCapped_LeavesTheTypeLaneRowAsync, IntegrityManifestReceptorTests.TypeLevel_AnUndecidedType_LeavesTheTypeLaneRowAsync, IntegrityManifestReceptorTests.TypeLevel_OneTypeMatchesAndAnotherDiverges_HealsOnlyTheMatchingTypesLaneAsync, IntegrityManifestReceptorTests.TypeLevel_AnUnstampedWindowStartWithNoMetrics_StillHealsTheTypeLaneRowAsync, IntegrityManifestReceptorTests.TypeLevel_AFullHistoryMatch_ForgetsEveryStreamRowOfTheType_AndRecordsEachHealAsync, IntegrityManifestReceptorTests.TypeLevel_AWindowAtTheSeal_ThatReachedTheSettledHead_ForgetsTheTypesStreamRowsAsync, IntegrityManifestReceptorTests.TypeLevel_AStreamGenuinelyMissing_KeepsEveryStreamRowOfTheTypeAsync, IntegrityManifestReceptorTests.TypeLevel_AMatchingWindowAboveTheSeal_KeepsTheTypesStreamRowsAsync, IntegrityManifestReceptorTests.TypeLevel_AMatchingWindowTheOriginCapped_KeepsTheTypesStreamRowsAsync, IntegrityManifestReceptorTests.TypeLevel_AnUndecidedType_KeepsTheTypesStreamRowsAsync, IntegrityManifestReceptorTests.TypeLevel_OneTypeMatchesAndAnotherDiverges_ForgetsOnlyTheMatchingTypesStreamRowsAsync}
 
 A bulk backfill or a checkpoint gap records its deficit for a whole (tenant, type) on the **type lane**: the ledger row
 whose stream id is the empty uuid. Before [#2207](https://github.com/whizbang-lib/whizbang/issues/2207) that row was
@@ -1729,7 +1823,34 @@ vanish while events were still missing below or beyond the window. A count over 
 only answer that covers wherever the deficit might be. A genuinely missing stream tail makes the type roll-up mismatch,
 so the type lane never heals while events are actually missing.
 
-No migration: the heal uses the ledger's existing batch heal (`MarkHealedBatchWithAgesAsync`).
+#### A proven type forgets its per-stream rows too {#a-proven-type-forgets-its-per-stream-rows}
+{verified: IntegrityTypeHealSqlTests.MarkTypesHealed_ForgetsTheTypeLaneAndEveryStreamRow_OfTheProvenTypesOnly_WithTheirAgesAsync, IntegrityTypeHealSqlTests.MarkTypesHealed_NothingTracked_IsAnEmptyAnswerAsync, IntegrityTypeHealSqlTests.MarkTypesHealed_UnreachableStore_AnswersUnsupportedAsync, CoordinatorIntegrityRepairLedgerTypeHealTests.MarkTypesHealed_WhenTheStoreSupportsIt_ForgetsEveryRowOfTheTypesInOneCallAsync, CoordinatorIntegrityRepairLedgerTypeHealTests.MarkTypesHealed_WhenTheStoreCannot_ForgetsTheTypeLanesThroughTheBatchHealAsync, CoordinatorIntegrityRepairLedgerTypeHealTests.MarkTypesHealed_WhenTheCallFails_ForgetsTheTypeLanesThroughTheBatchHealAsync, CoordinatorIntegrityRepairLedgerTypeHealTests.MarkTypesHealed_WhenCanceled_PropagatesAsync, CoordinatorIntegrityRepairLedgerTypeHealTests.MarkTypesHealed_WithNoCoordinator_ForgetsTheTypeLanesTheBatchWayAsync, CoordinatorIntegrityRepairLedgerTypeHealTests.MarkTypesHealed_WithNoKeys_AsksNothingAsync, IntegrityRepairLedgerTypeHealTests.MarkTypesHealed_ForgetsTheTypeLaneAndEveryStreamOfTheType_AndKeepsTheRestAsync, IntegrityRepairLedgerTypeHealTests.MarkTypesHealed_ByDefault_ForgetsTheTypeLanesOnlyAsync}
+
+The same proof covers every stream of the type: equal roll-ups over the whole history mean no stream of the type is
+missing anything. So since [#2224](https://github.com/whizbang-lib/whizbang/issues/2224) the heal also deletes every
+per-stream ledger row of that (origin, tenant, type), not only the type lane, and records each deleted row's age on
+`bucket_heal_seconds`. Such rows are phantoms: written under an older compare rule, or by a comparison whose deficit
+healed without the stream being compared again. They kept `unhealed_buckets` up and, where they were deficits, kept the
+paced drain asking origins for events this service already held.
+
+- **One round trip.** `wh_integrity_mark_types_healed` (migration 384) deletes every row of the given (tenant, type)
+  pairs of one origin, reading the ledger through its primary key prefix, and returns each row's age, clamped at zero
+  for clock skew, as the batch heal does. The ledger entry point is `IIntegrityRepairLedger.MarkTypesHealedWithAgesAsync`.
+- **The in-memory ledger behaves the same way.** It removes every entry of the proven types, whatever its stream.
+- **A store that cannot do it clears only the type row.** If the store does not support the call, cannot be reached or
+  fails, the durable ledger falls back to the batch heal of the type lanes alone (`MarkHealedBatchWithAgesAsync`), so
+  the type lane still clears as before and the per-stream rows wait for the next proven match. A cancellation is
+  passed on, not treated as a failure.
+
+**Nothing is removed while data is missing.** The caller decides the proof and the function deletes what it is given;
+only types that met the whole-history conditions above are passed. A stream genuinely missing at this service makes
+the type roll-up disagree, so the type never reaches the heal and every per-stream row of it is kept for the
+drill-down and the drain to repair.
+
+**Why the per-stream rows go with the type lane.** The proof is about the type over its whole history, which contains
+every one of its streams, so keeping a per-stream row after it keeps a claim the comparison just disproved. A type that
+agrees is never drilled into, so without this its rows would wait for the [idle re-check](#idle-ledger-recheck), which
+reaches them a bounded batch at a time, while the drain keeps asking for those that record a deficit.
 
 ### Report-only is bilateral {#report-only-is-bilateral}
 
@@ -1973,7 +2094,8 @@ earlier history was truncated here ([events deduplication remembers but the stor
 
 The checkpoint path keys its ledger rows by type and window rather than by stream, and its
 [repair policy](#the-repair-decision-pipeline-as-wired) already stops a window whose count stopped
-improving, so it is unaffected by the mark.
+improving. A whole-type request's own row (the type lane) is marked only by a covering answer that stored nothing; see
+[a whole-type answer that brings nothing stops the asking](#a-whole-type-answer-that-brings-nothing-stops-the-asking).
 
 ### An answer marks only what it covered {#an-answer-marks-only-what-it-covered}
 
@@ -2174,6 +2296,72 @@ of the group's windows, which re-shipped every stream over the widest range any 
 comparison stamped share their window, so the change costs few extra requests. A row recorded before
 windows were (a null window) asks for the stream's whole history on its own, without widening its
 windowed neighbors.
+
+### A whole-type answer that brings nothing stops the asking {#a-whole-type-answer-that-brings-nothing-stops-the-asking}
+
+{verified: IntegrityTypeLaneAnswerSqlTests.MarkAnswerPending_OnTheTypeLane_StampsTheRequestsWindowOnItAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AnAnswerThatStoredNothing_CoveringTheTypeLanesRequest_MarksTheTypeLaneAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AnAnswerThatStoredSomething_LeavesTheTypeLaneRepairableAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AnAnswerNarrowerThanTheTypeLanesRequest_LeavesItRepairableAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_ATypeLaneWithNoRequestedWindow_IsMarkedOnlyByAWholeHistoryAnswerAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_ATypeLaneNotAwaitingAnAnswer_IsNotMarkedByAnotherRequestsAnswerAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AnAnswerThatDoesNotSayItsWindow_LeavesTheTypeLaneRepairableAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AnotherTypesLane_IsNotMarkedByThisTypesAnswerAsync}
+
+A bulk backfill or a confirmed checkpoint gap asks the origin for every event of one (tenant, type) in a window, and is
+recorded on the type lane (the ledger row with the empty stream id). Before
+[#2211](https://github.com/whizbang-lib/whizbang/issues/2211), when the answer's bundles committed, each per-stream
+bucket of a bundle that changed nothing was [marked unhealable](#unhealable-buckets), but the type lane was only marked
+answered. The answered state does not stop a grant, so the repair ladder granted the same whole-type request again and
+the origin re-shipped events this service already held, on every rung.
+
+**The request's window is kept.** When a whole-type request is granted and sent with both bounds,
+`wh_integrity_mark_answer_pending` (migration 383) stamps that window on the type lane's own row (`window_from`,
+`window_until`, in the ledger's units), so its answer can be judged against what was asked. A request without both
+bounds leaves the row's window as it was.
+
+**When the type lane is marked.** On commit, `wh_integrity_record_bundle_answer` marks the type lane unhealable only
+when all of these hold:
+
+1. the bundle stored nothing (every child already present or refused, none adoptable);
+2. the bundle names the window it answered ([an answer marks only what it covered](#an-answer-marks-only-what-it-covered));
+3. that window covers the window the request asked for, by the same `_wh_integrity_answer_covers` rule a per-stream
+   bucket uses, so a type lane with no window needs a whole-history answer;
+4. a whole-type request for that (tenant, type) was waiting on this answer (`answer_pending_until` set when the bundle
+   arrived).
+
+The marked row is returned with zero counts, so the receiver reports it once (one Warning and one `repairs_unhealable`
+count) like any marked bucket, without counting the bundle's events twice. From then on neither whole-type grant path
+asks for the type until its bucket changes: a comparison that sees this service's side of the type change lifts the
+mark, as it does for any [marked bucket](#what-resets-the-repair-ladder), and a
+[type-level match over the whole history](#a-matching-type-heals-its-type-lane) deletes the row.
+
+| The answer | Marks the type lane |
+| --- | --- |
+| Stored nothing, names its window, covers the request's window, and a whole-type request was waiting | Yes, reported once |
+| Stored at least one event | No: answered, still repairable |
+| Names a window narrower than the request's | No |
+| Does not say its window (an origin on an earlier release) | No |
+| Answers a request for named streams (no whole-type request waiting) | No |
+| Carries another type's events | No: only the lanes of the types it carried |
+
+**A genuinely missing stream is still repaired.** The mark stops only the whole-type re-ask. A stream of the type that
+is really missing still makes the type roll-up disagree, so the stream-level drill-down
+([walked across audits](#a-large-window-is-walked-across-audits)) still compares it and repairs it on its own bucket.
+
+Why each choice:
+
+- **Only a waiting whole-type request can be marked.** A bundle answering a request for named streams says nothing
+  about the rest of the type; marking the type lane from it would stop a whole-type repair that was never asked. The
+  wait is read before the answer clears it, from the rows the call already locked.
+- **Coverage, as for a per-stream bucket.** An answer for a narrower window proves only that nothing inside it was
+  missing, so it leaves the type lane repairable. Stamping the request's window is what lets the same rule judge a type
+  lane that had no window of its own.
+- **An answer with no window marks nothing.** For a per-stream bucket, an origin that does not say its window marks as
+  before, to keep existing behavior. A type lane was never marked before, so there is no behavior to keep, and guessing
+  "covered" could stop a whole-type repair on an answer that covered a slice.
+- **Reported once with zero counts.** The bundle's events are already counted on their own buckets; the extra row only
+  carries the mark to the receiver's report.
+
+:::warning
+**Known gap.** Only the bundle that clears the wait can mark. If the first bundle of an answer stores something, it
+clears the wait without marking, and the remaining bundles of that answer find no request waiting, so the type lane
+stays repairable. The next whole-type request's answer, which then stores nothing, does the marking. The cost is one
+extra whole-type re-ship per such answer, not an unbounded loop.
+:::
 
 ### What resets the repair ladder {#what-resets-the-repair-ladder}
 
@@ -3483,7 +3671,7 @@ maximum across its instances), never a sum.
 | `repairs_requested` (tags `source`, `origin`) | Directed repair asks. `source=audit` is the per-stream path; `source=bulk` is the threshold-triggered whole-window state-only backfill. |
 | `repairs_deferred` (tags `origin`, `reason`) | Deficit buckets a comparison deferred instead of adding to the paced repair drain's ledger: `per_audit_cap` (the comparison already added `MaxAutoRepairRequestsPerAudit`) or `backlog_cap` (the ledger holds `MaxRepairDrainBacklog` rows). Sustained growth means discovery outpaces the drain; raise `RepairDrainRatePerSecond` or accept the pace. See [repair caps](#repair-caps). |
 | `compares_declined` (tag `origin`) | Manifest chunks declined at the non-queueing compare gate. Sustained growth = comparisons losing to arrivals; read alongside `manifest_compare_duration`. |
-| `manifest_pages_followed` / `manifest_pages_capped` (tag `origin`) | Windowed stream pages walked via the resume cursor, and follow chains stopped at `MaxManifestPagesPerAudit`. Persistent capping means lanes are wider than the per-audit page budget — raise the cap or accept the pace. |
+| `manifest_pages_followed` / `manifest_pages_capped` (tag `origin`) | Windowed stream pages walked via the resume cursor, and follow chains stopped at `MaxManifestPagesPerAudit`. A capped walk keeps its place and the next audit's drill-down resumes there ([a large window is walked across audits](#a-large-window-is-walked-across-audits)), so persistent capping means a window takes several audits per pass. Raise the cap to pass in fewer audits, or accept the pace. |
 | `redelivery_events_shipped` | Events selected and shipped in redelivery bundles, as an origin. |
 | `origins_adopted` | Stored events whose empty origin columns a redelivery filled: [history received before origins were recorded](#pre-stamp-history), now verifiable. Rises while that history is redelivered once, then stops. |
 | `origins_refused` | Stored events with an empty origin that a redelivery did not adopt, because the event's first hop names another service than the bundle's origin: [events this service authored](#pre-stamp-history-first-hop) that the origin's store had filed as its own. Non-zero means an origin is redelivering events it did not author; the Warning logged once per bundle names it. |
