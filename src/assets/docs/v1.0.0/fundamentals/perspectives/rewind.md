@@ -28,6 +28,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/CollectiveReplayStart.cs
   - src/Whizbang.Core/Archival/IArchivedStreamExtents.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Core/Workers/StartupRewindSet.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindOptionsTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveSnapshotAndRewindTests.cs
@@ -45,6 +46,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CollectiveReplayRebuildIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/RewindDeletedArchiveTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/ArchiveReadThroughIntegrationTests.cs
+  - tests/Whizbang.Core.Tests/Workers/StartupRewindSetTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerStartupRewindBarrierTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerStartupAndMaintenanceTests.cs
 ---
 
 # Perspective Rewind
@@ -360,7 +364,7 @@ public class PerspectiveRewindOptions {
   // Scan for and repair streams needing rewind on service startup. Default: true.
   public bool StartupScanEnabled { get; set; } = true;
 
-  // Whether startup rewinds block polling or run in the background. Default: Blocking.
+  // Whether lens reads wait for the startup rewinds or start at once. Default: Blocking.
   public RewindStartupMode StartupRewindMode { get; set; } = RewindStartupMode.Blocking;
 
   // Maximum concurrent rewind operations. Default: 3.
@@ -380,7 +384,7 @@ public enum RewindStartupMode { Blocking = 0, Background = 1 }
 |----------|------|---------|-------------|
 | `Enabled` | bool | `true` | Master switch for rewind detection and execution |
 | `StartupScanEnabled` | bool | `true` | Scan for streams needing rewind on service startup |
-| `StartupRewindMode` | `RewindStartupMode` | `Blocking` | `Blocking`: rewinds clear before serving reads. `Background`: rewinds run via normal polling |
+| `StartupRewindMode` | `RewindStartupMode` | `Blocking` | `Blocking`: the consumer loops start at once and only lens reads (the read-model barrier) wait until the cursors flagged at scan time are rewound, for at most 100 polling intervals. `Background`: reads open after the scan and the rewinds run on the consumer loops. See [Startup modes](#startup-modes) |
 | `MaxConcurrentRewinds` | int | `3` | Intended limit on parallel rewind operations |
 | `DebounceWindow` | TimeSpan | `5s` | Intended window before a rewind executes (see [Debounce](#debounce)) |
 | `MaxDebounceWindow` | TimeSpan | `30s` | Intended hard cap on the debounce window |
@@ -391,14 +395,26 @@ At commit `0bc6065b`, `MaxConcurrentRewinds`, `DebounceWindow`, and `MaxDebounce
 
 The neighbouring `PerspectiveSnapshotOptions` (`Enabled=true`, `SnapshotEveryNEvents=100`, `MaxSnapshotsPerStream=5`, `RewindSnapshotIntervalEvents=10`) and `PerspectiveStreamLockOptions` (`LockTimeout=30s`, `KeepAliveInterval=10s`) govern the snapshot store a rewind restores from and the lock it holds during replay. See [Perspective Snapshots](snapshots.md) and [Perspective Stream Locking](stream-locking.md).
 
-## Startup Scan
+## Startup Scan {#startup-scan}
+{verified: PerspectiveWorkerStartupAndMaintenanceTests.Startup_RewindScanClean_QueriesExactlyOnceAsync, PerspectiveWorkerStartupAndMaintenanceTests.Startup_RewindScanBlockingMode_StartsConsumersAndHoldsOnlyTheBarrierAsync, PerspectiveWorkerStartupAndMaintenanceTests.Startup_RewindScanDisabled_NeverQueriesAsync, PerspectiveWorkerStartupRewindBarrierTests.CleanScan_OpensTheBarrierAtOnce_WithNoRereadAsync}
 
-On startup the worker runs `_scanAndRepairRewindsOnStartupAsync`, which queries `wh_perspective_cursors` for rows carrying the RewindRequired flag (`(status & 32) = 32`). This catches rewinds that were flagged but never executed — for example if the service crashed before processing them.
+On startup the worker runs `_scanAndRepairRewindsOnStartupAsync`, which queries `wh_perspective_cursors` for rows carrying the RewindRequired flag (`(status & 32) = 32`). This catches rewinds that were flagged but never executed, for example if the service crashed before processing them. The scan reads the cursor table **once**. When nothing is flagged it logs EventId 57 and the read-model barrier (`StartupScanComplete`) opens at once. If the scan itself throws, the worker logs a warning (EventId 56), the barrier opens, and the flagged rewinds are still processed by the consumer loops.
 
-- **Blocking mode** (default): after logging the scan summary, the worker re-queries `GetCursorsRequiringRewindAsync` on each polling interval (up to a bounded number of iterations) until no RewindRequired cursors remain, then reports completion. Repairs finish before reads are served.
-- **Background mode**: the worker logs the summary and lets the normal channel-consumer loop pick the rewinds up. Faster startup, but projections may be briefly stale.
+### Startup modes {#startup-modes}
+{verified: PerspectiveWorkerStartupRewindBarrierTests.Blocking_BarrierHeldUntilEveryScanTimeCursorClears_RereadingOnlyThoseStreamsAsync, PerspectiveWorkerStartupRewindBarrierTests.Blocking_ThisWorkersRewindOfTheScanTimeCursor_OpensTheBarrierWithoutAPollAsync, PerspectiveWorkerStartupRewindBarrierTests.Blocking_FlagRaisedAfterTheScan_DoesNotExtendTheWaitAsync, PerspectiveWorkerStartupRewindBarrierTests.Blocking_ConsumerLoopsRunWhileTheBarrierIsHeldAsync, PerspectiveWorkerStartupRewindBarrierTests.Blocking_AtTheCap_OpensTheBarrierAndWarnsNamingWhatIsStillRewindingAsync, PerspectiveWorkerStartupRewindBarrierTests.Blocking_RereadThrows_LogsAndOpensTheBarrierAsync, PerspectiveWorkerStartupRewindBarrierTests.Blocking_RereadOnDisposedServices_SettlesTheBarrierCanceledAsync, PerspectiveWorkerStartupRewindBarrierTests.Blocking_StopWhileWaiting_SettlesTheBarrierCanceledAndStopsCleanlyAsync, PerspectiveWorkerStartupRewindBarrierTests.BackgroundMode_OpensTheBarrierAfterTheScan_WithNoRereadAsync}
 
-If the scan itself throws, the worker logs a warning and continues — the flagged rewinds are still processed during normal polling.
+`PerspectiveRewindOptions.StartupRewindMode` decides whether lens reads wait for the cursors the scan found flagged. In both modes the consumer loops start right after the scan, and the consumer loops are what perform the rewinds.
+
+- **Blocking mode** (default): the scan records the cursors flagged **at that moment** (a fixed set of (stream, perspective) keys) and logs EventId 54. The consumer loops start right away; only the read-model barrier (`StartupScanComplete`) waits, and only for that scan-time set. A cursor leaves the set in one of two ways:
+  - **this worker finishes its rewind**, leaving the cursor completed and no longer flagged: a signal, so the barrier opens without waiting for a poll when that was the last one;
+  - **a by-key re-read finds it cleared**: once per polling interval (`PollingIntervalMilliseconds`), the worker re-reads only the streams still pending (`GetPerspectiveCursorsBatchAsync`), and a cursor no longer flagged, or gone because its stream was purged, leaves the set. This is what catches a rewind another instance performed.
+
+  When the set is empty the barrier opens and EventId 55 reports how many of the flagged cursors cleared and how long that took. A cursor flagged **after** the scan never joins the set, so later flags cannot extend the wait; they are rewound by the consumer loops like any other. The wait is bounded: after **100 re-reads** without the set emptying, reads open anyway with a Warning (EventId 62) naming up to 20 of the stream/perspective pairs still rewinding and counting the rest. A re-read that fails is logged (EventId 56) and opens reads, as a failed scan does. A worker stopped while waiting settles the barrier as canceled rather than opening it on unrepaired cursors.
+- **Background mode**: the worker logs the summary and the barrier opens after the scan; the consumer loops pick the rewinds up with no re-read. Reads start sooner, but a projection may be briefly stale until its rewind runs. Unchanged by #2214.
+
+**Why start the consumers and hold only the barrier.** The rewinds run on the existing path: a flagged cursor is rewound by the consumer loops, the same code that rewinds a cursor flagged at runtime, so startup has no second rewind mechanism to keep correct. Reads stay protected, because the read-model barrier is the seam lens resolution already waits on, and it does not open until every cursor that was flagged when the service started has been repaired or the cap is reached. And there is no dead wait: before [#2214](https://github.com/whizbang-lib/whizbang/issues/2214) the scan re-polled for flagged cursors **before** the consumer loops had started, so nothing could rewind them, and any flagged cursor held every lens read for the full bound of about 100 polling intervals on every start, with nothing rewound. Fixing the set at scan time is what keeps the wait finite on a busy service: new late events keep flagging cursors, and a wait for "no flagged cursors anywhere" could last as long as the traffic does. The cap of 100 is the bound the scan's re-poll loop always had.
+
+{verified: StartupRewindSetTests.Construction_CountsDistinctKeysAndStreams_AndIsNotClearedAsync, StartupRewindSetTests.Construction_WithNothingFlagged_IsClearedAtOnceAsync, StartupRewindSetTests.MarkRewound_Completed_RemovesTheKey_AndTheLastOneClearsTheSetAsync, StartupRewindSetTests.MarkRewound_ForAKeyTheScanDidNotFlag_IsIgnoredAsync, StartupRewindSetTests.MarkRewound_ThatDidNotComplete_LeavesTheKeyAsync, StartupRewindSetTests.RemainingStreamIds_NamesEachRemainingStreamOnceAsync, StartupRewindSetTests.ClearUnflagged_RemovesKeysNoLongerFlaggedOrGone_KeepsFlagged_AndIgnoresNewFlagsAsync, StartupRewindSetTests.DescribeRemaining_ListsStreamAndPerspective_UpToTheLimitAsync}
 
 ## Observability
 
@@ -422,9 +438,10 @@ Rewind logs are split across **two logger categories** so their levels can be tu
 | Level | EventId | When |
 |-------|---------|------|
 | Information | 54 | `Startup rewind scan started: {StreamCount} streams require rewind across {PerspectiveCount} perspectives` |
-| Information | 55 | `Startup rewind scan completed: {StreamCount} streams, {PerspectiveCount} perspectives rewound in {DurationMs}ms` |
+| Information | 55 | `Startup rewind scan completed: {ClearedCount} of {PerspectiveCount} flagged cursors on {StreamCount} streams cleared in {DurationMs}ms; lens reads resume` (Blocking mode, when every scan-time cursor cleared) |
 | Information | 57 | `Startup rewind scan: no streams require rewind` |
 | Warning | 56 | `Error during startup rewind scan — rewinds will be processed during normal polling` |
+| Warning | 62 | `Startup rewind wait reached its cap after {DurationMs}ms: {RemainingCount} of {PerspectiveCount} flagged cursors are still rewinding, and lens reads resume now. Still rewinding: {StillRewinding}` (Blocking mode, after 100 re-reads; names up to 20 `stream/perspective` pairs, then "and N more") |
 
 ```json{title="Log levels to see all rewind + startup-scan messages" description="Enable both rewind logger categories so runtime rewinds and the startup scan are visible" category="Configuration" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Rewind", "Logging"]}
 "Whizbang.Core.Workers.PerspectiveWorker": "Warning",
