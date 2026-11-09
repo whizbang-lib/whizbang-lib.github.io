@@ -91,6 +91,9 @@ serialized value rather than as mapped properties, so an index over a field insi
 reached and the generator skips it. On such a model the message offers only the column, because
 following the other advice would land on [WHIZ304](whiz304.md):
 
+A model stored as one serialized value because it holds a recursive type ([WHIZ202](whiz202.md)) gets the same
+variant, naming the member as recursive. {verified: PerspectiveFilterIndexAnalyzerTests.Filter_OnARecursiveModel_SaysTheMemberIsRecursiveAsync}
+
 ```text{title="WHIZ302 on a model stored as one serialized value" description="The variant emitted when an index over the document could never be reached, so only the column is offered." category="Diagnostics" difficulty="INTERMEDIATE" tags=["diagnostics", "perspectives", "indexing", "polymorphic"]}
 This query filters '{Model}.{Property}', which is stored only in the model's JSON, so the database
 reads every row of the perspective. This model holds a polymorphic member, so its document is stored

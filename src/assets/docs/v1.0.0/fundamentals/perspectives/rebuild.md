@@ -523,6 +523,43 @@ compare equal to another empty one and read as "changed nothing".
 A digest is evidence about a rebuild, not part of it: if it cannot be computed the rebuild still succeeds
 and the fields are simply absent, which reads as "not known".
 
+## Recursive models after an upgrade {#recursive-models-after-upgrade}
+
+Releases before [#2112](https://github.com/whizbang-lib/whizbang/issues/2112) stored a perspective model that holds a
+[recursive type](perspectives.md#recursive-models) (a tree node holding its children, or two types holding each other)
+on Entity Framework's mapped path, which kept only the first level of the recursion and dropped every level below it
+on write, with no error. This release stores such a model whole, so new writes keep every level. A row an earlier
+release wrote still reads, but holds only the first level: the rest was never written, and nothing in the database
+can restore it. **Rebuilding the perspective (re-projecting it from its events) writes the whole tree.**
+
+**Nothing is rebuilt automatically.** Instead, on the first start against a database an earlier release migrated, the
+instance doing the schema work logs one Warning per recursive perspective whose table holds rows, with a stable event
+id for alerting:
+
+```text{title="The upgrade rebuild notice" description="One Warning per recursive perspective with rows, on the first start after upgrading from a release before the fix" category="Operations" difficulty="BEGINNER" tags=["Perspectives","Rebuild","Upgrade","Logging"] tests=["RecursivePerspectiveRebuildNoticeTests.AnUpgradeFromAReleaseBeforeTheFix_NamesEachRecursivePerspectiveOnceAsync"]}
+Perspective 'CatalogPerspective' (table wh_per_catalog) must be rebuilt from its events: its model is recursive, and
+rows written before the #2112 fix may have kept only the first level of its recursive members. Nothing is rebuilt
+automatically; until it is, those rows read back without the levels that were dropped
+```
+
+EventId **2112**, name `RecursivePerspectiveNeedsRebuild`. The perspective is named the way a rebuild takes it, so
+pass that name to [`IPerspectiveRebuilder`](#iperspectiverebuilder) or a
+[`RebuildPerspectiveCommand`](#system-commands).
+
+**How it knows.** It reads the migration ledger before the start's migrations apply. Migration
+`361_RecursiveDocumentsStoredWhole` changes nothing; its ledger row marks a database migrated by this release. A
+ledger without that row was last migrated by a release before the fix. A fresh database (no ledger) and every start
+after the upgrade (the row is there) are silent, and so is a perspective whose table is empty, since nothing in it was
+truncated. The generator lists each perspective whose model is recursive, with its table, so a host with none opens no
+connection for the check.
+
+| Behavior | Why | Verified by |
+|---|---|---|
+| An upgrade from a release before the fix names each recursive perspective with rows, once. | Rows written before the fix may be truncated; an operator must know which perspectives to rebuild, and the reason (owner decision: document it, do not rebuild automatically). | {verified: RecursivePerspectiveRebuildNoticeTests.AnUpgradeFromAReleaseBeforeTheFix_NamesEachRecursivePerspectiveOnceAsync, RecursivePerspectiveRebuildNoticeTests.APreFixLedger_ReportsPerspectivesWithRowsOnlyAsync} |
+| The start after the upgrade, a fresh database, a database already at the fix, and an upgrade over empty tables are silent. | A notice repeated on every start would be ignored; one on a database with nothing truncated would send someone to rebuild for nothing. | {verified: RecursivePerspectiveRebuildNoticeTests.TheStartAfterTheUpgrade_IsSilentAsync, RecursivePerspectiveRebuildNoticeTests.AFreshDatabase_IsSilentAsync, RecursivePerspectiveRebuildNoticeTests.ADatabaseAlreadyAtTheFix_IsSilentAsync, RecursivePerspectiveRebuildNoticeTests.AnUpgradeOverEmptyTables_IsSilentAsync, RecursivePerspectiveRebuildNoticeTests.NoLedger_ReportsNothingAsync} |
+| No recursive perspective, no database read. | The check costs nothing on a host it cannot concern. | {verified: RecursivePerspectiveRebuildNoticeTests.NoRecursivePerspective_DoesNotOpenTheDatabaseAsync, RecursivePerspectiveRebuildNoticeGenerationTests.AContextWithNoRecursiveModel_ListsNothingAsync, RecursivePerspectiveRebuildNoticeGenerationTests.EveryPerspectiveOverARecursiveModel_IsListedWithItsTableAsync} |
+| Nothing is rebuilt automatically. | A rebuild of a large perspective is an operational decision (when, which mode); starting one unasked on upgrade could hold a service for hours. | {verified: RecursivePerspectiveRebuildNoticeTests.AnUpgradeFromAReleaseBeforeTheFix_NamesEachRecursivePerspectiveOnceAsync} |
+
 ## Migration-Triggered Rebuilds
 
 When the migration system detects a **destructive schema change** (column type changed or removed), it records the perspective with status 4 (`MigratingInBackground`). The `PerspectiveMigrationWorker` background service picks this up on startup and automatically triggers a blue-green rebuild.
