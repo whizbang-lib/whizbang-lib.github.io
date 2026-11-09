@@ -271,8 +271,9 @@ other tables still run, and the next start tries that table again.
 
 Each table checked is recorded in [`wh_stored_form_migrations`](#journal) under the name
 `declared-names:<table>:<hash>`, where the hash covers the table's declared names and required members. It
-**settles** on the first pass that changes no row and finds no row missing a required member. A settled table
-is skipped with one lookup until its declarations change, which gives it a new name and one new scan.
+**settles** on the first pass that changes no row, whether or not rows are missing a required member (those are
+[reported once](#declared-names-required) and settle with it). A settled table is skipped with one lookup until its
+declarations change, which gives it a new name and one new scan.
 
 A pass that **changed rows is not settled**, so the next start scans the table once more. That second pass
 catches any row an instance of the previous release wrote in the old spelling while the deployment was rolling,
@@ -283,7 +284,7 @@ and then settles. A table this release creates empty settles on its first check 
 
 ### Required members of a read model {#declared-names-required}
 
-{verified: DeclaredNameSpellingIntegrationTests.ARequiredMemberMissingFromAMappedRow_IsReportedAtErrorAsync, DeclaredNameSpellingIntegrationTests.ARequiredMemberMissingFromAnOpaqueRow_FailsTheReadAsync, DapperDeclaredNameSpellingTests.ARequiredMemberMissingFromATypeOnlyTheRowCarries_FailsTheRead_AndIsReportedAtStartupAsync, DeclaredKeySpellingPassTests.MissingRequiredMembers_AreReported_WithABoundedSample_AndTheTableStaysOpenAsync}
+{verified: DeclaredNameSpellingIntegrationTests.ARequiredMemberMissingFromAMappedRow_IsReportedAtErrorAsync, DeclaredNameSpellingIntegrationTests.ARequiredMemberMissingFromAnOpaqueRow_FailsTheReadAsync, DapperDeclaredNameSpellingTests.ARequiredMemberMissingFromATypeOnlyTheRowCarries_FailsTheRead_AndIsReportedAtStartupAsync, DeclaredKeySpellingPassTests.UnrepairableRows_AreReportedOnce_AndTheirTableIsNotScannedAgainAsync, DeclaredKeySpellingPassTests.ATableRewrittenThisStart_ReportsItsMissingRowsOnTheNextStart_OnceAsync}
 
 A perspective model member declared `required` (or `[JsonRequired]`) is enforced on stored read-model rows:
 
@@ -291,16 +292,23 @@ A perspective model member declared `required` (or `[JsonRequired]`) is enforced
   serialized value), a row missing the member fails its read with a `JsonException` instead of reading the
   member's default.
 - **Read by Entity Framework's mapped reader**, a missing key cannot be refused at read time. The startup pass
-  reports instead: rows missing a required member are logged at **Error**, naming the table, the member path,
-  the row count and a few sample row ids. Startup continues, and the table stays unsettled, so the report
-  repeats on every start until the rows are filled.
+  reports instead: rows missing a required member are logged at **Error**, **once**, naming the table, the row
+  count and the member paths with a few sample row ids. Startup continues, and the table is then settled, so it
+  is not checked again, and the report not repeated, until what its readers declare changes.
 
 ```text
-Stored documents in public.wh_per_picture lack a required member: data $.Title in 12 row(s) (for example
-0199a1c4-..., 0199a1c5-..., 0199a1c6-...). A reader that refuses a missing required member fails these rows,
-and Entity Framework's mapped reader reads the member's default. Fill them with
-[StoredForm(DefaultWhenMissing = ...)] or rebuild the perspective
+12 stored document(s) in public.wh_per_picture lack a required member: data $.Title in 12 row(s) (for example
+0199a1c4-..., 0199a1c5-..., 0199a1c6-...). A reader that refuses a missing required member fails these rows, and Entity
+Framework's mapped reader reads the member's default. Fill them with [StoredForm(DefaultWhenMissing = ...)] or
+rebuild the perspective. The table is recorded as checked, so this is said once: it is checked again when what
+its readers declare changes
 ```
+
+**Why once.** Nothing at startup can repair such rows, so a table that stayed unsettled was scanned again, in full,
+and reported again, on every start: minutes of startup for a report nobody could act on a second time, and a schema
+that never reached [`Current`](../../operations/startup/rolling-upgrades.md#current). A table whose keys a start
+rewrote is the exception: it stays open, and the next start checks it again (catching rows an older instance wrote
+meanwhile) and reports what is missing then, once.
 
 A required member whose type admits null is not enforced, because the framework omits a null when it writes a
 document.
@@ -335,7 +343,7 @@ fails at first use with System.Text.Json's name-conflict error. Rename one with 
   [rolling upgrades](../../operations/startup/rolling-upgrades.md#stored-documents-written-mid-deploy)).
 - **A row holding both spellings with different values stops startup** until one key is removed from it.
 - **A required, non-nullable member missing from a stored read-model document** now fails its read (or, on
-  Entity Framework's mapped reader, is reported at Error on every start). Fill old documents with
+  Entity Framework's mapped reader, is reported at Error, once). Fill old documents with
   `[StoredForm(DefaultWhenMissing = ...)]`, [rebuild](rebuild.md) the perspective, or drop the `required`
   modifier.
 - **Two members whose JSON names differ only in case** fail at first use; rename one.
