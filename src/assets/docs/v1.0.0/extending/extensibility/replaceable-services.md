@@ -29,6 +29,11 @@ codeReferences:
   - src/Whizbang.Core/CompositePinnedIdRegistry.cs
   - src/Whizbang.Core/Perspectives/CompositePerspectiveInvoker.cs
   - src/Whizbang.Core/ServiceRegistrationCallbacks.cs
+  - src/Whizbang.Core/ServiceAssemblyScope.cs
+  - src/Whizbang.Core/WhizbangServiceAssemblies.cs
+  - src/Whizbang.Core/WhizbangServiceScopeExtensions.cs
+  - src/Whizbang.Core/ServiceAssemblyScopeStartupReporter.cs
+  - src/Whizbang.Generators/ServiceAssemblyFactsGenerator.cs
   - src/Whizbang.Data.EFCore.Postgres/ModelRegistrationRegistry.cs
   - src/Whizbang.Core/Messaging/IDeadLetterStore.cs
   - src/Whizbang.Core/Notifications/INotifySignalingGate.cs
@@ -49,6 +54,12 @@ testReferences:
   - tests/Whizbang.Core.Tests/ServiceRegistrationCallbacksAccumulateTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ModelRegistrationRegistryTests.cs
   - tests/Whizbang.Generators.Tests/PerAssemblyRegistrationGuardTests.cs
+  - tests/Whizbang.Core.Tests/ServiceScope/ServiceAssemblyScopeTests.cs
+  - tests/Whizbang.Core.Tests/ServiceScope/ServiceScopedRegistrationTests.cs
+  - tests/Whizbang.Core.Tests/ServiceScope/ScopedReceptorRegistryQueryTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ServiceScopedModelRegistrationTests.cs
+  - tests/Whizbang.Generators.Tests/ServiceScopedRegistrationGuardTests.cs
+  - tests/Whizbang.Generators.Tests/ServiceAssemblyFactsGeneratorTests.cs
 ---
 
 # Replaceable Services
@@ -323,6 +334,75 @@ re-registration from the same assembly (a test calling the generated `Initialize
 only that assembly's own entry. Before this, only the latest registration ran, and models declared in every other
 assembly were not registered.
 
+### Which assemblies a host gets: its own service's {#service-scope}
+{verified: ServiceAssemblyScopeTests.TwoServicesInOneProcess_EachHostIncludesItsOwnServiceAndTheSharedAssemblies_NotTheOtherAsync, ServiceAssemblyScopeTests.SingleServiceProcess_ExcludesNothing_WhicheverAssemblyTheHostAnchorsOnAsync, ServiceAssemblyScopeTests.ServiceSplitOverSeveralAssemblies_KeepsEveryOneOfThem_BesideAnotherServiceAsync, ServiceAssemblyScopeTests.ModularMonolith_AHostPerModule_GetsItsModuleAndTheCompositionRoot_NotTheOtherModuleAsync, ServiceAssemblyScopeTests.NoAnchor_IncludesEveryAssembly_SoAHostThatNamesNoServiceKeepsTodaysRegistrationsAsync, ServiceAssemblyScopeTests.AnAnchorWithNoRecordedFacts_LeavesTheHostUnscoped_RatherThanGuessAtItsReferencesAsync, ServiceScopedRegistrationTests.TwoHostsInOneProcess_EachGetsOnlyItsOwnServicesRegistrationsAsync, ServiceScopedRegistrationTests.EverySlot_ReplaysOnlyTheHostsOwnServiceAsync, ServiceScopedRegistrationTests.RegistrationsMadeBeforeAndAfterTheReplay_KeepTheirPlaceAsync, ServiceScopedModelRegistrationTests.WithEFCore_AnchorsTheHostOnTheDbContextsAssemblyAsync, ScopedReceptorRegistryQueryTests.AScopedHost_AnswersForItsOwnServicesReceptorsOnlyAsync, PerspectiveRunnerRegistryContributionTests.AContributionWhoseRegistryWasRemoved_IsSkipped_AndTheHostStillBuildsAsync, ServiceScopedRegistrationGuardTests.EveryServiceRegistrationAModuleInitializerHandsOver_NamesItsAssemblyAsync}
+
+Every assembly's registrations are used, but only by a host of the service the assembly belongs to. A process that
+holds one service is unaffected. A process that builds several hosts, one per service (an integration-test process,
+or a modular monolith that hosts each module separately), gives each host its own service's generated registrations
+and none of the others': perspective runners and event types, receptors and the receive-side consumer query, raw
+receptors, lenses and perspective services, pinned identities, the message-type catalog and EF Core models.
+
+**What each assembly records.** Every assembly compiled with the generators records, at build time, three facts:
+its name, whether it is a *service root* (an executable, or an assembly that declares a `[WhizbangDbContext]`), and
+the generated assemblies it was compiled against. Nothing is read by reflection at run time; the host compares names.
+
+**What names a host's service: its anchors.** A host *anchors* on the assembly of every DbContext it registers, so
+`WithEFCore<TDbContext>()` is all a host with a DbContext needs. A host with no DbContext, in a process that holds
+several services, names its service itself:
+
+```csharp{title="Naming a host's service without a DbContext" description="A host with no DbContext in a multi-service process anchors on any type in one of its service's assemblies." category="Configuration" difficulty="INTERMEDIATE" tags=["dependency-injection", "service-scope", "multi-service", "replaceable-services"]}
+services.AddWhizbang()
+  .ForServiceOf<NotificationsWorker>();   // any type in one of the service's assemblies
+
+// or, on the service collection, before or after AddWhizbang():
+services.AddWhizbangServiceAnchor<NotificationsWorker>();
+```
+
+**The rule: a host excludes another service's assemblies, and only those.**
+
+- The host's own assemblies are every anchor, everything an anchor is built on, and every service root built on an
+  anchor (the executable above a data assembly, a composition root, a test assembly).
+- Another service is a service root that is not the host's own. It, and everything only it is built on, is excluded.
+  An assembly both services are built on (a shared contracts assembly) stays.
+- Everything else stays: a helper assembly no other service is built on, an assembly compiled without the
+  generators, and a registration made without an assembly name.
+
+**A single-service process excludes nothing.** Only another service's root can make an assembly someone else's, so
+when the process holds one service, every assembly is included wherever its DbContext lives. A service split over
+several assemblies keeps all of them, which is what the contribution rules above rely on.
+
+**A host that names no service keeps everything,** as before: so does a host whose anchor recorded no facts (an
+assembly compiled without the generators, or one whose module initializer has not run yet).
+
+**Why the DbContext, and not the code that calls `AddWhizbang()`.** A test process typically composes every host
+from one test assembly that references every service, so the caller cannot tell the services apart; the DbContext
+a host registers always names its service.
+
+**The startup report.** At startup the host logs, at Debug (logger category
+`Whizbang.Core.ServiceAssemblyScopeStartupReporter`), the anchors and the assemblies it included and excluded, or
+why it is unscoped:
+`Generated registrations are scoped to the service anchored on [Orders]: included [Orders, Shared.Contracts];
+excluded as another service's [Billing]`.
+
+**No hygiene code.** Nothing needs removing from a host's service collection. A contribution whose implementation was
+removed anyway contributes nothing, instead of failing the host with `No service for type`.
+
+**Behavior changes.**
+
+- `AddWhizbang()` replays the generated registrations once per service collection. A second `AddWhizbang()` call
+  re-applies the replay (picking up assemblies loaded since) instead of registering every callback a second time.
+- When an anchor arrives after `AddWhizbang()` (as `WithEFCore<TDbContext>()` does), the replayed registrations are
+  re-applied under the new scope, in the same place in the collection. Registrations you make before and after
+  `AddWhizbang()` keep their place. Change or remove generated registrations after the `AddWhizbang()...WithEFCore`
+  chain, not between its calls.
+- A callback assigned directly to a `ServiceRegistrationCallbacks` slot (`ServiceRegistrationCallbacks.Dispatcher =
+  ...`) carries no assembly name, so every host replays it.
+
+**Not scoped yet: Dapper hosts.** A Dapper-backed host registers no DbContext, so it has no anchor and keeps every
+assembly's registrations, and its perspective registry is reconciled from every loaded assembly. Anchor it with
+`ForServiceOf<TMarker>()` when it shares a process with other services.
+
 ## How this is enforced
 
 - WHIZ501 reports an optional interface-typed constructor parameter at its declaration. It
@@ -333,3 +413,6 @@ assembly were not registered.
 - A generator test runs every Whizbang generator over a source that declares every kind of per-assembly item and
   fails if the generated code registers a host-wide service directly instead of contributing to it
   ([the rule](#registration-collisions)).
+- A generator test runs every Whizbang generator and fails when a generated module initializer hands a service
+  registration to the framework without naming its assembly, so a new per-assembly registration is service-scoped
+  by construction ([service scope](#service-scope)).
