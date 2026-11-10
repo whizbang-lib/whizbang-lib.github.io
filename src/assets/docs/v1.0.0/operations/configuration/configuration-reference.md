@@ -60,6 +60,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/DeadLetterLoggingOptions.cs
   - src/Whizbang.Core/Workers/DatabaseFailureEscalationOptions.cs
   - src/Whizbang.Core/Startup/RoleAssignmentOptions.cs
+  - src/Whizbang.Data.Postgres/MigratorDuty.cs
+  - src/Whizbang.Core/Versioning/UpgradeOrder.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
 testReferences:
   - tests/Whizbang.Archive.AzureBlob.Tests/AzureBlobArchiveLocationTests.cs
@@ -223,6 +225,7 @@ DbContext), the latest registration is used and startup logs a warning naming th
 | `Whizbang:ShowBanner` | — (bool) | Automatic |
 | `Whizbang:Application:Version`, `Whizbang:Application:DeployNumber` | none (read once, when the application version is first resolved) | Automatic (worker pipeline); see [Application version](#application-version) |
 | `Whizbang:Startup:OverrideIncompatibility` | none (read once, by the Assess verdict) | Automatic (both Postgres drivers); see [Incompatibility override](#incompatibility-override) |
+| `Whizbang:Startup:AllowLossyRollback` | none (read once, by the Assess verdict) | Automatic (both Postgres drivers); see [Lossy rollback](#lossy-rollback) |
 | `ConnectionStrings:*` | — (strings, naming conventions below) | Automatic |
 | `ConnectionPool:*` | — (generated DbContext registration) | Automatic |
 | `Whizbang:BodyOffload` | `MessageBodyOffloadOptions` (every key) | Automatic (`AddWhizbangBodyOffload()`, which every provider helper calls) |
@@ -343,6 +346,7 @@ Bound by the Postgres driver, which holds every duty (`maintainer`, `migrator`, 
 | `ProgressWindow` | `TimeSpan` | `00:02:00` | `Whizbang__Database__RoleAssignment__ProgressWindow` | How long a holder past its lease, that the one liveness rule calls live, may go without renewing before it loses the duty. Bounds how long a connected but stuck holder keeps it, while a holder busy with startup or one long unit of work keeps it; never shorter than the duty's lease. `00:00:00` turns it off, and the lease alone decides. [Details](../../../proposals/duty-role-assignment#progress-window) {verified: RoleAssignmentOptionsTests.ProgressWindow_DefaultsToTwoMinutesAsync, RoleAssignmentOptionsTests.ProgressWindowFor_IsNeverShorterThanTheRolesLease_AndZeroTurnsItOffAsync, RoleAssignmentOptionsTests.Validate_RefusesANegativeProgressWindowAsync} |
 | `CooldownAfterLapse` | `TimeSpan` | `00:00:15` | `Whizbang__Database__RoleAssignment__CooldownAfterLapse` | How long an instance whose own assignment lapsed must wait before it can win it back. A fleet-wide lapse (a database outage) carries none |
 | `OwedWorkRetryBase` | `TimeSpan` | `00:00:30` | `Whizbang__Database__RoleAssignment__OwedWorkRetryBase` | Backoff after owed duty work fails, doubled per failure, capped at one hour |
+| `MigratorStallLimit` | `TimeSpan` | `00:00:00` | `Whizbang__Database__RoleAssignment__MigratorStallLimit` | How long the migrator's startup work may report no progress before its keepalive stops renewing its role, so the lease lapses and another instance takes the schema work over. `00:00:00` derives it: the `db-init` [command timeout](#command-timeouts) plus the migrator's progress window, 12 minutes by default. Negative is refused. EF Core driver only. See [a stuck migrator loses its role](../infrastructure/migrations#a-stuck-migrator-loses-its-role) {verified: MigratorStallLimitTests.MigratorStallLimit_DefaultsToZero_AndANegativeOneIsRefusedAsync, MigratorStallLimitTests.TheStallLimit_IsTheSchemaCommandBudgetPlusTheMigratorsProgressWindow_ByDefaultAsync, MigratorStallLimitTests.AConfiguredStallLimit_IsUsedAsItIsAsync} |
 
 Code-only (through `AddWhizbangRoleAssignment(o => ...)`): `Roles` (the duties the holder loop holds and the `roles` health component reports; a duty not listed is still held by assignment when asked for) and `RoleLeases` (a lease per duty; the migrator's default is 30 seconds).
 
@@ -404,6 +408,17 @@ being recorded as unknown. A blank `Version` is no override.
 Only `true` turns it on. A value that is not a boolean fails startup naming the key, rather than being read as off.
 It is an emergency setting: turn it off once the incompatible build is gone.
 {verified: UpgradeOrderTests.TheOverride_IsOffUnlessTheHostTurnsItOnAsync, UpgradeOrderTests.AnOverrideThatIsNotABoolean_IsRefusedLoudly_NeverReadAsOffAsync, RollbackGateTests.TheOverride_LetsAnIncompatibleInstanceServe_WithoutAMigration_AndCarriesTheFullReasonAsync, RollbackGateTests.TheOverride_NeverOverridesANewerVersionOnlineAsync}
+
+### Lossy rollback {#lossy-rollback}
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `Whizbang:Startup:AllowLossyRollback` | `bool` | `false` | `Whizbang__Startup__AllowLossyRollback` | Lets an older version roll back changes a newer version applied whose reversal discards data the newer version wrote (dropping a perspective table it created, rows included). Off, such a rollback stands down with an error naming each change. It never lets an irreversible change be rolled back. See [rolling back](../startup/rolling-upgrades#rolling-back) |
+
+Only `true` turns it on. A value that is not a boolean fails startup naming the key, rather than being read as off.
+Set it for the rollback that needs it, then turn it off: left on, every later rollback across such a change discards
+data without asking.
+{verified: UpgradeOrderTests.TheLossyRollbackKey_IsOffUnlessItSaysTrue_AndRefusedLoudlyWhenItIsNotABooleanAsync, UpgradeOrderTests.ALossyChange_RefusesTheRollback_UnlessTheOperatorAllowsItAsync, RollbackGateTests.ALossyChange_StandsDown_UnlessTheOperatorAllowsItAsync, SchemaRollbackTests.ALossyChange_IsReversedOnlyWhenAllowedAsync}
 
 ### ConnectionStrings Conventions
 
