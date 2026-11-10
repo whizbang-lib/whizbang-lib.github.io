@@ -419,7 +419,7 @@ The schema version record could not be read and the failure is not temporary; st
 
 **Trigger**: The migration ledger exists but reading it failed for a reason that would fail the same way on every attempt: a missing permission, a ledger or version table altered by hand, a column that is not where the reader expects it. A brand-new database (no ledger) and a ledger with no version table never end up here; both are read as `Migrate`. A temporary failure never ends up here either: Assess retries it within Preflight, 1 second doubling to a 30 second cap, and says `the schema version record could not be read for a moment (<reason>); retrying` on each retry.
 
-**What happens next**: The initialization attempt fails in Preflight, before any runner starts, so nothing is bootstrapped, elected or migrated, and the schema-ready gate stays closed. The failure is never cached: in the default background mode the initializer's next attempt, after `InitRetryDelay`, reads the record again; in blocking mode the host's start fails. **Why not migrate anyway**: an instance that cannot tell whether the schema is newer than its binary cannot tell whether migrating it is a downgrade.
+**What happens next**: The initialization attempt fails in Preflight, before any runner starts, so nothing is bootstrapped, elected or migrated, and the schema-ready gate stays closed. The failure is never cached: in the default background mode the initializer's next attempt, after `InitRetryDelay`, reads the record again; in blocking mode the instance [exits](../startup/instance-exits) as a `StartupFailure`, exit code 4. **Why not migrate anyway**: an instance that cannot tell whether the schema is newer than its binary cannot tell whether migrating it is a downgrade.
 
 **Fix**: Read the inner exception. Check that the application's database role can read `wh_schema_migrations` and `wh_schema_versions`, and that neither was altered by hand. Once the record can be read, the next attempt proceeds on its own.
 
@@ -432,13 +432,13 @@ The schema version record could not be read and the failure is not temporary; st
 This instance stood down, so no schema initialization runs on it and nothing is applied: {reason}
 ```
 
-**Source**: `SchemaStandDownException` (namespace `Whizbang.Data.Postgres`, an `InvalidOperationException`), thrown by `StartupVerdictBinding` when a schema pass reads a `StandDown` verdict. `{reason}` is the [Assess](../startup/rolling-upgrades#standing-down) reason: normally the version the ledger records and this binary's own, or a missing or unreadable library version.
+**Source**: `SchemaStandDownException` (namespace `Whizbang.Data.Postgres`, an `InvalidOperationException`), thrown by `StartupVerdictBinding` when a schema pass reads a `StandDown` verdict. `{reason}` is the [Assess](../startup/rolling-upgrades#standing-down) reason: a newer version online and the instance it runs on ([cluster-wide stand-down](../startup/rolling-upgrades#cluster-wide-stand-down)), the changes applied since this version and who applied them ([the rollback gate](../startup/rolling-upgrades#the-rollback-gate)), or a missing or unreadable library version.
 
 **Trigger**: A direct `EnsureWhizbangInitializedAsync()`, or a DbContext's `EnsureWhizbangDatabaseInitializedAsync()`, on a host whose binary is older than the schema. The hosted start never throws it: there, a stand-down runs no runner at all, and the instance stays visible in Preflight with the `StandingBy` phase instead (see [A stood-down instance stays in Preflight](../startup/startup-status#stood-down)).
 
 **What happens next**: Nothing was applied: no bootstrap closure, no election, no stored-form rewrite, no pass. The verdict is the same one the hosted start acts on, so calling again gives the same answer until the binary is upgraded. **Why it throws rather than return**: code that called it expects the schema to be ready afterwards, and it is not, so it must not carry on as if it were.
 
-**Fix**: Deploy a binary at or above the version the ledger records. During a rolling deployment this is expected on the older instances: the orchestrator replaces them once the newer ones are ready. If no newer release should exist, `wh_schema_versions` lists every library version recorded against this database; find the deployment that ran the newer one.
+**Fix**: Deploy a binary at or above the version that applied the changes the reason names. During a rolling deployment this is expected on the older instances: the orchestrator replaces them once the newer ones are ready. If no newer release should exist, `wh_schema_versions` lists every version recorded against this database and `wh_schema_migrations.applied_version_id` says [who applied each change](../infrastructure/migrations#applied-version-id); find the deployment that ran the newer one. To keep an older build serving a schema it did not create, see [the incompatibility override](../startup/rolling-upgrades#the-incompatibility-override). In blocking initialization (`NonBlockingSchemaInit = false`) this refusal [exits](../startup/instance-exits) as `SchemaIncompatible`, exit code 5.
 
 ---
 
@@ -545,6 +545,8 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ170 | Warning | [[InheritScope] on a Perspective Class Has No Effect](whiz170.md) |
 | WHIZ171 | Info | [[InheritScope] With All-None Flags Gives Rows No Scope](whiz171.md) |
 | WHIZ200 | Warning | [An array of records stores the perspective model as one opaque document](whiz200.md) |
+| WHIZ201 | Error | [A perspective model holds a circular reference and cannot be saved](whiz201.md) |
+| WHIZ202 | Info | [A recursive type stores the perspective model as one opaque document](whiz202.md) |
 | WHIZ300 | Error | [Inconsistent Perspective Model Types](whiz300.md) |
 | WHIZ302 | Warning | [Filtered Perspective Field Has No Index](whiz302.md) |
 | WHIZ303 | Warning | [Declared Index Cannot Be Built For This Field''s Type](whiz303.md) |

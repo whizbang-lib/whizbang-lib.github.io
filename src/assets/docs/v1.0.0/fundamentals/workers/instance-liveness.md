@@ -407,6 +407,21 @@ them. A write the stage record could not make is held and written again on the n
 left for a beat to repair.
 {verified: HeartbeatPhaseOrderSqlTests.ABeatAheadOfTheRow_DoesNotMoveThePhase_TheStageRecordIsItsOnlyWriterAsync, HeartbeatPhaseOrderSqlTests.APhaseOffTheLadder_OnABeat_IsNotWritten_EitherWayAsync, StartupStageReporterTests.AWriteThatFails_IsHeld_AndWrittenOnTheNextRegistrationSignalAsync, WorkEligibilitySqlTests.ARegistration_NoLongerMovesARecordedPhase_TheStageRecordMakesTheRowCurrentAsync}
 
+## The heartbeat starts at registration {#startup-beat}
+
+An instance registers at the end of Preflight, and its heartbeat starts right after, at Elect, not when its schema is
+ready. Until the schema-ready gate opens, each beat is a [startup beat](/v1.0.0/operations/startup/startup-status#the-startup-beat)
+(`wh_record_startup_heartbeat`, migration 362): it refreshes the heartbeat, the connection mode and the liveness window
+of the instance's row and nothing else, and it refuses an evicted instance. The registration itself records the
+connection mode and the window, so the rule judges a starting instance by its own window from the moment its row
+exists.
+
+**Why.** The heartbeat used to start at schema ready, and the registration recorded no window, so the rule judged a
+starting instance by 30 seconds: any live peer's reap evicted an instance still electing or migrating (seen after a 63
+second Migrate). A starting instance is now live by beats it really sends, and is still not
+[eligible for work](#alive-versus-eligible) until it records Accept commands.
+{verified: StartingInstanceHeartbeatE2ETests.AStartingInstanceHeldInMigrate_PastThirtySeconds_IsNotEvictedByALivePeersReapAsync, HeartbeatStartPointTests.TheHeartbeat_StartsAtElect_TheFirstStageAfterRegistrationAsync, SchemaBootstrapPhaseTests.ARegistration_RecordsTheConnectionModeAndTheLivenessWindowAsync, StartingInstanceHeartbeatE2ETests.AStartingInstanceThatBeats_KeepsItsStageAndPhase_AndIsNotEligibleForWork_UntilItRecordsAcceptingCommandsAsync}
+
 ## Adaptive HeartbeatWorker cadence
 
 `HeartbeatWorkerOptions.LivenessSourceMode` controls the cadence decision:
@@ -587,9 +602,22 @@ Migration **106** closes that:
 - Every reaped instance is **tombstoned** in `wh_instance_evictions` (instance id, when, why). A tombstone rather than the deletion itself, because deletion is precisely what the returning zombie's heartbeat undoes.
 - `record_heartbeat` **consults the tombstone and refuses** — its return type changed `VOID → BOOLEAN`. `true` = registered/renewed; `false` = this instance has been evicted and must not consider itself part of the fleet.
 - The refusal travels through the **heartbeat itself** — the same call that used to let the zombie back in is now the one that tells it it may not. No new channel, no dependency on the signal bus, and notice is bounded by one heartbeat interval.
-- `HeartbeatWorker` **stops its loop** on a refused heartbeat and logs the eviction at Error. Retrying can never succeed: the tombstone does not expire on the evicted instance's clock.
+- `HeartbeatWorker` **stops its loop** on a refused heartbeat, and the instance **exits** through the [one exit path](/v1.0.0/operations/startup/instance-exits#evictions) with `ClusterEviction`, exit code 3, so its host restarts it. Retrying can never succeed: the tombstone does not expire on the evicted instance's clock. A refused startup beat or claim registration exits the same way.
 
-The fence is per **process**, not per pod: instance ids are generated per process, so a restarted pod draws a fresh id and is unaffected — correct, because a restart means fresh state — while the zombie keeps its id and stays fenced.
+The fence is per **process**, not per pod: instance ids are generated per process, so a restarted pod draws a fresh id and is unaffected (correct, because a restart means fresh state). The zombie keeps its id only until its next beat is refused; then it exits and its host starts a new process under a new id. Nothing re-registers in place.
+{verified: HeartbeatWorkerStartupBeatTests.OnceTheSchemaIsReady_ARefusedBeat_ExitsOnce_AsAClusterEvictionAsync, StartingInstanceHeartbeatE2ETests.AnInstanceEvictedWhileRunning_ExitsOnce_WithCodeThree_AndRecordsWhoEvictedItAsync, ClaimWorkerLifecyclePhaseTests.ARefusedRegistration_ExitsAsAClusterEvictionAsync}
+
+**Why exit rather than stay sidelined.** An evicted instance that kept running held nothing, served nothing and could
+not rejoin under its id, so it sat out of the fleet until someone noticed and restarted it. Exiting with a failure code
+hands that to the supervisor that already restarts failed processes.
+
+**The tombstone says what the rule judged.** Since migration 363 the tombstone records the evicting peer for a reap
+too (`evicted_by`; before, only the standby handshake's fence recorded it), the instance's last heartbeat as the reap
+saw it (`last_heartbeat_at`), and the liveness window it was judged by (`liveness_window_seconds`, `NULL` when its row
+recorded none and the rule used 30 seconds). `record_heartbeat` names itself as the reaper for the reap it runs, and
+`cleanup_stale_instances` writes that name; a reap by any other caller records no reaper. The exit's entry states all
+of it.
+{verified: InstanceExitRecordSqlTests.APeersReap_RecordsTheReaper_AndTheHeartbeatAndWindowItJudgedAsync, InstanceExitRecordSqlTests.AReapByAnyOtherCaller_RecordsNoReaperAsync}
 
 Tombstones are bounded: `perform_maintenance` purges rows older than `instance_eviction_retention_hours` (`wh_settings`, default 24; set from `Whizbang__Workers__Maintenance__Retention__InstanceEvictionTombstoneHours`, see [database-side settings](../../operations/configuration/configuration-reference#database-side-settings)). The tombstone only needs to outlive a realistic pause-and-resume window, and since ids are per-process, anything calling with that id after a day is not the process that was reaped.
 
@@ -612,12 +640,12 @@ The handshake reads the rule through `wh_instance_is_live(id)`. The rule is in P
 
 Every path out of standby is bounded:
 
-- **Committed** — the ledger now records the newer version; standing-by peers re-assess, see `StandDown`, and shut down, as the handshake promises. The orchestrator replaces them.
+- **Committed**: the ledger now records the newer version; standing-by peers re-assess, see `StandDown`, and [exit](/v1.0.0/operations/startup/instance-exits) with `UpgradeStandDown`, exit code 0, as the handshake promises. The orchestrator replaces them.
 - **Rolled back** — the requester withdraws; the ledger is exactly as peers last read it. Revival is *not a second pipeline*: peers re-enter the re-entrant runner at `Assess`, find the schema unchanged, and resume.
 - **Dead migrator** — its heartbeat lapses, its request is void, revival begins. Nobody is stranded.
 - **Unresponsive peer** — eviction is the deliberate instrument (never an automatic consequence of slowness): `evict_instance` writes the tombstone the fence already honours, recording **who** issued it and why, and the handshake completes without the fenced peer — which can no longer heartbeat, win capabilities, or claim work.
 
-The verdict is also **not a startup-only fact**: the watcher re-assesses on a slow cadence, so an instance that was current when it booted stands down when a newer peer migrates underneath it — alive, not ready, reapable, awaiting replacement.
+The verdict is also **not a startup-only fact**: the watcher re-assesses on a slow cadence, and at once when a newer version comes online or an instance goes away, so an instance that was current when it booted stands down when a newer peer serves or migrates underneath it, alive, not ready and reapable, and resumes if nothing newer is serving any more (see [cluster-wide stand-down](/v1.0.0/operations/startup/rolling-upgrades#cluster-wide-stand-down)).
 
 ## Migration touch points
 
@@ -634,6 +662,8 @@ The verdict is also **not a startup-only fact**: the watcher re-assesses on a sl
 | **317** (new) | Every SQL reader asks the rule: `claim_work`, `wh_claim_multi_stream_work`, `wh_partition_assignment_candidates` (now returns `is_live`), the three orphan claims, `get_stream_events`, `calculate_instance_rank`, `notify_instance_owners_with_payload`, `_notify_debounced` and `_notify_dead_letter_ready`. See [Who applies the rule](#liveness-readers) |
 | **330** (new) | `cleanup_stale_instances` redefined from 316, changing only how it wakes the live instances: each `orphan` wake goes through the signal bus's SQL publish, `wh_publish_signal`, as a best-effort doorbell (never recorded). Channel and payload are unchanged (`wh_work_i_<instance>`, `orphan`). See [Coordination signals](/v1.0.0/fundamentals/signal-bus/signal-bus#coordination-signals) |
 | **355** (new) | Role holders ask the rule: `_role_holder_kept_live` (the rule plus the holder's per-epoch progress window), called by the redefined `_role_lapse_reason` and `wh_assert_role_epoch`; `wh_declare_role_progress_window` and `wh_role_is_held`; the `progress_window` and `progress_epoch` columns on `wh_role_assignments`. All in the bootstrap region. See [Role holders](#role-holders) |
+| **362** (new) | `wh_record_startup_heartbeat`: [the startup beat](#startup-beat), in the bootstrap region; refreshes the heartbeat, the connection mode and the window of an existing row, inserts nothing, writes no stage or phase, reaps no peer, refuses an evicted instance |
+| **363** (new) | `wh_instance_evictions` gains `last_heartbeat_at` and `liveness_window_seconds`; `record_heartbeat` and `cleanup_stale_instances` record the reaper for a reap; `wh_instance_exits` and `wh_record_instance_exit` record every [exit](/v1.0.0/operations/startup/instance-exits#the-exit-record) |
 
 ## Operator notes
 
@@ -643,7 +673,7 @@ The verdict is also **not a startup-only fact**: the watcher re-assesses on a sl
 - To see which instances the rule calls live, `SELECT * FROM wh_live_instance_ids();`; to see each one's window, `SELECT instance_id, connection_mode, liveness_window_seconds, clock_timestamp() - last_heartbeat_at AS heartbeat_age FROM wh_service_instances;`.
 - To see which instances are live by their lock right now, `SELECT * FROM wh_direct_alive_lock_holders();`. A direct instance missing from that list is live for one beat (30 s) past its last heartbeat.
 - An instance that is up but receives no work is usually alive and not eligible: check the `lifecycle_phase` its row records (see [Alive versus eligible for work](#alive-versus-eligible)). A row stuck in `Migrating` or `Connecting` means its startup has not reached `AcceptingCommands`; a row in `Stopping` is draining.
-- An instance logging `has been evicted … heartbeat refused` is not broken and needs no intervention — it was reaped as stale while paused, its work was redistributed, and it is correctly refusing to rejoin. Restart the pod (a new process gets a new instance id) if it should return to service.
+- An instance that exits with `ClusterEviction` (exit code 3; `WhizbangInstanceExit` EventId 1) was reaped as stale while paused or starved, and its work was redistributed. Its host restarts it under a new instance id, so it needs no intervention. The exit's entry and its row in `wh_instance_exits` name the evicting peer, the last heartbeat and the window it was judged by; a steady stream of them points at heartbeat starvation or connectivity, which the entry names. Earlier releases logged `has been evicted … heartbeat refused` (`HeartbeatWorker` EventId 8) and left the process running sidelined until restarted by hand.
 - A Warning `is alive again after being announced dead; retracting with InstanceJoinedSignal` means a heartbeat landed late, not that the monitor is wrong. The fleet has already healed; look for what stalled the beat (a long-running commit on the writer's connection, a saturated pool). `whizbang.liveness.deaths_retracted` counts these.
 - Watchdog Warnings (EventId 9) mean the regular beat ran late enough to approach the threshold and the writer forced one. Occasional watchdog beats under load are the mechanism working; a steady stream points at a starved heartbeat writer.
 - Each instance declares its own window from its `HeartbeatWorkerOptions` on every beat, and every reader asks the rule, which reads it. Changing `IntervalSeconds` or `SlowIntervalSeconds` changes the window of the instances that run the change, from their next beat; there is no reader-side threshold to keep in step.
