@@ -453,6 +453,12 @@ rather than running the pass over the newer version's schema.
 5. It commits. A reverse script that fails undoes the whole rollback; the error names the change and who applied it,
    nothing was rolled back, and the next start decides again.
 
+**An instance already running never rolls back in place.** When the verdict of a running instance comes to owe a
+rollback (for example, one that stood down for a newer version that applied only reversible changes and then went
+offline), it does not resume: it exits as an intended `UpgradeStandDown`, and its restart runs startup, where the
+instance doing the schema work rolls the schema back before anything serves. Resuming reopens only the run permit and
+never runs the schema pass again, so resuming in place would serve the newer schema with nothing rolled back.
+
 It logs a Warning when it starts (`Rolling back schema <schema> to library <v>, application <v>: <n> change(s) a newer
 version applied, newest first`), one Information line per change (`Reversing <change> (<kind>) (<i>/<n>)`), and a
 Warning when it finishes (`Rolled back schema <schema>: <n> change(s) reversed in <elapsed>`). Each change reversed
