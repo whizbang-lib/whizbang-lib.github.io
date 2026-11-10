@@ -724,3 +724,18 @@ public interface IDeferredOutboxChannel {
   bool HasPending { get; }
 }
 ```
+
+Every work coordinator strategy drains the channel at the start of its flush, before it checks whether it has anything
+to write: Scoped, Immediate, Interval and Batch alike. The deferred messages were queued before the flush's own work,
+so they are written ahead of it, in the order they were queued. Under the Scoped and Immediate strategies they also
+pass through the coalesce stamping a queued message gets. The Interval and Batch strategies drain on every timer or
+batch flush as well as on a manual one.
+
+{verified: DeferredChannelDrainEveryStrategyTests.Flush_WithOnlyDeferredMessages_StoresThemAndEmptiesTheChannelAsync, DeferredChannelDrainEveryStrategyTests.Flush_WithDeferredAndQueuedMessages_StoresDeferredFirstAsync, DeferredChannelDrainEveryStrategyTests.Flush_WithNothingQueuedAnywhere_StoresNothingAsync}
+
+:::updated
+Only the Immediate strategy used to drain the channel. Under the default Scoped strategy, and under Interval and
+Batch, a message queued there was never written and stayed in memory: in particular the audit record of every audited
+direct `IEventStore.AppendAsync`, which carries the audited event's body. Each strategy now takes the channel as a
+required constructor argument, and the factory and the generated registration both supply it.
+:::

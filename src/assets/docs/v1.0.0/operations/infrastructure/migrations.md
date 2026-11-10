@@ -31,6 +31,11 @@ codeReferences:
   - src/Whizbang.Data.Postgres/SchemaCommandBoundary.cs
   - src/Whizbang.Data.Postgres/Migrations/constants.txt
   - scripts/Lint-MigrationSql.ps1
+  - src/Whizbang.Data.Postgres/MigrationReversal.cs
+  - src/Whizbang.Data.Postgres/SchemaRollback.cs
+  - src/Whizbang.Data.Postgres/StartupProgress.cs
+  - src/Whizbang.Data.Postgres/Migrations/385_StoredFormConversionsRecordWhoAppliedThem.sql
+  - src/Whizbang.Data.Postgres/Migrations/386_TheLedgerRecordsHowToReverseEachChange.sql
   - src/Whizbang.Data.Postgres/MigrationSqlNormalizer.cs
   - src/Whizbang.Data.Postgres/MigrationHashUpgrade.cs
   - src/Whizbang.Data.Postgres/SchemaBootstrapPhase.cs
@@ -72,6 +77,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/SchemaMigrationDeferral.cs
   - scripts/Capture-LegacyMigrationLedger.ps1
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationReversalTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigratorStallLimitTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigratorKeepaliveStartupTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigratorPreLockPhaseTests.cs
@@ -626,7 +633,8 @@ foreach (var step in plan.Steps) {
 
 ## Rollback
 
-Restore a blue-green backup table:
+Restore a blue-green backup table by hand. An older version rolling back what a newer version applied, at
+startup, is a different mechanism: see [Rolling back](../startup/rolling-upgrades#rolling-back).
 
 ```csharp{title="Rollback" description="Restore a blue-green backup table:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Rollback"] tests=["PostgresSchemaInitializerTests.RollbackAsync_WithBackupTable_RestoresItAsync", "PostgresSchemaInitializerTests.RollbackAsync_WithNoBackup_ReturnsFalseAsync"]}
 var success = await initializer.RollbackAsync("perspective:OrderPerspective");
@@ -703,6 +711,53 @@ LEFT JOIN wh_schema_versions applied
   ON applied.id = COALESCE(m.applied_version_id, CASE WHEN m.status IN (1, 2, 4) THEN m.version_id END)
 ORDER BY m.file_name;
 ```
+
+### How a migration is reversed {#how-a-migration-is-reversed}
+
+An older version started against a database a newer version migrated cannot know the newer version's migrations, so
+it cannot know how to undo them. The newer version therefore records the reverse **when it applies each change**, and
+an older version [rolls back](../startup/rolling-upgrades#rolling-back) from the record. Migration 386 adds two columns
+to `wh_schema_migrations`:
+
+| Column | Holds |
+|---|---|
+| `reversal` | `reversible` (undone without losing anything: an added index, an added table with no data yet), `lossy` (undoing it discards data the newer version wrote: dropping a column or a table it added) or `irreversible` (a data rewrite, for example). `NULL` counts as irreversible |
+| `down_sql` | The script that reverses the change, with the schema already substituted. Empty when nothing needs to run; `NULL` when the change cannot be reversed |
+
+The writer records both in the transaction that applied the change, right after its ledger row, so a change is never
+recorded as applied without how to undo it. Where each kind comes from:
+
+- **A library migration** declares its kind in its header and ships its reverse script beside it
+  ([declaring how a migration is reversed](../../../contributors/data-engines/writing-migrations.md#declaring-how-a-migration-is-reversed)).
+  Every migration through 384 predates the declaration: it records nothing and counts as irreversible.
+- **A perspective table the EF Core pass created** is reversed by dropping it (`DROP TABLE IF EXISTS`), recorded as
+  **lossy**, since the rows the newer version projected into it go with it. A table the pass **changed**, or found
+  already there, is **irreversible**: this version does not know the shape before it.
+- **The associations** are recorded as reversible with an empty script: the older version's own pass registers its
+  associations again, so reversing them runs nothing.
+- **A perspective change the Dapper driver applies** is irreversible: the driver knows a perspective by its key, not
+  by its table, so it cannot generate the drop.
+- **A stored-form conversion** is never in this ledger, and is always irreversible
+  ([the rollback gate](../startup/rolling-upgrades#the-rollback-gate)).
+
+**A re-apply clears the old reverse.** 359's trigger, redefined by 386, sets `reversal` and `down_sql` to `NULL` when a
+row's content hash changes and the statement does not set them itself. A writer that then records a new reverse
+replaces it; one that records nothing (an older release during a rolling deploy, or a migration that predates the
+declaration) leaves the change irreversible, rather than inheriting the reverse of what it replaced, which would undo
+the wrong thing.
+
+```sql{title="How each change is reversed" description="The kind and the stored reverse script of every ledger row" category="Operations" difficulty="BEGINNER" tags=["Migrations","Rollback","SQL"] tests=["RollbackGateTests.TheLedger_RecordsHowEachChangeIsReversed_AndAssessReadsItAsync"]}
+SELECT file_name, COALESCE(reversal, 'irreversible') AS reversal, down_sql
+FROM wh_schema_migrations
+ORDER BY file_name;
+```
+
+| Behavior | Why | Verified by |
+|---|---|---|
+| The newer version stores how each change is reversed beside its ledger row, in the transaction that applied it. | The older version can only roll back what the record tells it; recorded apart from the change, a reverse could be missing for a change that committed. | {verified: RollbackGateTests.TheLedger_RecordsHowEachChangeIsReversed_AndAssessReadsItAsync, MigrationReversalTests.AReversibleMigration_CarriesItsReverseScript_TransformedLikeTheForwardOneAsync} |
+| A perspective table the EF Core pass built is lossy, reversed by its drop; the associations are reversible with nothing to run; a Dapper perspective change is irreversible. | Generated schema has its reverse generated, so no author has to write one; a driver that cannot generate a reverse must not claim one. | {verified: RollbackGateTests.APerspectiveTableThePassBuilt_IsRecordedAsLossy_WithItsDrop_AndTheAssociationsAsReversibleAsync, MigrationReversalTests.ANewPerspectiveTable_IsReversedByDroppingIt_WithItsRowsAsync, MigrationReversalTests.TheAssociations_AreRegisteredAgainByTheOlderVersionsPassAsync, DapperSchemaRollbackTests.APerspectiveTableThePassApplies_IsRecordedAsIrreversible_SinceTheDriverKnowsItOnlyByKeyAsync} |
+| A migration that declares nothing records nothing and is irreversible. | Every migration before this release has no reverse; treating them as reversible would run nothing and claim the schema was rolled back. | {verified: MigrationReversalTests.ALegacyMigration_RecordsNoReversalAsync, MigrationReversalTests.AnIrreversibleMigration_RecordsThatItCannotBeReversedAsync, UpgradeOrderTests.AChangeWhoseReversalIsNotRecorded_IsIrreversibleAsync} |
+| A re-apply that records no reversal clears the one before. | The reverse of what a re-apply replaced does not reverse the new content. | {verified: RollbackGateTests.AReapplyThatRecordsNoReversal_ForgetsTheOneBeforeAsync} |
 
 ### An older instance never overwrites a newer one
 
@@ -1046,8 +1101,10 @@ throws is reported and asked again on the next tick.
 
 **Why a timer here, when a holder otherwise renews from its own work loop.** A work loop renews only when it makes
 progress, which is how a stuck holder loses its role. The migrator's startup phases have no loop to renew from, and the
-keepalive lives exactly as long as schema initialization, so a wedged startup still ends: its host's start fails or
-times out and the process exits (see [Duty role assignment](../../../proposals/duty-role-assignment)).
+keepalive lives exactly as long as schema initialization, and renews only while the work reports progress, so a
+stuck startup loses the role to another instance ([a stuck migrator loses its role](#a-stuck-migrator-loses-its-role))
+and a wedged one still ends: its host's start fails or times out and the process exits (see
+[Duty role assignment](../../../proposals/duty-role-assignment)).
 
 | Behavior | Why | Verified by |
 |---|---|---|
@@ -1056,6 +1113,43 @@ times out and the process exits (see [Duty role assignment](../../../proposals/d
 | The keepalive verifies at half the renew interval while it runs, coalesces ticks while a verify is slow, and stops before the grant is released. | One renewal per interval reaches the database however slow it is, and a released role is never renewed behind its new holder. | {verified: DutyGrantKeepaliveTests.Start_OverALeasedGrant_VerifiesItAtHalfItsRenewInterval_ForAsLongAsItRunsAsync, DutyGrantKeepaliveTests.TicksWhileTheLastVerifyStillRuns_AreCoalescedIntoOneVerifyAfterItAsync, DutyGrantKeepaliveTests.Dispose_StopsTheTicks_SoNothingRenewsTheGrantAfterItAsync, DutyGrantKeepaliveTests.Dispose_WaitsForTheVerifyInFlight_BeforeItReturnsAsync, DutyGrantKeepaliveTests.ATickThatArrivesAfterTheStop_VerifiesNothingAsync} |
 | A verify that answers false or throws does not stop the keepalive; it is reported and asked again. | The grant itself says whether it lost the role or could not reach the database for a moment; the keepalive must not give up a role the database still grants. | {verified: DutyGrantKeepaliveTests.AVerifyThatAnswersFalse_DoesNotStopTheKeepaliveAsync, DutyGrantKeepaliveTests.AVerifyThatThrows_IsReported_AndTheNextTickAsksAgainAsync, DutyGrantKeepaliveTests.AVerifyCanceledByAnythingButTheDispose_IsReportedAsync, DutyGrantKeepaliveTests.AVerifyCanceledByTheDispose_IsNotReportedAsync} |
 | A grant without a lease, or no grant (a waiter), keeps nothing alive; a new election releases the old grant and keeps only the new one alive. | There is nothing to renew, and two grants kept alive would hold a role twice. | {verified: DutyGrantKeepaliveTests.Start_OverAGrantWithoutALease_KeepsNothingAliveAsync, DutyGrantKeepaliveTests.Start_WithNoGrant_KeepsNothingAliveAsync, MigratorDutyTests.AGrantWithNoLease_IsHeld_ButNeedsNoKeepaliveAsync, MigratorDutyTests.AWaiter_HoldsNoGrant_AndNothingIsKeptAliveAsync, MigratorDutyTests.HoldingANewElection_ReleasesTheOldGrant_AndKeepsOnlyTheNewOneAliveAsync, MigratorDutyTests.AHeldGrant_IsRenewedOnItsRoleInterval_UntilTheDutyIsDisposedAsync, MigratorDutyTests.Release_GivesTheGrantBack_AndTheDutyReadsUnstagedAsync} |
+
+#### A stuck migrator loses its role {#a-stuck-migrator-loses-its-role}
+
+A keepalive that renews on a timer keeps the role for as long as startup runs, so a migrator that is alive but stuck
+(a hung statement, a deadlocked phase) used to keep it indefinitely, and no other instance could take the schema work
+over. The keepalive now renews **only while the schema work reports progress**:
+
+- every committed schema step, and the announcement of the pre-lock phases;
+- every batch or row group a long phase counts (the progress lines of [long startup work](#progress-of-long-startup-work));
+- every table the temporal rewrite reaches, every index the stored-form index rebuild reaches, and every change a
+  [rollback](../startup/rolling-upgrades#rolling-back) reverses.
+
+Once nothing has been reported for longer than the **stall limit**, the keepalive stops renewing for good and logs
+one Warning: `The migrator role's holder reported no progress for longer than <limit>; its keepalive stops renewing,
+so the lease lapses and another instance can take the role over`. The lease then lapses, and a waiting instance takes
+the role through the normal vote ([pre-lock phases](#pre-lock-phases)). Progress reported after that does not take
+the role back: the lease may already belong to another instance.
+
+**The limit** is `Whizbang:Database:RoleAssignment:MigratorStallLimit` when it is set (a `TimeSpan`, for example
+`00:20:00`). Left at its default, zero, it is the schema command budget (the `db-init`
+[command timeout](../configuration/configuration-reference#command-timeouts), 600 seconds unless set) plus the
+migrator's progress window (`ProgressWindow`, never shorter than the migrator's lease: 2 minutes by default; a
+window turned off adds nothing), so 12 minutes by default. **Why that default:** one schema statement may legitimately run for the whole command budget
+before it fails, and reports nothing while it runs; a limit shorter than the budget would take the role from a
+migrator doing exactly what it was allowed to. A negative value is refused at startup.
+
+Progress reaches the duty without any phase knowing who holds it: the schema initializer routes the progress its
+start reports to the migrator duty it holds (`StartupProgress.ReportTo`), and every reporting point calls
+`StartupProgress.Note()`. A phase added later reports through the same calls it already uses for its log lines. The
+limit applies to the EF Core driver, which elects a migrator; the Dapper driver holds no election.
+
+| Behavior | Why | Verified by |
+|---|---|---|
+| A holder that reports no progress past the limit stops being renewed and says so once; one that keeps reporting is renewed for as long as it does. | A stuck migrator must hand the work over, and a busy one must keep it. | {verified: DutyGrantKeepaliveTests.AHolderThatReportsNoProgress_StopsBeingRenewed_PastTheStallLimit_AndSaysSoOnceAsync, DutyGrantKeepaliveTests.AHolderThatReportsProgress_IsRenewedPastTheStallLimit_ForAsLongAsItDoesAsync, MigratorStallLimitTests.AHeldGrant_StopsBeingRenewed_WhenTheWorkReportsNothingPastTheLimitAsync, MigratorStallLimitTests.ProgressTheWorkReports_ReachesTheDutyThisStartHolds_AndKeepsItRenewedAsync} |
+| Progress after the stall does not take the role back, and a verify owed when the stall arrives is not run. | The lease may already be another instance's; renewing it would put two migrators to work. | {verified: DutyGrantKeepaliveTests.ProgressAfterTheStall_DoesNotTakeTheRoleBackAsync, DutyGrantKeepaliveTests.AVerifyOwedWhenTheStallArrives_IsNotRunAsync} |
+| The default limit is the schema command budget plus the migrator's progress window; a configured one is used as it is; a negative one is refused. | One statement may run for the whole budget before it fails. | {verified: MigratorStallLimitTests.TheStallLimit_IsTheSchemaCommandBudgetPlusTheMigratorsProgressWindow_ByDefaultAsync, MigratorStallLimitTests.TheStallLimit_WithNoOptions_UsesTheDefaultOptionsAsync, MigratorStallLimitTests.AConfiguredStallLimit_IsUsedAsItIsAsync, MigratorStallLimitTests.MigratorStallLimit_DefaultsToZero_AndANegativeOneIsRefusedAsync, DutyGrantKeepaliveTests.AStallLimitThatIsNotPositive_IsRefusedAsync} |
+| Every reporting point reaches the duty through one route, restored when the start ends. | No phase has to know about the keepalive, so a new phase cannot forget to report to it ([gravity](../../../contributors/gravity.md)). | {verified: MigratorStallLimitTests.ProgressFromEveryReportingPoint_IsNotedAsync, MigratorStallLimitTests.ReportTo_RoutesProgressUntilItIsDisposed_ThenToWhatWasThereBeforeAsync, MigratorStallLimitTests.ReportTo_WithNoSink_IsRefusedAsync} |
 
 #### The phases before the schema lock run only on the role holder {#pre-lock-phases}
 
@@ -1674,6 +1768,8 @@ connection has. The rules for authors are in [Writing SQL migrations](../../../c
 | `362_TheHeartbeatStartsAtRegistration.sql` | `wh_record_startup_heartbeat`, [the startup beat](../startup/startup-status#the-startup-beat) | yes |
 | `363_EveryExitIsRecorded.sql` | `wh_instance_exits` and `wh_record_instance_exit` ([the exit record](../startup/instance-exits#the-exit-record)); `last_heartbeat_at` and `liveness_window_seconds` on `wh_instance_evictions`; `record_heartbeat` and `cleanup_stale_instances` record the reaper | yes |
 | `364_InstanceExitRetentionIsASetting.sql` | `wh_record_instance_exit` reads `wh_settings.instance_exit_retention_days` (30 days when unset) instead of a fixed 30 days | yes |
+| `385_StoredFormConversionsRecordWhoAppliedThem.sql` | Adds `applied_library_version` and `applied_application_version` to `wh_stored_form_migrations` and `wh_perspective_forms`, so [the rollback gate](../startup/rolling-upgrades#the-rollback-gate) counts stored-form conversions. Rewrites no row. Irreversible | yes |
+| `386_TheLedgerRecordsHowToReverseEachChange.sql` | Adds `wh_schema_migrations.reversal` and `down_sql` ([how a migration is reversed](#how-a-migration-is-reversed)), and redefines 359's trigger so a re-apply that records no reversal clears the old one. Irreversible | no |
 
 ## Upgrade notes {#upgrade-notes}
 
@@ -1693,6 +1789,15 @@ Notes for upgrading a running deployment to this release. Each links to the page
   each one it names.
 - **A rollback with nothing migrated since now serves**, and one after a newer version applied a change stands down
   naming the change. See [the rollback gate](../startup/rolling-upgrades#the-rollback-gate).
+- **A rollback after a newer version applied only reversible changes now rolls the schema back** at start, on the
+  instance doing the schema work; a change that would discard data needs `Whizbang:Startup:AllowLossyRollback=true`,
+  and an irreversible one (every migration before this release, every stored-form conversion, every Dapper perspective
+  change) still stands down. See [rolling back](../startup/rolling-upgrades#rolling-back).
+- **A migrator that reports no progress for longer than its stall limit lets its role lapse**, so another instance
+  takes the schema work over. The default (the schema command budget plus the progress window, 12 minutes) needs no
+  setting. See [a stuck migrator loses its role](#a-stuck-migrator-loses-its-role).
+- **A new database reads as current on its second start**, where it used to run a pass it did not need until its
+  third. See [Current](../startup/rolling-upgrades#current).
 - **An evicted instance exits with code 3**, a capability that is not ready exits with code 4 (it was 1), and the
   killswitch's stop ends the process. See [Instance Exits](../startup/instance-exits).
 - **An app signal published inside a transaction is delivered on commit.** A custom `ISignalTopicTransport`

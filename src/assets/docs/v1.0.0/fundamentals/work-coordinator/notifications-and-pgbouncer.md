@@ -168,9 +168,17 @@ On startup (and periodically thereafter via `PeriodicReprobeInterval`, default 5
 1. Open the shared direct connection.
 2. `LISTEN` on `wh_selftest_{instanceId}_{nonce}` (single-use channel, fresh UUIDv7 nonce per probe).
 3. Open a second ephemeral connection. `SELECT pg_notify('wh_selftest_{instanceId}_{nonce}', 'ping')`. Close it. This second connection exists because Postgres's LISTENing backend doesn't observe its own pre-commit `NOTIFY` on the same backend.
-4. Wait up to `SelfTestTimeout` (default 2 s) for the notification to arrive on the shared connection.
+4. Wait up to `SelfTestTimeout` (default 2 s) for the notification to arrive on the shared connection. Each wait carries what is left of the window as a timeout Npgsql arms on the read, never a token cancel, so a probe whose notification does not arrive always ends within the window.
 5. On success → `IsAvailable = true`, drop the self-test channel.
 6. On timeout → `IsAvailable = false`, schedule the next periodic re-probe.
+
+{verified: PgSharedNotifyProbeWaitTests.Probe_WhoseWaitIgnoresItsToken_EndsAtTheSelfTestTimeoutItPassesAsync, PgSharedNotifyProbeWaitTests.Probe_WhoseWaitsReadOnlyOtherMessages_StopsAtTheDeadline_PassingWhatRemainsAsync, PgSharedNotifyProbeWaitTests.Probe_WithTheRealWait_SeesItsOwnNotificationAsync}
+
+:::updated
+The probe used to bound its wait by canceling it after `SelfTestTimeout`. Npgsql can discard a cancel that lands as the
+wait enters its read, so a probe whose notification had not arrived could wait on the idle socket forever: the
+connection never retried and the instance stayed on polling with nothing logged.
+:::
 
 `ProbeNowAsync()` is the ops escape hatch — forces an immediate re-probe without waiting for the periodic schedule.
 

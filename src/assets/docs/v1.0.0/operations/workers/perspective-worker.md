@@ -899,7 +899,7 @@ The worker exposes first-class events for production monitoring and deterministi
 | `OnWorkProcessingStarted` | Idle → active transition (work appeared after empty polls) |
 | `OnWorkProcessingIdle` | Active → idle transition, after `IdleThresholdPolls` consecutive empty polls (default 2) |
 | `OnBatchCycleComplete` | Once per worker tick after ALL phases (drain processing, `PostAllPerspectives`, `PostLifecycle`, metrics) — fires whether or not work was found |
-| `OnPerspectiveEventProcessed` | Synchronously after a perspective successfully processes events for a stream |
+| `OnPerspectiveEventProcessed` | Synchronously after a perspective successfully processes events for a stream, with a `PerspectiveEventProcessedEvent` naming the perspective, the stream, `EventCount` and `EventIds`, the ids of the events the batch reports |
 | `OnStreamAffinityGateContended` | When an applier finds the (stream, perspective) [affinity gate](#lease-based-coordination) held and must wait for it |
 | `OnStreamAffinityGateReleased` | When an affinity gate is released, with an `AffinityGateRelease(StreamId, PerspectiveName, Abandoned)`; `Abandoned` is true when the apply had been [abandoned](#abandoned-applies) by its consumer. Releases of one gate are raised in the order they happen, before the next applier takes it, so keep handlers short |
 | `ConsecutiveEmptyPolls` (property) | Count of consecutive empty polls; resets when work is found |
@@ -921,6 +921,26 @@ worker.OnStreamAffinityGateReleased += release => {
   }
 };
 ```
+
+**Counting applies**: a batch can name an event an earlier batch already reported (a rewind replays its stream), so
+adding up `EventCount` can overshoot the events actually applied. To wait until something has been applied, count
+distinct `EventIds` per perspective and stream:
+
+```csharp{title="Waiting for distinct applies" description="Count distinct EventIds per (perspective, stream), not a sum of EventCount" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Events", "Testing"] tests=["PerspectiveWorkerDeepPathDrainTests.DrainMode_ProcessedHook_NamesOnlyTheEventsTheBatchAppliedAsync", "PerspectiveWorkerDeepPathReplayTests.Worker_RewindWithReplayReader_PrependsPendingReplayEventsOnceAsync"]}
+var applied = new ConcurrentDictionary<(string Perspective, Guid Stream), ConcurrentDictionary<Guid, byte>>();
+
+worker.OnPerspectiveEventProcessed += e => {
+  var ids = applied.GetOrAdd((e.PerspectiveName, e.StreamId), _ => new());
+  foreach (var id in e.EventIds) {
+    ids.TryAdd(id, 0);
+  }
+};
+```
+
+:::new
+`PerspectiveEventProcessedEvent.EventIds` (#2237). A wait that summed `EventCount` could be met by reports that were
+not new applies while another stream's apply was still pending.
+:::
 
 ### Database Queries
 

@@ -10,13 +10,14 @@ description: >-
   Two versions against one schema: the one Assess verdict that binds startup
   (Current skips the schema lock, StandDown applies nothing and stays visible),
   the cluster-wide stand-down when a newer version comes online (application
-  version first), the rollback gate and its override, the standby handshake for
+  version first), the rollback gate and its override, rolling back what a newer
+  version applied, the standby handshake for
   breaking migrations, eviction as the fence behind it, and revival by
   re-entering the pipeline
 tags: >-
   rolling-upgrades, assess, verdict, current, stand-down, standby, handshake,
   eviction, semver, versioning, migrations, multi-instance, deployment,
-  rollback, application-version, override
+  rollback, application-version, override, down-migrations, allow-lossy-rollback
 codeReferences:
   - src/Whizbang.Core/Startup/AssessStartupStep.cs
   - src/Whizbang.Core/Startup/StartupAssessmentSource.cs
@@ -39,6 +40,11 @@ codeReferences:
   - src/Whizbang.Core/Signals/CoordinationSignals.cs
   - src/Whizbang.Data.Postgres/Migrations/359_TheLedgerRecordsWhoAppliedEachChange.sql
   - src/Whizbang.Data.Postgres/Migrations/360_TheInstanceRowRecordsAnOverriddenIncompatibility.sql
+  - src/Whizbang.Data.Postgres/Migrations/385_StoredFormConversionsRecordWhoAppliedThem.sql
+  - src/Whizbang.Data.Postgres/Migrations/386_TheLedgerRecordsHowToReverseEachChange.sql
+  - src/Whizbang.Data.Postgres/SchemaRollback.cs
+  - src/Whizbang.Data.Postgres/StoredFormApplier.cs
+  - src/Whizbang.Data.Postgres/MigrationReversal.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Startup/AssessStartupStepTests.cs
   - tests/Whizbang.Core.Tests/Startup/StartupAssessmentSourceTests.cs
@@ -64,6 +70,10 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Startup/StandbyWatcherUpgradeStandDownTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/UpgradeStandDownE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RollbackGateTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaRollbackTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StoredFormApplierTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/OnePassReadsCurrentTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSchemaRollbackTests.cs
 ---
 
 # Rolling Upgrades
@@ -86,7 +96,8 @@ Two rules anchor everything below:
 | Nothing newer online, nothing applied since my version, and the schema is [already current](#current) | `Current` | Skips the bootstrap, the election, the stored-form rewrite and the migration pass, so it takes **no schema lock**; Converge and Coordinate still run |
 | Nothing newer online, nothing applied since my version, and the schema could not be shown current | `Serve` | Runs startup as it always has: the election, the pass under the schema lock (which finds nothing to do when every hash matches), Converge and Coordinate. A ledger that records a newer version which applied nothing since mine is here too: a rollback with nothing migrated since serves |
 | A strictly **newer** application or library version is [online](#cluster-wide-stand-down) (a live, serving instance) | `StandDown` | [Applies nothing and holds the data plane](#standing-down), while it stays alive and visible; it resumes once nothing newer is serving |
-| A schema change was [applied after my version](#the-rollback-gate) by a newer version | `StandDown`, or `Current` when [the override](#the-incompatibility-override) is on | Stands down with an error naming each change and who applied it; with the override, serves the schema as it is |
+| Schema changes were [applied after my version](#the-rollback-gate) by a newer version, nothing newer is online, and [every one can be reversed](#rolling-back) | `Migrate`, with a rollback owed | The instance doing the schema work runs the reverse scripts the newer version stored, then migrates as usual. A change whose reversal discards data counts only when `Whizbang:Startup:AllowLossyRollback` is `true` |
+| A schema change was [applied after my version](#the-rollback-gate) by a newer version, and one of them cannot be reversed (or would discard data, and the operator has not allowed it) | `StandDown`, or `Current` when [the override](#the-incompatibility-override) is on | Stands down with an error naming each change that blocks the rollback and who applied it; with the override, serves the schema as it is |
 | A ledger that exists and cannot be read | none | A temporary failure is retried within Preflight; any other [fails the attempt](#unreadable-version-record) |
 
 ```csharp{title="The verdict" description="Decided once, before anything is changed, and read by every part of startup" category="Implementation" difficulty="INTERMEDIATE" tags=["Startup","RollingUpgrades"] tests=["AssessStartupStepTests.StandDownVerdict_FailsTheBlockingStep_WhichIsNotReadyWhileAliveAsync","AssessStartupStepTests.CurrentVerdict_CompletesWithTheReason_LikeServeAsync","StartupAssessorTests.AnyNewerRecorded_VerdictIsStandDownAsync","StartupAssessorTests.AnUpToDateSchema_IsCurrent_AndOneWithWorkPending_IsServeAsync"]}
@@ -150,9 +161,27 @@ A `Current` start skips the bootstrap, the election, the stored-form rewrite and
 **A check that cannot answer is `Serve`, never `Current`.** A currency check that throws, a host with no check registered, and a stored-form conversion whose settlement cannot be read all give `Serve`, and the full path finds out for itself. A wrong `Current` would skip work that was owed; a wrong `Serve` costs only the lock it always took.
 {verified: StartupAssessorTests.ACurrencyCheckThatCannotAnswer_IsServe_NeverCurrent_AndACancellationPropagatesAsync, DbContextInitializationRegistryTests.IsSchemaCurrent_WithNoCheckRegistered_IsNotCurrentAsync, DbContextInitializationRegistryTests.IsSchemaCurrent_IsCurrentOnlyWhenEveryContextThisHostRegistersIsAsync, DapperStartupAssessorTests.AMigrationLastRecordedByAnotherRelease_IsServeAsync, DapperStartupAssessorTests.APerspectiveTableWhoseDefinitionChanged_IsServeAsync}
 
+**A database one complete schema pass has built reads as current on its next start.** The stored-form conversions
+run before the pass, and the pass is what creates a new perspective table, so on a new database every conversion
+finds its table missing and records nothing. A conversion with no record, on a table that holds no row, has nothing
+to convert, and the currency check counts it as settled. A restart after the first start is therefore `Current`, and
+takes no schema lock. Earlier releases counted every unrecorded conversion as pending: the second start ran a pass it
+did not need, and a new database read as current only from its third start.
+
+Nothing is recorded for such a table, so it is not settled for good. **Rows written into it later make the schema not
+current again**, whoever wrote them (this release, or an earlier one still serving during a rollout), and the next
+start runs the conversion over them, which settles it as usual. The check costs one existence read per unrecorded
+table that exists, and only when the conversion has no record at all.
+
+| Behavior | Why | Verified by |
+|---|---|---|
+| A conversion with no record, on a table with no row, has nothing to convert; one with no record on a table holding rows is still open. | The conversions run before the pass that builds the tables, so "no record" on a new table means "nothing was there", not "not checked"; a table that holds rows has not been checked, and calling it settled would skip owed work. | {verified: OnePassReadsCurrentTests.ADatabaseOnePassBuilt_ReadsAsCurrentOnTheNextStartAsync, StartupAssessorTests.StoredForms_AreSettledOnlyWhenEveryLedgerSaysSoAsync} |
+
 Two cases that start as `Serve` and are expected to:
 
-- **The first restart after a fresh start.** A generated stored-form conversion settles only on a pass that finds nothing left to convert (see [Stored documents written mid-deploy](#stored-documents-written-mid-deploy)), so on a model with stored forms the restart that follows the first start makes that pass and settles. The start after it is `Current`.
+- **The first restart after rows reached a table the first start built.** The conversion has no record on that table
+  and the table now holds rows, so the restart runs the conversion over them; it finds them already in the current
+  form, settles, and the start after it is `Current`.
 - **The start after a table's keys were rewritten.** A table whose keys a start rewrote stays open, and the next start checks it again (and reports any row still missing a [required member](../../fundamentals/perspectives/stored-form-migrations.md#declared-names-required), once); the start after that is `Current`. A table with rows missing a required member, which nothing at startup can repair, is settled after its check and reported once, so it no longer keeps the application at `Serve` on every start.
   {verified: DeclaredKeySpellingPassTests.UnrepairableRows_AreReportedOnce_AndTheirTableIsNotScannedAgainAsync, DeclaredKeySpellingPassTests.ATableRewrittenThisStart_ReportsItsMissingRowsOnTheNextStart_OnceAsync}
 
@@ -298,23 +327,55 @@ own version**:
 
 - no W! migration applied by a newer **library**;
 - no application schema change (a perspective table, an association, an application object) applied by a newer
-  **application or library**, since the library generates those from the application's model.
+  **application or library**, since the library generates those from the application's model;
+- no stored-form conversion applied by a newer **application or library** (see below).
 
-Anything applied since stands the instance down at Assess, because a migration cannot be reversed yet (down
-migrations are tracked in [#2122](https://github.com/whizbang-lib/whizbang/issues/2122); stored-form conversions in
-`wh_stored_form_migrations` record no version yet and are not gated, see
-[#2131](https://github.com/whizbang-lib/whizbang/issues/2131)). The stand-down reason, on the row and in the log, is
-the gate's error. It names this instance's versions, how many changes were applied since, the first five by name with
-who applied each, and that the change cannot be reversed yet:
+When something was applied since, Assess asks whether every such change can be reversed. When it can, and nothing
+newer is online, the verdict is `Migrate` with a rollback owed, and the instance [rolls the schema back](#rolling-back)
+before its pass. Otherwise the instance stands down at Assess. The stand-down reason, on the row and in the log, is the
+gate's error. It names this instance's versions, how many changes were applied since, and the first five changes that
+block the rollback, by name, with who applied each:
 
-```text{title="The rollback gate's error" description="An instance rolled back after a newer version applied schema changes stands down naming each change and who applied it" category="Operations" difficulty="BEGINNER" tags=["Startup","RollingUpgrades","Rollback"] tests=["UpgradeOrderTests.TheGatesError_NamesEachChange_WhoAppliedIt_AndThatItCannotBeReversedYetAsync","UpgradeOrderTests.TheGatesError_NamesTheFirstFive_AndCountsTheRestAsync"]}
+```text{title="The rollback gate's error" description="An instance rolled back after a newer version applied a change that cannot be reversed stands down naming the change and who applied it" category="Operations" difficulty="BEGINNER" tags=["Startup","RollingUpgrades","Rollback"] tests=["UpgradeOrderTests.AnIrreversibleChange_RefusesTheRollback_NamingOnlyWhatCannotBeReversed_AndTheVersionsAsync","UpgradeOrderTests.TheRefusal_NamesTheFirstFive_AndCountsTheRestAsync"]}
 since this instance's version (library 1.0.0, application 1.9.0), 2 schema change(s) were applied by a newer version
-that this version did not make, and a migration cannot be reversed yet (down migrations: whizbang-lib/whizbang#2122):
-perspective:wh_per_orders (applied by library 1.0.0, application 2.0.0), 351_X.sql (applied by library 2.0.0,
-application unknown); standing down: never apply anything, hold the data plane, report not-ready-while-alive
+that this version did not make, and 1 cannot be reversed: 351_X.sql (applied by library 2.0.0, application unknown);
+a rollback runs only when every change since this version can be reversed; standing down: never apply anything, hold
+the data plane, report not-ready-while-alive
+```
+
+A change that would discard data the newer version wrote is named the same way, with the key that allows it:
+
+```text{title="The rollback gate's error for a lossy change" description="A rollback that would discard data stands down until the operator allows it" category="Operations" difficulty="BEGINNER" tags=["Startup","RollingUpgrades","Rollback"] tests=["UpgradeOrderTests.ALossyChange_RefusesTheRollback_UnlessTheOperatorAllowsItAsync"]}
+since this instance's version (library 1.0.0, application 1.9.0), 2 schema change(s) were applied by a newer version
+that this version did not make, and reversing 1 would discard data the newer version wrote: perspective:wh_per_orders
+(applied by library 1.0.0, application 2.0.0); set Whizbang:Startup:AllowLossyRollback to true to roll back anyway
 ```
 
 More than five changes end with `, and N more`. A change whose applier is unknown never stands an instance down.
+
+**Stored-form conversions count too.** A stored-form conversion rewrites stored documents rather than the schema, and
+is recorded in its own journal, not in `wh_schema_migrations`. Migration 385 has each journal record the library and
+application version that converted rows: the stored-form migrations and the declared-key pass in
+`wh_stored_form_migrations` (`applied_library_version`, `applied_application_version`), and the canonical temporal
+rewrite in `wh_perspective_forms`. Assess reads each recorded conversion as an application schema change named
+`stored-form:<name>` or `temporal-form:<table>`, so an older instance started after a newer one converted stored
+documents stands down naming the conversion and who applied it. A conversion is never reversed (nothing can convert
+the documents back), so a rollback across one always stands down.
+
+- A pass that **converted rows**, or ran a custom migration (never assumed reversible), records its versions.
+- A pass that **converted nothing** (a check, a settle) keeps what is recorded: a newer version that only found the
+  documents already converted applied nothing.
+- **Conversions recorded before this release name nobody** (the columns are `NULL`), and never stand an instance down,
+  exactly as a ledger row with no known applier.
+
+The schema initializer sets who applies the conversions once, for its whole start (`StoredFormApplier.ScopeTo`), and
+every conversion records it from there, so no conversion added later has to be handed the versions or can forget them.
+
+| Behavior | Why | Verified by |
+|---|---|---|
+| Each conversion that converts rows records who applied it, and a pass that converts nothing keeps the record. | A rollback after a newer version rewrote stored documents went unseen: the older version read documents in a form it does not know. A pass that only found them converted changed nothing a rollback could break. | {verified: StoredFormApplierTests.AStoredFormMigration_RecordsWhoConvertedRows_AndKeepsItThroughAPassThatConvertsNothingAsync, StoredFormApplierTests.ACustomMigration_RecordsWhoRanItAsync, StoredFormApplierTests.TheTemporalRewrite_RecordsWhoConvertedATable_AndKeepsItAsync, StoredFormApplierTests.TheDeclaredKeyPass_RecordsWhoMovedKeysAsync} |
+| A conversion by a newer application or library stands the older instance down, naming it; one by this version or by nobody known does not. | The same rule as every other change applied since, so a conversion is judged exactly like a migration. | {verified: StoredFormApplierTests.AStoredFormConversionByANewerApplication_StandsTheOlderDown_NamingItAsync, StoredFormApplierTests.ATemporalConversionByANewerLibrary_StandsTheOlderDown_NamingItAsync, StoredFormApplierTests.AConversionByThisVersion_OrByNobodyKnown_DoesNotStandItDownAsync} |
+| Outside the initializer's scope a conversion records nobody; on journals older than 385 the gate reads the ledger alone, and the declared-key pass still moves keys. | A version nobody set must not be invented, and a database an older release migrated must still start. | {verified: StoredFormApplierTests.OutsideAnyScope_AConversionRecordsNobodyAsync, StoredFormApplierTests.OnJournalsOlderThanTheRecord_TheGateReadsTheLedgerAloneAsync, StoredFormApplierTests.TheDeclaredKeyPass_OnAJournalOlderThanTheRecord_StillMovesTheKeysAsync, StoredFormApplierTests.ScopeTo_RestoresTheApplierBefore_AndRefusesNoneAsync} |
 
 **Who applied each change** is recorded by migration 359 in `wh_schema_migrations.applied_version_id`, kept by a
 trigger, so both drivers' ledger writers record it without a change and a writer added later cannot forget it:
@@ -332,7 +393,7 @@ and the trigger records what its writes applied.
 | Behavior | Why | Verified by |
 |---|---|---|
 | An application or W! rollback with nothing migrated since serves. | A rollback that changed no schema is safe, and refusing it turned every bad application release into an outage. | {verified: RollbackGateTests.AnApplicationRollback_WithNothingMigratedSince_ServesAsync, RollbackGateTests.AWizbangRollback_WithNothingMigratedSince_ServesAsync, DapperStartupAssessorTests.AnApplicationRollback_WithNothingMigratedSince_ServesAsync, UpgradeOrderTests.NothingAppliedSinceThisVersion_AnApplicationRollbackHasNothingToFearAsync} |
-| A rollback after a change it did not make stands down, naming the change. | A migration cannot be reversed yet; serving a schema the binary does not know is the silent corruption the stand-down exists to prevent (owner decision: an irreversible rollback is an outage with an error that names why). | {verified: RollbackGateTests.AnApplicationRollback_AfterAnApplicationSchemaChange_StandsDown_NamingItAsync, RollbackGateTests.AWizbangRollback_AfterAWizbangMigration_StandsDown_NamingItAsync, DapperStartupAssessorTests.AnApplicationRollback_AfterAnApplicationSchemaChange_StandsDown_NamingItAsync, DapperStartupAssessorTests.AWizbangRollback_AfterAWizbangMigration_StandsDown_AndOneThatOnlyReStamped_ServesAsync} |
+| A rollback after a change it did not make, and cannot reverse, stands down, naming the change. | Serving a schema the binary does not know is the silent corruption the stand-down exists to prevent (owner decision: an irreversible rollback is an outage with an error that names why). | {verified: RollbackGateTests.AnApplicationRollback_AfterAnApplicationSchemaChange_StandsDown_NamingItAsync, RollbackGateTests.AWizbangRollback_AfterAWizbangMigration_StandsDown_NamingItAsync, DapperStartupAssessorTests.AnApplicationRollback_AfterAnApplicationSchemaChange_StandsDown_NamingItAsync, DapperStartupAssessorTests.AWizbangRollback_AfterAWizbangMigration_StandsDown_AndOneThatOnlyReStamped_ServesAsync} |
 | A W! migration is judged by the library version alone; an application schema change by either version. | The library owns its migrations; it also generates the application's schema from the model, so a newer library can change that schema too. | {verified: UpgradeOrderTests.APlatformMigration_IsJudgedByTheLibraryVersionAloneAsync, UpgradeOrderTests.AnApplicationSchemaChange_AppliedByANewerApplication_IsFoundAsync, UpgradeOrderTests.AnApplicationSchemaChange_AppliedByANewerLibrary_IsFound_WhateverTheApplicationVersionAsync, UpgradeOrderTests.AChangeWithNoReadableApplier_NeverStandsAnInstanceDownAsync, UpgradeOrderTests.EqualVersions_FindNothingAppliedSinceAsync} |
 | The ledger records who applied a change and keeps it through skips, re-stamps and failures; a step row is progress, not a change. | `version_id` is rewritten by every pass, a skipping one included, so it says who last looked at a file, not who changed the schema. | {verified: RollbackGateTests.TheLedger_RecordsWhoAppliedAChange_AndKeepsItThroughSkipsAndFailuresAsync, RollbackGateTests.AStepRow_IsProgress_NotAChangeAsync, RollbackGateTests.EqualVersions_DoNothingAsync, UpgradeStandDownE2ETests.ALedgerOnlyReStampedByANewerApplication_StandsNothingDownAsync} |
 | A row last applied before 359 is read as applied by its version; on a ledger older than 359 whoever last stamped a row applied it. | No ledger row is rewritten (a ledger write is what a pass and its observers count as work), and an older ledger keeps the rule it had. | {verified: RollbackGateTests.ARowLastAppliedBeforeTheRecord_IsTakenAsAppliedByItsVersion_ThroughLaterSkipsAsync, RollbackGateTests.ARowLastAppliedBeforeTheRecord_AndNotWrittenSince_IsReadAsAppliedByItsVersionAsync, RollbackGateTests.OnALedgerOlderThanTheRecord_WhoeverLastStampedARow_IsTakenToHaveAppliedItAsync, UpgradeStandDownE2ETests.ALedgerThatRecordsNoApplicationVersion_IsReadForItsLibraryVersionsAloneAsync} |
@@ -342,6 +403,98 @@ and the trigger records what its writes applied.
 with nothing migrated since now serves normally, where before any newer version the ledger named stood it down. A
 rollback after a newer version applied a change still stands down, now with an error naming each change.
 :::
+
+:::new
+**Rollbacks.** A rollback after a newer version applied only changes that can be reversed now
+[rolls the schema back](#rolling-back) instead of standing down, and stored-form conversions count as changes applied
+since. Every migration before this release, every stored-form conversion and every Dapper perspective change is
+irreversible, so those rollbacks stand down exactly as before.
+:::
+
+### Rolling back {#rolling-back}
+
+An older version started against a database a newer version migrated **rolls the schema back to its own version** when
+three things are true:
+
+- **nothing newer is online**: a newer instance still serving is a rollout in progress, and the
+  [newer-version-online rule](#cluster-wide-stand-down) still wins;
+- **every change applied since its version can be reversed**, as the newer version recorded when it applied each one
+  ([how a migration is reversed](../infrastructure/migrations#how-a-migration-is-reversed));
+- **no change would discard data**, or the operator allows it with `Whizbang:Startup:AllowLossyRollback=true`.
+
+Assess then returns `Migrate` with a rollback owed (`StartupAssessment.Rollback`), and its reason names every change it
+reverses:
+
+```text{title="Assess decides on a rollback" description="The reason of a Migrate verdict that owes a rollback" category="Operations" difficulty="BEGINNER" tags=["Startup","RollingUpgrades","Rollback"] tests=["UpgradeOrderTests.TheRollback_IsDescribedWithEveryChangeItReversesAsync","RollbackGateTests.EveryChangeSinceReversible_MigratesWithARollbackOwed_NamingWhatItReversesAsync"]}
+since this instance's version (library 1.0.0, application 1.9.0), 1 schema change(s) were applied by a newer version
+that this version did not make, and every one can be reversed: rolling back perspective:wh_per_orders (applied by
+library 1.0.0, application 2.0.0)
+```
+
+**Who runs it.** Only the instance doing the schema work: on the EF Core driver the elected migrator, as the first of
+the [phases it runs before the schema lock](../infrastructure/migrations#pre-lock-phases), before the stored-form
+rewrite; on the Dapper driver, which holds no election, the schema runner before its pass. Either way it runs under the
+schema lock, so it is kept to one instance. On the EF Core driver it needs a connection of its own: a start that owes
+a rollback with no initialization connection string and no registered `NpgsqlDataSource` fails, naming the schema,
+rather than running the pass over the newer version's schema.
+
+**How it runs** (`SchemaRollback`):
+
+1. It opens one transaction and takes the schema lock in it.
+2. It **decides again under the lock**, from the same ledger and the same rule: another instance may have finished the
+   rollback while this one waited (nothing is left, and nothing runs), a newer version may have come online, or a
+   change may have been recorded that cannot be reversed. In the last two cases nothing runs and the start fails,
+   naming why.
+3. It runs the reverse scripts the newer version stored in the ledger, **newest first**: the changes the latest
+   version applied, then the version before it; within one version the application schema before the library's
+   migrations (the pass applies them the other way round), each in reverse name order.
+4. **Each reversed change leaves the ledger**, so the pass that follows migrates from this version's point of view and
+   re-applies what this version wants.
+5. It commits. A reverse script that fails undoes the whole rollback; the error names the change and who applied it,
+   nothing was rolled back, and the next start decides again.
+
+**An instance already running never rolls back in place.** When the verdict of a running instance comes to owe a
+rollback (for example, one that stood down for a newer version that applied only reversible changes and then went
+offline), it does not resume: it exits as an intended `UpgradeStandDown`, and its restart runs startup, where the
+instance doing the schema work rolls the schema back before anything serves. Resuming reopens only the run permit and
+never runs the schema pass again, so resuming in place would serve the newer schema with nothing rolled back.
+
+It logs a Warning when it starts (`Rolling back schema <schema> to library <v>, application <v>: <n> change(s) a newer
+version applied, newest first`), one Information line per change (`Reversing <change> (<kind>) (<i>/<n>)`), and a
+Warning when it finishes (`Rolled back schema <schema>: <n> change(s) reversed in <elapsed>`). Each change reversed
+also counts as progress for [the migrator's stall limit](../infrastructure/migrations#a-stuck-migrator-loses-its-role).
+
+**What cannot be rolled back.** An irreversible change always stands the instance down, with an error naming the
+change and the versions (`AllowLossyRollback` does not lift it). Three kinds of change are irreversible:
+
+- **every migration before this release** (through 384): none recorded a reverse, so a rollback across any of them is
+  refused exactly as before;
+- **every stored-form conversion**: nothing converts stored documents back;
+- **every perspective change the Dapper driver makes**: it knows a perspective by its key, not by its table, so it
+  cannot generate the drop that would reverse a table it created.
+
+The [incompatibility override](#the-incompatibility-override) still applies to a refused rollback as it always did: the
+instance starts as `Current` and serves the schema as it is, with nothing rolled back.
+
+```json{title="Allow a rollback that discards data" description="Off by default. Lets an older version drop what a newer one added, rows included" category="Configuration" difficulty="ADVANCED" tags=["Startup","RollingUpgrades","Rollback","Configuration"] tests=["UpgradeOrderTests.TheLossyRollbackKey_IsOffUnlessItSaysTrue_AndRefusedLoudlyWhenItIsNotABooleanAsync","SchemaRollbackTests.ALossyChange_IsReversedOnlyWhenAllowedAsync"]}
+{
+  "Whizbang": {
+    "Startup": {
+      "AllowLossyRollback": true
+    }
+  }
+}
+```
+
+Only `true` turns it on; a value that is not a boolean fails startup naming the key, rather than being read as off.
+
+| Behavior | Why | Verified by |
+|---|---|---|
+| The newer version stores each reverse in the ledger when it applies the change, and the older version runs what is stored. | An older binary cannot know a newer migration any other way (owner decision). | {verified: RollbackGateTests.TheLedger_RecordsHowEachChangeIsReversed_AndAssessReadsItAsync, DapperSchemaRollbackTests.AnOwedRollback_RunsTheStoredReverseScripts_ThenThePassMigratesAsync} |
+| A rollback runs by itself only when every change since is reversible and nothing newer is online; a lossy change needs the operator's key; an irreversible one always stands down. | Losing data the newer version wrote is the operator's call, never the library's; a change that cannot be undone is an outage with an error that names why (owner decision). | {verified: RollbackGateTests.EveryChangeSinceReversible_MigratesWithARollbackOwed_NamingWhatItReversesAsync, RollbackGateTests.ALossyChange_StandsDown_UnlessTheOperatorAllowsItAsync, RollbackGateTests.AReversibleChange_StillStandsDown_WhileANewerVersionIsOnlineAsync, UpgradeOrderTests.WhenEveryChangeSinceIsReversible_NothingRefusesTheRollbackAsync, UpgradeOrderTests.AChangeWhoseReversalIsNotRecorded_IsIrreversibleAsync} |
+| Newest first, in one transaction under the schema lock, each reversed change leaving the ledger; a failing script undoes the whole rollback and names the change. | A half-reversed schema matches no version; one transaction leaves either the newer schema or this version's, and the pass that follows starts from what this version knows. | {verified: SchemaRollbackTests.EveryChangeSince_IsReversedNewestFirst_InOneTransaction_AndLeavesTheLedgerAsync, SchemaRollbackTests.AReverseScriptThatFails_RollsBackTheWholeRollback_NamingItAsync} |
+| It decides again under the lock: nothing left runs nothing; a newer version online, or an irreversible change, refuses. | The verdict was read without a lock, and another instance may have moved the database since. | {verified: SchemaRollbackTests.NothingAppliedSince_ReversesNothingAsync, SchemaRollbackTests.ANewerVersionOnlineUnderTheLock_IsRefusedAsync, SchemaRollbackTests.AnIrreversibleChangeUnderTheLock_IsRefused_NamingItAndTheVersionsAsync, SchemaRollbackTests.ARequestWithoutWhatItNeeds_IsRefusedAsync} |
+| The Dapper runner runs the owed rollback before its pass, and records every perspective change it applies as irreversible. | The runner is the one place both happen, so no host-side step has to remember them; a driver that cannot generate a reverse must not claim one. | {verified: DapperSchemaRollbackTests.TheRunner_RunsTheRollbackTheVerdictOwes_BeforeThePassAsync, DapperSchemaRollbackTests.APerspectiveTableThePassApplies_IsRecordedAsIrreversible_SinceTheDriverKnowsItOnlyByKeyAsync} |
 
 ### The incompatibility override {#the-incompatibility-override}
 
@@ -375,7 +528,7 @@ Only the one verdict reads and honors the key; everything else learns of an over
 
 | Behavior | Why | Verified by |
 |---|---|---|
-| With the override on, an incompatible instance serves as `Current`, applying nothing, and carries the full reason. | An operator who must keep an older build serving (a rollback with no down migration yet) gets a way to do it that changes nothing in the schema. | {verified: RollbackGateTests.TheOverride_LetsAnIncompatibleInstanceServe_WithoutAMigration_AndCarriesTheFullReasonAsync, RollbackGateTests.TheOverride_AgainstTheRealLedger_ServesWhatTheGateRefusesAsync, StartupParityTests.TheIncompatibilityOverride_StartsWhatTheGateRefuses_LogsIt_RecordsIt_AndAppliesNothingAsync} |
+| With the override on, an incompatible instance serves as `Current`, applying nothing, and carries the full reason. | An operator who must keep an older build serving (a rollback across a change that cannot be reversed) gets a way to do it that changes nothing in the schema. | {verified: RollbackGateTests.TheOverride_LetsAnIncompatibleInstanceServe_WithoutAMigration_AndCarriesTheFullReasonAsync, RollbackGateTests.TheOverride_AgainstTheRealLedger_ServesWhatTheGateRefusesAsync, StartupParityTests.TheIncompatibilityOverride_StartsWhatTheGateRefuses_LogsIt_RecordsIt_AndAppliesNothingAsync} |
 | It never lifts the stand-down for a newer version online, nor serves a build that cannot say what it is. | A newer version online is a rollout in progress, not an incompatibility; and an unknown build cannot be judged at all. | {verified: RollbackGateTests.TheOverride_NeverOverridesANewerVersionOnlineAsync, StartupParityTests.TheIncompatibilityOverride_DoesNotOverrideANewerVersionOnlineAsync, RollbackGateTests.TheOverride_NeverServesABuildThatCannotSayWhatItIsAsync} |
 | On a compatible instance it changes nothing, logs nothing and records nothing. | Leaving it on after the emergency must not make every later start look overridden. | {verified: RollbackGateTests.TheOverride_OnACompatibleInstance_ChangesNothingAsync, StartupParityTests.TheIncompatibilityOverride_OnACompatibleInstance_LogsNothing_AndRecordsNothingAsync, StartupAssessmentSourceTests.ACompatibleVerdict_LogsNoOverrideAsync} |
 | An override in use is logged at Error once per start, with the verdict and its full reason, and recorded on the row. | Running past a verdict is a decision an operator must keep seeing (owner decision), and peers must be able to see it without reading logs. | {verified: StartupAssessmentSourceTests.AnOverriddenIncompatibility_IsLoggedLoudly_OncePerStart_WithTheVerdictAndItsFullReasonAsync, RollbackGateTests.TheOverrideRecord_IsWrittenOnlyWhereThereIsARowAndAPlaceForItAsync, DapperStartupAssessorTests.ServingAsItIs_RegistersTheInstance_WithItsConnectionModeAndLivenessWindow_AndTheOverrideAsync} |
@@ -390,7 +543,8 @@ re-entering the pipeline at Assess: `Resuming`, the permit reopens, `Running`, u
 Its row's stage message then reads `resumed: ` followed by the reason, and the watcher logs it once at Information
 (EventId 6, `Resuming after standing down: nothing newer is recorded or online any more (<reason>)`). The older
 instances then vote for the roles normally. A newer instance that **migrated** the schema before it died left its
-change in the ledger, which keeps them down (the [rollback gate](#the-rollback-gate)).
+change in the ledger, which keeps them down (the [rollback gate](#the-rollback-gate)); a [rollback](#rolling-back)
+runs only when an instance starts, on the instance doing the schema work.
 
 | Behavior | Why | Verified by |
 |---|---|---|

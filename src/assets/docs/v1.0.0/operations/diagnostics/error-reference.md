@@ -23,7 +23,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs
   - src/Whizbang.Core/Transports/JsonMessageSerializer.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs
-  - src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs
+  - src/Whizbang.Data.Postgres/RebuildPerspectiveCommandReceptor.cs
   - src/Whizbang.Offloads.AzureBlob/AzureBlobMessageBodyStore.cs
   - src/Whizbang.Data.Postgres/SchemaBootstrapException.cs
   - src/Whizbang.Data.Postgres/SchemaBootstrapPhase.cs
