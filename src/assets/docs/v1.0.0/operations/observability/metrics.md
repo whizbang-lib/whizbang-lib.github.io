@@ -46,6 +46,10 @@ codeReferences:
   - src/Whizbang.Sagas/Observability/SagaMetrics.cs
   - src/Whizbang.Core/Observability/InstanceLivenessMetrics.cs
   - src/Whizbang.Core/Observability/ProbeCadenceMetrics.cs
+  - src/Whizbang.Core/Observability/BacklogAgeMetrics.cs
+  - src/Whizbang.Core/Observability/BacklogAgeWorker.cs
+  - src/Whizbang.Core/Transports/ITrafficClassOpsRateSource.cs
+  - src/Whizbang.Transports.AzureServiceBus/AsbTrafficClassOpsRateSource.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/CollectiveReplayRunnerTests.cs
   - tests/Whizbang.Core.Tests/Observability/InstanceLivenessMetricsTests.cs
@@ -986,6 +990,32 @@ Value 1 on a state tag lets a dashboard count or alert by state without decoding
 "any capability `NotPermitted` anywhere". What each state means is on
 [Capabilities](../infrastructure/capabilities.md#states); the Postgres provider's states are on
 [Postgres Extensions](../infrastructure/postgres-extensions.md#states).
+
+## Whizbang.TrafficClasses {#traffic-classes}
+
+Meter name: `Whizbang.TrafficClasses` (`BacklogAgeMetrics`)
+
+Per-entity broker backlog and per-namespace broker load, broken out by traffic class. Every series carries
+`transport_namespace` and `traffic_class` because the question is comparative: one class starving another, or one
+namespace's request quota spent while its neighbor idles. A single number for the whole host hides exactly that.
+
+All three are observable gauges, read from a cache the backlog-age duty (`BacklogAgeWorker`) refreshes once per tick
+(`Whizbang:BacklogAge:Interval`, default 1 minute, stretching while nothing is waiting; see
+[backlog age](../../resilience/managed-resource-health#backlog-age)). A tick replaces the whole cache, so an entity or
+namespace that stops reporting drops out of the next collection instead of holding its last value. With no transport
+that supplies a peek or an ops-rate source, or with `Whizbang:BacklogAge:Enabled` set to `false`, the meter reports
+nothing.
+{verified: BacklogAgeDutyTests.PeekOnce_PerClassAndPerNamespace_AreCarriedThroughToTheGaugesAsync, BacklogAgeDutyTests.PeekOnce_PublishesTheOpsRateGaugePerNamespaceAsync}
+
+| Metric Name | Unit / Type | Tags | Description |
+|-------------|-------------|------|-------------|
+| `whizbang.traffic_class.backlog_depth` | `messages`, ObservableGauge\<long\> | `entity`, `transport`, `transport_namespace`, `traffic_class` | Messages waiting in each subscription or queue this instance consumes from |
+| `whizbang.traffic_class.backlog_age_seconds` | `s`, ObservableGauge\<double\> | `entity`, `transport`, `transport_namespace`, `traffic_class` | Age of the oldest waiting message per entity. A deep but young backlog is a burst draining normally; a shallow but old one is a consumer that stopped. Reported only where the transport can read the age without consuming: Azure Service Bus reports it, RabbitMQ reports depth only |
+| `whizbang.traffic_class.ops_rate` | `{operation}/s`, ObservableGauge\<double\> | `transport`, `transport_namespace`, `traffic_class` | Projected broker operations per second per namespace, idle receive polling included. One series per namespace, never summed: each namespace has its own request quota. Supplied by a transport's `ITrafficClassOpsRateSource`; Azure Service Bus supplies one |
+
+To watch for a stopped consumer, alert on `backlog_age_seconds` rather than on depth; the `backlog` health component
+degrades on the same reading once it passes `Whizbang:BacklogAge:AgeThreshold` (default 15 minutes). To find the
+namespace whose quota is exhausted, compare `ops_rate` across `transport_namespace` values.
 
 ## Other Meters {#other-meters}
 

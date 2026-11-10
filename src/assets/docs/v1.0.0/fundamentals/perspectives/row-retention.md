@@ -28,6 +28,7 @@ codeReferences:
   - src/Whizbang.Generators/PerspectiveSchemaGenerator.cs
   - src/Whizbang.Data.Dapper.Postgres/PostgresSchemaInitializer.cs
   - src/Whizbang.Core/Archival/ArchivedStreamRowPolicies.cs
+  - src/Whizbang.Data.Postgres/Schema/PerspectiveRetentionIndexes.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EvictionCompanionCleanupSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEvictionCompanionCleanupTests.cs
@@ -43,6 +44,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamGroupCascadeSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RetentionAutoAdoptionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRowsSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/RetentionUpdatedAtIndexReconcileTests.cs
 ---
 
 # Perspective Row Retention
@@ -120,6 +122,28 @@ Every path honors [pre-destruction holds](pre-destruction-holds): a row a regist
 canceled is skipped and offered again when the hold lapses. The TTL and cap sweeps are batched, so a large backlog drains
 across cycles, and they are gated on adoption so a new declaration reports before it removes (see
 [Adoption is automatic](#adoption-is-automatic)). Under `debug_mode` nothing is evicted.
+
+### The `updated_at` index of an enrolled table {#updated-at-index}
+
+The sliding-TTL sweep (`updated_at < now() - interval`, written with the arithmetic on the `now()` side
+so it is sargable) and the row-cap sweep (rows ranked by `updated_at DESC` within a scope) both read
+`updated_at`, so a table enrolled in retention keeps a btree on it. Measured at 300,000 rows, the sweep
+took 1.5 ms with the btree and 7.3 ms with a BRIN index; unindexed it reads the whole table on every
+maintenance cycle.
+
+Every other perspective table has no such index by default, because every update rewrites
+`updated_at` and an index on it keeps the update from being HOT. Enrollment is not known when a
+table's schema is generated, so the managed-object reconcile reads it from
+`wh_perspective_registry.row_retention_enrolled`, the same column these sweeps read, builds the index
+on an enrolled table that lacks it, and keeps it. A table enrolled after its start's reconcile gets it
+from the maintenance step within one claim window. See
+[The `updated_at` index](perspective-indexes.md#the-updated_at-index).
+
+BRIN was considered and not chosen: it cannot serve the cap sweep's `ORDER BY`, it degrades as in-place
+updates scatter `updated_at` values across pages, and it stops blocking HOT updates only from
+PostgreSQL 16.
+
+{verified: RetentionUpdatedAtIndexReconcileTests.WithRetention_AMissingIndexIsBuilt_OnceAsync, RetentionUpdatedAtIndexReconcileTests.WithRetention_TheExistingIndexIsKeptAsync, StartupParityTests.TheUpdatedAtIndex_IsBuiltAndKeptForATableThatDeclaresRetentionAsync}
 
 ### On the Dapper driver {#dapper-driver}
 

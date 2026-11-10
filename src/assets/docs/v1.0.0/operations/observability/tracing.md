@@ -337,6 +337,31 @@ builder.Services.AddWhizbang(options => {
 });
 ```
 
+### Collecting activities {#collecting-activities}
+
+Whizbang's spans come from `ActivitySource`s named `Whizbang.*`: `Whizbang.Execution`, `Whizbang.Transport`,
+`Whizbang.Hosting`, `Whizbang.Tracing` and `Whizbang.MessageTags`. The simplest subscription takes all of them,
+including any added later:
+
+```csharp{title="Subscribe to every Whizbang activity source" description="One wildcard source instead of a hand-kept list" category="Configuration" difficulty="BEGINNER" tags=["Tracing", "OpenTelemetry"] unverified="OTel-exporter setup, not exercised by tests"}
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing => tracing.AddSource("Whizbang.*"));
+```
+
+An `ActivitySource` is not an EventSource, so `dotnet-trace collect --providers Whizbang.Execution` collects nothing:
+no EventPipe provider has that name. To collect activities from a running process without an OpenTelemetry SDK in it,
+go through the runtime's DiagnosticSource bridge: enable `Microsoft-Diagnostics-DiagnosticSource` with its Events
+keyword (`0x2`; `0x3` adds the bridge's own diagnostic messages) and an activity filter that names the source.
+
+```bash{title="Collect one Whizbang activity source with dotnet-trace" description="The DiagnosticSource bridge with an [AS] activity filter" category="Operations" difficulty="INTERMEDIATE" tags=["Tracing", "dotnet-trace", "Diagnostics"] unverified="diagnostic tooling command, not exercised by tests"}
+dotnet-trace collect -p <pid> \
+  --providers 'Microsoft-Diagnostics-DiagnosticSource:0x3:5:FilterAndPayloadSpecs="[AS]Whizbang.Execution"'
+```
+
+The `[AS]` filter matches a source by its exact name, or every source in the process with `[AS]*`; it does not take a
+prefix such as `Whizbang.*`. Several filters go in one value separated by newlines, which is easier in a
+`dotnet-monitor` configuration file than on a command line.
+
 ### Span Tags
 
 All Whizbang spans include these tags:

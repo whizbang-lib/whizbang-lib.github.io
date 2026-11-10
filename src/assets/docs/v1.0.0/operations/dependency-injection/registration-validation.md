@@ -68,9 +68,8 @@ A composition that calls `AddTransportConsumer()` without a transport no longer 
 composition, and the worker is built only when a transport is registered
 {verified: RealCompositionValidationTests.ATransportConsumerWithoutATransport_IsNotAGapAsync}.
 See [A host with no message broker](../../messaging/transports/transport-consumer#no-transport).
-The worker is registered through a `ServiceDescriptor` factory that this check does not read, so its
-other dependencies are not validated either; making the check understand factory registrations is
-tracked in [whizbang-lib/whizbang#1907](https://github.com/whizbang-lib/whizbang/issues/1907).
+With a transport registered, every service the worker needs is checked again; see
+[conditional factory registrations](#conditional-factory-registrations).
 :::
 
 An implementation type counts as registered when a service descriptor, keyed or not, names it as its
@@ -84,6 +83,37 @@ for `AddHostedService<T>` that service type is `IHostedService`. A factory descr
 type appears in that list counts as registering the implementation, so a type registered only
 through a factory is still checked. A factory registration whose service type is the requirement's
 own type needs no entry, because the requirement is already named after that service type.
+
+## Conditional factory registrations {#conditional-factory-registrations}
+
+A factory that builds its service only when another service is registered, else a stand-in, is
+checked for what its building branch needs only when that other service is registered. The source
+generator reads the factory's own code, so nothing is declared for this
+{verified: ServiceRequirementsGeneratorTests.AFactoryThatBuildsOnlyWhenAServiceIsRegistered_RequiresItsBuildingBranch_OnlyUnderThatConditionAsync}:
+
+```csharp{title="A factory built only when a transport is registered" description="The worker's dependencies are required only when ITransport is registered; with no transport the stand-in is used and nothing is required." category="Configuration" difficulty="INTERMEDIATE" tags=["dependency-injection", "validation", "factory"] tests=["ServiceRequirementsGeneratorTests.AFactoryThatBuildsOnlyWhenAServiceIsRegistered_RequiresItsBuildingBranch_OnlyUnderThatConditionAsync", "RegistrationValidationTests.ARequirementUnderARegisteredCondition_IsCheckedAsync"]}
+services.TryAdd(ServiceDescriptor.Singleton<Worker>(sp =>
+  sp.GetService<ITransport>() is not { } transport
+    ? null!
+    : new Worker(transport, sp.GetRequiredService<IClock>())));
+```
+
+The generator records the requirement with `ServiceRequirement.Condition = typeof(ITransport)`, and
+validation applies it only when a descriptor provides `ITransport`
+{verified: RegistrationValidationTests.ARequirementUnderAConditionNothingRegisters_IsNotCheckedAsync}.
+The transport consumer's worker is registered exactly this way, so a host without a broker starts and
+a host with one is checked for every service the worker needs
+{verified: RealCompositionValidationTests.ATransportConsumerWithATransport_IsCheckedForWhatItsWorkerNeedsAsync}.
+
+The condition is read from `sp.GetService<X>()` tested with `is { }`, `is X x`, `is null`,
+`== null`, `!= null`, or `not` of any of these. Anything else is read as no condition.
+
+| Choice | Why | |
+|---|---|---|
+| Only the branch taken when `X` is registered is conditional. The other branch, and any condition the generator cannot read, stay checked unconditionally. | Erring towards checking: a condition the generator cannot prove says nothing about when the type is built. | {verified: ServiceRequirementsGeneratorTests.TheStandInBranch_IsRequiredUnconditionally_AndTheBuildingBranchUnderItsConditionAsync, ServiceRequirementsGeneratorTests.AConditionThatDoesNotSayWhetherAServiceIsRegistered_LeavesTheRequirementUnconditionalAsync} |
+| `AddSingleton<T>(factory)` and the other registration methods apply the same condition to `T`'s constructor when the building branch is `new T(...)`. | Before #1907 such a registration was read as if `T` were always built, so every constructor dependency was required. | {verified: ServiceRequirementsGeneratorTests.ARegistrationMethodFactoryThatBuildsOnlyUnderACondition_RequiresTheConstructorUnderItTooAsync} |
+| `ServiceDescriptor.Singleton`, `Scoped` and `Transient` factories are read only with one type argument. | With two, the descriptor's service type is one many registrations share (an `IHostedService`, a step interface), so the requirement would apply wherever any of them is registered. | {verified: ServiceRequirementsGeneratorTests.AServiceDescriptorFactoryNamingASharedServiceType_OrAnotherType_IsNotReadAsync} |
+| Two registrations of the same type, under the same condition, contribute every dependency either names. | Before #1907 only the first registration's dependencies were checked. | {verified: ServiceRequirementsGeneratorTests.TwoRegistrationsOfTheSameTypeRequiringDifferentServices_ContributeTheirUnionAsync} |
 
 ## What it costs
 
