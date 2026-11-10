@@ -28,6 +28,10 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/CollectiveApplyForAttribute.cs
   - src/Whizbang.Core/Perspectives/CollectiveWhereComposer.cs
   - src/Whizbang.Core/Perspectives/CollectiveApplyOptions.cs
+  - src/Whizbang.Core/Perspectives/CollectiveRoutingAssociations.cs
+  - src/Whizbang.Core/Messaging/IConsumerRegistry.cs
+  - src/Whizbang.Data.EFCore.Postgres/SchemaCollectiveHandlers.cs
+  - src/Whizbang.Data.Postgres/Migrations/391_CollectiveRowsOnlyForHandledTypes.sql
   - src/Whizbang.Core/Perspectives/CollectiveDispatcher.cs
   - src/Whizbang.Core/Perspectives/CollectiveRouting.cs
   - src/Whizbang.Core/Perspectives/TenantCollectiveScopeResolver.cs
@@ -1206,8 +1210,10 @@ sequenceDiagram
    061 creates **exactly one** `wh_perspective_events` row with
    `perspective_name = '__collective__'` (the
    `CollectiveRouting.SINK_PERSPECTIVE_NAME` sink) — driven purely by
-   the flag, **no association lookup**. One sink row per event regardless
-   of how many model handlers subscribe.
+   the flag. One sink row per event regardless of how many model handlers
+   subscribe. Since migration **391**, a row is created only for a type a
+   handler on the service applies, once the service has said which types
+   those are; see [only handled types are queued](#only-handled-types-are-queued).
 3. **Dispatch.** `PerspectiveWorker` special-cases the `__collective__`
    sink (both channel and drain paths): it loads the collective event(s)
    on the sink stream, resolves `ICollectiveDispatcher` + the projection
@@ -1224,19 +1230,52 @@ sequenceDiagram
    whole-cohort `UPDATE` re-dispatched every tick — a self-sustaining
    re-dispatch loop. That is fixed and regression-locked.)
 
+### Only handled types are queued {#only-handled-types-are-queued}
+{verified: CollectiveRowGateSqlTests.Outbox_OnceTheMarkerExists_AHandledTypeGetsItsRow_AndAnUnhandledTypeGetsNoneAsync}
+
+The store creates a `__collective__` row for a stored collective event only on a service whose
+`[CollectiveApplyFor]` handlers apply its type. A service stores the collective events of every namespace it
+subscribes to, and without this each event of a type nothing there applies became a row that was claimed and then
+completed for nothing.
+
+- **Which types.** The consumer registry (`IConsumerRegistry.GetHandledCollectiveEventTypes`) lists the collective
+  event types a handler on this service applies. It counts every assembly: each assembly's generated registration
+  lists its own handlers, and the registry is the union. A collective type the service only declares, or only
+  receives, is not in the list. The startup step and the perspective drain both read this one answer, so they cannot
+  disagree.
+- **Written at startup.** The schema initialization's associations step writes one `collective` association per
+  handled type and one `collective_gate` marker for the service into `wh_message_associations`, in the same call as
+  the perspective associations. The step's hash covers the handled set, so a start whose handlers changed writes them
+  again even when no table or perspective changed.
+- **Gated in the store.** The emit chains (outbox and inbox) skip a collective event of an unassociated type only
+  when a marker exists and every service with associations in the schema has written its own.
+
+Every gap in what the gate knows creates rows; none drops them:
+
+| Situation | Result |
+|---|---|
+| Rolling deploy: the migration is applied before an instance of the new version registers, or an older instance registers after it (its registration removes the marker) | No marker, every row is created, as before |
+| The service cannot tell what it handles (no consumer registry, or an assembly built by an older generator) | No marker is written; every row is created |
+| Another service shares the schema and has not written a marker | Every row is created for the schema |
+| A handler is added | The next start writes its type; past events of the type are applied by a [rebuild](#surviving-a-rebuild) |
+
+A row created before the gate was on, or while it was off, is still concluded by the drain as below.
+
 ### A service subscribed to a namespace receives its collective events {#unhandled-collective-events}
 {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_CollectiveRowsNoHandlerHereApplies_AreCompletedWithoutApplying_WarnedOncePerTypeAndCountedAsync}
 
 A service subscribes to the namespace of every event it consumes (see
 [event flow](../dispatcher/routing#outbox-routing)), and a namespace subscription carries every event published
-to that namespace, collective events included. Step 2 routes each stored collective event to the sink by its flag,
-not by the handlers the service has, so a service that consumes some of a namespace's events also gets a
-`__collective__` row for each of that namespace's collective events, whether or not it has a
-`[CollectiveApplyFor]` handler for the type.
+to that namespace, collective events included. So a service that consumes some of a namespace's events also stores
+each of that namespace's collective events, whether or not it has a `[CollectiveApplyFor]` handler for the type.
 
 - **If the service should apply the event,** add a `[CollectiveApplyFor]` handler for it.
-- **If it has no handler,** the worker completes the sink row without applying it, counts it on
-  `whizbang.collectives.unhandled`, and logs one Warning per event type per batch (`PerspectiveWorker`
+- **If it has no handler,** the store creates no row once the service gates
+  ([only handled types are queued](#only-handled-types-are-queued)). A row that exists anyway (created before the
+  gate, or while it is off) is completed by the worker without applying it. Whether a handler applies the type is
+  the consumer registry's answer, the one the gate reads; a type the registry lists that this instance cannot read
+  is left for one that can. The worker counts the row on
+  `whizbang.collectives.unhandled` and logs one Warning per event type per batch (`PerspectiveWorker`
   EventId 80) naming the service, the type, the count and a stream. The event stays in the event store, and a
   [rebuild](#surviving-a-rebuild) applies it once a handler is added.
 - **If the service has no perspectives at all,** the same applies: the perspective worker
