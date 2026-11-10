@@ -17,6 +17,9 @@ tags: >-
   events, ephemeral, destruction, transient-storage, ttl, rewind-grace, reaper, snapshots, composition,
   profiles, WHIZ130, WHIZ131, WHIZ132, WHIZ133, WHIZ134, compaction, stream-close, full-history
 codeReferences:
+  - src/Whizbang.Data.Postgres/EphemeralHistoryReclassifyStep.cs
+  - src/Whizbang.Data.Postgres/TypeHistoryWalker.cs
+  - src/Whizbang.Data.Postgres/Migrations/381_EphemeralHistoryReclassifiesInBatches.sql
   - src/Whizbang.Core/SystemEvents/AuditEligibility.cs
   - src/Whizbang.Core/Attributes/EphemeralAttribute.cs
   - src/Whizbang.Core/Attributes/Destruction.cs
@@ -61,6 +64,8 @@ codeReferences:
   - src/Whizbang.Generators/PerspectiveRunnerGenerator.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralHistoryReclassifySqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEphemeralHistoryReclassifyTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/AuditEphemeralExclusionTests.cs
   - tests/Whizbang.Core.Tests/Attributes/EphemeralAttributeTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDispositionTests.cs
@@ -473,13 +478,56 @@ snapshot to restore, the row starts fresh from the new event and a warning is lo
 earlier history is gone.
 {verified: EvictedRowRebuildTests.EphemeralPerspective_EvictedRowWithSnapshot_RestoresTheSnapshotAndReplaysTheTailAsync, EvictedRowRebuildTests.EphemeralPerspective_EvictedRowWithoutSnapshot_StartsFreshAndWarnsAsync}
 
-**Making an existing type ephemeral.** Events stored before a type gained `[Ephemeral]` are still
-Sourced. At startup the type-definition reconciler detects the change and logs it. Set
-`Whizbang:Ephemeral:ReconcileHistoricalOnStartup` to `true` and start the service once: on every boot with the
-flag on, the reconciler reclassifies the stored history of each ephemeral event type as ephemeral, which makes it
-reapable, whenever the type changed. The reclassification is idempotent, so the flag can be turned on in any later
-deploy and turned off again after. By default it only reports.
-{verified: TypeDefinitionReconcilerTests.Reconcile_SettingsDriftToEphemeral_ActEnabled_ReclassifiesAndRecordsLineageAsync, TypeDefinitionReconcilerTests.Reconcile_SettingsDrift_DetectOnly_RecordsLineageButDoesNotReclassifyAsync, TypeDefinitionReconcilerCoverageTests.Reconcile_FlagOn_TypeAlreadyEphemeralOnAnEarlierBoot_ReclassifiesItsHistoryAsync}
+### Making an existing type ephemeral {#making-an-existing-type-ephemeral}
+
+Events stored before a type gained `[Ephemeral]` are still Sourced. At startup the type-definition reconciler detects
+the change, records it and logs it. To reclassify that history as ephemeral, which makes it reapable, set
+`Whizbang:Ephemeral:ReconcileHistoricalOnStartup` to `true`. By default it only reports: rewriting stored history is a
+deliberate step.
+
+```json{
+title: "Reclassifying the history of a type made ephemeral"
+description: "Opts in to reclassifying the stored history of every ephemeral event type as ephemeral."
+framework: "NET10"
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["ephemeral", "configuration", "maintenance"]
+}
+{
+  "Whizbang": {
+    "Ephemeral": {
+      "ReconcileHistoricalOnStartup": true
+    }
+  }
+}
+```
+
+With the setting on, the `ephemeral-history-reclassify` maintenance step walks each ephemeral event type, under its
+current name and every former name, and stamps its Sourced events ephemeral. Startup does not wait for it: the walk
+starts in the first maintenance cycle after the service has settled, under the maintainer turn, like every other step
+that rewrites stored rows. The setting can be turned on in any deploy and turned off once the walks are complete.
+
+{verified: TypeDefinitionReconcilerTests.Reconcile_SettingsDriftToEphemeral_ActEnabled_RecordsLineage_AndTheMaintenanceStepReclassifiesAsync, TypeDefinitionReconcilerTests.Reconcile_SettingsDrift_DetectOnly_RecordsLineageButDoesNotReclassifyAsync, TypeDefinitionReconcilerCoverageTests.Reconcile_FlagOn_LeavesTheReclassifyToTheMaintenanceCycle_StartupDoesNotWaitOnItAsync, EphemeralHistoryReclassifySqlTests.ThePostgresDriver_RegistersTheStepAsync, DapperEphemeralHistoryReclassifyTests.HistoryStoredBeforeTheDeclaration_IsReclassifiedByTheRegisteredStepAsync}
+
+**What it costs.** The step uses the same per-type history walker as the
+[superseding reconcile](./superseding-events#history-reconcile-cost): the type's own stamped events in commit order,
+read in the index on `(event_type, commit_sequence)`, 5,000 per batch, each batch its own short transaction, at most
+20 batches a cycle across all types. A type with N stored events is reclassified in about N / 5,000 batches, whatever
+the size of the store, and a crash resumes from the last committed batch.
+
+{verified: EphemeralHistoryReclassifySqlTests.Reclassify_RunsInBoundedBatches_AndResumesFromItsCursor_AfterACrashAsync, EphemeralHistoryReclassifySqlTests.TheWalk_ReadsTheTypeThroughItsIndex_NeverTheStoreAsync}
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The reclassification runs in the maintenance cycle, in bounded batches, not as one statement at startup. | One statement over every stored event of a type held a lock on every touched row for its whole length, wrote one burst of WAL, made startup wait, and could run into the command timeout, after which nothing was reclassified and the next startup tried the same again. | {verified: TypeDefinitionReconcilerCoverageTests.Reconcile_FlagOn_LeavesTheReclassifyToTheMaintenanceCycle_StartupDoesNotWaitOnItAsync, EphemeralHistoryReclassifySqlTests.Reclassify_RunsInBoundedBatches_AndResumesFromItsCursor_AfterACrashAsync} |
+| A stream that also holds a Sourced event of another type is left as it is, and its events are counted as blocked and logged. Each batch takes the per-stream locks the write paths take before judging a stream. | Reclassifying it would mix the stream (see WHIZ133 above). Under the locks, no event lands in the stream between the check and the stamp. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_AMixedStream_IsReportedAndLeftUntouched_AndTheDigestsEqualARecountAsync, EphemeralHistoryReclassifySqlTests.Reclassify_OnlyMixedStreams_ReportsThemBlocked_AndStillFinishesAsync} |
+| The reclassified events leave the integrity digests through the one digest fold, batch by batch. | The stored digests then equal a recount of the Sourced events at every commit, so an audit running alongside the walk sees no false difference. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_AMixedStream_IsReportedAndLeftUntouched_AndTheDigestsEqualARecountAsync, StreamDigestWritersTests.ReclassifyEphemeral_SubtractsEveryLaneOfTheReclassifiedEventsAsync} |
+| History stored under a former name is the same type: it is walked too, and a stream holding the type under two names is not mixed. | A rename does not change which events are the type's. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_FormerNames_AreWalked_AndAStreamHoldingBothIsNotMixedAsync} |
+| A walk completes only once none of the type's events is still waiting for the commit-order stamper. | The walk reads in commit order, so an event not yet stamped is read once it is. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_EventsUnstampedAtTheStart_AreReclassifiedOnceStampedAsync} |
+| A complete walk is not read again until the type-definition registry holds a newer definition of the type. | Events stored after the type became ephemeral are stored ephemeral; nothing new needs reclassifying. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_RunsInBoundedBatches_AndResumesFromItsCursor_AfterACrashAsync} |
+
+The step logs, per type and cycle, the events it reclassified, the events it left Sourced in mixed streams and how many
+of the type's events are left to read, and one line when a type's walk completes.
 
 ## Destruction hooks {#destruction-hooks}
 
