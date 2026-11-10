@@ -99,6 +99,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/348_IdleLedgerRecheck.sql
   - src/Whizbang.Data.Postgres/Migrations/357_AnAnswerMarksOnlyWhatItCovered.sql
   - src/Whizbang.Data.Postgres/Migrations/369_RepairAnswersAreAbsorbedCheaply.sql
+  - src/Whizbang.Data.Postgres/Migrations/373_LedgerGaugesCountDataLeftToHeal.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileCoordinatorTests.cs
@@ -212,6 +213,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAnswerCoverageSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBundleCatalogChurnSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceiveDoorbellCostSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerHealRemainingGaugesSqlTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -3369,13 +3371,26 @@ patterns worth understanding before building a dashboard:
 
 ### Integrity gauges {#integrity-gauges}
 
-{verified: MaintenanceWorkerIntegrityGaugeTests.AnInstanceThatIsNotTheMaintainer_StillPublishesTheLedgerReadingAsync, MaintenanceWorkerIntegrityGaugeTests.ATickTheIdleGateDefers_StillPublishesTheLedgerReadingAsync, IntegrityRepairAnswerSqlTests.Summary_CountsBucketsAwaitingAnAnswer_AnsweredBuckets_AndTheIntegrityDeliveriesWaitingAsync, IntegrityRepairAnswerSqlTests.Summary_WithNoIntegrityDeliveries_ReportsNoneWaitingAsync, StreamIntegrityMetricsCoverageTests.AnswerAndDeliveryGauges_ReportLiveSnapshotValuesAsync}
+{verified: MaintenanceWorkerIntegrityGaugeTests.AnInstanceThatIsNotTheMaintainer_StillPublishesTheLedgerReadingAsync, MaintenanceWorkerIntegrityGaugeTests.ATickTheIdleGateDefers_StillPublishesTheLedgerReadingAsync, IntegrityRepairAnswerSqlTests.Summary_CountsBucketsAwaitingAnAnswer_AnsweredBuckets_AndTheIntegrityDeliveriesWaitingAsync, IntegrityRepairAnswerSqlTests.Summary_WithNoIntegrityDeliveries_ReportsNoneWaitingAsync, StreamIntegrityMetricsCoverageTests.AnswerAndDeliveryGauges_ReportLiveSnapshotValuesAsync, IntegrityLedgerHealRemainingGaugesSqlTests.Summary_SumsTheDeficitOfRepairableBuckets_AndCountsTheUnhealableOnesAsync, IntegrityLedgerHealRemainingGaugesSqlTests.Summary_ABucketWhoseDeficitIsUnknown_AddsNothing_AndAnEmptyLedgerReadsZeroAsync, StreamIntegrityMetricsCoverageTests.HealRemainingGauges_ReportLiveSnapshotValuesAsync}
 
 Every gauge on the `Whizbang.StreamIntegrity` meter except the two [backfill gauges](#watching-a-backfill), which the
 backfill worker publishes on the maintainer, is read in one round trip at the start of every maintenance tick,
 on every instance, ahead of the maintainer-duty check and the idle gate (see the collector, above). Every instance of a
 service therefore reports the same ledger and the same delivery queue, so read these as one value per service (the
 maximum across its instances), never a sum.
+
+**Which number to watch.** `unhealed_buckets` is the headline but a coarse one: it counts ledger rows in every state
+(repairable, waiting for an answer, answered and waiting for the next comparison, unhealable, exhausted), and it counts
+buckets, not events. `unhealed_deficit_events` is the data left to heal, the number to read when the question is how
+much is still missing. Split the headline with `unhealable_buckets` (repair cannot change them),
+`repair_answer_pending_buckets` (a request is out), `repair_answered_buckets` (answered, waiting for the next
+comparison) and `repair_exhausted_buckets` (out of budget, needs an operator). Read heal throughput from the rate of
+the `bucket_heal_seconds` count (buckets proven healed) and from `ledger_rows_recheck_cleared` (rows the
+[idle re-check](#idle-ledger-recheck) removed because their bucket now matches). Both gauges come from the same single
+read of the ledger as the others, with no extra query and the same plan. A row written under an older comparison rule
+keeps the deficit that rule recorded until a comparison or a re-check visits its bucket again, so after an upgrade
+that changes the compare rule `unhealed_deficit_events` can read high for rows whose events are already held; it falls
+as those rows are re-checked and cleared.
 
 | Instrument | Meaning |
 | --- | --- |
@@ -3384,6 +3399,8 @@ maximum across its instances), never a sum.
 | `oldest_unhealed_age_seconds` | Age of the longest-standing unhealed divergence. Distinguishes a transient blip from a stuck bucket. |
 | `repair_answer_pending_buckets` | Buckets whose repair request is out and whose answer has not landed. They are not asked for again until the answer lands or `RepairAnswerTimeoutMinutes` passes ([repair waits for its answer](#repair-waits-for-its-answer)). A value that stays high for longer than the timeout means answers are not arriving: the origin is not serving requests (`ReportOnly`, or its own integrity queue is behind) or its bundles are not reaching this service. |
 | `repair_answered_buckets` | Buckets a redelivery bundle answered that wait for the next comparison to decide healed or still divergent. Rises after a repair burst and falls at the next audit; a value that never falls means comparisons are not running for those buckets. |
+| `unhealed_deficit_events` | **The data left to heal**: the missing events, summed, of the deficit buckets repair can still act on (neither [unhealable](#unhealable-buckets) nor exhausted). Each ledger row records its bucket's deficit, so a bucket missing a hundred thousand events weighs a hundred thousand here and one missing a single event weighs one. A bucket whose deficit is unknown adds nothing; 0 when none. |
+| `unhealable_buckets` | Ledger rows marked [unhealable](#unhealable-buckets), exhausted or not: buckets a redelivery could not change, which repair no longer asks for. Splits `unhealed_buckets` into repairable and unhealable; each was named once in a Warning when it was marked. |
 | `deliveries_pending` | [Integrity deliveries](#integrity-deliveries-are-queued) recorded and waiting for the maintainer's drain: received checkpoints, manifest requests and chunks, redelivery requests and bundle reconciles. Near zero on a healthy service. |
 | `oldest_delivery_age_seconds` | How long the oldest waiting integrity delivery has waited (0 when none). Under load the drain is deferred by the idle gate for up to `Whizbang:Housekeeping:MaxDeferral`, so an age above that, or one that keeps climbing, means the drain is not running: check which instance holds the maintainer duty. |
 | `sealed_through` (tag `origin_service_id`) | The per-origin **verified watermark** — the exclusive end of the highest window that audited clean and complete. This is the top-level convergence needle: a lane is provably in sync exactly as far as its seal. Each origin is its own series; one aggregated number would hide a stuck lane. |
@@ -3433,7 +3450,7 @@ maximum across its instances), never a sum.
 ### Reading a recovery
 
 A deficient service converging looks like: `repairs_requested` active → `redelivery_events_shipped`
-climbing at the origin → `unhealed_buckets` falling (heals deleting rows) with `bucket_heal_seconds`
+climbing at the origin → `unhealed_buckets` and `unhealed_deficit_events` falling (heals deleting rows) with `bucket_heal_seconds`
 recording each one → `sealed_through` stepping upward as whole windows certify → everything quiet
 except the checkpoint heartbeat. After an upgrade from a schema older than 087, `origins_adopted` rises first while
 pre-087 history is redelivered once. While repair works, `repair_answer_pending_buckets` rises with each paced batch and

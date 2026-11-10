@@ -15,6 +15,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/LeaseRenewalWorker.cs
   - src/Whizbang.Data.Postgres/Migrations/016_UpdatePerspectiveCheckpoints.sql
   - src/Whizbang.Data.Postgres/Migrations/255_LeaseRenewalIsScopedToTheHolder.sql
+  - src/Whizbang.Data.Postgres/Migrations/374_RetiredWorkSettlesTheRewindFlag.sql
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Core/Messaging/WorkCategory.cs
   - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
@@ -22,6 +23,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
   - src/Whizbang.Core/Workers/InboxHandlerWorker.cs
   - src/Whizbang.Core/Startup/WhizbangWorkerServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Workers/IQueuedWriteFlusher.cs
+  - src/Whizbang.Core/Workers/QueuedWritesLandedSignal.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherDeferredStartTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
@@ -30,10 +33,15 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxCompletionFlushWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/LeaseRenewalWorkerCoverageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Cursors/PerspectiveCursorAdvanceSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Cursors/PerspectiveRewindFlagSettleSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HeldLeaseRenewalSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerHoldRenewalTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerTransportReadinessTests.cs
   - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerHeldLeaseTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherIdleSignalTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/FlushWorkerIdleSignalTests.cs
+  - tests/Whizbang.Core.Tests/Workers/QueuedWritesLandedSignalTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/QueuedWritesLandedRegistrationTests.cs
 ---
 
 # Batched flushers
@@ -84,6 +92,59 @@ Their flusher starts with the worker, not when the worker is constructed:
   queued when it is stopped: its worker was never past its start point, so there is nothing it may write yet.
 - **Starting twice changes nothing.** A second `Start()`, or one on a flusher started at construction (the default
   constructor), is a no-op.
+
+## When writes have landed {#when-writes-have-landed}
+
+The drain workers report idle (`IsIdle`, `OnWorkProcessingIdle`) as soon as they have **queued** their completions. The
+writes themselves happen later, in the flush workers. A caller that waits for the drain workers and then touches the
+work tables, such as a test fixture cleaning between tests or an operator before a manual purge, can still race a
+late write: a `DELETE FROM wh_outbox` against a running `complete_outbox_published`, which locks rows in stream order,
+can deadlock (`40P01`). Two signals close that gap.
+
+**Per flusher.** Every `BatchFlusher<T>`, and each of the five flush workers that owns one, implements
+`IQueuedWriteFlusher`:
+
+| Member | Meaning |
+|---|---|
+| `Activity` | One reading: `Version`, which advances by one per offered write, and `Pending`, the writes that have not landed |
+| `IsIdle` | No offered write is waiting in the channel or in a flush |
+| `OnWorkProcessingIdle` | Raised when the pending count reaches zero |
+| `WaitForIdleAsync(ct)` | Completes when the pending count is zero; at once when it already is |
+
+A write is pending from the moment it is offered until the flush carrying it returns. Every way in counts, through
+`EnqueueAsync` or the flusher's `Writer`, so a producer cannot bypass the signal. A write that will never land stops
+counting instead of holding a waiter forever: a batch dropped after `MaxFlushAttempts`, an item a stopped flusher
+refuses, a write canceled while the channel is full, and what shutdown gives up on past `DrainTimeoutMs`.
+{verified: BatchFlusherIdleSignalTests.AnEnqueuedItem_IsNotIdle_UntilTheFlushCarryingItReturnsAsync, BatchFlusherIdleSignalTests.ItemsWrittenThroughTheWriter_AreCountedLikeEnqueuedOnesAsync, BatchFlusherIdleSignalTests.ABatchDroppedAfterItsLastAttempt_NoLongerCountsAsync, BatchFlusherIdleSignalTests.AWriteRefusedByAStoppedFlusher_IsNotCountedAsync, BatchFlusherIdleSignalTests.AWriteCanceledWhileTheChannelIsFull_IsNotCountedAsync, BatchFlusherIdleSignalTests.AFlushAbandonedPastTheDrainBound_AndWhatWasStillQueued_NoLongerCountAsync, FlushWorkerIdleSignalTests.OutboxCompletionFlushWorker_ReportsAQueuedCompletionUntilItLandsAsync, FlushWorkerIdleSignalTests.InboxHandlerWorker_ReportsAQueuedCommitUntilItLandsAsync}
+
+**All of them.** `IQueuedWritesLandedSignal`, registered by the worker pipeline, completes `WaitForAllLandedAsync` once
+every flush worker has been idle **at the same moment**. Waiting on each worker in turn is not enough, because one
+flush can queue a write to another (a handler commit that fails queues a failure), so each can be seen idle at a
+different time and never all together. The signal reads every flusher twice; when every first reading is idle and
+every second reading is unchanged, nothing was offered to any flusher in between, so all were idle together. When a
+reading does not settle, it waits on the flushers' idle signals again. It never polls.
+{verified: QueuedWritesLandedSignalTests.AFlusherOfferedAnItemBetweenTheTwoReadings_HasNotLandedAsync, QueuedWritesLandedSignalTests.TheWait_WaitsForEveryFlusher_ThenReadsThemAllAtOnceAsync, QueuedWritesLandedSignalTests.TheWait_WhenAFlusherWasOfferedMoreWhileItWaited_WaitsAgainAsync}
+
+Hosting a worker with its start point (`AddWhizbangWorker`, `AddWhizbangWorkerAtSchemaReady`) registers it with the
+signal when it implements `IQueuedWriteFlusher`, an application's own worker included, so a new flush worker is
+covered by being hosted, with no list to update. A test fails when a type that owns a `BatchFlusher<T>` does not
+implement the interface.
+{verified: QueuedWritesLandedRegistrationTests.EveryTypeThatOwnsAFlusher_ReportsItsQueuedWritesAsync, QueuedWritesLandedRegistrationTests.TheWorkerPipeline_RegistersTheSignal_OverEveryHostedFlushWorkerAsync, QueuedWritesLandedRegistrationTests.AWorkerHostedAtSchemaReadyThatQueuesWrites_IsWatchedToo_OnceHoweverOftenItIsHostedAsync}
+
+```csharp{title="Waiting for queued writes before cleaning the work tables" description="Wait for the drain workers, then for every queued write to land" category="Testing" difficulty="INTERMEDIATE" tags=["Workers", "Flushers", "Testing"] unverified="fixture usage example; the signals it uses are verified above"}
+var landed = services.GetRequiredService<IQueuedWritesLandedSignal>();
+
+// The drain workers have queued their completions...
+await WaitForDrainWorkersIdleAsync(ct);
+// ...and every completion, failure, lease renewal and handler commit they queued is now written.
+await landed.WaitForAllLandedAsync(ct);
+
+await CleanWorkTablesAsync(ct);
+```
+
+The signal covers **queued writes**, not the whole pipeline. A write that lands can create work that is claimed and
+drained again (a committed handler can write outbox rows), so a caller that needs the pipeline quiet waits for the
+drain workers and for this signal, and repeats while either reports new work.
 
 ## Tuning knobs
 
@@ -158,6 +219,26 @@ Both counts fall as the fixed release completes new work: each completion create
 
 **To repair rather than measure**, rebuild the affected records (`RebuildMode.SelectedStreams` with their stream ids). The rebuild replays each record on the instance that owns it and writes the cursor from what it applied, so it is exact where these queries can only estimate. Do not move cursors with SQL: a cursor set past an event the perspective has not applied makes that event look like a late arrival and triggers a replay, and SQL cannot tell which events were applied.
 
+### Retired work settles a rewind flag {#rewind-flag-settles}
+{verified: PerspectiveRewindFlagSettleSqlTests.CompletePerspective_TheCursorFlushedBeforeItsWork_ClearsTheRewindFlagWhenTheWorkIsRetiredAsync, PerspectiveRewindFlagSettleSqlTests.CompletePerspective_DebugMode_ClearsTheRewindFlagWhenTheLastRowIsStampedAsync, PerspectiveRewindFlagSettleSqlTests.CompletePerspective_RetiringOneOfTwoPendingRows_KeepsTheRewindFlagAsync, PerspectiveRewindFlagSettleSqlTests.CompletePerspective_AFlaggedCursorOfAnotherPerspective_IsLeftAloneAsync, PerspectiveRewindFlagSettleSqlTests.SettleStaleRewindFlags_ClearsFlagsWithNoPendingWork_AndKeepsFlagsThatStillHaveSomeAsync}
+
+A cursor flagged `RewindRequired` (status bit 32) tells the next run on that stream to replay it in full rather than apply the new events incrementally. The flag is set when an event arrives behind the cursor, and it is cleared once the stream has nothing left unprocessed for that perspective. A perspective run reports two things through the same flusher: the cursor's completion and the retirement of the group's `wh_perspective_events` rows. Both reach `complete_perspective`, but not necessarily in one call.
+
+**The ordering race.** The worker reports the cursor before it buffers the rows. Several consumer loops share both queues, and the flusher cuts a batch by size and by time, so the cursor can reach `complete_perspective` in an earlier flush than its rows:
+
+1. Flush 1 carries the cursor. `update_perspective_cursors` sees the straggler's row still pending, so it keeps the cursor's status, `RewindRequired` included.
+2. Flush 2 retires the row. It carries no cursor for that pair, so nothing revisits the cursor.
+
+Before migration 374 the cursor stayed flagged with no work behind it: every later event on the stream took a full rewind, and a blocking [startup rewind scan](/v1.0.0/fundamentals/perspectives/rewind#startup-scan) found the cursor on every restart and waited for it.
+
+**The settle rule.** `complete_perspective` keeps the (stream, perspective) pairs whose rows it retired (deleted in production, stamped `processed_at` in debug mode). After the cursor updates, any of those pairs whose cursor is flagged and that has no row left pending is settled to status 2 (completed). A pair with a row still pending keeps its flag, so a straggler that has not been applied is still replayed. Cursors of other perspectives on the same stream are not touched.
+
+**Design choice: settle on retirement with the rule the cursor update already applies.** Why: when the cursor and its rows arrive in one flush, `update_perspective_cursors` runs after the rows are retired, finds nothing pending and writes status 2. Retirement settling a flagged cursor by the same test gives the same result whichever flush carried the cursor, so the outcome no longer depends on how the flusher cut the batch. Forcing the cursor and its rows into one batch was the alternative, but that couples the queues and still leaves cursors an older build stranded. The tests above fail if a cursor flushed ahead of its rows keeps the flag, or if retiring one of two pending rows clears it.
+
+**Cost.** Only flagged cursors are written. A normal flush, where no retired pair has a flagged cursor, adds one primary key lookup on `wh_perspective_cursors` per retired pair and no write.
+
+**One-time cleanup.** `wh_settle_stale_rewind_flags()` applies the same rule to every cursor: flagged, with no pending work, settled to status 2. Migration 374 runs it once for the cursors an older build left flagged, and it returns how many it settled. It is idempotent and never touches a flag that still has pending work, so running it again is safe.
+
 ## Held lease renewal {#held-lease-renewal}
 
 Every lease renewal goes through `IWorkCoordinator.RenewHeldLeasesAsync(category, instanceId, ids, leaseSeconds)`,
@@ -201,11 +282,13 @@ table order: outbox completions and failures, inbox failures, then perspective c
 
 ## Failure handling
 
-If a flush throws:
-- `BatchFlusher` logs a warning and continues to the next batch.
-- The items in the failed batch are LOST — caller's responsibility to make the flush idempotent.
+If a flush throws, `BatchFlusher` retries the same batch in place with a backoff (`FlushRetryBackoffMs`, doubled per
+attempt up to `FlushRetryMaxBackoffMs`) and logs a warning per retry. Only after `MaxFlushAttempts` consecutive failures
+is the batch dropped, at Error, with the consequence named. The flush must be idempotent, since a retry can follow a
+partial success.
 
-For Whizbang's coordinator methods, all flush calls are idempotent (UPDATE WHERE processed_at IS NULL — already-processed rows ignored). So lost items get retried on the next claim tick when their lease expires and they're re-claimed.
+For Whizbang's coordinator methods, every flush call is idempotent (an update that ignores rows already processed). A
+dropped batch's rows stay leased until their lease expires and are then re-claimed and redone.
 
 ## InboxHandlerWorker — special case
 

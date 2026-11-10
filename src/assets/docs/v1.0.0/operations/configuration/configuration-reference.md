@@ -1519,13 +1519,14 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 
 ### RoutingOptions
 
-Command and event routing. **Configure:** in code through `.WithRouting(options => …)`; when it is called, three keys under `Whizbang:Routing` are read on top of the code values, so the command-inbox migration can be moved or rolled back without a redeploy. **Details:** [Routing](../../fundamentals/dispatcher/routing).
+Command and event routing. **Configure:** in code through `.WithRouting(options => …)`; when it is called, four keys under `Whizbang:Routing` are read on top of the code values, so the command-inbox migration can be moved or rolled back, and event types excluded, without a redeploy. **Details:** [Routing](../../fundamentals/dispatcher/routing).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
 | `RouteAllCommandNamespacesToInbox` | `bool` | flipped (all namespaces) | `Whizbang__Routing__RouteAllCommandNamespacesToInbox` | Publish every command namespace to its own inbox entity. `false` rolls the whole flip back |
 | `CommandNamespacesToInbox` | `string[]` | empty | `Whizbang__Routing__CommandNamespacesToInbox__0`, `__1`, … | Flip namespaces one at a time; a `*` entry flips all. Naming any namespace replaces the all-namespaces default with exactly this list |
 | `RetireSharedInbox` | `bool` | retired | `Whizbang__Routing__RetireSharedInbox` | `false` keeps the legacy shared inbox subscribed (and provisioned) while publishers stay flipped: the dual-delivery rollback step |
+| `ExcludedEventTypes` | `IReadOnlySet<string>` | empty | `Whizbang__Routing__ExcludedEventTypes__0`, `__1`, … | Opt-out list of event types excluded at the broker on the subscription of the topic each one is published to; merged with `ExcludeEventType<T>()` in code. Empty keeps every event subscription delivering everything. Excluding a type this service consumes fails startup (see [excluded event types](../../fundamentals/dispatcher/routing#excluded-event-types)) |
 | `OwnedDomains` | `IReadOnlySet<string>` | empty | — *code-only* (`OwnDomains(…)`) | Command namespaces this service handles |
 | `SubscribedNamespaces` | `IReadOnlySet<string>` | empty | — *code-only* (`SubscribeTo(…)`) | Event namespaces subscribed in addition to the ones discovered from perspectives and receptors |
 | `AbsorbedNamespaces` | `IReadOnlySet<string>` | empty | — *code-only* (`AbsorbNamespaces(…)`) | Event namespaces stored locally even with no current consumer, so a later perspective can rebuild from them (see [absorbed namespaces](../../fundamentals/dispatcher/routing#absorbed-namespaces)) |
