@@ -280,7 +280,7 @@ For more details, see the [Source Generators](../../extending/source-generators/
 
 ### Event Tracker Implementation {#tracker-implementation}
 
-`SyncEventTracker` is the singleton implementation of `ISyncEventTracker`. It provides thread-safe, cross-scope event tracking using concurrent dictionaries.
+`SyncEventTracker` is the singleton implementation of `ISyncEventTracker`. It provides thread-safe, cross-scope event tracking. Tracked entries are indexed by event id, then perspective, under one short lock, so whether an event is still pending on any perspective is a lookup, not a scan of every tracked entry; waiters are signaled outside the lock, always after the entry they wait on was removed.
 
 #### Architecture
 
@@ -291,8 +291,8 @@ The tracker maintains three tracking modes:
 Events are keyed by `(EventId, PerspectiveName)` to allow the same event to be tracked for multiple perspectives:
 
 ```csharp{title="Architecture" description="Events are keyed by (EventId, PerspectiveName) to allow the same event to be tracked for multiple perspectives:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Architecture"] tests=["SyncEventTrackerTests.TrackEvent_SameEventIdForMultiplePerspectives_TracksEachSeparatelyAsync"]}
-// Internal structure
-ConcurrentDictionary<(Guid EventId, string PerspectiveName), TrackedSyncEvent>
+// Internal structure: event id -> perspective name -> entry
+Dictionary<Guid, Dictionary<string, TrackedSyncEvent>>
 
 // Example entries:
 (abc123, "OrderPerspective")   → TrackedSyncEvent
@@ -321,6 +321,22 @@ await tracker.WaitForAllPerspectivesAsync(
     timeout: TimeSpan.FromSeconds(30)
 );
 ```
+
+#### Entries this instance never applies {#stale-entries}
+{verified: SyncEventTrackerStaleSweepTests.CleanupStaleEntries_RemovesAnEntryOnlyOnceTheInjectedClockPassesItsAgeAsync, SyncEventTrackerStaleSweepTests.CleanupStaleEntries_SignalsTheWaitersOfTheEntriesItEndsAsync, InProcessTrackerSweepWorkerTests.Tick_EndsStaleSyncAndLifecycleEntries_OnTheInjectedClockAsync}
+
+An entry leaves when this instance's perspective worker applies the event. When the perspective runs on another
+instance or service, or the event fails or is dead-lettered, nothing here applies it. The host-wide
+[in-process tracker sweep](../lifecycle/lifecycle-coordinator#stale-tracking-cleanup) then ends it: once a minute it
+removes every entry older than five minutes and releases its waiters. That is far above any sync wait's timeout
+(seconds by default), so no live wait is released early. `SyncEventTracker` ages its entries on the injected
+`TimeProvider` (the system clock when none is given).
+
+:::updated
+The tracker's stale sweep used to have no caller and every removal scanned the whole key set, so a service whose
+tracked events were applied elsewhere held one entry per event for the life of the process, at a cost that grew with
+the map.
+:::
 
 #### Thread-Safe Completion
 

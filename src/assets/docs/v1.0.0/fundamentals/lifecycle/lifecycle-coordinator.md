@@ -75,6 +75,18 @@ The coordinator only tracks events that are **live**: actively being processed i
 
 Between entry and exit, the worker advances the event through stages using `AdvanceToAsync()`.
 
+Every path ends the entry it began on every outcome, in `finally`: the local dispatch, both transport consumers and
+the outbox publish worker end it when a stage or the publish throws or is canceled, as well as on success. The outbox
+worker ends it before the failure is routed, and in bulk mode it ends every item's entry, and disposes its scope, even
+when the batch publish itself throws.
+
+{verified: LifecycleTrackingEndsOnFailureTests.TransportConsumer_PostLifecycleStageThrows_EndsItsTrackingAsync, LifecycleTrackingEndsOnFailureTests.TransportConsumer_PostLifecycleCanceled_EndsItsTrackingAsync, LifecycleTrackingEndsOnFailureTests.ServiceBusConsumer_PostLifecycleStageThrows_EndsItsTrackingAsync, DispatcherPostLifecycleCoverageTests.LocalInvokeAsync_WithCoordinator_PostLifecycleStageThrows_EndsItsTrackingAsync, OutboxPublishWorkerTrackingEndsTests.SingularPublishThrows_EndsTheMessagesTracking_BeforeRoutingTheFailureAsync, OutboxPublishWorkerTrackingEndsTests.BulkPublishThrows_EndsEveryMessagesTracking_BeforeRoutingTheFailuresAsync}
+
+:::updated
+These paths used to end their entry only after the last stage succeeded, so a stage that threw left the message's
+envelope and payload in the coordinator until the stale sweep.
+:::
+
 #### One entry per path {#tracking-paths}
 
 An event can be live on more than one path in the same process at once: a service can dispatch an event locally while its perspective worker projects the same event and its outbox publishes it. The coordinator keys each entry by the path that tracks the event together with the event id, so each path has an entry of its own, with its own stage guard and its own end.
@@ -274,8 +286,15 @@ Every path ends the entries it begins (see [Live Tracking](#live-tracking)), so 
 - **Completed entries are removed**: an entry whose lifecycle completed is removed whatever its age, and counted in `whizbang.lifecycle_coordinator.completed_tracking_swept`. A nonzero count names a path that skipped its exit.
 - **Partial entries end**: an entry nothing has reported for within the threshold ends even when some of its expected perspectives reported. The end is counted in `whizbang.lifecycle_coordinator.partial_tracking_ended` and logged at Debug with the perspectives that never reported. PostAllPerspectives does not fire for that event in this process.
 - **Injected clock**: `LifecycleCoordinator` takes an optional `TimeProvider` (the system clock when omitted, resolved from DI when one is registered), so tests can move time past the threshold deterministically
-- **PerspectiveWorker**: Runs the sweep every 10th batch cycle with a 5-minute inactivity threshold
+- **Every host sweeps**: `InProcessTrackerSweepWorker`, registered by `AddWhizbangWorkers`, runs the sweep once a minute with a 5-minute inactivity threshold, and in the same pass sweeps the [perspective sync tracker](../perspectives/perspective-sync#stale-entries). Its `Swept` event reports what each pass ended (`InProcessTrackerSweepResult`). A tracker whose sweep throws is logged by name at Warning and does not stop the other's. The perspective worker also runs the sweep every 10th batch cycle
 - **Snapshot**: the sweep works on a snapshot and skips an entry another path ended in the meantime, so no entry is counted twice
+
+{verified: InProcessTrackerSweepWorkerTests.Tick_EndsStaleSyncAndLifecycleEntries_OnTheInjectedClockAsync, InProcessTrackerSweepWorkerTests.SweepOnce_WhenATrackerThrows_LogsWhatFailed_AndStillSweepsTheOtherAsync, InProcessTrackerSweepWorkerTests.Registration_HostsTheSweepInEveryWhizbangHost_WithBothTrackersSuppliedAsync}
+
+:::updated
+The lifecycle sweep used to run only from the perspective worker's batch loop, so a host whose perspective worker
+processed no batches never swept.
+:::
 
 {verified: LifecycleTrackingEndsTests.Sweep_NeverRetainsACompletedEntry_HoweverRecentAsync, LifecycleTrackingEndsTests.Sweep_EndsAPartialEntry_OnceNoPerspectiveHasReportedForTheBound_NamingTheMissingPerspectivesAsync, LifecycleTrackingEndsTests.Sweep_KeepsAPartialEntry_WhilePerspectivesKeepReportingWithinTheBoundAsync, LifecycleTrackingEndsTests.Sweep_KeepsAnUnreportedEntry_UntilTheInjectedClockPassesTheBoundAsync}
 
@@ -525,12 +544,14 @@ The worker ends what it begins. The `finally` is why a failing terminal-stage re
 var tracking = coordinator.BeginTracking(
   LifecycleTrackingPath.LocalDispatch, messageId, envelope, LifecycleStage.PostLifecycleDetached, MessageSource.Local);
 
-// Fire PostLifecycle
-await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleDetached, scopedProvider, ct);
-await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleInline, scopedProvider, ct);
-
-// EXIT: processing complete; ends only the LocalDispatch entry, never the perspective worker's
-coordinator.AbandonTracking(LifecycleTrackingPath.LocalDispatch, messageId);
+try {
+  // Fire PostLifecycle
+  await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleDetached, scopedProvider, ct);
+  await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleInline, scopedProvider, ct);
+} finally {
+  // EXIT: on every outcome; ends only the LocalDispatch entry, never the perspective worker's
+  coordinator.AbandonTracking(LifecycleTrackingPath.LocalDispatch, messageId);
+}
 ```
 
 ---

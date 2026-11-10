@@ -530,6 +530,25 @@ work on the stream retried the rewind, failed again and discarded its rows too, 
 EventId 58 at Error stops firing; alert on the dead-letter record, EventId 1901. See
 [Perspective Worker: a rewind that fails](../../operations/workers/perspective-worker#rewind-failures).
 
+## The same-instance apply lock {#apply-lock}
+{verified: PerspectiveApplyCoordinatorLifetimeTests.DistinctStreams_AfterEveryApplyReleases_CoordinatorHoldsNoEntriesAsync, PerspectiveApplyCoordinatorLifetimeTests.QueuedWaiter_KeepsTheKeysLock_AndStillSerializesWithTheNextAcquireAsync, PerspectiveApplyCoordinatorLifetimeTests.CanceledWaiter_ReleasesItsReference_SoTheLockIsDroppedWithTheHolderAsync}
+
+Within one instance, a rewind and a live apply of the same stream and perspective never run at once:
+`PerspectiveApplyCoordinator` holds one lock per (stream, perspective) key while an apply runs. A key's lock exists
+only while a holder or a waiter references it. An acquire takes a reference before it waits; the holder's release,
+or a wait that is canceled, gives it back; and the last reference out removes the key. A waiter queued on a key keeps
+the lock alive, so a later acquire always waits on the same lock rather than being handed a fresh one. The
+coordinator's memory therefore follows the applies in flight, not the number of distinct streams the process has
+ever seen.
+
+A wait that lasts longer than 30 seconds logs a Warning naming the key and the time waited, every 30 seconds, so a
+holder that never releases is visible at once.
+
+:::updated
+The coordinator used to keep one lock for every key it had ever applied and never remove one, so a long-lived
+process that projected many short streams held an idle lock per stream and perspective until it was restarted.
+:::
+
 ## Security Context
 
 Rewind system events fire as the **System user** across all tenants, published from the generated runner via the dispatcher's fluent security API:
