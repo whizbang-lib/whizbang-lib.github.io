@@ -15,6 +15,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/LeaseRenewalWorker.cs
   - src/Whizbang.Data.Postgres/Migrations/016_UpdatePerspectiveCheckpoints.sql
   - src/Whizbang.Data.Postgres/Migrations/255_LeaseRenewalIsScopedToTheHolder.sql
+  - src/Whizbang.Data.Postgres/Migrations/374_RetiredWorkSettlesTheRewindFlag.sql
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Core/Messaging/WorkCategory.cs
   - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
@@ -30,6 +31,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxCompletionFlushWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/LeaseRenewalWorkerCoverageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Cursors/PerspectiveCursorAdvanceSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Cursors/PerspectiveRewindFlagSettleSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HeldLeaseRenewalSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerHoldRenewalTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerTransportReadinessTests.cs
@@ -157,6 +159,26 @@ WHERE split_part(e.event_type, ',', 1) = ANY (:'handled'::text[])
 Both counts fall as the fixed release completes new work: each completion creates or advances its stream's cursor. A stream that receives no new events keeps its old cursor until it is next processed or rebuilt.
 
 **To repair rather than measure**, rebuild the affected records (`RebuildMode.SelectedStreams` with their stream ids). The rebuild replays each record on the instance that owns it and writes the cursor from what it applied, so it is exact where these queries can only estimate. Do not move cursors with SQL: a cursor set past an event the perspective has not applied makes that event look like a late arrival and triggers a replay, and SQL cannot tell which events were applied.
+
+### Retired work settles a rewind flag {#rewind-flag-settles}
+{verified: PerspectiveRewindFlagSettleSqlTests.CompletePerspective_TheCursorFlushedBeforeItsWork_ClearsTheRewindFlagWhenTheWorkIsRetiredAsync, PerspectiveRewindFlagSettleSqlTests.CompletePerspective_DebugMode_ClearsTheRewindFlagWhenTheLastRowIsStampedAsync, PerspectiveRewindFlagSettleSqlTests.CompletePerspective_RetiringOneOfTwoPendingRows_KeepsTheRewindFlagAsync, PerspectiveRewindFlagSettleSqlTests.CompletePerspective_AFlaggedCursorOfAnotherPerspective_IsLeftAloneAsync, PerspectiveRewindFlagSettleSqlTests.SettleStaleRewindFlags_ClearsFlagsWithNoPendingWork_AndKeepsFlagsThatStillHaveSomeAsync}
+
+A cursor flagged `RewindRequired` (status bit 32) tells the next run on that stream to replay it in full rather than apply the new events incrementally. The flag is set when an event arrives behind the cursor, and it is cleared once the stream has nothing left unprocessed for that perspective. A perspective run reports two things through the same flusher: the cursor's completion and the retirement of the group's `wh_perspective_events` rows. Both reach `complete_perspective`, but not necessarily in one call.
+
+**The ordering race.** The worker reports the cursor before it buffers the rows. Several consumer loops share both queues, and the flusher cuts a batch by size and by time, so the cursor can reach `complete_perspective` in an earlier flush than its rows:
+
+1. Flush 1 carries the cursor. `update_perspective_cursors` sees the straggler's row still pending, so it keeps the cursor's status, `RewindRequired` included.
+2. Flush 2 retires the row. It carries no cursor for that pair, so nothing revisits the cursor.
+
+Before migration 374 the cursor stayed flagged with no work behind it: every later event on the stream took a full rewind, and a blocking [startup rewind scan](/v1.0.0/fundamentals/perspectives/rewind#startup-scan) found the cursor on every restart and waited for it.
+
+**The settle rule.** `complete_perspective` keeps the (stream, perspective) pairs whose rows it retired (deleted in production, stamped `processed_at` in debug mode). After the cursor updates, any of those pairs whose cursor is flagged and that has no row left pending is settled to status 2 (completed). A pair with a row still pending keeps its flag, so a straggler that has not been applied is still replayed. Cursors of other perspectives on the same stream are not touched.
+
+**Design choice: settle on retirement with the rule the cursor update already applies.** Why: when the cursor and its rows arrive in one flush, `update_perspective_cursors` runs after the rows are retired, finds nothing pending and writes status 2. Retirement settling a flagged cursor by the same test gives the same result whichever flush carried the cursor, so the outcome no longer depends on how the flusher cut the batch. Forcing the cursor and its rows into one batch was the alternative, but that couples the queues and still leaves cursors an older build stranded. The tests above fail if a cursor flushed ahead of its rows keeps the flag, or if retiring one of two pending rows clears it.
+
+**Cost.** Only flagged cursors are written. A normal flush, where no retired pair has a flagged cursor, adds one primary key lookup on `wh_perspective_cursors` per retired pair and no write.
+
+**One-time cleanup.** `wh_settle_stale_rewind_flags()` applies the same rule to every cursor: flagged, with no pending work, settled to status 2. Migration 374 runs it once for the cursors an older build left flagged, and it returns how many it settled. It is idempotent and never touches a flag that still has pending work, so running it again is safe.
 
 ## Held lease renewal {#held-lease-renewal}
 
