@@ -16,12 +16,17 @@ codeReferences:
   - src/Whizbang.Core/Messaging/InboxChannelWriter.cs
   - src/Whizbang.Core/Messaging/InboxPayload.cs
   - src/Whizbang.Core/Workers/SlidingWindowBatcher.cs
+  - src/Whizbang.Core/Workers/ClaimWorker.cs
+  - src/Whizbang.Core/Messaging/ClaimWorkRequest.cs
+  - src/Whizbang.Data.Postgres/Migrations/390_TheClaimLeasesNoInboxAFullWorkingSetWouldHandBack.sql
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDrainWorkerGapTests.cs
   - tests/Whizbang.Core.Tests/Messaging/InboxChannelWriterHeldRowsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/InboxPayloadTests.cs
   - tests/Whizbang.Core.Tests/Workers/InboxDeserializeCacheByteBudgetTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowBatcherTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerAcquisitionBoundsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimInboxWorkingSetSqlTests.cs
 ---
 
 # Per-stream drain
@@ -101,9 +106,22 @@ Zero (or a negative value) turns the budget off.
 }
 ```
 
-The budget bounds what the drain admits, not what the claim acquires. While the working set is
-full, rows the drain turns away are released and claimed again on later polls. No attempts are
-charged, but the store sees the extra round trips.
+The budget also bounds what the claim acquires. Once the drain turns rows away, the claim leases no
+new inbox rows until the working set has drained to the budget less the smallest row turned away
+(to zero when that row is larger than the budget, since such a row is admitted only when nothing is
+held). The removal that reaches that point wakes the claim, so acquisition resumes at once rather
+than at the next poll. Meanwhile inbox work this instance already holds is still offered, and
+outbox, perspective and receptor acquisition go on unchanged. The claim passes `p_acquire_inbox`
+to `claim_work` (migration 390); an older caller leaves it out and claims as before.
+{verified: InboxDrainWorkerGapTests.WorkingSetFull_DefersAcquisitionUntilTheSmallestTurnedAwayRowFitsAsync, InboxDrainWorkerGapTests.ARowLargerThanTheBudget_DefersAcquisitionUntilNothingIsHeldAsync, InboxChannelWriterHeldRowsTests.AcquisitionIsDeferred_WhileHeldIsAboveTheMark_AndResumesOnTheRemovalThatReachesItAsync, ClaimWorkerAcquisitionBoundsTests.WorkingSetFull_ClaimsLeaseNoNewInboxRows_UntilItDrainsAsync, ClaimInboxWorkingSetSqlTests.ClaimWork_WithoutInboxAcquisition_LeasesNoNewInboxRow_AndStillReOffersWhatItHoldsAsync, ClaimInboxWorkingSetSqlTests.ClaimWork_WithoutInboxAcquisition_StillAcquiresPerspectiveWorkAsync}
+
+| Choice | Why | |
+|---|---|---|
+| The claim pauses inbox acquisition until the smallest turned-away row fits, not merely until the held total is under the budget. | Before #1853 every poll leased rows the drain fetched, turned away and released again: a claim, a fetch and a release per poll for nothing, while the service was under memory pressure. Resuming any earlier would only repeat that. | {verified: InboxDrainWorkerGapTests.WorkingSetFull_DefersAcquisitionUntilTheSmallestTurnedAwayRowFitsAsync, ClaimWorkerAcquisitionBoundsTests.WorkingSetFull_ClaimsLeaseNoNewInboxRows_UntilItDrainsAsync} |
+| Only inbox acquisition pauses. | The byte budget is the inbox's alone; perspective acquisition shares only the claim's row bound. | {verified: ClaimInboxWorkingSetSqlTests.ClaimWork_WithoutInboxAcquisition_StillAcquiresPerspectiveWorkAsync} |
+
+The claim worker logs one Information line when it pauses inbox acquisition and one when it resumes
+(category `Whizbang.Core.Workers.ClaimWorker`, EventIds 22 and 23).
 
 ## Log events {#log-events}
 

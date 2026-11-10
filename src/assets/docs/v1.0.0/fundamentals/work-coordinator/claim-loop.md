@@ -35,6 +35,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/230_ReceivedStreamsKeepTheProducersOrder.sql
   - src/Whizbang.Data.Postgres/Migrations/349_ReOfferOnlyFetchableStreams.sql
   - src/Whizbang.Data.Postgres/Migrations/367_TheClaimRunsOnlyWhatCanFindWork.sql
+  - src/Whizbang.Data.Postgres/Migrations/390_TheClaimLeasesNoInboxAFullWorkingSetWouldHandBack.sql
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/Signals/BasePollSignalSource.cs
   - src/Whizbang.Core/Signals/PollIdleBackoff.cs
@@ -46,6 +47,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HeartbeatPhaseOrderSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerAcquisitionBoundsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimInboxWorkingSetSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerRunPermitTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperWorkCoordinatorGuardAndGateTests.cs
   - tests/Whizbang.Core.Tests/Workers/AdaptiveClaimWindowLatencyTests.cs
@@ -591,6 +593,14 @@ Unowned rows are assigned to instances by residue: `partition_number % active_in
 Stealing is a last resort, never a first move. The worker sets `AllowSteal` only after its own inbox claims have come back empty **twice running** (`STEAL_AFTER_EMPTY_CLAIMS = 2`) and clears it the moment its own work returns, so under normal load the residues stay disjoint and ownership stays stable. The store enforces the rule that matters for safety: stealing applies to **unowned** rows only, and never to a stream another live instance is mid-drain on. A stream in which another instance holds a live row lease is skipped whatever the flag says, because taking its next row would interleave one stream across two instances and break per-stream order. The check is a row-level probe on the steal path only, so the normal path pays nothing for it. {verified: BoundedAcquisitionRewriteSqlTests.ClaimOrphanedInbox_Steal_SkipsAStreamAnotherInstanceIsMidDrainAsync}
 
 Permission is decided per cycle: the rows a stealer leaves behind in a stream still belong to their residue, and the stealer takes more only while its own residue keeps coming back empty. {verified: BoundedAcquisitionRewriteSqlTests.ClaimOrphanedInbox_IdleRank_TakesAnotherResiduesRowsOnlyWhenStealingIsAllowedAsync}
+
+A claim that skipped inbox acquisition (`AcquireInbox = false`, below) did not look in this instance's residue, so coming back empty proves nothing about it: it neither counts towards the two empty claims nor resets them. {verified: ClaimWorkerAcquisitionBoundsTests.WorkingSetFull_ClaimsLeaseNoNewInboxRows_UntilItDrainsAsync}
+
+## Inbox acquisition pauses while the working set is full {#inbox-acquisition-pauses-while-the-working-set-is-full}
+
+`ClaimWorkRequest.AcquireInbox` (default `true`) says whether the claim leases new inbox rows this cycle. The claim worker passes `false` while the inbox drain has turned rows away for its working-set byte budget and the working set has not yet drained to where the smallest of them fits (`IInboxChannelWriter.InboxAcquisitionDeferred`). `claim_work` then skips the inbox acquisition (`p_acquire_inbox = FALSE`, migration 390). It still re-offers inbox work the instance holds, and the outbox, perspective and receptor acquisitions are unchanged. The removal that reaches the mark raises the inbox writer's new-work signal, so the next claim acquires again at once. See [working-set budget](per-stream-drain#working-set-budget). {verified: ClaimWorkerAcquisitionBoundsTests.WorkingSetFull_ClaimsLeaseNoNewInboxRows_UntilItDrainsAsync, ClaimWorkerAcquisitionBoundsTests.WorkingSetWithRoom_ClaimsLeaseInboxRowsAsBeforeAsync, ClaimInboxWorkingSetSqlTests.ClaimWork_WithoutInboxAcquisition_LeasesNoNewInboxRow_AndStillReOffersWhatItHoldsAsync, ClaimInboxWorkingSetSqlTests.ClaimWork_WithoutInboxAcquisition_StillAcquiresPerspectiveWorkAsync}
+
+The worker logs `Inbox acquisition paused` (EventId 22) and `Inbox acquisition resumed` (EventId 23), once each way, with the held payload bytes.
 
 ## The outstanding budget reads inbox rows only; perspective has its own cap
 {verified: ClaimWorkerAcquisitionBoundsTests.Budget_ReadsInboxRowsOnly_SoAPerspectiveBacklogCannotCloseInboxHeadroomAsync, ClaimWorkerAcquisitionBoundsTests.Claim_PausesPerspectiveAcquisitionWhileTheDrainBacklogIsAboveItsCapAsync, ClaimWorkerAcquisitionBoundsTests.Claim_LeavesPerspectiveAcquisitionAloneWhileTheDrainBacklogIsUnderItsCapAsync, BoundedAcquisitionRewriteSqlTests.ClaimWork_PerspectiveBoundOfZero_LeasesNoNewPerspectiveWorkButKeepsReemittingHeldWorkAsync}
