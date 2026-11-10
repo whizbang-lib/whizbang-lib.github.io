@@ -21,6 +21,7 @@ codeReferences:
   - src/Whizbang.Generators/Analyzers/MintedCompositeConstructionAnalyzer.cs
   - src/Whizbang.Core/Messaging/CompositeInboxFanout.cs
   - src/Whizbang.Core/Messaging/CompositeChildIdentity.cs
+  - src/Whizbang.Core/Minting/RedeliveryComposite.cs
   - src/Whizbang.Core/Observability/CompositeMetrics.cs
   - src/Whizbang.Core/Minting/FanoutControl.cs
   - src/Whizbang.Core/Messaging/DispatchOutboxCollector.cs
@@ -495,13 +496,15 @@ Every child's id is a function of the composite it came from
 (`CompositeChildIdentity.Derive(compositeMessageId, ordinal, childTypeName)`),
 the same construction as emission identity: bytes 0 to 5 inherit the composite's
 UUIDv7 time prefix, the rest is SHA-256 over
-`whizbang.composite-child.v1\n{composite}\n{ordinal}\n{type}` with the version
+`whizbang.composite-child.v2\n{composite}\n{ordinal}\n{type}` with the version
 and variant bits set. The ordinal is the child's position as the producer packed
 the composite, never its position in the set a given consumer keeps, so two
 consumers of one composite derive the same id for the same child and the audit
 trail matches them across services. This is the last line of defense behind the
 transactional commit: a second instance that takes the row after a lease lapsed
-and expands it again produces rows the primary key already holds.
+and expands it again produces rows the primary key already holds. The
+publishing service stores its own copy of each child under this same id; see
+[The publisher's copy carries the receivers' ids](#publisher-child-ids).
 {verified: CompositeChildIdentityTests.Derive_SameInputs_ProduceTheSameIdAsync, CompositeInboxFanoutIdentityAndSubscriptionTests.TryExpand_TypedComposite_ExpandedTwice_YieldsTheSameChildIdsAsync, CompositeInboxFanoutIdentityAndSubscriptionTests.TryExpand_DroppedChildren_DoNotConsumeTheOrdinalsOfTheKeptOnesAsync}
 
 ### Unsubscribed children are dropped at expansion
@@ -703,6 +706,42 @@ cascades **exactly as if they had been published individually**, at every
 service that consumes the domain — the composite is purely a transport/packaging
 optimization, not a change in downstream semantics.
 
+### The publisher's copy carries the receivers' ids {#publisher-child-ids}
+
+{verified: DispatcherCompositePublishFanoutTests.OwnedComposite_StoredConstituentIds_AreTheIdsEveryReceiverStoresAsync, DispatcherCompositePublishFanoutTests.OwnedComposite_NullInner_KeepsTheProducersOrdinalsAlignedWithTheReceiversAsync, DispatcherCompositePublishFanoutTests.OwnedIdentityPreservingComposite_StoresEachConstituentUnderItsCarriedIdAsync, DispatcherCompositePublishFanoutTests.OwnedIdentityPreservingComposite_IdCountMismatch_ThrowsAtPublishAsync}
+
+When a service publishes a composite in its own domain, the copy of each inner
+event it stores at step 1.1 carries exactly the id every receiver stores for that
+event at its own fan-out. One event has one id from publish to every store:
+
+- **An identity-preserving composite** (one that implements
+  `IIdentityPreservingComposite`, such as a re-delivery bundle) stores each inner
+  event under the id it carries in `InnerEventIds`, the same id each receiver
+  keeps.
+- **Any other composite** stores each inner event under
+  `CompositeChildIdentity.Derive(compositeId, ordinal, type)`: the composite's
+  wire id, the inner event's position in the composite, and its type name
+  rendered the way the receiver renders it. See
+  [Deterministic child ids](#deterministic-child-ids).
+- **A null inner event still occupies its ordinal.** It is skipped, as it is at
+  the receiver, but the events after it keep their positions, so their ids stay
+  aligned with the receivers'.
+- **A carried-id count that does not match the inner-event count is refused at
+  publish.** The publish throws `InvalidOperationException` before anything is
+  stored, because every receiver already refuses such a bundle.
+
+Why it matters: [stream digests](../../resilience/stream-integrity.md#one-digest-fold)
+fold event ids with XOR. If the producer stored an event under one id and a
+receiver stored it under another, the two digests for that stream would differ
+while the event counts agree. That reads as divergence with no missing event, so
+there is nothing for repair to redeliver and the stream can never settle. Any
+other correlation by event id (dedupe, audit, tracing) would also see two events
+where there is one. Events published individually on the same stream were never
+affected; only composite constituents were minted twice.
+
+Rows already stored under a mismatched id before this change are not rewritten
+by it; correcting them is a separate repair.
+
 ### Every entry, and where the wire copy goes {#composite-routing}
 
 The local fan-out runs on **every** entry that writes an owned composite: a single `PublishAsync`, a
@@ -775,6 +814,7 @@ with its consumer.
 | Inner event is null / child serialization fails under `Atomic` | `CompositeExpansionFailure` (16) | All-or-nothing — no partial inner events recorded; whole composite dead-letters. |
 | Inner event is null / child serialization fails under `Independent` | — | Drop the bad child (logged), fan out the rest. |
 | Producer builds an over-cap composite | — | `EnsureWithinCap()` throws `InvalidOperationException`; at publish, `_fanOutCompositeLocallyAtPublishAsync` throws the same synchronously. |
+| Producer publishes an owned identity-preserving composite whose `InnerEventIds` count does not match its inner-event count | None | The publish throws `InvalidOperationException` before any inner event is stored; every receiver would refuse the bundle. See [The publisher's copy carries the receivers' ids](#publisher-child-ids). {verified: DispatcherCompositePublishFanoutTests.OwnedIdentityPreservingComposite_IdCountMismatch_ThrowsAtPublishAsync} |
 | The stored composite cannot be deserialized at dispatch (the serializer throws `JsonException` or `NotSupportedException`) | `SerializationError` | The row is dead-lettered with its body through the inbox dead-letter move. It is never completed. With no dead-letter store, or if the move fails, the failure is routed through the failure channel, so the row keeps its body and the attempts bound governs it. {verified: InboxDispatchWorkerUndeserializablePayloadTests.Dispatch_PayloadRefusedBySerializer_DeadLettersWithBody_AndNeverCompletesAsync, InboxDispatchWorkerUndeserializablePayloadTests.Dispatch_PayloadRefused_NoDeadLetterStore_RoutesFailure_AndNeverCompletesAsync} |
 | The synchronous commit of an expansion fails | `MaxAttemptsExceeded` once the attempts run out | Counted and logged at Warning (EventId 73); the row is failed through the failure channel, so its retry is backed off and counted, and it is dead-lettered past `MaxInboxAttempts`. The in-flight entry is released so the retry is not filtered, and the retry expands to the same child ids. See [Transactional expansion](#transactional-expansion). {verified: InboxDispatchWorkerCompositeCommitTests.Composite_WhoseCommitFails_IsFailedForBackoffAndTheAttemptBound_AndLoggedAtWarningAsync} |
 | An inner event's type cannot be resolved by this consumer | — | Skipped as an unsubscribed child (both atomicities) and logged once per composite; see [Inner events this service cannot resolve](#unresolved-inner-events). |
@@ -794,6 +834,7 @@ with its consumer.
 | Unsubscribed children dropped, positive classification | `CompositeInboxFanout.TryExpand(hasConsumer)`, `InboxDispatchWorker` | `Messaging/CompositeInboxFanoutIdentityAndSubscriptionTests.cs`, `Workers/InboxDispatchWorkerCompositeCommitTests.cs` |
 | Composite meters | `CompositeMetrics` | `Observability/CompositeMetricsTests.cs` |
 | Publish-time local fan-out (1.1) | `Dispatcher._fanOutCompositeLocallyAtPublishAsync`, `Dispatcher.PublishAsync` | `Dispatcher/DispatcherCompositePublishFanoutTests.cs` |
+| Publisher's child ids match the receivers' | `Dispatcher.FanOutCompositeLocallyAtPublishAsync`, `CompositeChildIdentity`, `IIdentityPreservingComposite` | `Dispatcher/DispatcherCompositePublishFanoutTests.cs` (`OwnedComposite_StoredConstituentIds_*`, `OwnedComposite_NullInner_*`, `OwnedIdentityPreservingComposite_*`) |
 | Pre-fanout hook (atomic emit) | `DispatchOutboxCollector`, `InboxDispatchWorker._invokePreFanoutHookAsync` | `Messaging/DispatchOutboxCollectorTests.cs`, `Workers/InboxDispatchWorkerTests.cs` (`CompositeWithPreFanoutReceptor_*`) |
 | Fan-out control | `FanoutMode`/`FanoutAtomicity`/`FanoutDirective`, `DispatchFanoutControl` | `Messaging/DispatchFanoutControlTests.cs`, `Messaging/CompositeInboxFanoutTests.cs`, `Workers/InboxDispatchWorkerTests.cs` (`CompositeDirective_*`, `CompositeFanoutMode_Manual_*`) |
 | No-rebroadcast guard | `EventFlags.NoRebroadcast`, `NoRebroadcastGuard`, `CompositeInboxFanout` stamp | `Messaging/NoRebroadcastGuardTests.cs`, `Messaging/CompositeInboxFanoutTests.cs` (`TryExpand_ChildrenCarryNoRebroadcastFlag`), `Dispatcher/DispatcherNoRebroadcastGuardTests.cs` |
