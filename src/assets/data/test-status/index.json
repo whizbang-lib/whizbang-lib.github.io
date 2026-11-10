@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "42750593048",
-    "sha": "ce86499a6881255576a87f8e0e8b543e45b539cf",
+    "runId": "42755032241",
+    "sha": "5b8023eeed365dc25d7a03fe6a789a4307f45eca",
     "branch": "develop",
-    "libraryVersion": "0.2627.0-alpha.994",
-    "completedAt": "2026-11-10T03:48:07.237Z"
+    "libraryVersion": "0.2627.0-alpha.1001",
+    "completedAt": "2026-11-10T04:28:59.040Z"
   },
   "total": {
-    "passed": 40341,
+    "passed": 40343,
     "failed": 0,
     "skipped": 12
   },
@@ -58,7 +58,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 22134,
+      "passed": 22136,
       "failed": 0,
       "skipped": 8
     }
@@ -72,7 +72,7 @@
     },
     "ECommerce.BFF.API.Tests": {
       "file": "ECommerce.BFF.API.Tests.json",
-      "passed": 50,
+      "passed": 52,
       "failed": 0,
       "skipped": 0
     },
