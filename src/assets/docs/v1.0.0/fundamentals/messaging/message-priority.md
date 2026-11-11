@@ -81,6 +81,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Messaging/WorkCoordinatorGateInteractiveReserveTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateRegistrationTests.cs
   - tests/Whizbang.Core.Tests/Priority/PriorityTagSurfaceTests.cs
+  - tests/Whizbang.Core.Tests/Priority/PriorityCrossBuildTypeNameTests.cs
   - tests/Whizbang.Core.Component.Tests/Priority/ClaimWorkerPriorityBatchHookTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EnvelopeSerializerTests.cs
   - tests/Whizbang.Core.Tests/Observability/MessageEnvelopeExtensionsTests.cs
@@ -247,6 +248,15 @@ services.AddWhizbang(options => {
     ctx.MessageTypeName.StartsWith("Contracts.Job.Import", StringComparison.Ordinal) ? WorkPriority.BACKGROUND : null);
 });
 ```
+
+A type rule matches the type, not one build of its assembly. `ClassifyType<T>` keys the rule by the
+version-free wire form (`Namespace.Type, Assembly`, from `TypeNameFormatter.Format`), and the received
+message's type name is normalized to that form (`EventTypeMatchingHelper.NormalizeTypeName`) before the
+lookup, so a publisher running another version of the contract assembly still matches. Before, the rule
+was keyed by the local versioned assembly-qualified name and a publisher on another build missed it
+silently. A tag's declared priority, and an idle-band trickle rule (`IdleBandOptions.TrickleType<T>()`), are keyed
+and matched the same way.
+{verified: PriorityCrossBuildTypeNameTests.ClassifyType_MatchesAMessageWhosePublisherRanAnotherBuildAsync, PriorityCrossBuildTypeNameTests.ClassifyType_KeysTheRuleByTheCanonicalWireFormAsync, PriorityCrossBuildTypeNameTests.TrickleType_MatchesAStoredNameFromAnotherBuild_AndIsKeyedByTheWireFormAsync}
 
 The classification rules live on `options.Priority` rather than on the routing options the design
 sketched: classification is a scheduling decision, not a topology one, and the routing options are

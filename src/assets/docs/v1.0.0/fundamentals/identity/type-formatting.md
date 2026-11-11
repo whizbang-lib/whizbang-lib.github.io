@@ -16,9 +16,12 @@ codeReferences:
   - src/Whizbang.Core/TypeQualification.cs
   - src/Whizbang.Core/TypeNameFormatter.cs
   - src/Whizbang.Core/Messaging/EventTypeMatchingHelper.cs
+  - src/Whizbang.Core/TypeNameAuthorityAttribute.cs
 testReferences:
   - tests/Whizbang.Core.Tests/TypeFormatterTests.cs
   - tests/Whizbang.Core.Tests/TypeNameFormatterTests.cs
+  - tests/Whizbang.Core.Tests/TypeNameWireFormTests.cs
+  - tests/Whizbang.RepoAnalyzers.Tests/TypeNameSourceAnalyzerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -500,6 +503,27 @@ Don't confuse `TypeFormatter` (the flags-based utility above) with **`TypeNameFo
 | `TypeNameFormatter.FormatClrTypeName(type)` | `"Namespace.Outer+Nested"` (no assembly) | `wh_event_store.aggregate_type`, `wh_message_type_registry.clr_type_name`, `wh_perspective_registry.clr_type_name` |
 
 Both are based on `Type.FullName`, so they use `+` to separate a nested type from its declaring type (unlike `TypeFormatter`, which uses `Type.Name` — see [Nested Types](#nested-types) above). The source-generator mirrors are `TypeNameUtilities.FormatTypeNameForRuntime` (assembly-qualified) and `TypeNameUtilities.BuildClrTypeName` (no assembly), so compile-time registration and runtime lookup always agree. Read paths normalize an inbound assembly-qualified name (stripping `Version`/`Culture`/`PublicKeyToken`) via `EventTypeMatchingHelper.NormalizeTypeName` before comparing, so the short `Format` form matches every variant. Existing rows written with the older C#-display (`.`-nested) form are normalized by migration `063_NormalizeClrTypeNamesV2` — see [Migration Tracking → Data Migrations](../../operations/infrastructure/migrations.md#data-migrations-vs-schema-migrations).
+
+### `Format` is version-free at every depth {#format-is-version-free}
+
+`TypeNameFormatter.Format` writes a generic type's name without its type arguments' assembly versions, so
+`Format(typeof(Box<Inner>))` equals what `EventTypeMatchingHelper.NormalizeTypeName` (and the SQL normalizer
+`wh_normalize_clr_type_name`) make of any rendering of that name, whichever build wrote it. `TypeNameFormatter.Parse`
+delegates to the same normalizer and returns `TypeName, AssemblyName`, splitting only at the commas outside a generic
+name's brackets, so a generic name is no longer cut inside its type arguments. See
+[Normalizing type names](../../operations/infrastructure/migrations.md#normalizing-type-names) for generic names an
+earlier release stored with versions.
+{verified: TypeNameWireFormTests.Format_CarriesNoVersionAtAnyDepthAsync, TypeNameWireFormTests.Format_IsWhatTheStringNormalizerMakesOfEveryRenderingAsync, TypeNameWireFormTests.Parse_DelegatesToTheNormalizer_ForEveryRenderingAsync}
+
+## One source of type names {#one-source-of-type-names}
+
+`TypeFormatter`, `TypeNameFormatter`, `EventTypeMatchingHelper` and `MultiPassMessageTypeBinder` are the library's
+type-name authorities, each marked `[TypeNameAuthority]`. They are the only runtime code allowed to read a type's,
+namespace's or assembly's name, or to resolve a type from a name; the generators have `TypeNameUtilities`. Anywhere
+else in the library, the repository rule [WHIZ606](../../operations/diagnostics/whiz606.md) fails the build. The rule
+is about the Whizbang library's own code; your application calls these helpers or `System.Type` as it likes. Which
+helper produces which form is on the contributor page [Type names in library code](../../../contributors/type-naming.md).
+{verified: TypeNameSourceAnalyzerTests.Runtime_InsideANamingAuthority_IsNotReportedAsync, TypeNameSourceAnalyzerTests.Runtime_ANameReadOffATypeOrAssembly_IsReportedAsync}
 
 ## See Also
 

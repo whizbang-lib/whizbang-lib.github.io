@@ -567,6 +567,8 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ603 | Error | [IsNotNull() on a Nullable Value Cannot Fail](whiz603.md) (repository check) |
 | WHIZ604 | Error | [JsonDocument Created and Dropped Without Being Disposed](whiz604.md) (repository check) |
 | WHIZ605 | Error | [Test Class Without Exactly One Shard Category](whiz605.md) (repository check) |
+| WHIZ606 | Error | [Type Name Read Outside the Shared Naming Code](whiz606.md) (repository check) |
+| WHIZ607 | Error | [Type-Naming Exception Without a Reason](whiz607.md) (repository check) |
 | WHIZ701 | Info | [EF Core Perspective Discovery](whiz701.md) |
 | WHIZ702 | Info | [EF Core Migration Files Discovery](whiz702.md) |
 | WHIZ703 | Info | [No DbContext Found](whiz703.md) |

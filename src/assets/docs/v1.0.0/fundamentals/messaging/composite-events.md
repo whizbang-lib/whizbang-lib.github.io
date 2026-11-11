@@ -21,6 +21,7 @@ codeReferences:
   - src/Whizbang.Generators/Analyzers/MintedCompositeConstructionAnalyzer.cs
   - src/Whizbang.Core/Messaging/CompositeInboxFanout.cs
   - src/Whizbang.Core/Messaging/CompositeChildIdentity.cs
+  - src/Whizbang.Core/TypeNameFormatter.cs
   - src/Whizbang.Core/Minting/RedeliveryComposite.cs
   - src/Whizbang.Core/Observability/CompositeMetrics.cs
   - src/Whizbang.Core/Minting/FanoutControl.cs
@@ -43,6 +44,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutIdentityAndSubscriptionTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeChildIdentityTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/CompositeChildIdentityCanonicalTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
   - tests/Whizbang.Core.Tests/Observability/CompositeMetricsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/DispatchOutboxCollectorTests.cs
@@ -486,14 +488,14 @@ event:
 |---|---|
 | `Version`, `DispatchContext`, `SourceServiceId`, `SourceCommitSequence`, `CausedByServiceId`, `CausedByCommitSequence`, `StateOnly` | Copied from the composite envelope (re-delivery bundles may override the source service id / commit sequence with the original origin identity). |
 | `Hops` | A composite-lineage chain: a fresh creation hop whose `CausationId` is the composite's `MessageId` and `CausationType` is the composite type name, followed by the composite's own hops. Built once and shared by reference across the whole batch, so "these events came from composite X" is queryable. |
-| `MessageId` | Derived from the composite's id, the child's ordinal in the composite, and the child's type (`CompositeChildIdentity.Derive`), UUIDv7-shaped with the composite's time prefix, so a repeated expansion of the same composite produces the same rows and the inbox primary key absorbs it. Identity-preserving re-delivery composites keep each child's original id so consumer convergence rides the event-id conflict skip. |
+| `MessageId` | Derived from the composite's id, the child's ordinal in the composite, and the child's version-free type name (`CompositeChildIdentity.ForChild`), UUIDv7-shaped with the composite's time prefix, so a repeated expansion of the same composite produces the same rows and the inbox primary key absorbs it. Identity-preserving re-delivery composites keep each child's original id so consumer convergence rides the event-id conflict skip. |
 | `StreamId` | The stream the child's producer stored it on: the one the bundle recorded for it (`InnerStreamIds`), else the one its payload's `[StreamId]` names, else the composite's own (its first hop's stream, then its own `[StreamId]`), and only then the composite envelope's id ([Stream identity](stream-identity.md)). |
 | `Flags` | Stamped `EventFlags.NoRebroadcast` on both the persisted inbox row and the in-memory envelope. |
 
-### Deterministic child ids
+### Deterministic child ids {#deterministic-child-ids}
 
 Every child's id is a function of the composite it came from
-(`CompositeChildIdentity.Derive(compositeMessageId, ordinal, childTypeName)`),
+(`CompositeChildIdentity.ForChild(compositeMessageId, ordinal, childType)`),
 the same construction as emission identity: bytes 0 to 5 inherit the composite's
 UUIDv7 time prefix, the rest is SHA-256 over
 `whizbang.composite-child.v2\n{composite}\n{ordinal}\n{type}` with the version
@@ -506,6 +508,41 @@ and expands it again produces rows the primary key already holds. The
 publishing service stores its own copy of each child under this same id; see
 [The publisher's copy carries the receivers' ids](#publisher-child-ids).
 {verified: CompositeChildIdentityTests.Derive_SameInputs_ProduceTheSameIdAsync, CompositeInboxFanoutIdentityAndSubscriptionTests.TryExpand_TypedComposite_ExpandedTwice_YieldsTheSameChildIdsAsync, CompositeInboxFanoutIdentityAndSubscriptionTests.TryExpand_DroppedChildren_DoNotConsumeTheOrdinalsOfTheKeptOnesAsync}
+
+#### One type name, whichever build each service runs {#child-id-type-name}
+
+The type name that enters the hash is version-free: `Namespace.Type, Assembly`, with nested types joined by `+` and
+every type argument of a generic likewise stripped of its `Version`, `Culture` and `PublicKeyToken`. That is
+`TypeNameFormatter.Format(type)`, and a name read off the wire goes through the one string normalizer
+(`EventTypeMatchingHelper.NormalizeTypeName`), which turns any rendering of a type's name into that same form.
+
+Every path derives through `ForChild`, and it has two overloads for what each path holds:
+
+| Path | Holds | Overload |
+|---|---|---|
+| Typed expansion at the receiver | The child's local CLR type | `ForChild(Guid, int, Type)` |
+| The publisher's local fan-out | The child's local CLR type | `ForChild(Guid, int, Type)` |
+| Raw expansion at the receiver | The type name the bundle carries on the wire | `ForChild(Guid, int, string)` |
+
+The version is the one part of a type name no path can reproduce from what another path holds. The raw path reads
+the publisher's versioned assembly-qualified name; the typed paths have only their own build's type. Before this rule,
+a receiver whose contract assembly carried another version rendered a third name and derived a third id for the same
+child, so its stream digests disagreed with the origin's while nothing was missing, and repair could not settle them.
+Leaving the version out gives every path one id. `CompositeChildIdentity.Derive` is banned for library code
+(`BannedSymbols.txt`), so a second derivation route does not compile; see
+[Type names in library code](../../../contributors/type-naming.md).
+{verified: CompositeChildIdentityCanonicalTests.ForChild_TheTypeAndEveryRenderingOfItsName_DeriveOneIdAsync, CompositeChildIdentityCanonicalTests.ForChild_GenericAndNestedTypes_DeriveOneIdFromTheTypeAndFromAnotherBuildsWireNameAsync, CompositeChildIdentityCanonicalTests.TryExpand_TheTypedAndTheRawPath_DeriveTheSameIds_WhenThePublisherRanAnotherBuildAsync, CompositeChildIdentityCanonicalTests.HashedTypeName_IsOneDefinition_ForTheTypeAndForEveryRenderingOfItsNameAsync, CompositeChildIdentityCanonicalTests.ForChild_DifferentTypes_StillDeriveDifferentIdsAsync, CompositeChildIdentityCanonicalTests.TheBanList_ForbidsTheRawDerivation_AndTheVersionedTypeNamesAsync}
+
+**Upgrading.** A child whose type was named on the wire with a version, the common case, derives a new id once this
+release runs. Two effects follow:
+
+- A composite expanded before the upgrade and expanded again after it stores its children a second time, under the
+  new ids, because the inbox primary key no longer recognizes them as the same rows.
+- Until every service runs this release, a publisher and a receiver on opposite sides of it derive different ids for
+  the same child.
+
+Roll the release out to publishers and receivers together where composites are in flight. A name the publisher
+already wrote without a version (the framework's stored form) derives the id it always did.
 
 ### Unsubscribed children are dropped at expansion
 
@@ -719,9 +756,10 @@ event at its own fan-out. One event has one id from publish to every store:
   event under the id it carries in `InnerEventIds`, the same id each receiver
   keeps.
 - **Any other composite** stores each inner event under
-  `CompositeChildIdentity.Derive(compositeId, ordinal, type)`: the composite's
-  wire id, the inner event's position in the composite, and its type name
-  rendered the way the receiver renders it. See
+  `CompositeChildIdentity.ForChild(compositeId, ordinal, type)`: the composite's
+  wire id, the inner event's position in the composite, and its version-free
+  type name, the same name every receiver hashes whichever build of the
+  contract it runs. See
   [Deterministic child ids](#deterministic-child-ids).
 - **A null inner event still occupies its ordinal.** It is skipped, as it is at
   the receiver, but the events after it keep their positions, so their ids stay
