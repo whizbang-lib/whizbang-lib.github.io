@@ -1,8 +1,8 @@
 ---
 title: StreamId Attribute
 pageType: reference
-verifiedAgainstCommit: 0bc6065b
-verifiedDate: 2026-08-05
+verifiedAgainstCommit: '45ab3188'
+verifiedDate: 2026-11-10
 version: 1.0.0
 category: Attributes
 order: 2
@@ -15,6 +15,10 @@ codeReferences:
   - src/Whizbang.Generators/StreamIdGenerator.cs
   - src/Whizbang.Generators/Utilities/StreamIdSelection.cs
   - src/Whizbang.Generators/Analyzers/StreamIdAttributeAnalyzer.cs
+  - src/Whizbang.Generators/Analyzers/StreamIdInheritFromAnalyzer.cs
+  - src/Whizbang.Generators/Utilities/StrongIdStreamIds.cs
+  - src/Whizbang.Core/Dispatcher.cs
+  - src/Whizbang.Core/Registry/StreamIdExtractorRegistry.cs
   - src/Whizbang.Core/StreamIdResolver.cs
   - src/Whizbang.Core/StreamIdExtractor.cs
   - src/Whizbang.Core/IStreamIdExtractor.cs
@@ -25,10 +29,13 @@ testReferences:
   - tests/Whizbang.Generators.Tests/StreamIdDerivedFirstGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/StrongIdStreamIdGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/StreamIdAttributeAnalyzerTests.cs
+  - tests/Whizbang.Generators.Tests/StrongIdStreamInheritanceGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/Analyzers/StreamIdInheritFromAnalyzerTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherStrongIdStreamInheritanceTests.cs
   - tests/Whizbang.Core.Tests/StreamKeyAttributeTests.cs
   - tests/Whizbang.Core.Tests/StreamIdExtractorTests.cs
   - tests/Whizbang.Core.Tests/Registry/StreamIdExtractorRegistryTests.cs
-lastMaintainedCommit: '01f07906'
+lastMaintainedCommit: '45ab3188'
 ---
 
 # StreamId Attribute
@@ -83,6 +90,7 @@ The `[StreamId]` attribute serves two critical purposes:
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `Override` | `bool` | `false` | Marks this stream ID as replacing the `[StreamId]` the type inherits, on purpose. It is used ahead of any inherited one, and hiding the inherited one is not reported as [WHIZ006](../../operations/diagnostics/whiz006). {verified: StreamKeyAttributeTests.StreamIdAttribute_Override_DefaultsToFalseAsync, StreamKeyAttributeTests.StreamIdAttribute_Override_CanBeSetAsync} |
+| `InheritFrom` | `Type[]?` | `null` | The strong-id types, beyond the stream ID's own, whose stream a cascaded message may inherit from the message that caused it. See [Inheriting a stream of another id type](#inheriting-a-stream-of-another-id-type). {verified: StreamKeyAttributeTests.StreamIdAttribute_InheritFrom_DefaultsToNullAsync, StreamKeyAttributeTests.StreamIdAttribute_InheritFrom_CanBeSetAsync} |
 
 ## Basic Examples
 
@@ -340,6 +348,75 @@ The open base (`BaseCommand<TStreamId>`) gets no extractor of its own; `CreateTh
 - **Nullable strong ids** (`ThingId?`) are not supported as stream IDs, and a generic *interface* is not supported as
   a polymorphic base.
 
+#### Inheriting a stream of another id type {#inheriting-a-stream-of-another-id-type}
+
+When a receptor returns a message that names no stream, the dispatcher gives it the stream of the message that caused
+it: the source's `[StreamId]` is written onto the cascaded message. A strong id exists so that an `OrderId` and an
+`InvoiceId` cannot be mixed by accident, so a strong-id stream id does not take just any source's stream. It takes
+the stream of a source whose stream id is:
+
+- a plain `Guid` (or any stream id that is not a strong id)
+  {verified: StrongIdStreamInheritanceGeneratorTests.APlainGuidSource_IsWrittenAsync};
+- the same strong id {verified: StrongIdStreamInheritanceGeneratorTests.ASourceOfTheSameStrongId_IsWrittenAsync};
+- a strong id its `InheritFrom` lists
+  {verified: StrongIdStreamInheritanceGeneratorTests.ASourceTheAttributeLists_IsWrittenAsync}.
+
+Any other source is refused {verified: StrongIdStreamInheritanceGeneratorTests.ASourceOfAnotherStrongId_IsRefusedAsync}.
+The value always goes through the id's `From`, so an id that takes only UUIDv7 refuses an inherited Guid of another
+version the same way, without throwing during dispatch
+{verified: StrongIdStreamInheritanceGeneratorTests.AGuidTheStrongIdsFromRefuses_IsRefusedAsync}. A `Guid` stream id
+carries no id type to protect and inherits any source's stream, as it always has
+{verified: StrongIdStreamInheritanceGeneratorTests.AGuidStreamId_AcceptsASourceOfAnyTypeAsync}.
+
+```csharp{title="Accepting the stream of another id type" description="An invoice command cascaded from an order joins the order's stream, because InheritFrom names OrderId" category="Usage" difficulty="ADVANCED" tags=["Extending", "Attributes", "C#", "WhizbangId", "StreamId", "Cascade"] tests=["DispatcherStrongIdStreamInheritanceTests.ASourceTheStreamIdLists_IsInheritedAsync"]}
+[WhizbangId] public readonly partial struct OrderId;
+[WhizbangId] public readonly partial struct InvoiceId;
+
+public record CreateInvoice : ICommand {
+  [StreamId(InheritFrom = [typeof(OrderId)])]
+  public InvoiceId InvoiceId { get; set; }
+}
+```
+
+`InheritFrom` applies only to the stream inherited from the source message. A receptor that sets the stream ID itself
+is not affected.
+
+**When the stream is refused**, the cascaded message goes on as if its source named no stream: its own `[StreamId]`
+stays empty and the dispatcher uses no inherited stream for its envelope either, so the two never disagree
+{verified: DispatcherStrongIdStreamInheritanceTests.ASourceOfAnotherStrongId_LeavesTheEnvelopeAndTheMessageWithoutAStreamAsync, DispatcherStrongIdStreamInheritanceTests.AGuidSourceTheStrongIdsFromRefuses_LeavesTheEnvelopeAndTheMessageWithoutAStreamAsync}.
+Then:
+
+- a message with [`[GenerateStreamId]`](generatestreamid) mints its own id, exactly as it does when its source names
+  no stream {verified: DispatcherStrongIdStreamInheritanceTests.AfterARefusal_AnEventWithGenerateStreamId_MintsItsOwnIdAsync};
+- a message without it has no stream ID
+  {verified: DispatcherStrongIdStreamInheritanceTests.AfterARefusal_AnEventWithoutGenerateStreamId_HasNoStreamIdAsync}.
+
+The dispatcher logs a warning (`[STREAM_ID] The stream of ... was not inherited ...`) the first time each pair of
+source and message types is refused, and not again for that pair
+{verified: DispatcherStrongIdStreamInheritanceTests.EachRefusedPairOfTypes_IsLoggedOnceAsync}. A strong-id stream ID
+must be settable (`get; set;`) to inherit a stream at all; an init-only one inherits none.
+
+A strong id is recognized by `[WhizbangId]` on its type, by `[WhizbangId]` on the stream-id property (an id the
+strong-id generator emits from that property), or by `IWhizbangId` (an id compiled into a referenced assembly)
+{verified: StrongIdStreamInheritanceGeneratorTests.AStrongIdDiscoveredFromItsProperty_IsReportedAndWrittenAsync, StrongIdStreamInheritanceGeneratorTests.AStrongIdFromAReferencedAssembly_IsDetectedByItsInterfaceAsync}.
+
+A message that implements [`IHasStreamId`](../../fundamentals/messages/delivery-receipts) is written through that
+interface instead, so a strong-id `[StreamId]` beside it is never written by the dispatcher; that combination is
+reported as [WHIZ035](../../operations/diagnostics/whiz035).
+
+##### Custom stream ID extractors
+
+`IStreamIdExtractor` has two default members for this:
+
+```csharp{title="IStreamIdExtractor members for stream inheritance" description="The stream-id type of a message, and a setter told the source's stream-id type" category="Reference" difficulty="ADVANCED" tags=["Extending", "StreamId", "IStreamIdExtractor"] tests=["StreamIdExtractorRegistryTests.GetStreamIdType_ReturnsTheFirstTypeAnExtractorReportsAsync", "StreamIdExtractorRegistryTests.SetStreamId_WithASourceType_OnAnExtractorThatKnowsNoTypes_UsesItsPlainSetterAsync"]}
+Type? GetStreamIdType(Type messageType) => null;
+bool SetStreamId(object message, Guid streamId, Type? sourceStreamIdType) => SetStreamId(message, streamId);
+```
+
+The generated extractor implements both. A custom extractor that implements neither reports no stream-id types and
+keeps its own `SetStreamId(object, Guid)`, so it behaves as before. `SetStreamId(object, Guid)` treats the value as
+coming from a plain `Guid` source.
+
 ## Diagnostics
 
 The source generators validate `[StreamId]` usage:
@@ -395,6 +472,15 @@ public record ValidEvent : IEvent {
   on purpose.
 - **[WHIZ016](../../operations/diagnostics/whiz016) (Warning)**: `Override = true` where no base type declares a
   `[StreamId]`; there is nothing to override.
+
+### WHIZ018, WHIZ019, WHIZ034 and WHIZ035: Inheriting a Strong-ID Stream
+
+- **[WHIZ018](../../operations/diagnostics/whiz018) (Error)**: `InheritFrom` lists a type that is not a strong id.
+- **[WHIZ019](../../operations/diagnostics/whiz019) (Error)**: `InheritFrom` on a stream ID that is not a strong id.
+- **[WHIZ034](../../operations/diagnostics/whiz034) (Warning)**: `InheritFrom` lists the stream ID's own type, which
+  is always accepted.
+- **[WHIZ035](../../operations/diagnostics/whiz035) (Warning)**: A message implements `IHasStreamId` and its
+  `[StreamId]` is a strong id, which the dispatcher then never writes.
 
 ### WHIZ033: Perspective Model Missing StreamId
 

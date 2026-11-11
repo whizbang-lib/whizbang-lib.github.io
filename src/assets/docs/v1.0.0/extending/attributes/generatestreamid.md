@@ -110,6 +110,10 @@ public record InventoryReserved : IEvent {
 
 - When cascaded: inherits parent's StreamId (not overwritten)
 - When standalone: gets a new StreamId auto-generated
+- When cascaded from a parent whose stream a strong-id `[StreamId]` refuses (another id type that `InheritFrom` does
+  not list, or a value the id's `From` refuses): gets a new StreamId, exactly as when standalone
+  {verified: DispatcherStrongIdStreamInheritanceTests.AfterARefusal_AnEventWithGenerateStreamId_MintsItsOwnIdAsync}.
+  See [Inheriting a stream of another id type](streamid#inheriting-a-stream-of-another-id-type).
 
 ## Parameters
 
