@@ -4,7 +4,7 @@ pageType: reference
 audience: [contributor]
 status: current
 order: 5
-description: The build errors this repository raises on its own code and tests (WHIZ600 to WHIZ605), what each one protects, and how a new diagnostic gets its ID from the one registry of every WHIZ ID
+description: The build errors this repository raises on its own code and tests (WHIZ600 to WHIZ606), what each one protects, and how a new diagnostic gets its ID from the one registry of every WHIZ ID
 tags: contributing, analyzers, diagnostics, testing, sharding, ci
 ---
 
@@ -22,6 +22,7 @@ Every build diagnostic in this repository has one ID form, `WHIZ` and three digi
 | [WHIZ603](../v1.0.0/operations/diagnostics/whiz603.md) | `Whizbang.TestAnalyzers` | `IsNotNull()` on a `Nullable<T>` subject, an assertion that cannot fail under the pinned TUnit. |
 | [WHIZ604](../v1.0.0/operations/diagnostics/whiz604.md) | `Whizbang.RepoAnalyzers` | A `JsonDocument` created and dropped without being disposed. |
 | [WHIZ605](../v1.0.0/operations/diagnostics/whiz605.md) | `Whizbang.TestAnalyzers` | A test class in a sharded test project without exactly one `Shard*` category. |
+| [WHIZ606](../v1.0.0/operations/diagnostics/whiz606.md) | `Whizbang.RepoAnalyzers` | A settings property whose name says it holds a credential is a plain `string`. |
 
 WHIZ600 to WHIZ604 were `WHZ0001` to `WHZ0005` until they moved into the single ID form. A suppression or severity setting that names an old ID no longer applies.
 

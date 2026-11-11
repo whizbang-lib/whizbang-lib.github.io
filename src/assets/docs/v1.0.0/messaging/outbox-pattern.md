@@ -17,6 +17,10 @@ codeReferences:
   - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/Workers/BatchStrategyShutdownFlush.cs
+  - src/Whizbang.Core/Workers/BatchBuffer.cs
+  - src/Whizbang.Core/Workers/BatchBufferLimits.cs
+  - src/Whizbang.Core/Workers/BoundedBatchStrategies.cs
+  - src/Whizbang.Core/Messaging/OpenTransactionProbe.cs
   - src/Whizbang.Data.Postgres/Migrations/020_StoreOutboxMessages.sql
   - >-
     samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
@@ -27,6 +31,10 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatchStrategyShutdownFlushTests.cs
   - tests/Whizbang.Core.Component.Tests/Shutdown/DispatchWorkerShutdownTests.cs
+  - tests/Whizbang.Core.Tests/Workers/BatchBufferTests.cs
+  - tests/Whizbang.Core.Tests/Workers/BatchBufferLimitsTests.cs
+  - tests/Whizbang.Core.Tests/Workers/BoundedBatchStrategyTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/StreamAffinityBatchBufferTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -229,6 +237,45 @@ Stopping does not lose what the outbox side is still holding ([#1721](https://gi
 {verified: DispatchWorkerShutdownTests.AnOutboxDetachedStage_InFlight_HostStopWaitsForItAsync, BatchStrategyShutdownFlushTests.OnceTheHostHasStopped_BothBatchersAreFlushed_InboxFirstAsync, BatchStrategyShutdownFlushTests.DetachedLifecycleWorkStillRunning_IsWaitedFor_BeforeTheHostFinishesStoppingAsync}
 
 The whole sequence, and how long it can take, is in [Detached Work When the Host Stops](../fundamentals/lifecycle/lifecycle-stages.md#host-stop).
+
+### The Bounded Buffer {#bounded-buffer}
+
+Between a publish and the outbox table, messages wait in memory in the outbox batch strategy, and received messages wait the same way in the inbox batch strategy. Whizbang bounds what both hold together, per process ([#2220](https://github.com/whizbang-lib/whizbang/issues/2220)), so a burst that outruns the database slows the producers to the store's pace instead of growing the heap until the process is killed.
+
+Every registered outbox and inbox batch strategy is wrapped at registration in `BoundedOutboxBatchStrategy` or `BoundedInboxBatchStrategy`, whichever strategy is chosen (the default sliding window, `ImmediateOutboxBatchStrategy`, or your own through `AddWhizbangOutboxStrategy<T>()`). A test fails if a strategy is registered unwrapped.
+
+| Setting (`Whizbang:BatchBuffer`) | Default | Meaning |
+|---------|---------|---------|
+| `MaxBufferedMessages` | `10000` | Messages held at once; 0 or less for no limit. |
+| `MaxBufferedBytes` | unset | Payload bytes held at once, as a set number. When set it wins over the fraction; 0 or less for no limit. |
+| `MaxBufferedBytesFraction` | `0.05` | Used when no set number is given: a share of the process memory limit, `GC.GetGCMemoryInfo().TotalAvailableMemoryBytes`, which is the container's memory limit when there is one. |
+| `TransactionCeilingMultiplier` | `2` | How far past the limits a caller holding a database transaction open may go, as a multiple. |
+
+How the bound behaves:
+
+- **Every limit.** An append waits until every configured limit has room. A message's size is its payload's serialized JSON, measured once when it is appended.
+- **A large message.** A message larger than the byte limit is admitted alone into an empty buffer, so it never waits forever.
+- **Room comes back when the message leaves.** A batch gives its room back when it is stored, or when it is reported as failed (dead-lettered or not), or when the strategy refuses the append. A failed attempt that will be retried gives nothing back: the batch is still in memory.
+- **Waiting is a signal, not a poll.** A waiting append is admitted by the release that makes room for it, and ends early when its cancellation token is canceled. Shutdown cancels every waiting append. No timeout applies by default: a stalled store shows in the metrics and the warnings below, not as exceptions thrown at publishers.
+- **Interactive reserve.** A share of each limit is kept for interactive callers: the work coordinator gate's reserve fraction (`Whizbang:WorkCoordinatorGate:InteractiveReserve` over its `MaxConcurrent`, one tenth by default), so one setting governs both. Waiters of each kind are served in arrival order, and a later standard append never passes an earlier one that is still waiting.
+- **Inside an open transaction.** A publish whose scope holds a database transaction open goes past the limits, up to the ceiling, instead of waiting: it holds a connection the flushes that would make room may need. Each such append is counted and logged at Warning with the message type that was published. Past the ceiling it waits too. The transaction is seen through an ambient `TransactionScope` or the transaction the data driver reports for the scope's framework database context; a transaction opened on a raw connection the framework does not know of is not seen.
+- **On the receive side**, a waiting inbox append simply stops the receive loop from pulling more from the broker until there is room.
+
+The limits appear in the [startup settings report](../operations/configuration/startup-settings-report.md) with the inputs they were derived from.
+
+Metrics (meter `Whizbang.WorkCoordinator`):
+
+| Instrument | Kind | Meaning |
+|------------|------|---------|
+| `whizbang.batch_buffer.messages` | gauge | Messages held now. |
+| `whizbang.batch_buffer.bytes` | gauge | Payload bytes held now. |
+| `whizbang.batch_buffer.append_waits` | counter | Appends that waited for room. |
+| `whizbang.batch_buffer.wait_duration` | histogram (ms) | How long each of them waited. |
+| `whizbang.batch_buffer.ceiling_overshoots` | counter | Appends admitted past the limit because the caller held a transaction open. |
+
+A Warning is logged when appends start waiting and again when they stop, naming how many waited.
+
+{verified: BatchBufferTests.AtTheMessageLimit_AnAppendWaits_UntilAFlushReleasesRoomAsync, BatchBufferTests.AMessageLargerThanTheByteLimit_IsAdmittedAloneIntoAnEmptyBufferAsync, BatchBufferTests.ACallerHoldingATransactionOpen_GoesPastTheLimit_UpToTheCeiling_AndIsNamedAsync, StreamAffinityBatchBufferTests.APublishInAScopeWithATransactionOpen_GoesPastTheLimit_AndIsNamedAsync}
 
 ---
 
