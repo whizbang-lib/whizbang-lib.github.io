@@ -56,6 +56,18 @@ A setting bound to a [`SensitiveString`](sensitive-settings.md), and every conne
 
 A value computed from something that varies is built as a `DerivedSetting<T>`, which keeps the inputs it came from, and is supplied to the report by an `IDerivedSettingSource` registered in the container. The code uses the same object's `Value`, so the value the report shows is the value the service runs with.
 
+The values reported as derived today:
+
+| Setting | Derived from |
+|---------|--------------|
+| `Whizbang:BatchBuffer:MaxBufferedBytes` | a share of the process memory limit (when no number is set) |
+| `Whizbang:BatchBuffer:InteractiveReserveFraction` | the work coordinator gate's reserve over its permits |
+| `Whizbang:WorkCoordinatorGate:InteractiveReserve` | the gate's permits (one tenth, or the configured value), leaving one shared |
+| `Whizbang:WorkCoordinatorGate:MaxConcurrent` | the connection pool size less a reserve, for a gate built with `FromPoolSize` |
+| `Whizbang:Workers:ThreadPoolFloor` | the processor count (or the configured floor), never below the current minimum |
+| `Whizbang:Workers:Perspective:MaxConcurrentPerspectives` | the configured width, at most half the gate split across the drain consumers |
+| `Whizbang:Workers:InboxDispatch:MaxConcurrentDispatch` | the configured fan-out, at most the gate's permits |
+
 ```csharp{title="A derived setting carries its inputs" description="FractionOf records the share and the input it was taken of; Describe writes the rule and the inputs." category="Configuration" difficulty="INTERMEDIATE" tags=["configuration", "derived settings"] tests=["DerivedSettingTests.FractionOf_MultipliesTheInput_AndRecordsItAsync", "DerivedSettingTests.Clamp_KeepsTheValueInRange_AndSaysWhenItClampedAsync"]}
 var limit = DerivedSetting.FractionOf(
   "Whizbang:BatchBuffer:MaxBufferedBytes", 0.05,
