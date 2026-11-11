@@ -27,6 +27,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/RepairDrainWorker.cs
   - src/Whizbang.Core/Workers/IntegrityCheckpointWorker.cs
   - src/Whizbang.Data.Postgres/CoordinatorFleetSql.cs
+  - src/Whizbang.Core/Messaging/SteadyIntegrityTraffic.cs
+  - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/HousekeepingCoordinatorTests.cs
   - tests/Whizbang.Core.Tests/Workers/HousekeepingCooldownTests.cs
@@ -35,6 +37,10 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/IntegrityTimerWorkersOnTheMaintainerTests.cs
   - tests/Whizbang.Core.Tests/Workers/IntegrityDeliveryWorkerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CountServiceBacklogSqlTests.cs
+  - tests/Whizbang.Core.Tests/Workers/HousekeepingIntegrityTrafficTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/SteadyIntegrityTrafficTests.cs
+  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerHousekeepingLogTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperFleetRecoveryTests.cs
 ---
 
 # Housekeeping Arbitration
@@ -76,6 +82,34 @@ that was genuinely idle. Integrity work has been gated the same way since
 A gate that cannot measure must not silently disable what it gates: when the backend reports
 no backlog measurement at all, the activity proceeds with the distinct `ProceedUnmeasured`
 verdict rather than waiting on evidence that will never arrive.
+
+### What counts as work {#what-counts-as-work}
+
+{verified: HousekeepingIntegrityTrafficTests.AServiceWhoseOnlyTrafficIsIntegrityCheckpoints_AdmitsMaintenanceAfterTheCooldownAsync, HousekeepingIntegrityTrafficTests.ApplicationWork_StillResetsTheDwellAsync, HousekeepingIntegrityTrafficTests.WithoutTheFigure_EveryRowStillCountsAsWorkAsync, CountServiceBacklogSqlTests.IntegrityTraffic_IsBacklog_ButNotWorkBesidesIntegrityAsync, CountServiceBacklogSqlTests.ApplicationWork_IsWorkBesidesIntegrity_InEachTableAsync, CountServiceBacklogSqlTests.AServiceWithOnlyIntegrityCheckpoints_AdmitsMaintenanceAfterTheCooldownAsync, SteadyIntegrityTrafficTests.TheTraffic_IsTheCheckpoint_TheRedeliveryRequest_AndItsAnswerAsync, HousekeepingIntegrityTrafficTests.IntegrityOnlyTraffic_AdmitsTheIdleDrainAsync, HousekeepingIntegrityTrafficTests.ApplicationWork_StillHoldsTheIdleDrainBackAsync}
+
+The gate waits for the service to read idle continuously for `SettledCooldown` (default two minutes). It reads idle when
+nothing anyone waits for is queued or leased, the idle band is empty, and no perspective events are pending, **leaving
+out the framework's steady-state integrity traffic**: the `IntegrityCheckpoint` every peer publishes, the
+`RequestRedeliveryCommand` a checkpoint can set off, and the `RedeliveryComposite` that answers it. Application work
+still counts, in the inbox, under a peer's lease, or in the outbox, and still resets the cooldown.
+
+The idle drain is admitted on the same reading, with one difference: it asks whether the service is **settled**, so the
+idle-band rows it exists to drain do not hold it back. A service whose only traffic is integrity checkpoints and their
+redeliveries reads settled and drains its idle band; application work or pending perspective events hold the drain back.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| Integrity traffic is not work for the idle gate. | With stream integrity on, every peer publishes a checkpoint on its own cadence, and each one (with the redelivery chatter it sets off) is a background-band row for a moment, whether or not the service has any work. Counted as work, those rows reset the dwell every half minute, so a two-minute dwell never completed and maintenance ran only as the forced pass at `MaxDeferral` (about once an hour), carrying the reaper, retention and every other cleanup step at that pace. | {verified: HousekeepingIntegrityTrafficTests.AServiceWhoseOnlyTrafficIsIntegrityCheckpoints_AdmitsMaintenanceAfterTheCooldownAsync} |
+| The backlog reading reports it as a separate figure (`ServiceBacklog.NonIntegrityWorkRows`); the other figures still count integrity rows. | The integrity receptors read those figures to tell a row in flight from a row missing, and a redelivery still in the inbox is in flight. Only the housekeeping gate reads the new figure (`IsQuiescentApartFromIntegrity`). | {verified: CountServiceBacklogSqlTests.IntegrityTraffic_IsBacklog_ButNotWorkBesidesIntegrityAsync} |
+| The traffic is not moved to the idle band instead. | The idle band is withheld while the service is busy and is itself counted by the gate, so it would delay checkpoints and redeliveries under load, change their claim order, and still keep maintenance waiting. Leaving it out of one reading changes nothing else. | {verified: CountServiceBacklogSqlTests.IdleBandApplicationRows_AreCountedApart_NotAsWorkBesidesIntegrityAsync} |
+| Integrity does not also hold maintenance back through the reading. | Integrity already outranks maintenance through the coordinator's slots (see [the rank order](#the-rank-order)), so a sweep never runs over integrity work in this service. | {verified: HousekeepingIntegrityAdmissionTests.Integrity_KeepsItsRankAboveTheSweepAsync} |
+| The idle drain leaves integrity traffic out too (#2263). | It was admitted on a reading that still counted every integrity row, so with stream integrity on a service that only exchanged checkpoints rarely read settled, and the idle-band work it had withheld waited. It reads `ServiceBacklog.IsSettledApartFromIntegrity`: the same figure as the dwell, without requiring the idle band to be empty. | {verified: HousekeepingIntegrityTrafficTests.IntegrityOnlyTraffic_AdmitsTheIdleDrainAsync, HousekeepingIntegrityTrafficTests.AnIdleBandBesideIntegrityTraffic_StillAdmitsTheIdleDrainAsync, HousekeepingIntegrityTrafficTests.ApplicationWork_StillHoldsTheIdleDrainBackAsync, SteadyIntegrityTrafficTests.OnlyIntegrityTraffic_IsSettledApartFromIntegrity_ButNotSettledAsync, SteadyIntegrityTrafficTests.ApplicationWork_OrPerspectiveRows_AreNotSettled_ButTheIdleBandIsAsync} |
+| A backend that does not measure the figure counts every row, as before. | A gate that cannot tell integrity traffic apart must not read busier traffic as idle. This holds for the dwell and for the idle drain. | {verified: HousekeepingIntegrityTrafficTests.WithoutTheFigure_EveryRowStillCountsAsWorkAsync, HousekeepingIntegrityTrafficTests.WithoutTheFigure_TheIdleDrainStillReadsEveryRowAsWorkAsync, SteadyIntegrityTrafficTests.AnUnmeasuredFigure_FallsBackToSettledAsync} |
+
+The figure is answered as zero or not (it stops at the first application row), and the type names are compared through
+`normalize_event_type`, so the stored form and the versioned name the dispatcher writes to the outbox both match. The
+deferral and forced-pass log lines print it beside the idle-band rows, the two figures that decide whether the service
+reads idle.
 
 ### A live lease counts only while its row is unprocessed {#live-lease-unprocessed-only}
 

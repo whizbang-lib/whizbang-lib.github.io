@@ -68,6 +68,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IntegrityDeliveryId.cs
   - src/Whizbang.Core/Startup/MaintainerDuty.cs
   - src/Whizbang.Data.Postgres/Migrations/320_RepairWaitsForItsAnswer.sql
+  - src/Whizbang.Data.Postgres/Migrations/395_ARepairSendThatFailsIsWithdrawn.sql
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Core/Messaging/IConsumerRegistry.cs
   - src/Whizbang.Core/Messaging/ConsumedMessageTypes.cs
@@ -214,6 +215,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBundleCatalogChurnSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceiveDoorbellCostSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerHealRemainingGaugesSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RepairDrainRecordsBeforeSendingTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -677,6 +679,15 @@ sequenceDiagram
   no attempt. The withdraw applies only while that request is still the latest and still waiting: an answer that
   landed meanwhile, a later request or an ended backfill stands.
   {verified: SubscriptionBackfillWorkerTests.Tick_RecordsTheWindowAsRequested_BeforeItLeaves_SoAnAnswerThatOutrunsThePublishFindsItAsync, PacedBackfillEndToEndTests.AnAnswerThatLandsBeforeThePublishReturns_IsApplied_AndTheBackfillCompletesAsync, SubscriptionBackfillStoreTests.Withdraw_PutsANewWindowThatNeverLeftBack_AsTheAnsweredStateItWasAskedFromAsync, SubscriptionBackfillStoreTests.Withdraw_PutsAReAskThatNeverLeftBack_AsTheUnansweredStateItWasAskedFromAsync, SubscriptionBackfillStoreTests.Withdraw_AfterAnAnswerLandedMeanwhile_LeavesTheAnswerAsItAppliedAsync, SubscriptionBackfillStoreTests.Withdraw_AfterALaterRequestFollowed_LeavesTheLaterRequestAsync}
+- **The paced repair drain follows the same rule.** It records each request's buckets as awaiting their answer before
+  it sends the request, so an origin that answers before the publish returns finds them waiting, and its answer is
+  kept. Recording after the send let the late record put the wait back over that answer: the bucket lost its answered
+  state and counted against `MaxOutstandingRepairAnswers` until the answer timeout. A send that fails withdraws the
+  record and returns the attempt the claim spent, so a broker failure does not use up a bucket's repair budget; the
+  bucket keeps its backoff, so a broker that just failed is not asked again on the next tick. The withdrawal applies
+  only to a bucket still awaiting that record's answer: an answer that landed meanwhile stands. See
+  [repair waits for its answer](#repair-waits-for-its-answer).
+  {verified: RepairDrainWorkerTests.DrainTick_RecordsTheAnswerPending_BeforeTheRequestLeaves_SoAnAnswerThatOutrunsThePublishIsKeptAsync, RepairDrainRecordsBeforeSendingTests.AnAnswerThatLandsBeforeThePublishReturns_IsKept_AndTheBucketIsNotLeftAwaitingAnotherAsync, RepairDrainRecordsBeforeSendingTests.ASendThatFails_IsWithdrawn_AndCostsNoAttemptAsync, RepairDrainRecordsBeforeSendingTests.Withdraw_ClearsTheWait_AndReturnsTheAttemptAsync, RepairDrainRecordsBeforeSendingTests.Withdraw_AfterTheAnswerLanded_LeavesTheAnswerStandingAsync}
 - **A token bucket paces events, not windows.** Every window spends its full `BackfillWindowSize` from a bucket that
   refills at `BackfillEventsPerMinute` and holds at most one minute's worth, or one window when a window is larger, so
   the rate bounds the events asked for whatever the window size, and a window larger than a minute's rate can still be
@@ -2010,7 +2021,7 @@ affected: each page echoes only what it covered.
 
 ### Repair waits for its answer {#repair-waits-for-its-answer}
 
-{verified: IntegrityRepairAnswerSqlTests.Claim_ABucketWithItsAnswerPending_IsNotClaimed_UntilTheAnswerTimeoutPassesAsync, IntegrityRepairAnswerSqlTests.TryBeginRepair_WhileItsOwnAnswerIsPending_IsRefusedAsync, IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ClearsThePending_AndTheBucketWaitsForTheNextComparisonAsync, IntegrityRepairAnswerSqlTests.Claim_PastTheAttemptBudget_StopsForGood_AndCountsAsExhaustedAsync, IntegrityRepairAnswerSqlTests.TryBeginRepair_PastTheAttemptBudget_IsRefusedForGoodAsync, RepairDrainWorkerTests.DrainTick_MarksTheDispatchedBucketsAnswerPending_ButNotAGroupWhoseSendFailedAsync, StreamIntegrityOptionsValidatorTests.RepairAnswerTimeout_DefaultsToThreeHoursAsync}
+{verified: IntegrityRepairAnswerSqlTests.Claim_ABucketWithItsAnswerPending_IsNotClaimed_UntilTheAnswerTimeoutPassesAsync, IntegrityRepairAnswerSqlTests.TryBeginRepair_WhileItsOwnAnswerIsPending_IsRefusedAsync, IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ClearsThePending_AndTheBucketWaitsForTheNextComparisonAsync, IntegrityRepairAnswerSqlTests.Claim_PastTheAttemptBudget_StopsForGood_AndCountsAsExhaustedAsync, IntegrityRepairAnswerSqlTests.TryBeginRepair_PastTheAttemptBudget_IsRefusedForGoodAsync, RepairDrainWorkerTests.DrainTick_MarksTheDispatchedBucketsAnswerPending_AndWithdrawsAGroupWhoseSendFailedAsync, StreamIntegrityOptionsValidatorTests.RepairAnswerTimeout_DefaultsToThreeHoursAsync}
 
 A repair request is answered by a redelivery bundle, and the answer takes time to arrive: the origin
 records the request for its maintainer, which handles it under the housekeeping idle gate, and the bundle
@@ -2024,6 +2035,11 @@ every repair ledger row moves through explicit states:
 | **Answered** | A redelivery bundle for the bucket committed (`answered_at`) | The drain does not claim it until the next comparison sights the bucket again; a heal deletes the row |
 | **Exhausted** | The claim or grant that spent the last of `MaxRepairAttemptsPerBucket` attempts (`exhausted_at`) | Never asked for again until a [reset](#what-resets-the-repair-ladder) |
 | **Unhealable** | A bundle for the bucket [changed nothing](#unhealable-buckets) and [covered its deficit](#an-answer-marks-only-what-it-covered) | Never asked for again until a [reset](#what-resets-the-repair-ladder) |
+
+The paced drain moves a bucket to **answer pending** just before it sends the request, not after, because the answer can
+arrive before the send returns; a send that fails puts the bucket back as **claimable**, with its attempt returned and
+its backoff kept (#2223, migration 395).
+{verified: RepairDrainRecordsBeforeSendingTests.AnAnswerThatLandsBeforeThePublishReturns_IsKept_AndTheBucketIsNotLeftAwaitingAnotherAsync, RepairDrainRecordsBeforeSendingTests.ASendThatFails_IsWithdrawn_AndCostsNoAttemptAsync, RepairDrainRecordsBeforeSendingTests.Withdraw_OfTheClaimThatSpentTheLastAttempt_LiftsTheExhaustionAsync, RepairDrainRecordsBeforeSendingTests.Withdraw_OfAnotherRecord_LeavesItStandingAsync}
 
 ```mermaid{caption="The repair ladder of one ledger row: a request waits for its answer, an answered bucket waits for the next comparison, and only a local change or a grown deficit re-arms a bucket that spent its budget or that repair cannot change." tests=["IntegrityRepairAnswerSqlTests.Claim_ABucketWithItsAnswerPending_IsNotClaimed_UntilTheAnswerTimeoutPassesAsync", "IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ClearsThePending_AndTheBucketWaitsForTheNextComparisonAsync", "IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ABundleWhoseEventsWereAllStoredAlready_MarksTheBucketAtCommitAsync", "IntegrityRepairAnswerSqlTests.Claim_PastTheAttemptBudget_StopsForGood_AndCountsAsExhaustedAsync", "IntegrityRepairAnswerSqlTests.Report_TheLocalDigestMoved_ResetsTheLadder_AndLiftsTheMarkAsync", "IntegrityRepairAnswerSqlTests.Report_TheDeficitGrew_ResetsTheLadder_AndLiftsTheMarkAsync", "IntegrityRepairAnswerSqlTests.Report_OnlyTheOriginsDigestMoved_KeepsTheAttempts_AndTheMarkAsync"]}
 stateDiagram-v2
