@@ -10,12 +10,12 @@ description: >-
   Declare an event ephemeral with [Ephemeral]: it is stored and routed like any event, but its body is
   deleted once every perspective has consumed it (or once its TTL passes), and the read model it feeds
   becomes the source of truth. Covers the attribute and its composition, what happens to the event and
-  the read model, the WHIZ130, WHIZ131, WHIZ132 and WHIZ134 build rules, the WHIZ133 mixed-stream refusal and the
-  other runtime guards, compaction
+  the read model, the WHIZ130, WHIZ131, WHIZ132, WHIZ134 and WHIZ139 build rules, the WHIZ133 mixed-stream refusal,
+  the pairs a read model may allow to share a stream, the other runtime guards, compaction
   and scheduled stream closes.
 tags: >-
   events, ephemeral, destruction, transient-storage, ttl, rewind-grace, reaper, snapshots, composition,
-  profiles, WHIZ130, WHIZ131, WHIZ132, WHIZ133, WHIZ134, compaction, stream-close, full-history
+  profiles, WHIZ130, WHIZ131, WHIZ132, WHIZ133, WHIZ134, WHIZ139, mixed-streams, compaction, stream-close, full-history
 codeReferences:
   - src/Whizbang.Data.Postgres/EphemeralHistoryReclassifyStep.cs
   - src/Whizbang.Data.Postgres/TypeHistoryWalker.cs
@@ -35,6 +35,12 @@ codeReferences:
   - src/Whizbang.Core/Attributes/TransientStorage.cs
   - src/Whizbang.Core/Attributes/EphemeralInfo.cs
   - src/Whizbang.Core/Attributes/DangerouslyAllowMixedEphemeralAndSourcedEventsAttribute.cs
+  - src/Whizbang.Core/Attributes/MixedStreams.cs
+  - src/Whizbang.Core/Perspectives/MixedStreamAllowance.cs
+  - src/Whizbang.Generators/Utilities/MixedStreamOptIn.cs
+  - src/Whizbang.Data.Postgres/CoordinatorMixedStreamSql.cs
+  - src/Whizbang.Data.Postgres/Migrations/393_AllowedPairsMayShareAStream.sql
+  - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.RetentionSweeps.cs
   - src/Whizbang.Core/Attributes/DangerouslyAllowSourcedEventsFromEphemeralInputAttribute.cs
   - src/Whizbang.Core/Attributes/FullHistoryAttribute.cs
   - src/Whizbang.Core/IEphemeralEvent.cs
@@ -80,6 +86,11 @@ testReferences:
   - tests/Whizbang.Core.Tests/Configuration/EphemeralBlockerOptionsTests.cs
   - tests/Whizbang.Core.Tests/Observability/EphemeralBlockerMetricsTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveRegistryMixedOptInTests.cs
+  - tests/Whizbang.Generators.Tests/MixedStreamAllowanceGeneratorTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/MixedStreamAllowanceTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorDefaultsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/MixedStreamAllowanceSqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMixedStreamAllowanceTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEphemeralHistoryReclassifyTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/AuditEphemeralExclusionTests.cs
   - tests/Whizbang.Core.Tests/Attributes/EphemeralAttributeTests.cs
@@ -389,6 +400,58 @@ public class DeliberatelyMixedProjection
 }
 ```
 
+### Allowing mixed streams {#allowing-mixed-streams}
+
+By itself the attribute changes nothing at run time: a stream still never holds both kinds
+([WHIZ133](#runtime-guards)). Set its `Streams` property to `MixedStreams.Allow` to let the (ephemeral type, Sourced
+type) pairs the read model applies share a stream. `MixedStreams.Refuse`, the default, is the attribute without the
+property.
+
+```csharp{title="Allowing a read model's pairs to share a stream" description="PresencePing and OrderPlaced may share a stream: either may be appended to a stream holding the other." framework="NET10" category="Core Concepts" difficulty="ADVANCED" tags=["ephemeral", "WHIZ130", "WHIZ139", "perspectives", "opt-in", "mixed-streams"] testFile="MixedStreamAllowanceGeneratorTests.cs" testMethod="Registry_AnAllowingReadModel_CarriesItsPairs_AndTheDefaultCarriesNoneAsync" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/MixedStreamAllowanceGeneratorTests.cs" tests=["MixedStreamAllowanceGeneratorTests.Registry_AnAllowingReadModel_CarriesItsPairs_AndTheDefaultCarriesNoneAsync"]}
+[DangerouslyAllowMixedEphemeralAndSourcedEvents(Streams = MixedStreams.Allow)]
+public class PresenceBoard
+  : IPerspectiveFor<Model, PresencePing>, IPerspectiveFor<Model, OrderPlaced> {
+  public Model Apply(Model current, PresencePing e) => current;
+  public Model Apply(Model current, OrderPlaced e) => current;
+}
+```
+
+For an allowed pair:
+
+- **Writes:** either kind may be appended to a stream holding the other. Any other type is still refused there, so a
+  stream mixed under an allowance holds only the types of allowed pairs.
+- **History:** the [history walk](#making-an-existing-type-ephemeral) no longer counts the pair as a blocker. It
+  reclassifies the ephemeral events in such streams and leaves the Sourced ones Sourced.
+- **Reaping:** the reaper reaps the ephemeral bodies in those streams on their normal rules, and keeps the Sourced ones.
+- **Rebuild:** a read model that applies only the Sourced type rebuilds those streams as before. The opted-in read
+  model applies the ephemeral type, so its full rebuild of them is refused, as for any ephemeral read model, and it
+  restores from its snapshot floor.
+
+**Safety.** A pair is allowed only when every read model that applies both of its types opts in with
+`Streams = MixedStreams.Allow`. One that applies both without it keeps the pair refused: it would otherwise refuse to
+rebuild the mixed streams and silently lose their Sourced events. The analyzer reports such a read model as a
+**warning**, [WHIZ139](../../operations/diagnostics/whiz139), naming the pair and the read model that allows it. The
+rule is applied again at run time over every registered read model, because read models in several assemblies
+contribute to one registry.
+
+The generator computes each read model's pairs, so the runtime needs no reflection. At startup the type-definition
+reconciler writes the allowed pairs, under every name each type is stored by, to the store, which the mixed-stream
+refusal reads; the history walk and the rebuild take them from the generated registry and pass them to the database as
+bound parameters.
+
+{verified: MixedStreamAllowanceTests.Allowed_TheDefaultRefuse_AllowsNothingAsync, MixedStreamAllowanceTests.Allowed_ASecondReadModelWithoutTheOptIn_KeepsThePairRefusedAsync, MixedStreamAllowanceGeneratorTests.SecondReadModelWithoutAllow_ReportsWHIZ139OnItAsync, MixedStreamAllowanceSqlTests.Append_AnAllowedPair_StoresEitherKindOnAStreamHoldingTheOtherAsync, MixedStreamAllowanceSqlTests.Reclassify_AnAllowedPair_ReclassifiesTheEphemeralEvents_KeepsTheDurable_AndTheDigestsEqualARecountAsync, MixedStreamAllowanceSqlTests.Reap_AnAllowedMixedStream_ReapsTheEphemeralBodies_AndKeepsTheDurableOnesAsync}
+
+| Choice | Reason | Verified |
+|---|---|---|
+| `MixedStreams.Refuse` is the default, and the attribute without the property changes nothing at run time. | Silencing WHIZ130 and letting streams mix are separate decisions; an existing opt-in must not start mixing streams on upgrade. | {verified: MixedStreamAllowanceTests.Allowed_TheDefaultRefuse_AllowsNothingAsync, MixedStreamAllowanceGeneratorTests.Registry_AnAllowingReadModel_CarriesItsPairs_AndTheDefaultCarriesNoneAsync, MixedStreamAllowanceSqlTests.Append_WithNoAllowance_IsRefusedAsBeforeAsync, MixedStreamAllowanceSqlTests.Reclassify_WithNoAllowingReadModel_TheAllowedPairStillBlocksAsync} |
+| `Allow` lets only the read model's own pairs mix; any other type is still refused on such a stream. | The allowance is for a pair, not for a stream: an unpaired type in a mixed stream would be skipped by its own read models' rebuilds. | {verified: MixedStreamAllowanceSqlTests.Append_AnAllowedPair_StoresEitherKindOnAStreamHoldingTheOtherAsync, MixedStreamAllowanceSqlTests.Append_AnUnpairedType_IsStillRefused_OnAStreamTheAllowanceMixedAsync, MixedStreamAllowanceSqlTests.Store_AnAllowedPairInOneOutboxWrite_StoresBothKindsAsync} |
+| A pair is allowed only when every read model applying both types opts in, and WHIZ139 names one that does not. | One read model's opt-in must never break another's rebuild. | {verified: MixedStreamAllowanceTests.Allowed_ASecondReadModelWithoutTheOptIn_KeepsThePairRefusedAsync, MixedStreamAllowanceGeneratorTests.SecondReadModelWithoutAllow_ReportsWHIZ139OnItAsync, MixedStreamAllowanceGeneratorTests.EveryReadModelAllows_OrNoneDoes_NoWHIZ139Async} |
+| The history walk reclassifies the ephemeral events of an allowed stream and keeps the Sourced ones, through the one digest fold. | Allowing mixing keeps the durable facts, unlike a release; the digests must still equal a recount. | {verified: MixedStreamAllowanceSqlTests.Reclassify_AnAllowedPair_ReclassifiesTheEphemeralEvents_KeepsTheDurable_AndTheDigestsEqualARecountAsync} |
+| The reaper reaps the ephemeral bodies of an allowed stream and keeps the Sourced ones. | The point of declaring the type ephemeral is to reclaim it; the stream's durable events are not its to reap. | {verified: MixedStreamAllowanceSqlTests.Reap_AnAllowedMixedStream_ReapsTheEphemeralBodies_AndKeepsTheDurableOnesAsync} |
+| A read model applying only the Sourced type rebuilds an allowed stream; the opted-in read model's full rebuild of it is refused. | The Sourced events are a complete log for a read model that never applies the ephemeral type; the opted-in read model is ephemeral state. | {verified: PerspectiveRebuilderTests.RebuildStreamsAsync_AnAllowedMixedStream_RebuildsForADurableOnlyReadModel_AndStaysRefusedForTheOptedInOneAsync, MixedStreamAllowanceSqlTests.StateBased_IgnoringTheAllowedEphemeralType_LeavesTheMixedStreamRebuildableAsync, DapperMixedStreamAllowanceTests.GetStateBasedStreamIdsAsync_PassingOverTheAllowedType_LeavesTheMixedStreamRebuildableAsync} |
+| An engine that does not implement the allowance ignores no ephemeral type and syncs nothing. | The safe direction: every stream holding an ephemeral event stays refused, as before. | {verified: WorkCoordinatorDefaultsTests.MixedStreamDefaults_IgnoreNothing_AndSyncNothingAsync} |
+| The allowed pairs are synced at startup as a full replace, under every stored name of each type. | A read model that drops the opt-in must refuse mixing again, and events stored under a former name hold a stream as the type does. | {verified: TypeDefinitionReconcilerCoverageTests.ReconcileAsync_SyncsTheAllowedMixedStreamPairs_UnderEveryStoredNameAsync, MixedStreamAllowanceSqlTests.Sync_ReplacesThePairs_AndAnEmptyListClearsThemAsync, MixedStreamAllowanceTests.Stored_AddsEachTypesFormerNames_FromTheCatalogAsync, DapperMixedStreamAllowanceTests.SyncMixedStreamAllowancesAsync_AllowsThePair_AndAnEmptyListAllowsNothingAsync} |
+
 ### WHIZ134: ambiguous composition {#whiz134}
 
 A type that inherits `[Ephemeral]` from two or more sibling profile interfaces whose `Destruction` or
@@ -432,8 +495,9 @@ by id, or an event that arrives after its predecessors' bodies are gone. These g
 **A stream never mixes ephemeral and Sourced events (WHIZ133).** Which events reach a stream is
 only known when they are stored, so this is checked where outbox and inbox events are copied into the event
 store and on every direct `IEventStore.AppendAsync`, not by the build. An event whose kind differs from the kind its stream already holds is refused, in
-either order, and there is no opt-in: one ephemeral event would mark the whole stream state-based and hide its
-Sourced history from every rebuild and rewind. A stream with nothing stored takes the kind of its first event.
+either order: one ephemeral event would mark the whole stream state-based and hide its
+Sourced history from every rebuild and rewind. The one exception is a pair every read model applying both allows
+(see [Allowing mixed streams](#allowing-mixed-streams)). A stream with nothing stored takes the kind of its first event.
 A compaction origin is neither kind, so a compacted stream keeps receiving the kind it held. A write its caller
 awaits (a direct append, and the immediate and scoped strategies' flush, which the dispatcher awaits when publishing) fails with `MixedStreamEventException`
 and keeps nothing of the write; every other write (batch flushes, handler commits, the inbox) dead-letters
@@ -585,7 +649,9 @@ Ephemeral history of Contracts.Sessions.SessionPinged, Contracts is held back by
     written by service sessions-service, topic sessions, SessionHandler.OpenAsync
     to clear it: (1) mark Contracts.Sessions.SessionOpened [Ephemeral] if it is transient everywhere; (2) release it in
     these streams only with the setting Whizbang:Ephemeral:ReleaseBlockers:Contracts.Sessions.SessionPinged:0 = Contracts.Sessions.SessionOpened, Contracts
-    (no registered read model applies it); (3) keep it: these events and streams stay stored.
+    (no registered read model applies it); (3) keep it: these events and streams stay stored; (4) allow mixing, which
+    keeps these durable events and lets the ephemeral ones go: put [DangerouslyAllowMixedEphemeralAndSourcedEvents(Streams = MixedStreams.Allow)]
+    on every read model that applies both types: App.SessionBoard.
 ```
 
 The report needs the walk, so it appears only with `ReconcileHistoricalOnStartup` on. Turn it off with
@@ -594,13 +660,20 @@ exactly as it does without the report.
 
 {verified: EphemeralBlockerReportSqlTests.Report_AMixedStream_NamesTheBlockingType_ItsCounts_ASampleStream_AndItsRouteAsync, EphemeralBlockerReportSqlTests.Report_ARouteWithOnlySomeParts_NamesWhatItHasAsync, EphemeralBlockerReportSqlTests.Report_WithoutARoute_OrAReadModel_SaysSoAsync, EphemeralBlockerReportSqlTests.StartupSummary_IsLoggedOnce_AndTheGaugeReadsTheStoredReportAsync, EphemeralBlockerReportSqlTests.Report_Off_RecordsNothing_LogsNothing_AndTheReclassifyIsUnchangedAsync}
 
-Each entry ends in what to do. There are three choices:
+Each entry ends in what to do. There are four choices:
 
 1. **The blocking type is transient too:** mark it `[Ephemeral]` in code. The next walk clears both, and the route in
    the report points at the code that writes it.
 2. **The blocking type is durable in general, but these streams are disposable:** release it for this ephemeral type
    only (below). The report prints the exact setting line to add.
 3. **Keep it:** do nothing. The report shows what that costs: the events, the streams and their size.
+4. **Allow mixing:** the durable events stay durable and the ephemeral ones go. Put
+   `[DangerouslyAllowMixedEphemeralAndSourcedEvents(Streams = MixedStreams.Allow)]` on every read model that applies
+   both types; the report prints the attribute line and names those read models (or says that none applies both, so
+   there is none to opt in yet). Once allowed, the pair is no longer a blocker: see
+   [Allowing mixed streams](#allowing-mixed-streams).
+
+{verified: MixedStreamAllowanceSqlTests.Report_AnAllowedPair_IsNoBlocker_AndAnUnallowedOneOffersAllowMixingAsync, MixedStreamAllowanceSqlTests.Report_WhenNoReadModelAppliesBoth_SaysAllowMixingNeedsOneAsync}
 
 #### Releasing a blocking type {#releasing-a-blocking-type}
 
@@ -661,11 +734,13 @@ had already completed applies it.
 | A changed release list walks the type again. | A completed walk reads nothing more, so a release added after it would otherwise never apply. | {verified: EphemeralBlockerReportSqlTests.ChangingTheReleaseList_WalksTheTypeAgain_AndReleasesWhatTheCompletedWalkLeftAsync} |
 | The release list reaches the database as a bound parameter. | A type name is data; it is compared, never executed. | {verified: EphemeralBlockerReportSqlTests.Release_ANameIsBoundAsData_NeverSqlTextAsync} |
 | A pair that leaves the report reads zero on the gauge. | A stale count would say the pair still holds history back. | {verified: EphemeralBlockerMetricsTests.BlockedEvents_APairThatLeftTheReport_ReadsZero_NotItsLastCountAsync} |
+| Each entry offers a fourth action, allow mixing, with the exact attribute line and the read models that must carry it; an allowed pair is no blocker. | Mark-ephemeral and release both give up the durable events; allowing mixing is the one choice that keeps them and still reclaims the ephemeral ones. | {verified: MixedStreamAllowanceSqlTests.Report_AnAllowedPair_IsNoBlocker_AndAnUnallowedOneOffersAllowMixingAsync, MixedStreamAllowanceSqlTests.Report_WhenNoReadModelAppliesBoth_SaysAllowMixingNeedsOneAsync} |
 
 #### Read models opted into mixing {#read-models-opted-into-mixing}
 
 A read model that carries `[DangerouslyAllowMixedEphemeralAndSourcedEvents]` applies both kinds on purpose. The
-attribute only silences [WHIZ130](#whiz130) at build time; it changes nothing at runtime. The blocker report covers
+attribute only silences [WHIZ130](#whiz130) at build time; without `Streams = MixedStreams.Allow` it changes nothing at
+runtime (see [Allowing mixed streams](#allowing-mixed-streams)). The blocker report covers
 each such read model too, once per process with the startup summary: for each of its durable inputs, how many of its
 events are still stored, in how many streams, and how many of those streams also hold one of its ephemeral inputs
 (history only: the store refuses new mixing).
