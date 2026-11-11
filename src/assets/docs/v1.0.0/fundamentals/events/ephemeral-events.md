@@ -22,6 +22,11 @@ codeReferences:
   - src/Whizbang.Core/TypeNameFormatter.cs
   - src/Whizbang.Core/Fingerprint/TypeDefinitionReconciler.cs
   - src/Whizbang.Data.Postgres/Migrations/381_EphemeralHistoryReclassifiesInBatches.sql
+  - src/Whizbang.Data.Postgres/Migrations/392_WhatHoldsEphemeralHistoryBackIsNamed.sql
+  - src/Whizbang.Data.Postgres/EphemeralBlockerReportText.cs
+  - src/Whizbang.Data.Postgres/EphemeralReleaseList.cs
+  - src/Whizbang.Core/Configuration/EphemeralBlockerReportOptions.cs
+  - src/Whizbang.Core/Observability/EphemeralBlockerMetrics.cs
   - src/Whizbang.Core/SystemEvents/AuditEligibility.cs
   - src/Whizbang.Core/Attributes/EphemeralAttribute.cs
   - src/Whizbang.Core/Attributes/Destruction.cs
@@ -69,6 +74,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralHistoryReclassifySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HistoryWalkTargetNamingTests.cs
   - tests/Whizbang.Core.Tests/TypeNameFormatterTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralBlockerReportSqlTests.cs
+  - tests/Whizbang.Core.Tests/Configuration/EphemeralBlockerOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Observability/EphemeralBlockerMetricsTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEphemeralHistoryReclassifyTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/AuditEphemeralExclusionTests.cs
   - tests/Whizbang.Core.Tests/Attributes/EphemeralAttributeTests.cs
@@ -541,6 +549,115 @@ and fails if any walk is keyed by a name the store does not hold. The per-type r
 
 The step logs, per type and cycle, the events it reclassified, the events it left Sourced in mixed streams and how many
 of the type's events are left to read, and one line when a type's walk completes.
+
+#### What holds ephemeral history back {#what-holds-ephemeral-history-back}
+
+A large count of events left Sourced in mixed streams says how much history stays, not why. The blocker report says
+why: for each ephemeral type, the durable (Sourced) event types that share its streams. It is on by default and is
+recorded by the walk itself, from the streams each batch already locks, so it costs no extra pass over the store.
+
+For each pair of ephemeral type and blocking type the report keeps:
+
+- the events of the ephemeral type that stay Sourced, the streams they are in (each stream once per walk) and their
+  approximate stored size;
+- one sample stream id, to look at;
+- the route of the blocking type: the service, topic, caller class and caller member of the hop that wrote it, from the
+  newest [route](../../data/event-store#routes-and-traces) recorded for it (routes are recorded under the distilled
+  metadata form; without one the report says so).
+
+The report is logged once per ephemeral type when its walk finishes, and once at startup from the stored results. The
+gauge `whizbang.ephemeral.blocked_events` (meter `Whizbang.Ephemeral`, see [metrics](../../operations/observability/metrics#ephemeral))
+carries the same counts, tagged `ephemeral_type` and `blocking_type`.
+
+```text{
+title: "A blocker report entry"
+description: "What the report logs for one durable type that keeps an ephemeral type's history Sourced."
+framework: "NET10"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["ephemeral", "maintenance", "observability"]
+}
+Ephemeral history of Contracts.Sessions.SessionPinged, Contracts is held back by 1 durable event type(s):
+  Contracts.Sessions.SessionOpened, Contracts: 3 event(s) in 2 stream(s), about 1,184 bytes; sample stream 0193...
+    written by service sessions-service, topic sessions, SessionHandler.OpenAsync
+    to clear it: (1) mark Contracts.Sessions.SessionOpened [Ephemeral] if it is transient everywhere; (2) release it in
+    these streams only with the setting Whizbang:Ephemeral:ReleaseBlockers:Contracts.Sessions.SessionPinged:0 = Contracts.Sessions.SessionOpened, Contracts
+    (no registered read model applies it); (3) keep it: these events and streams stay stored.
+```
+
+The report needs the walk, so it appears only with `ReconcileHistoricalOnStartup` on. Turn it off with
+`Whizbang:Ephemeral:BlockerReport:Enabled` set to `false`; then nothing is recorded, logged or gauged, and the walk runs
+exactly as it does without the report.
+
+{verified: EphemeralBlockerReportSqlTests.Report_AMixedStream_NamesTheBlockingType_ItsCounts_ASampleStream_AndItsRouteAsync, EphemeralBlockerReportSqlTests.Report_ARouteWithOnlySomeParts_NamesWhatItHasAsync, EphemeralBlockerReportSqlTests.Report_WithoutARoute_OrAReadModel_SaysSoAsync, EphemeralBlockerReportSqlTests.StartupSummary_IsLoggedOnce_AndTheGaugeReadsTheStoredReportAsync, EphemeralBlockerReportSqlTests.Report_Off_RecordsNothing_LogsNothing_AndTheReclassifyIsUnchangedAsync}
+
+Each entry ends in what to do. There are three choices:
+
+1. **The blocking type is transient too:** mark it `[Ephemeral]` in code. The next walk clears both, and the route in
+   the report points at the code that writes it.
+2. **The blocking type is durable in general, but these streams are disposable:** release it for this ephemeral type
+   only (below). The report prints the exact setting line to add.
+3. **Keep it:** do nothing. The report shows what that costs: the events, the streams and their size.
+
+#### Releasing a blocking type {#releasing-a-blocking-type}
+
+`Whizbang:Ephemeral:ReleaseBlockers:<EphemeralType>` lists the durable types released for one ephemeral type. The key is
+the ephemeral type's name, with or without its assembly; each value is a blocking type as the report prints it
+(`Namespace.Type, Assembly`) or without its assembly.
+
+```json{
+title: "Releasing a blocking type for one ephemeral type"
+description: "Reclassifies SessionOpened with SessionPinged in the streams that hold SessionPinged, and nowhere else."
+framework: "NET10"
+category: "Core Concepts"
+difficulty: "ADVANCED"
+tags: ["ephemeral", "configuration", "maintenance"]
+}
+{
+  "Whizbang": {
+    "Ephemeral": {
+      "ReconcileHistoricalOnStartup": true,
+      "ReleaseBlockers": {
+        "Contracts.Sessions.SessionPinged": [ "Contracts.Sessions.SessionOpened, Contracts" ]
+      }
+    }
+  }
+}
+```
+
+A released type no longer keeps the ephemeral type's history Sourced. In each stream that holds the ephemeral type and
+nothing else durable once the released types are set aside, the walk reclassifies the released type's Sourced events
+along with the ephemeral type's, takes them out of the integrity digests the same way, and the ephemeral reaper then
+reclaims them like any other consumed ephemeral event. Changing the list walks the type's history again, so a walk that
+had already completed applies it.
+
+**Safety.**
+
+- Releasing is opt-in per pair. The default is empty: nothing durable changes without a setting.
+- The report is the dry run: it shows, before anything is released, how many events and streams the setting would turn
+  ephemeral.
+- Only streams that hold the ephemeral type are touched. The released type's events in every other stream stay
+  Sourced, and a stream that still holds another, unreleased durable type is left whole.
+- A read model that applies the released type cannot be rebuilt from those events once they are reaped. The report
+  names such read models next to the setting line.
+- A released stream is ephemeral from then on, so a later Sourced append to it is refused like any mixed write (see
+  WHIZ133 above). Release a type only when nothing writes it into those streams any more; the route in the report
+  shows what does.
+
+{verified: EphemeralBlockerReportSqlTests.Release_StampsTheBlockingEvents_OnlyInStreamsHoldingTheEphemeralType_AndTheDigestsEqualARecountAsync, EphemeralBlockerReportSqlTests.NoRelease_NoDurableEventChangesAsync, EphemeralBlockerReportSqlTests.Release_AStreamStillHeldByAnUnreleasedType_IsLeftWhole_AndReportedForThatTypeOnlyAsync, EphemeralBlockerReportSqlTests.Report_NamesTheReadModelsThatApplyTheBlockingType_NextToTheReleaseLineAsync, EphemeralBlockerReportSqlTests.Release_NamesWithOrWithoutTheAssembly_MatchTheConfiguredTypesAsync}
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The report is on by default. | It only counts what the walk already reads and changes no event; an operator who expected a reclaim needs it without first knowing to ask. | {verified: EphemeralBlockerOptionsTests.Defaults_TheReportIsOn_AndNothingIsReleasedAsync} |
+| With the report off, nothing is recorded, logged or gauged, and the walk keeps its earlier variant. | Off must mean off: no rows to clean up, no log noise, and no restarted walk. | {verified: EphemeralBlockerReportSqlTests.Report_Off_RecordsNothing_LogsNothing_AndTheReclassifyIsUnchangedAsync} |
+| The report is recorded inside the walk's batches, under the locks they already hold. | A separate pass over the store would cost the store's size; this costs only the blocked streams of each batch. | {verified: EphemeralBlockerReportSqlTests.Report_AMixedStream_NamesTheBlockingType_ItsCounts_ASampleStream_AndItsRouteAsync} |
+| The counts describe the type's current walk: a restarted walk (a newer definition, a changed release list or report setting) starts them again. | Counts summed across walks would grow on every restart and describe nothing. | {verified: EphemeralBlockerReportSqlTests.Counts_DescribeTheCurrentWalk_AndResetWhenItRestartsAsync, EphemeralBlockerReportSqlTests.Counts_OfAnEarlierWalk_AreNotReported_EvenBeforeTheRestartedWalkReadsABatchAsync} |
+| A stream is counted once per walk, however many batches read its events. | The streams figure is what a release would turn ephemeral; counting a stream per batch would overstate it. | {verified: EphemeralBlockerReportSqlTests.Streams_AreCountedOnce_WhenTheirEventsSpanSeveralBatchesAsync} |
+| Nothing durable changes without a release setting. | Turning durable events ephemeral is a deliberate, potentially lossy step; the report is the dry run. | {verified: EphemeralBlockerReportSqlTests.NoRelease_NoDurableEventChangesAsync} |
+| A release reclassifies the blocking type only in streams that hold the ephemeral type, and only once the stream is wholly ephemeral. | The blocking type is durable everywhere else; a partly released stream would be mixed. | {verified: EphemeralBlockerReportSqlTests.Release_StampsTheBlockingEvents_OnlyInStreamsHoldingTheEphemeralType_AndTheDigestsEqualARecountAsync, EphemeralBlockerReportSqlTests.Release_AStreamStillHeldByAnUnreleasedType_IsLeftWhole_AndReportedForThatTypeOnlyAsync} |
+| A changed release list walks the type again. | A completed walk reads nothing more, so a release added after it would otherwise never apply. | {verified: EphemeralBlockerReportSqlTests.ChangingTheReleaseList_WalksTheTypeAgain_AndReleasesWhatTheCompletedWalkLeftAsync} |
+| The release list reaches the database as a bound parameter. | A type name is data; it is compared, never executed. | {verified: EphemeralBlockerReportSqlTests.Release_ANameIsBoundAsData_NeverSqlTextAsync} |
+| A pair that leaves the report reads zero on the gauge. | A stale count would say the pair still holds history back. | {verified: EphemeralBlockerMetricsTests.BlockedEvents_APairThatLeftTheReport_ReadsZero_NotItsLastCountAsync} |
 
 ## Destruction hooks {#destruction-hooks}
 
