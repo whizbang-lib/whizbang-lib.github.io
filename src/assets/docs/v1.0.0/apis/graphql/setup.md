@@ -231,7 +231,7 @@ with the code `WHIZBANG_INVALID_ID` and the reason, and the resolver does not ru
 {
   "errors": [
     {
-      "message": "The value is not a valid OrderId: OrderId requires UUIDv7 but received version 4 (Parameter 'value')",
+      "message": "The value is not a valid OrderId: OrderId requires UUIDv7 but received version 4",
       "locations": [{ "line": 1, "column": 9 }],
       "path": ["id"],
       "extensions": {
@@ -277,10 +277,14 @@ the id's scalar, which changes the schema clients see:
 | `type OrderId { value: UUID! }` and `input OrderIdInput { value: UUID! }` | `scalar OrderId` |
 | `order { orderId { value } }` | `order { orderId }` |
 | `order(id: { value: "..." })` | `order(id: "...")` |
+| `input OrderIdFilterInput { value: UuidOperationFilterInput }` | `input OrderIdOperationFilterInput { eq neq in nin }` |
+| `where: { id: { value: { eq: "..." } } }` | `where: { id: { eq: "..." } }` |
 
-Filtering and sorting do not change: a filter on a strong-id field keeps the id's own filter input, `where: { id: { value: { eq: "..." } } }` {verified: WhizbangIdFilteringTests.Row_WithAnId_FiltersByTheIdsValueAsync}, and a sort orders by the id itself {verified: WhizbangIdFilteringTests.Row_WithAnId_SortsByTheIdAsync}.
+A filter on a strong-id field compares the id itself, with the id's scalar as the operand, so a filter value is
+checked like an argument {verified: WhizbangIdFilteringTests.Eq_KeepsTheRowWithThatIdAsync, WhizbangIdFilteringTests.Eq_WithAGuidTheIdRefuses_IsTheIdsErrorAsync}.
+See [Strong ID operators](filtering.md#strong-ids). Sorting does not change: a sort orders by the id itself {verified: WhizbangIdFilteringTests.Row_WithAnId_SortsByTheIdAsync}.
 
-Update client queries, and regenerate generated client types against the new schema.
+Update client queries and filters, and regenerate generated client types against the new schema.
 
 ## What Gets Registered
 
