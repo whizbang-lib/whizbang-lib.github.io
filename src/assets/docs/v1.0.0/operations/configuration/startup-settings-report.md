@@ -15,6 +15,7 @@ codeReferences:
   - src/Whizbang.Core/Configuration/StartupSettingsReportService.cs
   - src/Whizbang.Core/Configuration/DerivedSetting.cs
   - src/Whizbang.Core/Configuration/KnownConfigurationKeys.cs
+  - src/Whizbang.Core/Configuration/ConfigurationKeyDefaults.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Configuration/StartupSettingsReportTests.cs
   - tests/Whizbang.Core.Component.Tests/Configuration/StartupSettingsReportServiceTests.cs
@@ -30,8 +31,8 @@ When a pod misbehaves, the first question is what limits it was running with. Se
 One Information entry per settings section, each listing that section's settings:
 
 ```text
-Settings Whizbang:BatchBuffer: MaxBufferedBytes=53687091 (derived: 0.05 x TotalAvailableMemoryBytes; TotalAvailableMemoryBytes=1073741824); MaxBufferedBytesFraction (default); MaxBufferedMessages (default); TransactionCeilingMultiplier (default); InteractiveReserveFraction=0.1 (derived: WorkCoordinatorGate InteractiveReserve / MaxConcurrent; InteractiveReserve=5, MaxConcurrent=50)
-Settings Whizbang:Startup: AllowLossyRollback (default); LogSettings (default); OverrideIncompatibility (default); RegistrationCollisions=Fail (configured: EnvironmentVariablesConfigurationProvider Prefix: '')
+Settings Whizbang:BatchBuffer: MaxBufferedBytes=53687091 (derived: 0.05 x TotalAvailableMemoryBytes; TotalAvailableMemoryBytes=1073741824); MaxBufferedBytesFraction=0.05 (default); MaxBufferedMessages=10000 (default); TransactionCeilingMultiplier=2 (default); InteractiveReserveFraction=0.1 (derived: WorkCoordinatorGate InteractiveReserve / MaxConcurrent; InteractiveReserve=5, MaxConcurrent=50)
+Settings Whizbang:Startup: AllowLossyRollback (default); LogSettings=true (default); OverrideIncompatibility (default); RegistrationCollisions=Fail (configured: EnvironmentVariablesConfigurationProvider Prefix: '')
 ```
 
 Each setting is one of:
@@ -39,10 +40,16 @@ Each setting is one of:
 | Source | Written as | Meaning |
 |--------|-----------|---------|
 | Configured | `Name=value (configured: <provider>)` | A configuration provider set it; the provider named is the last one that has the key, the one whose value wins. |
-| Default | `Name (default)` | Nothing set it; the code default applies. |
+| Default | `Name=value (default)` | Nothing set it; the code default applies, and its value is shown. A key whose default is not a single value the options type holds (a value the binder fills in by hand, a name the consumer chooses) is written `Name (default)`. |
 | Derived | `Name=value (derived: <rule>; <input>=<value>, ...)` | Computed from inputs that vary from host to host; the inputs are listed. A derived value wins over a configured one, because it is the value the service runs with. |
 
 A key with a `*` segment (a name the consumer chooses, such as a circuit breaker or a provider) is listed once for each configured name, or once as written when none is configured.
+
+The defaults are recorded, not hand-written: the configuration key manifest test resolves each options type over a
+configuration that holds nothing, reads the value at every manifest key it read, and writes `configuration-defaults.txt` (read by `ConfigurationKeyDefaults`), which is
+embedded in the library. The test fails when a default in code and the recorded default drift apart, so the report
+never shows a stale default, and nothing reflects over options types at run time. A credential's default is redacted
+like a configured credential.
 
 ## Complete by construction
 

@@ -306,7 +306,7 @@ Bound during Postgres driver registration with a hand-rolled binder. Controls th
 |-----|------|---------|----------------------|---------|
 | `SignalingMode` | `WorkSignalingMode` | `Auto` | `Whizbang__Database__SignalingMode` | Polling vs LISTEN/NOTIFY mode selection |
 | `ConnectionStringKey` | `string?` | `null` | `Whizbang__Database__ConnectionStringKey` | `ConnectionStrings` key for the listener connection; resolution prefers `{key}-direct`, then `{key}` |
-| `DirectConnectionString` | `string?` | `null` | `Whizbang__Database__DirectConnectionString` | Explicit direct connection string; overrides key-based lookup |
+| `DirectConnectionString` | [`SensitiveString?`](sensitive-settings.md) | `null` | `Whizbang__Database__DirectConnectionString` | Explicit direct connection string; overrides key-based lookup |
 | `DisableNotifications` | `bool` | `false` | `Whizbang__Database__DisableNotifications` | Kill switch forcing polling-only mode |
 | `PollingFallbackInterval` | `TimeSpan` | `00:00:30` | `Whizbang__Database__PollingFallbackInterval` | Safety-net polling cadence while the listener is healthy |
 | `SignalRetention` | `TimeSpan` | `7.00:00:00` | `Whizbang__Database__SignalRetention` | How long a durable signal is kept before the retention sweep may delete it; never past a signal an instance has not delivered. Zero or less is rejected at startup ([retention](../../fundamentals/signal-bus/signal-bus#retention)). Once `wh_signals` is partitioned, also the window past which a daily partition is dropped ([partitioned ledgers](../infrastructure/partitioned-ledgers#row-sweeps)) |
@@ -599,7 +599,7 @@ Every child of `Whizbang:Offloads:AzureBlob` registers one named provider. The p
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
-| `ConnectionString` | `string?` | `null` | `Whizbang__Offloads__AzureBlob__<name>__ConnectionString` | Azure Storage connection string (emulator or live) |
+| `ConnectionString` | [`SensitiveString?`](sensitive-settings.md) | `null` | `Whizbang__Offloads__AzureBlob__<name>__ConnectionString` | Azure Storage connection string (emulator or live) |
 | `ContainerName` | `string` | `whizbang-offload-bodies` | `Whizbang__Offloads__AzureBlob__<name>__ContainerName` | Container holding offloaded bodies; lazily created on first upload |
 | `DefaultAccessTier` | `AccessTier?` | `null` (account default) | `Whizbang__Offloads__AzureBlob__<name>__DefaultAccessTier` | Blob access tier for uploads (Hot/Cool/Cold/Archive) |
 | `MaxDownloadBytes` | `long?` | `null` (no cap) | `Whizbang__Offloads__AzureBlob__<name>__MaxDownloadBytes` | Defensive cap on download size; refuses claims reporting a larger body. The read itself always stops at the size the claim declares |
@@ -657,7 +657,7 @@ builder.Services.AddWhizbangAzureBlobArchive(builder.Configuration);
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
 | `ServiceUri` | `Uri?` | `null` | `Whizbang__Archive__AzureBlob__ServiceUri` | Blob service endpoint; authenticates with the registered `TokenCredential`. Set this or `ConnectionString` |
-| `ConnectionString` | `string?` | `null` | `Whizbang__Archive__AzureBlob__ConnectionString` | Storage connection string (Azurite, or an account key from the host's secret store) |
+| `ConnectionString` | [`SensitiveString?`](sensitive-settings.md) | `null` | `Whizbang__Archive__AzureBlob__ConnectionString` | Storage connection string (Azurite, or an account key from the host's secret store) |
 | `ContainerName` | `string` | `whizbang-archive` | `Whizbang__Archive__AzureBlob__ContainerName` | Container the archive objects are written to; created on the first write |
 | `ConnectionName` | `string` | `default` | `Whizbang__Archive__AzureBlob__ConnectionName` | Logical name of the storage connection, recorded in the [archive location](../../fundamentals/events/archive-store#archive-locations); refused if it looks like a connection string (contains `;` or `=`) |
 | `VerifyLocation` | `bool` | `true` | `Whizbang__Archive__AzureBlob__VerifyLocation` | Compare every archive record's location with the configured one before a read, restore, delete or write, and refuse a mismatch ([what turning it off gives up](../../fundamentals/events/archive-store#verify-location)) |
@@ -1787,7 +1787,7 @@ Dedicated long-lived PostgreSQL connections for background workers, bypassing a 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
 | `ConnectionStringName` | `string?` | `null` | `Whizbang__Workers__PinnedPool__ConnectionStringName` | `ConnectionStrings:*` key resolving to the direct (non-pooler) string; convention `{service}-db-direct` |
-| `ConnectionString` | `string?` | `null` | `Whizbang__Workers__PinnedPool__ConnectionString` | Inline direct string when `ConnectionStringName` is unset; empty = feature no-op |
+| `ConnectionString` | [`SensitiveString?`](sensitive-settings.md) | `null` | `Whizbang__Workers__PinnedPool__ConnectionString` | Inline direct string when `ConnectionStringName` is unset; empty = feature no-op |
 | `Enabled` | `bool` | `false` | `Whizbang__Workers__PinnedPool__Enabled` | Master switch |
 | `Size` | `int` | `1` | `Whizbang__Workers__PinnedPool__Size` | Pinned connections held open |
 | `IncludeFlushWorkers` | `bool` | `true` | `Whizbang__Workers__PinnedPool__IncludeFlushWorkers` | Tier-2 flush workers also borrow from the pool |
