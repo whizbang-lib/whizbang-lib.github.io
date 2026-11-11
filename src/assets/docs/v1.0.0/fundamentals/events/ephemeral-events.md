@@ -27,6 +27,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/EphemeralReleaseList.cs
   - src/Whizbang.Core/Configuration/EphemeralBlockerReportOptions.cs
   - src/Whizbang.Core/Observability/EphemeralBlockerMetrics.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveRunnerRegistry.cs
+  - src/Whizbang.Generators/PerspectiveRunnerRegistryGenerator.cs
   - src/Whizbang.Core/SystemEvents/AuditEligibility.cs
   - src/Whizbang.Core/Attributes/EphemeralAttribute.cs
   - src/Whizbang.Core/Attributes/Destruction.cs
@@ -77,6 +79,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralBlockerReportSqlTests.cs
   - tests/Whizbang.Core.Tests/Configuration/EphemeralBlockerOptionsTests.cs
   - tests/Whizbang.Core.Tests/Observability/EphemeralBlockerMetricsTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveRegistryMixedOptInTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEphemeralHistoryReclassifyTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/AuditEphemeralExclusionTests.cs
   - tests/Whizbang.Core.Tests/Attributes/EphemeralAttributeTests.cs
@@ -658,6 +661,33 @@ had already completed applies it.
 | A changed release list walks the type again. | A completed walk reads nothing more, so a release added after it would otherwise never apply. | {verified: EphemeralBlockerReportSqlTests.ChangingTheReleaseList_WalksTheTypeAgain_AndReleasesWhatTheCompletedWalkLeftAsync} |
 | The release list reaches the database as a bound parameter. | A type name is data; it is compared, never executed. | {verified: EphemeralBlockerReportSqlTests.Release_ANameIsBoundAsData_NeverSqlTextAsync} |
 | A pair that leaves the report reads zero on the gauge. | A stale count would say the pair still holds history back. | {verified: EphemeralBlockerMetricsTests.BlockedEvents_APairThatLeftTheReport_ReadsZero_NotItsLastCountAsync} |
+
+#### Read models opted into mixing {#read-models-opted-into-mixing}
+
+A read model that carries `[DangerouslyAllowMixedEphemeralAndSourcedEvents]` applies both kinds on purpose. The
+attribute only silences [WHIZ130](#whiz130) at build time; it changes nothing at runtime. The blocker report covers
+each such read model too, once per process with the startup summary: for each of its durable inputs, how many of its
+events are still stored, in how many streams, and how many of those streams also hold one of its ephemeral inputs
+(history only: the store refuses new mixing).
+
+- **No durable events left:** the report says the read model is ready to drop the attribute. Remove it and the
+  durable `Apply` methods, and the read model becomes purely ephemeral (its rebuild is then refused, as for any
+  ephemeral read model).
+- **Durable events remain:** the report names each durable input with its counts. When an input shares streams with
+  an ephemeral type, it is also a blocker above, and the entry says so and points at
+  [releasing it](#releasing-a-blocking-type) if those streams are disposable.
+
+The generated perspective registry carries the opt-in (`PerspectiveRegistrationInfo.AllowsMixedEphemeralAndSourced`),
+so the report needs no reflection.
+
+{verified: EphemeralBlockerReportSqlTests.MixedReadModel_WithNoDurableInputLeft_IsReportedReadyToDropTheAttributeAsync, EphemeralBlockerReportSqlTests.MixedReadModel_WithDurableInputsLeft_ReportsTheirCounts_InTheirOwnStreamsAsync, EphemeralBlockerReportSqlTests.MixedReadModel_ADurableInputSharingStreams_IsLinkedToItsBlockerEntryAsync, PerspectiveRegistryMixedOptInTests.Registry_MarksAPerspectiveThatAllowsMixing_AndOnlyThatOneAsync}
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The generated registry records which read models carry the opt-in. | The attribute is compile-time only; without the registry the runtime could not know which read models to report, and reading it by reflection would break AOT. | {verified: PerspectiveRegistryMixedOptInTests.Registry_MarksAPerspectiveThatAllowsMixing_AndOnlyThatOneAsync} |
+| A read model whose durable inputs have no stored event left is reported ready to drop the attribute. | That is the moment the opt-in stops buying anything, and nothing else tells the operator. | {verified: EphemeralBlockerReportSqlTests.MixedReadModel_WithNoDurableInputLeft_IsReportedReadyToDropTheAttributeAsync} |
+| Remaining durable inputs are counted, and linked to their blocker entry when they share streams. | The counts say how far the read model is from purely ephemeral; the link shows which release would close the gap. | {verified: EphemeralBlockerReportSqlTests.MixedReadModel_WithDurableInputsLeft_ReportsTheirCounts_InTheirOwnStreamsAsync, EphemeralBlockerReportSqlTests.MixedReadModel_ADurableInputSharingStreams_IsLinkedToItsBlockerEntryAsync} |
+| It is counted once per process, not per cycle. | It reads each durable input's stored events; once at startup keeps that cost out of every maintenance cycle. | {verified: EphemeralBlockerReportSqlTests.MixedReadModel_WithNoDurableInputLeft_IsReportedReadyToDropTheAttributeAsync} |
 
 ## Destruction hooks {#destruction-hooks}
 
