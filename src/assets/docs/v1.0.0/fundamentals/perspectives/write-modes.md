@@ -16,6 +16,10 @@ codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Workers/BatchedCompletionStrategy.cs
   - src/Whizbang.Core/Workers/PerspectiveCompletionFlushWorker.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveRunner.cs
+  - src/Whizbang.Core/Perspectives/PreparedPerspectiveApply.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveApplyLockSet.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveWriteSink.cs
 ---
 
 # Perspective Write Modes
@@ -77,9 +81,9 @@ graph TB
     PerStream["Per-stream path<br/>(that pair only)"]
 
     Claim --> Locks --> Source --> Fold --> Flush --> Sink --> Complete --> After
-    Fold -->|"rewind anchor, bootstrap,<br/>purge marker"| PerStream
+    Fold -->|"rewind anchor, evicted or purged row,<br/>store cannot prepare"| PerStream
     Sink -->|"refused by ordering guard"| Rewind
-    Sink -->|"row version conflict,<br/>isolated failing row"| PerStream
+    Sink -->|"row version conflict,<br/>rejected row"| PerStream
 
     class Claim,Locks,Fold layer-core
     class Source,Sink,Flush layer-event
@@ -103,16 +107,43 @@ another's model, which is why this step is not a seam.
 
 ### Prepare and commit {#prepare-and-commit}
 
-The generated runner gains two entry points next to today's single-pair entry point:
+Every generated runner implements two members of `IPerspectiveRunner` next to `RunWithEventsAsync`, which stays as
+the per-stream path:
 
-- **Prepare** loads state from the batch's state source, runs the idempotency filter and folds. It returns a pending
-  write (stream, perspective, table, model, physical field values, scope, metadata, expected row version, ordering
-  guard values, and an operation of insert, update, upsert or purge), or a decision that this pair needs the
-  per-stream path: a rewind anchor, a bootstrap, a purge marker, or a conflict.
-- **Complete** takes the write's outcome and does what happens after a save today: the snapshot, the detached
-  lifecycle stage and the completion handed back to the worker.
+- **`PrepareAsync(streamId, perspectiveName, lastProcessedEventId, events)`** reads the row, runs the idempotency
+  filter and folds, exactly as `RunWithEventsAsync` does, then stops before the write. It returns a
+  `PreparedPerspectiveApply` that is one of three things:
+  - a pending write (`Write`, a `PendingPerspectiveWrite`) for the batch's write sink: an insert, an update on the row
+    version the apply read, an upsert under the ordering guard, or a purge;
+  - nothing to write (a batch the row already holds); or
+  - a hand-back to the per-stream path, with a `PerPairReason`.
+- **`CompleteAsync(prepared, outcome)`** takes the write's outcome (`PerspectiveWriteOutcome`) and does what follows a
+  save today: the snapshot, the detached lifecycle stage and the completion handed back to the worker. It returns the
+  same `PerspectiveCursorCompletion` the per-stream path returns. Every prepared pair is completed, including one
+  handed back, which `CompleteAsync` runs through the per-stream path.
 
-Between the two, the worker writes the whole batch.
+Between the two, the worker writes the whole batch. The store prepares each row with
+`IPerspectiveStore.PrepareWrite` (or `PreparePurge`), which the per-stream upsert also writes from, so both paths store
+the same document, metadata, scope and physical columns. A store that returns null there sends the pair to the
+per-stream path.
+
+The per-stream path and the split are built from the same pieces: one row read, one fold, one decision of what to
+write, and one finish after the write. Only the write between them differs, so the two cannot drift.
+
+| Hand-back (`PerPairReason`) | When | What the per-stream path does |
+|---|---|---|
+| `RewindBelowPosition` | an event sits below the row's recorded position | rewinds the stream ([#1347](https://github.com/whizbang-lib/whizbang/issues/1347)) |
+| `MissingRowWithHistory` | an evictable or archived row is missing and its stream has earlier events | rebuilds the row from the stream |
+| `PurgedStream` | the row is missing because the stream was purged | keeps it purged unless an apply resurrects it |
+| `WriteNotPreparable` | the store cannot prepare the write (another provider, a model or column it cannot write set-based) | writes it with the per-stream upsert |
+| `RunnerDoesNotPrepare` | a hand-written runner that keeps the default | runs `RunWithEventsAsync` |
+
+| Write outcome | What `CompleteAsync` does |
+|---|---|
+| `Written` | finishes the pair: snapshot, detached stage, completion |
+| `Refused` | the ordering guard turned the write away: rewinds the stream, as a refused per-stream write does ([#1608](https://github.com/whizbang-lib/whizbang/issues/1608)) |
+| `Conflict` | the row moved after it was read: reruns the pair through the per-stream path, with its retries |
+| `Failed` | the database rejected the row: reruns the pair through the per-stream path, where it fails exactly as it would have, or is written by the store's fallback |
 
 **Why this over a group-commit sink.** The alternative kept the runners unchanged and had the store collect saves
 from the parallel runners behind a counting barrier, then write them together. That only batches the writes, it needs
@@ -157,17 +188,23 @@ the same signal a single-row write gives today, and it goes to the same place:
 
 - **An exception in `Apply`** drops that stream from the batch during prepare. It never reaches the write.
 - **A statement that fails** (a constraint, a bad row) is split in halves and retried until the failing pair is
-  found. That pair alone takes the per-stream path, where it fails exactly as it would today; every other pair is
-  written.
+  found. That pair alone is reported `Failed` and takes the per-stream path, where it fails exactly as it would today;
+  every other pair is written.
 
 One bad stream never fails the batch around it.
 
 ### Locks taken as a set {#locks}
 
-The per-(stream, perspective) apply coordinator and the affinity gate are taken for every pair in the batch before
-prepare and released after complete. They are taken in a fixed order, by stream id and then perspective, so two
-batches that share streams cannot deadlock. The lock semantics themselves are unchanged (see
-[Perspective Stream Locking](stream-locking)).
+The per-(stream, perspective) apply lock is held for every pair in the batch from before prepare until after complete,
+so it spans the batch write. `PrepareAsync` and `CompleteAsync` therefore take no lock themselves; the worker takes the
+batch's locks with `PerspectiveApplyLockSet.AcquireAsync(coordinator, pairs)` and disposes the result after the last
+completion. The locks are taken in one fixed order, `PerspectiveApplyLockSet.Order` (stream id, then perspective name
+compared ordinally), each pair once, and released in reverse. Two batches that share streams then wait on the first
+pair they share and never each hold a lock the other needs, so they cannot deadlock. The worker's affinity gate is
+taken in the same order. The lock semantics themselves are unchanged (see [Perspective Stream Locking](stream-locking)).
+
+When a completion reruns a pair (a hand-back, a conflict, a rejected row), it runs the per-stream path's lock-free core
+under the lock the worker already holds: the coordinator's lock is not reentrant, and taking it again would deadlock.
 
 ### Lifecycle and sync after commit {#lifecycle-after-commit}
 
@@ -186,7 +223,7 @@ cost.
 
 The per-stream mode is today's path: each (stream, perspective) pair is loaded, folded, written and completed on its
 own. It stays as a selectable mode for comparison, and it is also the path the set-based mode hands a pair to when that
-pair needs it (rewind, bootstrap, purge marker, conflict, an isolated failing row). Because both modes share the fold
+pair needs it (a rewind, an evicted or purged row, a write the store cannot prepare, a conflict, a rejected row). Because both modes share the fold
 and the completion, the per-stream mode is not a second implementation that can drift.
 
 ## Selecting a mode {#selection}
