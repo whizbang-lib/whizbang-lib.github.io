@@ -1218,20 +1218,20 @@ Shared batching shape (drain signals). **Configure:** bound as the owning worker
 | `SlidingWindow` | `TimeSpan` | `00:00:00.050` | `Whizbang__Workers__<Worker>__Batcher__SlidingWindow` | Quiet period after the last arrival |
 | `MaxWait` | `TimeSpan` | `00:00:01` | `Whizbang__Workers__<Worker>__Batcher__MaxWait` | Hard cap on wait from the first arrival |
 
-### SlidingWindowInboxOptions / SlidingWindowOutboxOptions / SlidingWindowApplyOptions {#sliding-window-options}
+### SlidingWindowInboxOptions / SlidingWindowOutboxOptions {#sliding-window-options}
 
-Per-stream debounce strategies for the inbox, outbox, and perspective-apply boundaries. **Configure:** the inbox and outbox shapes bind automatically from `Whizbang:Workers:InboxBatch` and `Whizbang:Workers:OutboxBatch` with no registration call needed, and `services.Configure<T>(…)` still applies and runs first. The apply shape (`SlidingWindowApplyOptions`) has no configuration section and is code-configured. **Details:** [outbox batch strategy](../../extending/internals/outbox-batch-strategy.md), [inbox batch strategy](../../extending/internals/inbox-batch-strategy.md).
+Per-stream debounce strategies for the inbox and outbox boundaries. **Configure:** both bind automatically from `Whizbang:Workers:InboxBatch` and `Whizbang:Workers:OutboxBatch` with no registration call needed, and `services.Configure<T>(…)` still applies and runs first. (The perspective drain's coalescing window is `PerspectiveWorkerOptions.DrainBatcher`.) **Details:** [outbox batch strategy](../../extending/internals/outbox-batch-strategy.md), [inbox batch strategy](../../extending/internals/inbox-batch-strategy.md).
 
-| Property | Type | Inbox default | Outbox default | Apply default | Environment variable (inbox / outbox) | Purpose |
-|----------|------|---------------|----------------|---------------|----------------------------------------|---------|
-| `SlidingWindow` | `TimeSpan` | 300ms | 50ms | 300ms | `Whizbang__Workers__InboxBatch__SlidingWindow` / `Whizbang__Workers__OutboxBatch__SlidingWindow` | Per-stream debounce after the last signal |
-| `MaxWait` | `TimeSpan` | 3s | 1s | 3s | `Whizbang__Workers__InboxBatch__MaxWait` / `Whizbang__Workers__OutboxBatch__MaxWait` | Hard cap from the first signal in a batch |
-| `MaxSize` | `int` | 1000 | 100 | 1000 | `Whizbang__Workers__InboxBatch__MaxSize` / `Whizbang__Workers__OutboxBatch__MaxSize` | Max signals per stream batch |
-| `IdleEvictionWindow` | `TimeSpan` | 30s | 30s | 30s | `Whizbang__Workers__InboxBatch__IdleEvictionWindow` / `Whizbang__Workers__OutboxBatch__IdleEvictionWindow` | Evict a stream's buffer after this idle duration |
-| `IdleSweepInterval` | `TimeSpan` | 10s | 10s | 10s | `Whizbang__Workers__InboxBatch__IdleSweepInterval` / `Whizbang__Workers__OutboxBatch__IdleSweepInterval` | How often the idle sweep runs |
-| `MaxFlushAttempts` | `int` | 5 | 5 | n/a | `Whizbang__Workers__InboxBatch__MaxFlushAttempts` / `Whizbang__Workers__OutboxBatch__MaxFlushAttempts` | Attempts to store a stream's batch, the first included, before it is dead-lettered; only a transient database failure is retried. At least 1 |
-| `FlushRetryBackoff` | `TimeSpan` | 100ms | 100ms | n/a | `Whizbang__Workers__InboxBatch__FlushRetryBackoff` / `Whizbang__Workers__OutboxBatch__FlushRetryBackoff` | Wait before the first retry of a batch store; doubles per retry |
-| `FlushRetryMaxBackoff` | `TimeSpan` | 5s | 5s | n/a | `Whizbang__Workers__InboxBatch__FlushRetryMaxBackoff` / `Whizbang__Workers__OutboxBatch__FlushRetryMaxBackoff` | Longest wait between two attempts to store a batch |
+| Property | Type | Inbox default | Outbox default | Environment variable (inbox / outbox) | Purpose |
+|----------|------|---------------|----------------|----------------------------------------|---------|
+| `SlidingWindow` | `TimeSpan` | 300ms | 50ms | `Whizbang__Workers__InboxBatch__SlidingWindow` / `Whizbang__Workers__OutboxBatch__SlidingWindow` | Per-stream debounce after the last signal |
+| `MaxWait` | `TimeSpan` | 3s | 1s | `Whizbang__Workers__InboxBatch__MaxWait` / `Whizbang__Workers__OutboxBatch__MaxWait` | Hard cap from the first signal in a batch |
+| `MaxSize` | `int` | 1000 | 100 | `Whizbang__Workers__InboxBatch__MaxSize` / `Whizbang__Workers__OutboxBatch__MaxSize` | Max signals per stream batch |
+| `IdleEvictionWindow` | `TimeSpan` | 30s | 30s | `Whizbang__Workers__InboxBatch__IdleEvictionWindow` / `Whizbang__Workers__OutboxBatch__IdleEvictionWindow` | Evict a stream's buffer after this idle duration |
+| `IdleSweepInterval` | `TimeSpan` | 10s | 10s | `Whizbang__Workers__InboxBatch__IdleSweepInterval` / `Whizbang__Workers__OutboxBatch__IdleSweepInterval` | How often the idle sweep runs |
+| `MaxFlushAttempts` | `int` | 5 | 5 | `Whizbang__Workers__InboxBatch__MaxFlushAttempts` / `Whizbang__Workers__OutboxBatch__MaxFlushAttempts` | Attempts to store a stream's batch, the first included, before it is dead-lettered; only a transient database failure is retried. At least 1 |
+| `FlushRetryBackoff` | `TimeSpan` | 100ms | 100ms | `Whizbang__Workers__InboxBatch__FlushRetryBackoff` / `Whizbang__Workers__OutboxBatch__FlushRetryBackoff` | Wait before the first retry of a batch store; doubles per retry |
+| `FlushRetryMaxBackoff` | `TimeSpan` | 5s | 5s | `Whizbang__Workers__InboxBatch__FlushRetryMaxBackoff` / `Whizbang__Workers__OutboxBatch__FlushRetryMaxBackoff` | Longest wait between two attempts to store a batch |
 
 :::new
 `MaxFlushAttempts`, `FlushRetryBackoff` and `FlushRetryMaxBackoff` govern what the inbox and outbox batchers do
@@ -1318,6 +1318,7 @@ Re-delivery (repair) pump bounds. **Configure:** bound automatically from `Whizb
 | `IdleThresholdPolls` | `int` | `2` | `Whizbang__Workers__Perspective__IdleThresholdPolls` | Consecutive empty polls before `OnWorkProcessingIdle` |
 | `PerspectiveBatchSize` | `int` | `100` | `Whizbang__Workers__Perspective__PerspectiveBatchSize` | Events processed per batch before saving model + checkpoint |
 | `MaxConcurrentPerspectives` | `int` | `30` | `Whizbang__Workers__Perspective__MaxConcurrentPerspectives` | Max perspective groups processed concurrently per batch; the effective per-consumer width is clamped against the coordinator gate (note below) |
+| `WriteMode` | `PerspectiveWriteMode` | `SetBased` | `Whizbang__Workers__Perspective__WriteMode` | How perspective rows are written: set-based across the batch's streams, or per stream; a perspective overrides it with `[PerspectiveWriteMode]`. See [Perspective Write Modes](../../fundamentals/perspectives/write-modes.md#selection) |
 | `MaxConcurrentDrainConsumers` | `int` | `4` | `Whizbang__Workers__Perspective__MaxConcurrentDrainConsumers` | Parallel consumer loops on the channel reader; consumers × per-consumer width may use at most half of `WorkCoordinatorGateOptions.MaxConcurrent` (note below) |
 | `MaxStreamsPerBatch` | `int` | `300` | `Whizbang__Workers__Perspective__MaxStreamsPerBatch` | Max streams returned per batch from the SQL function |
 | `DrainLoopMaxIterations` | `int` | `5` | `Whizbang__Workers__Perspective__DrainLoopMaxIterations` | Cap on per-stream drain-loop refetch iterations; 1 disables |

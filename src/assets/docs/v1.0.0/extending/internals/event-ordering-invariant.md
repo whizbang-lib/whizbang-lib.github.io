@@ -20,8 +20,6 @@ codeReferences:
   - src/Whizbang.Core/Workers/SlidingWindowInboxOptions.cs
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
-  - src/Whizbang.Core/Workers/SlidingWindowApplyBatchStrategy.cs
-  - src/Whizbang.Core/Messaging/IApplyBatchStrategy.cs
   - src/Whizbang.Core/Perspectives/PerspectiveSnapshotOptions.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
   - src/Whizbang.Data.EFCore.Postgres/BaseUpsertStrategy.cs
@@ -34,7 +32,6 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowOutboxBatchStrategyTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowInboxBatchStrategyTests.cs
-  - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowApplyBatchStrategyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/GetStreamEventsClaimSlice25Tests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BaseUpsertStrategyInPlaceUpdateTests.cs
 ---
@@ -184,13 +181,11 @@ Options: `PerspectiveSnapshotOptions.RewindSnapshotIntervalEvents` (set to 0 to 
 
 Independent of ordering, the perspective drain path also benefits from coalescing same-stream signals before applying. The pre-slice-22c default sliding window for drain stream-ids was 50 ms / 1 s — too short for a production hot-spot where a single stream (`Order` saga aggregate) receives many events in rapid succession. Each tick triggered a separate apply cycle (read snapshot → apply 1 event → atomic UPSERT) even though all events were already pending.
 
-Slice 22c.1 introduces `IApplyBatchStrategy` + per-stream `SlidingWindowApplyBatchStrategy` as a pluggable strategy interface for the apply boundary. Slice 22c.2 retunes the existing in-loop `_accumulateDrainSignalsWithinWindowAsync` accumulator default to 300 ms / 3 s / 1000 — the same window used by the inbox per-stream batcher in slice 23.
+Slice 22c retunes the in-loop `_accumulateDrainSignalsWithinWindowAsync` accumulator (`PerspectiveWorkerOptions.DrainBatcher`) to 300 ms / 3 s / 1000, the same window used by the inbox per-stream batcher in slice 23. That accumulator is the live coalescer of the apply boundary.
 
 Result: many events for one stream collapse into one drain cycle; the worker reads the snapshot once, applies all of them in one Apply pass, writes one atomic UPSERT. CPU on hot streams drops; PG round-trips drop accordingly.
 
-Code: [`src/Whizbang.Core/Messaging/IApplyBatchStrategy.cs`](https://github.com/whizbang-lib/whizbang/blob/main/src/Whizbang.Core/Messaging/IApplyBatchStrategy.cs) — pluggable interface.
-
-Tests: `SlidingWindowApplyBatchStrategyTests` covers per-stream coalesce + independent flush + drain semantics.
+A pluggable per-stream `SlidingWindowApplyBatchStrategy` was added alongside it but never wired, and it was removed (#2246). The name `IApplyBatchStrategy` now belongs to the flush policy of [set-based perspective writes](../../fundamentals/perspectives/write-modes.md#flush-policy), which decides when a batch's prepared rows are written.
 
 ## See also
 

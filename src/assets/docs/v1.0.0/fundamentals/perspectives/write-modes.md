@@ -20,6 +20,13 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/PreparedPerspectiveApply.cs
   - src/Whizbang.Core/Perspectives/PerspectiveApplyLockSet.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveWriteSink.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveStateSource.cs
+  - src/Whizbang.Core/Perspectives/BatchedPerspectiveStateSource.cs
+  - src/Whizbang.Core/Perspectives/IApplyBatchStrategy.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveWriteMode.cs
+  - src/Whizbang.Core/Workers/PerspectiveApplyBatch.cs
+  - src/Whizbang.Core/Workers/PerspectiveWorker.ClaimedGroups.cs
+  - src/Whizbang.Core/Workers/PerspectiveWorker.DrainGroups.cs
 ---
 
 # Perspective Write Modes
@@ -32,7 +39,7 @@ table instead of one save per stream. Today's path, one save per (stream, perspe
 :::planned
 This page is the design for [#2246](https://github.com/whizbang-lib/whizbang/issues/2246) and is **not shipped yet**.
 Today every perspective is written one (stream, perspective) pair at a time, which is the per-stream mode described
-below. The type, option and attribute names on this page are illustrative and may change before release. Write-behind
+below. The names on this page are those the implementation uses; they are not in a released package yet. Write-behind
 ([#2247](https://github.com/whizbang-lib/whizbang/issues/2247)) and staging-table rebuilds
 ([#2248](https://github.com/whizbang-lib/whizbang/issues/2248)) are later, separate items.
 :::
@@ -62,10 +69,10 @@ write mode plugs in without a second runner.
 | Step | Fixed or seam | What it decides |
 |---|---|---|
 | 1. Form the batch | fixed | whatever is claimed and ready; group commit, no timer wait |
-| 2. State source | seam | where each stream's current model comes from |
+| 2. State source (`IPerspectiveStateSource`) | seam | where each stream's current model comes from |
 | 3. Fold per stream | fixed | each stream's events applied in order, in memory |
-| 4. Flush policy | seam | when the folded results become durable |
-| 5. Write sink | seam | how they are written |
+| 4. Flush policy (`IApplyBatchStrategy`) | seam | when the folded results become durable |
+| 5. Write sink (`IPerspectiveWriteSink`) | seam | how they are written |
 
 ```mermaid{caption="The set-based batch pipeline: one batched read, a parallel in-memory fold per stream, then one statement per table and operation. Refused and conflicted rows leave the batch for the existing rewind and per-stream paths; lifecycle and sync run after the commit."}
 graph TB
@@ -98,6 +105,32 @@ fill: under light load a batch is one stream and is written at once, and under l
 the previous one is being written. This is group commit, and it is why the set-based mode adds no latency to a quiet
 service.
 
+Both of the worker's sources take this path: claimed work, whose pairs' events the runner reads with
+`ReadEventsAsync` (the read `RunAsync` makes before it applies), and the drain, whose pairs come with their events
+already fetched. On the drain, the first lap of every stream in the batch is applied together; a stream's later laps
+(events that arrived while it drained) run per pair.
+
+### The batch {#the-batch}
+
+For the pairs of a batch whose perspective writes set-based, the worker:
+
+1. takes every pair's affinity gate, in `PerspectiveApplyLockSet.Order`;
+2. begins each pair in parallel, as the per-pair path begins it: resolves the runner and cursor, fires the
+   pre-perspective stages, and runs a rewind or a bootstrap snapshot the pair needs on the per-pair path, there and then;
+3. takes the apply lock of every remaining pair as a set, plans the batch's reads with the state source, and prepares
+   every pair at the worker's width;
+4. groups the prepared writes by the DbContext they belong to (`PendingPerspectiveWrite.SinkKey`), resolves that
+   context's write sink from a scope of its own, and hands each group to the flush policy;
+5. completes every pair with its own outcome, releases the apply locks, and then finishes each pair exactly as the
+   per-pair path finishes it: the completion report, the sync tracker and the post-perspective stages.
+
+A pair's failure stays with the pair: an exception from its prepare or completion is failed as a thrown apply is on
+the per-pair path, and a write whose sink is missing or failed as a whole is completed as `Failed`, which reruns it on
+the per-pair path. A service with several DbContexts writes each perspective through its own: the driver registers one
+sink per context, keyed by the context's type.
+
+The per-pair path is built from the same begin, finish and failure steps, so the two cannot drift.
+
 ### Step 3: the fold is fixed {#fold}
 
 Each stream's events are applied in order, and `Apply` stays a pure function (see
@@ -110,7 +143,8 @@ another's model, which is why this step is not a seam.
 Every generated runner implements two members of `IPerspectiveRunner` next to `RunWithEventsAsync`, which stays as
 the per-stream path:
 
-- **`PrepareAsync(streamId, perspectiveName, lastProcessedEventId, events)`** reads the row, runs the idempotency
+- **`PrepareAsync(streamId, perspectiveName, lastProcessedEventId, events, batchState)`** reads the row (from the
+  batch's state source where it can answer), runs the idempotency
   filter and folds, exactly as `RunWithEventsAsync` does, then stops before the write. It returns a
   `PreparedPerspectiveApply` that is one of three things:
   - a pending write (`Write`, a `PendingPerspectiveWrite`) for the batch's write sink: an insert, an update on the row
@@ -154,12 +188,22 @@ prepare and commit split is deterministic, has no barrier, and lets the reads be
 
 ### Batched load {#batched-load}
 
-The state source reads every stream in the batch with one query per perspective table
-(`SELECT ... WHERE id = ANY(@ids)`, returning the model, its metadata and its row version). Purge markers and eviction
-probes are answered with one query each, not one per stream.
+<a id="state-source"></a>The state source (`IPerspectiveStateSource`, default `BatchedPerspectiveStateSource`,
+registered by the PostgreSQL driver) plans a batch's reads with `BeginBatch`, and every prepare of the batch reads from
+the plan (`IPerspectiveBatchState`):
 
-A stream whose cursor is absent and whose first claimed event is the first event in its stream is **known new**: there
-is no row to read, so it is not read. A fan-out of new streams therefore issues no preload at all.
+- A stream whose cursor is absent and whose first claimed event is the first event in its stream
+  (`IsFirstInLocalStream`) is **known new**: it can have no row, no purge marker and no earlier history, so none of
+  them is read. A fan-out of new streams issues no preload at all.
+- Every other stream of a perspective is read once for the batch, by the first prepare that asks, through the store's
+  `ReadForApplyManyAsync`: one `id = ANY` read of the versions, metadata and scopes, then one read of the models. Two
+  statements per table whatever the batch's size, and the models are materialized exactly as the per-stream read
+  materializes them (a Split model hydrated from its promoted columns included), so the two paths fold the same model.
+- The purge-marker probe and the history probe of the rows the read found missing are one query each.
+
+Whatever the plan cannot answer (a store that does not read in batches, a batched read that failed, which is logged) is
+read per stream, exactly as without a state source. Only a prepare consults it: a pair rerun on the per-stream path
+reads its row afresh.
 
 ### Statements grouped by table and operation {#grouped-statements}
 
@@ -167,9 +211,17 @@ The write sink groups the pending writes by table and by operation and writes ea
 
 | Operation | Statement |
 |---|---|
-| insert | `INSERT ... SELECT FROM jsonb_to_recordset(@rows) ON CONFLICT DO NOTHING RETURNING id` |
-| update | `UPDATE ... FROM jsonb_to_recordset(@rows) r WHERE id = r.id AND xmin = r.xmin AND <ordering guard> RETURNING id` |
+| insert | `INSERT ... VALUES (...), (...) ON CONFLICT DO NOTHING RETURNING id` |
+| update | `UPDATE ... FROM (VALUES (...), (...)) r WHERE id = r.id AND xmin = r.xmin AND <ordering guard> RETURNING id` |
+| upsert | `INSERT ... VALUES (...), (...) ON CONFLICT DO UPDATE ... WHERE <ordering guard> RETURNING id` |
 | purge | `DELETE ... WHERE id = ANY(@ids)` |
+
+### Flush policy {#flush-policy}
+
+The flush policy (`IApplyBatchStrategy`) decides when a batch's prepared writes reach the sink. The default,
+`FlushEveryBatchStrategy`, writes them at once, so a batch's rows are durable before its pairs complete. It is
+registered with the worker; a policy returns one outcome per write, as the sink does, and a write-behind policy
+([#2247](https://github.com/whizbang-lib/whizbang/issues/2247)) is a later mode on this seam.
 
 The ordering guard is evaluated **per row**, inside the statement, exactly as it is for a single-row write today.
 Physical fields are written in the same statement as the document, so split and extracted storage stay consistent
@@ -200,8 +252,9 @@ so it spans the batch write. `PrepareAsync` and `CompleteAsync` therefore take n
 batch's locks with `PerspectiveApplyLockSet.AcquireAsync(coordinator, pairs)` and disposes the result after the last
 completion. The locks are taken in one fixed order, `PerspectiveApplyLockSet.Order` (stream id, then perspective name
 compared ordinally), each pair once, and released in reverse. Two batches that share streams then wait on the first
-pair they share and never each hold a lock the other needs, so they cannot deadlock. The worker's affinity gate is
-taken in the same order. The lock semantics themselves are unchanged (see [Perspective Stream Locking](stream-locking)).
+pair they share and never each hold a lock the other needs, so they cannot deadlock. The worker's affinity gates are
+taken first, in the same order, for every pair of the batch, so a batch never holds one gate while it waits on
+another a second batch holds. The lock semantics themselves are unchanged (see [Perspective Stream Locking](stream-locking)).
 
 When a completion reruns a pair (a hand-back, a conflict, a rejected row), it runs the per-stream path's lock-free core
 under the lock the worker already holds: the coordinator's lock is not reentrant, and taking it again would deadlock.
@@ -210,7 +263,9 @@ under the lock the worker already holds: the coordinator's lock is not reentrant
 
 `PostPerspective*` stages and the [perspective sync](perspective-sync) tracker fire after the commit that made the
 model durable, exactly as they do after a single-row save today. A waiter never sees a stage for a write that rolled
-back. [Snapshots](snapshots) are taken in complete, from the model that was written.
+back. [Snapshots](snapshots) are taken in complete, from the model that was written. The events counted toward a
+stream's next snapshot are counted per stream: one runner prepares many pairs of a batch, and a count kept on the
+runner would add one stream's events to another's.
 
 ### Checkpoints and completion stay batched {#checkpoints}
 
@@ -218,6 +273,17 @@ Checkpoints and work-row completion are already batched: they are buffered and w
 after the row write. The set-based mode keeps that path as it is and does not move them into the row-write
 transaction. The runner already treats them as a later step, and moving them is not needed to remove the per-stream
 cost.
+
+### What still runs per stream {#still-per-stream}
+
+| Case | Why |
+|---|---|
+| A rewind (a cursor that asks for one, an inversion on the drain, an event below the row's position) | it replays the stream from a snapshot or from its start, which is a per-stream read by nature |
+| A bootstrap snapshot | it snapshots one stream's existing row |
+| A rebuild | rebuilds stay per pair until staging-table rebuilds ([#2248](https://github.com/whizbang-lib/whizbang/issues/2248)) |
+| The collective sink | a collective event has no single row; it is dispatched as before |
+| A drain's later laps | events that arrive while a stream drains are applied per pair, lap by lap |
+| The commit sequence of a pair's last event | read per pair from the event store; batching it is a follow-up |
 
 ## Per-stream mode {#per-stream}
 
@@ -229,10 +295,14 @@ and the completion, the per-stream mode is not a second implementation that can 
 ## Selecting a mode {#selection}
 
 Set-based is the default. A service that registers nothing gets it, and every seam's default implementation is
-registered by the framework when perspectives are registered (with `TryAdd`, so a deliberate override still wins).
+registered by the framework (with `TryAdd`, so a deliberate override still wins): the flush policy where the worker is
+registered, the state source and the write sinks by the PostgreSQL driver, which knows the DbContexts.
 
-A service-wide default is set in options, and a single perspective can override it with an attribute. Only named modes
-can be selected, never a free combination of the three seams, so an invalid combination cannot be built.
+A service-wide default is `PerspectiveWorkerOptions.WriteMode`, and a single perspective overrides it with
+`[PerspectiveWriteMode]`, which the generator reads: every generated runner registers its perspective's declared mode
+(`PerspectiveWriteModes`), so the worker chooses each pair's path without resolving the runner. A perspective with no
+generated runner prepares nothing and is always written per stream. Only named modes can be selected, never a free
+combination of the three seams, so an invalid combination cannot be built.
 
 ```csharp{
 title: "Select the per-stream write mode for a service and set-based for one perspective"
@@ -241,10 +311,10 @@ framework: "NET10"
 category: "Perspectives"
 difficulty: "INTERMEDIATE"
 tags: ["perspectives", "write-modes", "configuration"]
-unverified: "planned API for #2246; names are illustrative and not shipped"
+unverified: "API for #2246; not yet released"
 }
-services.AddWhizbang(options => {
-  options.Perspectives.WriteMode = PerspectiveWriteMode.PerStream;
+services.Configure<PerspectiveWorkerOptions>(options => {
+  options.WriteMode = PerspectiveWriteMode.PerStream;
 });
 
 [PerspectiveWriteMode(PerspectiveWriteMode.SetBased)]
