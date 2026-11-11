@@ -2,7 +2,7 @@
 title: .NET Aspire Integration
 pageType: concept
 verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedDate: 2026-11-11
 version: 1.0.0
 category: Infrastructure
 order: 1
@@ -111,6 +111,20 @@ dotnet sln add InventoryService NotificationService
 cd MyDistributedApp.AppHost
 dotnet add package SoftwareExtravaganza.Whizbang.Hosting.Azure.ServiceBus
 ```
+
+**Aspire version**: the Whizbang hosting packages depend on Aspire **13.6.5 or later**. Earlier Aspire
+hosting releases carry [CVE-2026-120006](https://github.com/advisories/GHSA-f7vh-h5g3-7jrh), a high-severity
+elevation of privilege. Keep the AppHost SDK and every `Aspire.Hosting.*` package on 13.6.5 or later too:
+
+```xml{title="AppHost SDK and Aspire hosting packages" description="Pin the AppHost SDK and Aspire hosting packages to the patched release." category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Aspire", "Security"] unverified="Project-file pinning; not exercised by tests"}
+<Project Sdk="Aspire.AppHost.Sdk/13.6.5">
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.6.5" />
+  </ItemGroup>
+</Project>
+```
+
+With NuGet Audit on (the .NET 10 default), restoring with an older Aspire reports NU1903.
 
 **Service Projects**:
 ```bash{title="Add Whizbang NuGet Packages (2)" description="Service Projects:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Add", "Whizbang"]}
