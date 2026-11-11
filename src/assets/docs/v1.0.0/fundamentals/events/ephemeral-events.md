@@ -19,6 +19,8 @@ tags: >-
 codeReferences:
   - src/Whizbang.Data.Postgres/EphemeralHistoryReclassifyStep.cs
   - src/Whizbang.Data.Postgres/TypeHistoryWalker.cs
+  - src/Whizbang.Core/TypeNameFormatter.cs
+  - src/Whizbang.Core/Fingerprint/TypeDefinitionReconciler.cs
   - src/Whizbang.Data.Postgres/Migrations/381_EphemeralHistoryReclassifiesInBatches.sql
   - src/Whizbang.Core/SystemEvents/AuditEligibility.cs
   - src/Whizbang.Core/Attributes/EphemeralAttribute.cs
@@ -65,6 +67,8 @@ codeReferences:
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralHistoryReclassifySqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/HistoryWalkTargetNamingTests.cs
+  - tests/Whizbang.Core.Tests/TypeNameFormatterTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEphemeralHistoryReclassifyTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/AuditEphemeralExclusionTests.cs
   - tests/Whizbang.Core.Tests/Attributes/EphemeralAttributeTests.cs
@@ -523,8 +527,17 @@ the size of the store, and a crash resumes from the last committed batch.
 | A stream that also holds a Sourced event of another type is left as it is, and its events are counted as blocked and logged. Each batch takes the per-stream locks the write paths take before judging a stream. | Reclassifying it would mix the stream (see WHIZ133 above). Under the locks, no event lands in the stream between the check and the stamp. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_AMixedStream_IsReportedAndLeftUntouched_AndTheDigestsEqualARecountAsync, EphemeralHistoryReclassifySqlTests.Reclassify_OnlyMixedStreams_ReportsThemBlocked_AndStillFinishesAsync} |
 | The reclassified events leave the integrity digests through the one digest fold, batch by batch. | The stored digests then equal a recount of the Sourced events at every commit, so an audit running alongside the walk sees no false difference. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_AMixedStream_IsReportedAndLeftUntouched_AndTheDigestsEqualARecountAsync, StreamDigestWritersTests.ReclassifyEphemeral_SubtractsEveryLaneOfTheReclassifiedEventsAsync} |
 | History stored under a former name is the same type: it is walked too, and a stream holding the type under two names is not mixed. | A rename does not change which events are the type's. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_FormerNames_AreWalked_AndAStreamHoldingBothIsNotMixedAsync} |
+| Each walk names the type by its stored form, `Ns.Type, Assembly`, the form the append path writes to `event_type`; a former name from the pinned-type ledger, which records it bare, is read in the type's current assembly. The bare CLR name is used only to find the type's definition. | The walk reads the type's events through the index on `event_type`. Named by the bare CLR name, as it was until #2254, it matched no stored event and completed at once with every count at 0, so the setting reclassified nothing. A walk left complete under the bare name is a row of its own and does not stop the stored-name walk. | {verified: EphemeralHistoryReclassifySqlTests.TheWalk_NamesTheTypeAsTheAppendPathStoredIt_AndItsDefinitionByTheBareNameAsync, EphemeralHistoryReclassifySqlTests.AWalkCompletedUnderTheBareName_DoesNotStopTheStoredNameWalkAsync, HistoryWalkTargetNamingTests.EveryHistoryWalkStep_NamesItsTargetsAsTheAppendPathStoresThem_AndReadsThemAsync, TypeNameFormatterTests.FormatFormerName_ABareFormerName_TakesTheTypesAssemblyAsync} |
 | A walk completes only once none of the type's events is still waiting for the commit-order stamper. | The walk reads in commit order, so an event not yet stamped is read once it is. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_EventsUnstampedAtTheStart_AreReclassifiedOnceStampedAsync} |
 | A complete walk is not read again until the type-definition registry holds a newer definition of the type. | Events stored after the type became ephemeral are stored ephemeral; nothing new needs reclassifying. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_RunsInBoundedBatches_AndResumesFromItsCursor_AfterACrashAsync} |
+
+**Which name the walk reads.** The event store keeps each event's type in its stored form, `Ns.Type, Assembly`. The
+message-type catalog and the pinned-type ledger keep the bare CLR name, `Ns.Type`, so the step turns each into the stored
+form before it walks. A guard runs every step that walks stored history against events written through the append path,
+and fails if any walk is keyed by a name the store does not hold. The per-type rewind grace
+(`[Ephemeral(RewindGraceSeconds = ...)]`) is keyed the same way, because the reaper matches it against `event_type`.
+
+{verified: HistoryWalkTargetNamingTests.EveryHistoryWalkStep_NamesItsTargetsAsTheAppendPathStoresThem_AndReadsThemAsync, HistoryWalkTargetNamingTests.TheGuard_ReportsAWalkNamedOtherThanTheStoreDoesAsync, HistoryWalkTargetNamingTests.EveryHistoryWalkStep_IsCoveredByThisGuardAsync, TypeDefinitionReconcilerCoverageTests.ReconcileAsync_RewindGraceOverrides_AreKeyedByTheStoredName_TheEventStoreHoldsAsync}
 
 The step logs, per type and cycle, the events it reclassified, the events it left Sourced in mixed streams and how many
 of the type's events are left to read, and one line when a type's walk completes.
