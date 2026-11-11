@@ -12,6 +12,7 @@ description: >-
   dependency injection with source-generated value types and TrackedGuid metadata.
 tags: 'whizbang-ids, identity, uuidv7, tracked-guid, type-safety, value-objects'
 codeReferences:
+  - src/Whizbang.Core/ValueObjects/NameBasedGuid.cs
   - src/Whizbang.Core/IWhizbangId.cs
   - src/Whizbang.Core/ValueObjects/WhizbangId.cs
   - src/Whizbang.Core/ValueObjects/TrackedGuid.cs
@@ -32,6 +33,7 @@ codeReferences:
   - src/Whizbang.Generators/GuidUsageAnalyzer.cs
   - tools/Whizbang.Migrate/Transformers/GuidToTrackedGuidTransformer.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/ValueObjects/NameBasedGuidTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidJsonConverterTests.cs
   - tests/Whizbang.Core.Component.Tests/ValueObjects/TrackedGuidMonotonicityTests.cs
@@ -616,6 +618,37 @@ private static void _analyzeInvocation(SyntaxNodeAnalysisContext context) {
 - **IDE integration** - Squiggles appear immediately as you type
 - **Configurable severity** - Can be error, warning, or info
 - **Suppressible** - Use `#pragma warning` or attributes when needed
+
+## Name-based ids {#name-based-ids}
+
+{verified: NameBasedGuidTests.V5_RfcDnsNamespaceVector_MatchesTheReferenceImplementationAsync, NameBasedGuidTests.V5_SameInputs_ProduceTheSameIdAsync, NameBasedGuidTests.V5_DifferentNames_ProduceDifferentIdsAsync, NameBasedGuidTests.V5_DifferentNamespaces_ProduceDifferentIdsAsync, NameBasedGuidTests.V5_EmptyName_IsAValidNameWithItsOwnIdAsync, NameBasedGuidTests.V5_StampsVersionFiveAndTheRfcVariantAsync}
+
+Most ids are minted: `TrackedGuid.New()` gives a fresh, time-ordered id. Some ids must instead be **derivable without
+coordination**: every writer, on every instance, has to arrive at the same id from the same facts. A minted id cannot
+serve there, because two writers minting independently land on two different ids. `NameBasedGuid.V5(namespace, name)`
+derives an RFC 4122 version 5 id: SHA-1 over the namespace's big-endian bytes followed by the UTF-8 name, the first 16
+bytes kept, version 5 and the RFC variant stamped. The same namespace and name always produce the same id, and Postgres
+produces it too with `uuid_generate_v5(namespace, name)` from the `uuid-ossp` extension. It uses no reflection and
+allocates nothing beyond its input buffer, so it is safe under AOT and on hot paths.
+
+```csharp{title="Derive a name-based id" description="NameBasedGuid.V5 derives the same version 5 id from the same namespace and name on every writer" framework="NET10" category="Identity" difficulty="BEGINNER" tags=["identity", "NameBasedGuid", "uuid-v5", "deterministic-ids"] tests=["NameBasedGuidTests.V5_SameInputs_ProduceTheSameIdAsync", "NameBasedGuidTests.V5_DifferentNamespaces_ProduceDifferentIdsAsync"]}
+using Whizbang.Core.ValueObjects;
+
+var ns = NameBasedGuid.V5(Guid.Empty, "my-app.invoice-ledger.v1");
+var ledgerStream = NameBasedGuid.V5(ns, tenantId);   // the same tenant always yields the same stream
+```
+
+The framework uses it wherever writers must agree:
+
+| Id | Namespace and name | Why it is derived |
+|---|---|---|
+| A tenant's [audit ledger stream](../security/audit-logging#dedicated-system-stream) | `V5(nil, "sys-audit")`, then the tenant id | Every audit writer appends to one stream per tenant |
+| An [audit record](../security/audit-logging#rebuilding-the-audit-ledger) | `V5(nil, "sys-audit-record")`, then the audited event's id | A record derived again from the same event is the same record, so a rebuild reproduces it |
+| A chunk of a [split rebuild request](../perspectives/rebuild#large-stream-selections) | the request id, then the chunk index | The same request always splits into the same runs |
+| A [repair answer's broker session](../../resilience/stream-integrity#answer-session-key) (`RedeliveryPump.AnswerSessionFor`) | `V5(nil, "whizbang.redelivery-answer-session.v1")`, then the origin, the reply topic, the requester and the scope | Every page of one selection and every instance of the origin derive the same session, so a stream split across bundles keeps its order |
+
+**Never change a name** once ids derived from it are stored: a later derivation has to produce the ids already on
+disk. Put a version in the namespace name (`.v1`) so a deliberate change gets a new namespace instead.
 
 ## Quick Start
 

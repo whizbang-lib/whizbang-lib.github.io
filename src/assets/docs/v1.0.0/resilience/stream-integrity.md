@@ -100,6 +100,18 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/357_AnAnswerMarksOnlyWhatItCovered.sql
   - src/Whizbang.Data.Postgres/Migrations/369_RepairAnswersAreAbsorbedCheaply.sql
   - src/Whizbang.Data.Postgres/Migrations/373_LedgerGaugesCountDataLeftToHeal.sql
+  - src/Whizbang.Core/Observability/IntegrityCompletion.cs
+  - src/Whizbang.Core/Messaging/RepairReceptorGate.cs
+  - src/Whizbang.Core/Messaging/RunOnRepairAttribute.cs
+  - src/Whizbang.Core/Messaging/HandledLedgerAnswer.cs
+  - src/Whizbang.Core/Messaging/ReceptorInvoker.cs
+  - src/Whizbang.Data.Postgres/CoordinatorRetentionSql.cs
+  - src/Whizbang.Data.Postgres/Migrations/392_AnsweredRowsAreRecheckedFirst.sql
+  - src/Whizbang.Data.Postgres/Migrations/393_TheLedgerCountsWhatItOpensAndCloses.sql
+  - src/Whizbang.Data.Postgres/Migrations/394_LedgerGaugesSplitBucketsByKind.sql
+  - src/Whizbang.Data.Postgres/Migrations/395_IntegrityCompletionIsReportedDirectly.sql
+  - src/Whizbang.Data.Postgres/Migrations/396_ASealFallsOnlyAsFarAsARewriteReached.sql
+  - src/Whizbang.Data.Postgres/Migrations/397_RepairedEventsRunOnlyReceptorsThatNeverRan.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileCoordinatorTests.cs
@@ -214,6 +226,21 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBundleCatalogChurnSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceiveDoorbellCostSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerHealRemainingGaugesSqlTests.cs
+  - tests/Whizbang.Core.Tests/Observability/IntegrityCompletionTests.cs
+  - tests/Whizbang.Core.Tests/Observability/StreamIntegrityBacklogMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Observability/StreamIntegrityCompletionMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsRepairedEventsTests.cs
+  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerIntegrityBacklogTests.cs
+  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerIntegrityCompletionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerBacklogSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerBucketKindGaugesSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCompletionSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAnsweredRecheckSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/OriginRewriteFloorSqlTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpAnswerBundlingTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RepairReceptorGateTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerRepairTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/HandledLedgerSqlTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -636,7 +663,8 @@ serving live traffic. The backfill is now a walk the requester paces:
    type is asked for only once the previous one has been answered.
 3. **The owner answers the window and then says where it stopped.** It ships the window's events in as few bundles as
    its size bounds allow, then sends a `BackfillWindowAnswer` with the last commit sequence the window covered and
-   whether more remains.
+   whether more remains. Repair answers are bundled the same way, across streams by scope
+   ([repair answers bundle across streams](#repair-answers-bundle-across-streams)).
 4. **The answer moves the position.** The requester records it durably, and the next window starts after it. An
    answer with nothing more ends the backfill as complete.
 
@@ -1612,8 +1640,10 @@ address: like every integrity request, a re-check is directed or not sent.
 
 **What one tick does.**
 
-1. It claims up to `LedgerRecheckRowsPerTick` rows (default 500), oldest report first, whose last report is older than
-   `LedgerRecheckAfterMinutes` (default 120) (`wh_integrity_claim_ledger_recheck`, migration 348).
+1. It claims up to `LedgerRecheckRowsPerTick` rows (default 500) (`wh_integrity_claim_ledger_recheck`, migrations 348
+   and 392). [Answered rows come first](#answered-rows-are-rechecked-first): a row whose repair was answered and that
+   has not been re-checked since, whatever its report's age, oldest answer first. The rest of the bound is filled with
+   rows whose last report is older than `LedgerRecheckAfterMinutes` (default 120), oldest report first.
 2. Rows of one origin, type and window are asked in one request, because one stream-level answer covers every tenant
    and stream of a type over a window: a directed, windowed, stream-level `RequestIntegrityManifest` over the row's
    window, marked `Recheck`, at background priority. A tick therefore sends at most that many requests, usually far
@@ -1626,14 +1656,52 @@ address: like every integrity request, a re-check is directed or not sent.
 
 When no row is that old, the claim returns nothing and the tick sends nothing: the re-check has caught up.
 
+#### Answered rows are re-checked first {#answered-rows-are-rechecked-first}
+
+{verified: IntegrityAnsweredRecheckSqlTests.Claim_ARecentlyReportedRowWhoseRepairWasAnswered_IsClaimedBeforeOlderStaleRowsAsync, IntegrityAnsweredRecheckSqlTests.Claim_ARowReCheckedBeforeItsAnswer_IsClaimedAgainOnTheNextPassAsync, IntegrityAnsweredRecheckSqlTests.Claim_AnAnsweredRowReCheckedSinceItsAnswer_WaitsLikeAnyOtherRowAsync, IntegrityAnsweredRecheckSqlTests.Claim_AnsweredRows_ComeOldestAnswerFirst_AndOnlyForTheOriginsAskedAsync, IntegrityAnsweredRecheckSqlTests.Claim_TheAnsweredLane_UsesThePartialIndex_OnAWideLedgerAsync}
+
+A repair answer stores the redelivered events and stamps the row answered (`answered_at`), but the bucket clears only
+when it is compared again. Before migration 392 the re-check walked rows oldest report first, and only rows whose report
+and last re-check were older than `LedgerRecheckAfterMinutes`. An answered row therefore waited behind every unrelated
+stale row, or for its own threshold to pass, while its data had already healed, and `ledger_open_buckets` stayed in
+state `answered` for hours after the repair landed (#2259).
+
+The claim now reads an **answered lane** first: every per-stream row of an origin that can be asked, whose repair was
+answered and that has not been re-checked since that answer (`rechecked_at IS NULL OR rechecked_at < answered_at`). It
+is claimed whatever its report's age, oldest answer first. The rest of the bound is filled from the stale rows exactly
+as before.
+
+| Choice | Why |
+| --- | --- |
+| The answered lane ignores the report's age | An answer is new information about the bucket; the threshold exists to avoid repeating a comparison that has nothing new to see |
+| A claimed answered row is stamped `rechecked_at = GREATEST(now, answered_at)` | An answer stamped by a clock ahead of this one cannot keep the row in the lane forever |
+| Once re-checked after its answer, a row waits like any other | The comparison removes it, reports it again (which clears `answered_at`), or the threshold passes; a row is never asked twice for one answer |
+| A partial index, `idx_integrity_ledger_answered_unrechecked`, covers exactly the lane | The lane is read on every tick; the index lets it reach its rows without walking the origin's whole ledger. A row enters it when an answer stamps it and leaves when the re-check claims it |
+
+#### A re-check counts what the answer stored {#recheck-counts-what-the-answer-stored}
+
+{verified: IntegrityManifestReceptorTests.ManifestReceptor_ARecheckAnswer_HealsABucketWhoseAnsweredEventIsInsideTheSettleWindowAsync, IntegrityManifestReceptorTests.ManifestReceptor_ARecheckAnswer_OverAWindowFromTheStart_FoldsWhatTheAnswerStoredFromTheStartAsync, IntegrityManifestReceptorTests.ManifestReceptor_ARecheckAnswer_KeepsTheRow_WhenEvenWhatTheAnswerStoredDoesNotMatchAsync, IntegrityManifestReceptorTests.ManifestReceptor_ARecheckAnswer_KeepsTheRow_WhenTheUnsettledFoldHasNoRowForTheBucketAsync, IntegrityManifestReceptorTests.ManifestReceptor_ARecheckAnswer_OnAnEngineThatCannotFoldTheChunk_KeepsTheRowAsync, IntegrityManifestReceptorTests.ManifestReceptor_AnOrdinaryAnswer_StillSettlesTheEventsAnAnswerStoredAsync}
+
+A comparison folds only the events stored before the settle window (`AuditSettleWindowMinutes`, an hour by default),
+judged by their **local arrival time**, so events still in flight from the origin are not read as missing. A repair
+answer stores the missing events now, so that fold left out exactly the events the answer had just brought, and the
+healed bucket kept reading short until the window passed.
+
+A re-check answer now takes a second look at the buckets it still finds divergent: it folds them again over the same
+range (the manifest's window, or the whole history) **with the window's events counted**, and closes each bucket whose
+fold then equals its origin's digest. Only an equal fold closes a row. An event the origin has not settled yet makes
+the fold differ, so the bucket stays as the settled fold read it, and an engine that cannot fold the chunk leaves every
+bucket as it was. The audit's own comparisons keep the settle window unchanged; only a re-check answer takes the
+second look.
+
 **The claim.** Migration 348 adds `wh_integrity_ledger.rechecked_at`. A claim stamps it and nothing else: no repair
 attempt is spent, no backoff moves and no pending answer is set, so a re-check cannot push a real deficit toward
 exhaustion. A row is claimed again only once its stamp, like its last report, is older than the threshold, so a row a
 re-check finds still divergent is reported again and waits the threshold before its next re-check instead of being
 asked every tick. `last_touched` could not serve, because every report, drain claim and pending mark moves it. Only
 rows stamped with their compared window are claimed, never the synthetic type lane, and concurrent claimers skip each
-other's locked rows. No index was added: the ledger is bounded by `MaxRepairDrainBacklog` and the report caps, and the
-claim runs at most once a tick on an idle service.
+other's locked rows. The stale lane needs no index: the ledger is bounded by `MaxRepairDrainBacklog` and the report
+caps, and the claim runs at most once a tick on an idle service. The answered lane has its partial index (above).
 
 **Rows the re-check leaves to the audit.** A row without a stamped window (a row from before windows were stamped, or a
 divergence that is not a deficit) has no window to ask about, and the next audit that covers its bucket decides it.
@@ -1899,6 +1967,75 @@ earlier history was truncated here ([events deduplication remembers but the stor
 The checkpoint path keys its ledger rows by type and window rather than by stream, and its
 [repair policy](#the-repair-decision-pipeline-as-wired) already stops a window whose count stopped
 improving, so it is unaffected by the mark.
+
+### Repair answers bundle across streams {#repair-answers-bundle-across-streams}
+
+{verified: RedeliveryPumpAnswerBundlingTests.PublishAnswer_FiftyOneEventStreams_AnswerInOneBundle_EachChildNamingItsStreamAsync, RedeliveryPumpAnswerBundlingTests.PublishAnswer_AStreamLargerThanTheBound_SpansBundlesInOrder_OnOneSessionAsync, RedeliveryPumpAnswerBundlingTests.PublishAnswer_MixedScopes_NeverShareABundle_AndEachScopeHasItsOwnSessionAsync, RedeliveryPumpAnswerBundlingTests.PublishAnswer_TwoPagesOfOneServe_ShareTheSession_SoAStreamSplitAcrossPagesStaysInOrderAsync, RedeliveryPumpAnswerBundlingTests.PublishAnswer_ForARequesterThatFilesOneStreamPerBundle_KeepsOneStreamPerBundleAsync, RedeliveryPumpAnswerBundlingTests.PublishAnswer_ForABackfill_TheBackfillSessionWinsOverTheAnswerKeyAsync, RedeliveryWindowAnswerTests.OrdinaryRequest_FromARequesterThatAcceptsStreamSpanningBundles_AnswersFiftyStreamsInOneBundleAsync, StreamIntegrityRedeliveryE2ETests.DroppedDeliveriesOnTwoStreams_RepairInOneBundleAcrossStreams_EachChildFiledUnderItsOwnStreamAsync}
+
+A redelivery request from the [paced repair drain](#drain-claims-deficits-only) names up to a drain batch of streams,
+most of them an event or two short. The origin used to answer each stream with its own bundle: about one broker
+message per missing event, competing with application traffic on a broker with a per-namespace message-rate ceiling.
+
+The origin now bundles an answer the way the [paced backfill](#paced-backfill) already does (#2092, #2268):
+
+- **Events group by scope only**, up to `RedeliveryPumpOptions.MaxInnerEventsPerComposite` (500) events and
+  `MaxBytesPerComposite` (192,000 bytes) per bundle. Each child names the stream it is stored on, and each stream's
+  events are contiguous and in (stream, version) order.
+- **Two tenants never share a bundle.** A scope is a tenant; mixing them would put one tenant's events on another's
+  session.
+- **The receiver files each child under its own stream** and answers each stream's ledger bucket, as before.
+
+| Answer shape | Messages per answered bucket |
+| --- | --- |
+| 50 one-event streams, one tenant | 1.0 before, 0.02 now |
+| 50 one-event streams over five tenants | 1.0 before, 0.1 now |
+| A 500-event page of one-event streams | 1.0 before, 0.002 now |
+| 10 streams of 120 events | 1.0 before, 0.3 now |
+
+{verified: RedeliveryPumpAnswerBundlingTests.Measurement_MessagesPerAnsweredBucket_BeforeAndAfterAsync}
+
+#### One session per answer {#answer-session-key}
+
+A stream larger than one bundle, or one split across two selection pages, must still arrive in order. Every bundle of
+an answer therefore rides one broker session, `RedeliveryPump.AnswerSessionFor(origin, replyTopic, requester, scope)`:
+a [name-based id](../fundamentals/identity/whizbang-ids#name-based-ids) of the answering origin, the reply topic, the
+requester the answer is directed at, and the scope.
+
+| Part of the key | Why it is there |
+| --- | --- |
+| Derived, not minted | Every page of one selection and every instance of the origin derive the same session, so a stream's bundles keep FIFO on the receiver |
+| The scope | Tenants get separate sessions, so one tenant's answer never waits behind another's |
+| The origin and the requester | Answers from different origins, or to different requesters, are not serialized behind each other |
+| The reply topic | An answer on one topic never shares a session with one on another |
+
+Answers to one requester for one tenant are serialized behind each other, which costs little: one bundle now carries
+what was up to hundreds of messages. A backfill keeps its own session (`BundleStreamId`), which wins over the answer key.
+
+{verified: RedeliveryPumpAnswerBundlingTests.AnswerSessionFor_IsDerived_AndSeparatesOrigins_Requesters_Topics_AndScopesAsync, RedeliveryPumpAnswerBundlingTests.AnswerSessionFor_WithoutATopic_ThrowsAsync, RedeliveryWindowAnswerTests.OrdinaryRequest_SelectedInPages_ShipsEveryPageOnOneSession_SoAStreamSplitAcrossPagesStaysInOrderAsync}
+
+#### Only a requester that asks gets the new shape {#accepts-stream-spanning-bundles}
+
+A requester on an earlier release files every child of a bundle under the bundle's own stream, so a stream-spanning
+bundle would land every child on one wrong stream. The shape is therefore gated by the requester:
+`RequestRedeliveryCommand.AcceptsStreamSpanningBundles` is set on every request this release sends (the repair drain,
+the audit's repairs, a checkpoint gap's repair and operator redelivery; a paced backfill keeps its own session), and the origin answers across streams only when it is set
+(`RedeliveryPump.BundleAcrossStreams`). A request from an earlier release has no such field, reads as false, and is
+answered one stream per bundle as before.
+
+:::warning
+**Rolling deploy of the requesting service.** An instance still on a release before v0.2626.0 that receives a
+stream-spanning answer requested by an upgraded instance files its children under the answer's session key. Finish
+the rollout of a requesting service before the next repair cycle.
+:::
+
+#### What a stream-spanning answer marks {#stream-spanning-answer-marks}
+
+{verified: IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ABundleSpanningStreams_AnswersEveryStreamsBucketAsync, IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ABundleSpanningStreams_MarksUnchangedOnlyWhenTheWholeBundleChangedNothingAsync}
+
+A bundle answers the bucket of every stream it carried. A bundle that changed nothing still marks its buckets
+[unchangeable at commit](#unhealable-recorded-at-commit), under the [coverage rule](#an-answer-marks-only-what-it-covered).
+A bundle that changed anything marks none of them: a stream whose events were all present, bundled with a stream the
+answer repaired, is answered, and is marked by the next answer to it that changes nothing.
 
 ### An answer marks only what it covered {#an-answer-marks-only-what-it-covered}
 
@@ -2581,6 +2718,60 @@ skips that comparison round (its windows were aligned to the old world) — the 
 re-verifies from the beginning, cheaply, because the origin answers from epochs. Sealed-range
 divergence *without* a generation change remains what it always was: damage.
 
+#### A rewrite lowers a seal only as far as it reached {#rewrite-floor}
+
+{verified: OriginRewriteFloorSqlTests.Bump_WithNoRewriteNoted_LeavesTheGenerationAloneAsync, OriginRewriteFloorSqlTests.Bump_AfterARewriteOfAnotherOriginsLaneOnly_LeavesTheGenerationAloneAsync, OriginRewriteFloorSqlTests.Bump_AfterLocalRewrites_RecordsTheLowestPositionTouchedAsync, OriginRewriteFloorSqlTests.Guard_ARewriteAtOrAboveTheSeal_KeepsTheSeal_AndProceedsAsync, OriginRewriteFloorSqlTests.Guard_ARewriteBelowTheSeal_LowersItToTheRewritePoint_NotToZeroAsync, OriginRewriteFloorSqlTests.Guard_FrequentBumpsAboveTheSeal_NeverResetItAsync, OriginRewriteFloorSqlTests.Guard_WithoutAFloor_ResetsAsBeforeAsync, OriginRewriteFloorSqlTests.Guard_AnOlderGeneration_ResetsAsBeforeAsync}
+
+Before migration 396 the generation was one counter per database that thirteen functions bumped: after rewriting
+**any** lane (received lanes included, which nothing the origin's manifests answer covers), once per batch of routine
+maintenance (the superseding reaper, batched reclassification, every reconciled redelivery batch), and on every archive
+and restore whether or not anything fold-relevant moved. A consumer's seal fell to 0 on every change. Busy origins
+reached tens of thousands of generations a day, and every consumer re-verified history it had already proven, each
+time (#2262).
+
+Now a generation bump says **how far** history was rewritten:
+
+1. **The origin notes the lowest position it rewrote.** Every rewrite path already refolds what it touched before it
+   bumps. Those refolds now note, in a transaction-local setting, the lowest position of the origin's **own lane**
+   (the lane its manifests answer) that the rewrite touched. Closing a new epoch above the frontier is not a rewrite
+   and notes nothing.
+2. **The generation moves only with a note.** `_wh_bump_origin_generation` moves the generation only when the
+   transaction noted a rewrite, records `(generation, lowest position)` in `wh_integrity_origin_rewrites`, and consumes
+   the note. A rewrite of a received lane alone, or an archive or restore that moved nothing fold-relevant, no longer
+   moves it.
+3. **Every ask names the generation the consumer recorded** (`RequestIntegrityManifest.KnownOriginGeneration`): the
+   audit, the idle re-check, and the drill-down, cursor-follow and next-window asks. Null on first contact.
+4. **The answer carries the rewrite floor.** The origin reads `wh_integrity_history_rewrite(since)` and stamps
+   `IntegrityManifest.RewrittenSinceGeneration` (echoing the asked generation) and `RewrittenFrom`, the lowest
+   position any rewrite after it touched (null with a since-generation set means nothing was rewritten). It reads the
+   floor after the generation, so a rewrite committed between the two reads is counted: the floor may be lower than
+   needed, never higher.
+5. **The consumer's guard lowers the seal only to the floor** (`wh_integrity_seal_guard`). A newer generation whose
+   floor counts from the recorded generation or an earlier one keeps a seal at or below the floor and proceeds, and
+   lowers a seal above it to the floor and skips the round in flight (it was asked from the old seal). A known
+   deficit's ledger row and its first sighting are left alone.
+
+| Case | Seal |
+| --- | --- |
+| The rewrite reached no lower than the seal | Kept; the comparison proceeds |
+| The rewrite reached below the seal | Lowered to the rewrite point, never to 0; this round is skipped |
+| No floor: an origin on an earlier release, or a consumer further behind than the origin's rewrite log | Reset to 0, as before |
+| A floor counted from a later generation than the recorded one, or a generation that went back | Reset to 0, as before |
+
+**The rewrite log is bounded.** `wh_integrity_origin_rewrites` keeps the last `integrity_origin_rewrite_log_rows`
+generations (a `wh_settings` row, default 10,000), and `integrity_origin_rewrite_log_from` records the generation the
+log started at when migration 396 ran. A consumer whose recorded generation is older than either cannot be vouched
+for and resets as before. Both are [database-side settings](../operations/configuration/configuration-reference#database-side-settings)
+set in SQL only. 093's `integrity_seal_generation_guard` stays with its arity, as the floorless call, so an earlier
+release still running during a rolling deploy resolves it and resets as it always did.
+
+{verified: OriginRewriteFloorSqlTests.HistoryRewrite_SinceAGenerationTheLogReaches_IsTheLowestFloorAfterItAsync, OriginRewriteFloorSqlTests.HistoryRewrite_SinceAGenerationOlderThanTheLog_CannotBeVouchedForAsync, OriginRewriteFloorSqlTests.HistoryRewrite_SinceAGenerationFromBeforeTheLogExisted_CannotBeVouchedForAsync, OriginRewriteFloorSqlTests.TheLog_KeepsTheConfiguredNumberOfRewrites_AndTheOldestGoAsync, OriginRewriteFloorSqlTests.Guard_TheFloorlessGuard_ResetsAsBeforeAsync, IntegrityAuditWorkerTests.EveryCycle_NamesTheRecordedOriginGenerationAsync, IntegrityAuditWorkerTests.FirstContact_NamesNoOriginGenerationAsync, LedgerRecheckWorkerTests.RecheckTick_NamesTheRecordedOriginGeneration_ReadOncePerOriginAsync}
+
+**Cost.** The note is a `set_config` per refold call and one frontier lookup per epoch fold of the local lane; the bump
+adds one insert and one primary-key range delete; the answer reads the log by primary key. None of it is on the emit
+path. Migration 396 is lossy to reverse: the rewrite log, its settings and the new guard are dropped, seals are kept,
+and the next generation change resets them as before.
+
 ---
 
 ## Standards compliance (definition of done)
@@ -3090,6 +3281,132 @@ adoption.
 The extra checks run only for a redelivery child whose id deduplication has already seen, by primary key and by
 the stream's version index; live delivery evaluates one flag.
 
+### Repaired events and receptors {#repaired-events-and-receptors}
+
+{verified: RepairReceptorGateTests.ARepairedEventOlderThanTheLookback_NeverRunsReceptors_AndTheLedgerIsNotAskedAsync, RepairReceptorGateTests.ARepairedEventInsideTheLookback_ThatTheLedgerShowsHandled_NeverRunsReceptorsAsync, RepairReceptorGateTests.ARepairedEventInsideTheLookback_AbsentFromTheLedger_RunsItsOptedInReceptorsAsync, RepairReceptorGateTests.ALookbackGrownBeyondTheLedgersCoverage_IsClampedToIt_SoAnIncompleteWindowNeverLooksCompleteAsync, RepairReceptorGateTests.TheLedger_IsAskedOncePerBundle_OnlyForTheEventsTheLookbackAdmitsAsync, ReceptorInvokerRepairTests.ARepairedEvent_RunsOnlyTheReceptorsDeclaredToRunOnRepairAsync, ReceptorInvokerRepairTests.ARepairedEvent_WithNoReceptorDeclaredToRunOnRepair_RunsNothingAsync, InboxDispatchWorkerCompositeCommitTests.Redelivery_ChildrenRunReceptorsOnlyWhenTheLedgerProvesTheyWereNeverHandledAsync}
+
+Repair delivers historical events a receiver is missing, with their original ids. A receiver can be missing an event
+it **already reacted to**: a trigger receptor ran, then the stored row was lost or never kept, and with no
+deduplication record left the repaired copy ran the receptor a second time. Re-running every receptor for repaired
+history repeats side effects that already happened; running none leaves a receptor that converges state (a counter,
+a denormalized row kept by a receptor) short forever (#2273).
+
+**A repaired event runs a receptor only when this service can prove it never handled it.** Every child of a redelivery
+bundle is stored and projected as usual. It runs a receptor only when all three hold:
+
+1. the receptor is declared `[RunOnRepair]`;
+2. the event's origin time (the timestamp of its time-ordered id) is inside
+   `Whizbang:StreamIntegrity:RepairReceptorLookback` (a duration, default seven days), clamped to the time the handled
+   ledger starts covering;
+3. the **handled ledger** (`wh_receptor_handled`) shows this service never handled the event.
+
+Every other repaired event is **state only**: stored and projected, with no receptor and no tag hook run. A child the
+gate proves never handled is marked `IMessageEnvelope.Repaired` (wire key `rep`), and for it only the receptors
+declared `[RunOnRepair]` run, at every stage, with `ILifecycleContext.IsRepair` true. A bundle that was already asked
+for state only (a backfill) stays state only.
+
+```csharp{
+title: "A receptor that converges state from repaired events"
+description: "[RunOnRepair] opts an idempotent receptor into running for repaired events this service can prove it never handled; every other receptor stays state only for repaired history."
+framework: "NET10"
+category: "Messaging"
+difficulty: "INTERMEDIATE"
+tags: ["stream-integrity", "repair", "RunOnRepair", "receptors", "idempotency"]
+tests: ["ReceptorInvokerRepairTests.ARepairedEvent_RunsOnlyTheReceptorsDeclaredToRunOnRepairAsync", "ReceptorDiscoveryGeneratorRunOnRepairTests.Generator_WithRunOnRepair_SetsRunOnRepair_OnEveryReceptorShapeAsync"]
+}
+using Whizbang.Core;
+using Whizbang.Core.Messaging;
+
+[RunOnRepair]
+public class ProjectInvoiceTotals : IReceptor<InvoiceIssued> {
+  public ValueTask HandleAsync(InvoiceIssued message, CancellationToken ct) {
+    // Idempotent: keyed by the invoice id, so running it twice changes nothing.
+    return ValueTask.CompletedTask;
+  }
+}
+```
+
+A receptor that opts in **must be idempotent**. The ledger proves the event was never handled here, but an effect
+outside this service (an email, a webhook) may still have happened through another path.
+
+```mermaid{caption="How each child of a redelivery bundle is decided: only an event inside the lookback that the handled ledger covers and does not hold runs its [RunOnRepair] receptors; every other child is state only." tests=["RepairReceptorGateTests.AStateOnlyBundle_StaysStateOnly_WithoutAskingTheLedgerAsync", "RepairReceptorGateTests.AZeroLookback_TurnsReceptorsOnRepairOff_WithoutAskingTheLedgerAsync", "RepairReceptorGateTests.AnEventWhoseIdCarriesNoTime_IsStateOnlyAsync", "RepairReceptorGateTests.ARepairedEventOlderThanTheLookback_NeverRunsReceptors_AndTheLedgerIsNotAskedAsync", "RepairReceptorGateTests.ALookbackGrownBeyondTheLedgersCoverage_IsClampedToIt_SoAnIncompleteWindowNeverLooksCompleteAsync", "RepairReceptorGateTests.ALedgerThatCannotBeRead_ProvesNothing_SoEveryEventIsStateOnlyAsync", "RepairReceptorGateTests.ARepairedEventInsideTheLookback_ThatTheLedgerShowsHandled_NeverRunsReceptorsAsync", "RepairReceptorGateTests.ARepairedEventInsideTheLookback_AbsentFromTheLedger_RunsItsOptedInReceptorsAsync"]}
+flowchart TD
+  C[A child of a redelivery bundle] --> S{Bundle asked for state only?}
+  S -- yes --> SO1[state only: requested_state_only]
+  S -- no --> L{Lookback above zero?}
+  L -- no --> SO2[state only: no_lookback]
+  L -- yes --> T{Id carries an origin time?}
+  T -- no --> SO3[state only: no_origin_time]
+  T -- yes --> W{Inside the lookback?}
+  W -- no --> SO4[state only: outside_lookback]
+  W -- yes --> R{Ledger readable?}
+  R -- no --> SO5[state only: ledger_unavailable]
+  R -- yes --> V{At or after the ledger's coverage start?}
+  V -- no --> SO6[state only: before_ledger_coverage]
+  V -- yes --> H{Recorded as handled here?}
+  H -- yes --> SO7[state only: already_handled]
+  H -- no --> RUN["RunOnRepair receptors run: never_handled"]
+  classDef stateonly fill:#e2e3e5,stroke:#6c757d,stroke-width:1px
+  classDef runs fill:#d4edda,stroke:#28a745,stroke-width:2px
+  class SO1,SO2,SO3,SO4,SO5,SO6,SO7 stateonly
+  class RUN runs
+```
+
+#### The handled ledger {#handled-ledger}
+
+{verified: HandledLedgerSqlTests.AnEventCompletedAsProcessed_IsRecordedHandledAsync, HandledLedgerSqlTests.ACompletionThatIsNotProcessed_ACommand_AndAnUntimedId_AreNotRecordedAsync, HandledLedgerSqlTests.TheLookup_AnswersTheHandledSubset_AndTheCoverageStartAsync, HandledLedgerSqlTests.TheSweep_MovesCoverageUpToTheCutoff_ThenRemovesOlderRecordsAsync, HandledLedgerSqlTests.AWindowGrownPastTheCoverage_NeverMovesTheCoverageBackAsync, HandledLedgerSqlTests.OncePartitionsAreMaintained_TheSweepClearsOnlyTheDefaultPartitionAsync, HandledLedgerWriteCostScenarioTests.TheHandledRecord_IsAPrimaryKeyInsert_InsideTheCompletionAsync, DapperHandledLedgerTests.Lookup_AndSweep_RunOnTheDapperDriverAsync}
+
+Migration 397 adds the ledger:
+
+| Object | What it is |
+| --- | --- |
+| `wh_receptor_handled` | One row per event this service completed as processed, keyed by the event id alone. Written by `process_inbox_completions` inside the completion it already runs, so no round trip is added, and an instance on an earlier release records too, because it calls the same function. A command, a completion that is not processed, and an id with no time are not recorded |
+| `wh_receptor_handled_coverage` | The moment from which every handled event is recorded. It starts when the migration first runs and only moves forward |
+| `wh_receptor_handled_lookup` | The handled subset of a bundle's ids and the coverage start, one call per bundle |
+| `wh_receptor_handled_sweep` | Moves the coverage start up to the retention cutoff, then removes the older rows, in one transaction |
+
+The ledger is [range-partitioned by event id](../operations/infrastructure/partitioned-ledgers#what-is-partitioned)
+(a version-7 id begins with its origin time), so a lookup is one index probe in one partition, and retention drops
+whole partitions once the partition manager keeps the table; until then rows land in the default partition and the
+sweep removes them. The maintenance cycle sweeps it to the lookback on every cycle, whether or not integrity is on,
+since every driver records handled events. Its cost on the hot path is one primary-key insert (one heap tuple and one
+index entry, nothing read) in the completion that already deletes the inbox row.
+
+**Why each choice.**
+
+| Choice | Why |
+| --- | --- |
+| Opt-in per receptor, default off | Only the receptor's author knows whether running it again is safe. A receptor that sends an email must never run twice; one that converges a counter needs to |
+| Proven never handled, not merely absent from the store | A missing stored event says nothing about whether its receptors ran. The ledger records what ran, independently of the event store that lost the row |
+| Coverage clamps the lookback | A lookback raised past what the ledger holds would read an event from before the ledger existed as never handled. The lookback in effect grows into the new value as the ledger fills (`before_ledger_coverage` meanwhile) |
+| A ledger that cannot be read proves nothing | Every child is then state only, and the bundle still lands: a failed read never repeats a side effect. One Warning names the bundle and its child count |
+| The ledger is asked once per bundle | Only for the children the configured lookback admits, so an old repair asks nothing |
+| Zero turns it off | `RepairReceptorLookback = 0` makes every repaired event state only without asking the ledger. A negative value fails at host start, naming the key |
+
+**Watching it.** `whizbang.stream_integrity.repaired_events` counts each repaired event when its bundle is expanded
+(a child the inbox then drops as a duplicate is counted too), tagged `delivery` (`state_only` or `receptors`) and
+`reason`:
+
+| `reason` | `delivery` | Meaning |
+| --- | --- | --- |
+| `requested_state_only` | `state_only` | The bundle was asked for state only (a backfill) |
+| `no_lookback` | `state_only` | `RepairReceptorLookback` is zero |
+| `no_origin_time` | `state_only` | The event's id is not time-ordered, so its age cannot be judged |
+| `outside_lookback` | `state_only` | The event's origin time is older than the lookback |
+| `before_ledger_coverage` | `state_only` | Inside the lookback, but older than the ledger's coverage start |
+| `ledger_unavailable` | `state_only` | The ledger could not be read, or this store keeps none |
+| `already_handled` | `state_only` | The ledger records the event as handled here |
+| `never_handled` | `receptors` | The ledger covers the event and does not hold it: the `[RunOnRepair]` receptors run |
+
+{verified: StreamIntegrityMetricsRepairedEventsTests.RepairedEvents_AreCountedByDeliveryAndReasonAsync, StreamIntegrityMetricsRepairedEventsTests.EveryReason_ExistsAtZero_BeforeAnythingIsRepairedAsync}
+
+:::updated
+**Upgrade.** Before this release a repaired event ran every receptor unless deduplication still remembered it. A
+receptor that should converge state from repaired events, and is idempotent, adds `[RunOnRepair]`; every other
+receptor no longer runs for repaired events. Coverage starts when migration 397 runs, so for the first lookback after
+the upgrade a repaired event older than the upgrade is `before_ledger_coverage`.
+:::
+
 ## The local lane follows ownership {#the-local-lane-follows-ownership}
 
 {verified: OwnedNamespaceMatcherLocalLaneTests.IsLocalEventType_NoOwnedDomains_EveryTypeIsLocalAsync, OwnedNamespaceMatcherLocalLaneTests.IsLocalEventType_TypeInAnOwnedNamespace_IsLocalAsync, OwnedNamespaceMatcherLocalLaneTests.IsLocalEventType_TypeOutsideEveryOwnedNamespace_IsNotLocalAsync, IntegrityCheckpointOwnershipTests.RunCheckpointOnce_OwnedDomainsRegistered_CountsOnlyOwnedTypesAsync, IntegrityCheckpointOwnershipTests.RunCheckpointOnce_NoOwnedDomains_AnnouncesNoneAndKeepsEveryBucketAsync, IntegrityManifestReceptorTests.RequestReceptor_OwnedDomainsRegistered_AdvertisesOnlyOwnedTypesAsync, RedeliveryRequestReceptorTests.Receptor_ShipsOnlyEventsOfOwnedTypes_AndPagesPastTheRestAsync}
@@ -3374,7 +3691,9 @@ patterns worth understanding before building a dashboard:
 {verified: MaintenanceWorkerIntegrityGaugeTests.AnInstanceThatIsNotTheMaintainer_StillPublishesTheLedgerReadingAsync, MaintenanceWorkerIntegrityGaugeTests.ATickTheIdleGateDefers_StillPublishesTheLedgerReadingAsync, IntegrityRepairAnswerSqlTests.Summary_CountsBucketsAwaitingAnAnswer_AnsweredBuckets_AndTheIntegrityDeliveriesWaitingAsync, IntegrityRepairAnswerSqlTests.Summary_WithNoIntegrityDeliveries_ReportsNoneWaitingAsync, StreamIntegrityMetricsCoverageTests.AnswerAndDeliveryGauges_ReportLiveSnapshotValuesAsync, IntegrityLedgerHealRemainingGaugesSqlTests.Summary_SumsTheDeficitOfRepairableBuckets_AndCountsTheUnhealableOnesAsync, IntegrityLedgerHealRemainingGaugesSqlTests.Summary_ABucketWhoseDeficitIsUnknown_AddsNothing_AndAnEmptyLedgerReadsZeroAsync, StreamIntegrityMetricsCoverageTests.HealRemainingGauges_ReportLiveSnapshotValuesAsync}
 
 Every gauge on the `Whizbang.StreamIntegrity` meter except the two [backfill gauges](#watching-a-backfill), which the
-backfill worker publishes on the maintainer, is read in one round trip at the start of every maintenance tick,
+backfill worker publishes on the maintainer, and the [repair backlog](#repair-backlog-and-eta) gauges with the
+progress and ETA [derived from them](#derived-completion-meters), which only the maintainer reports, is read in one
+round trip at the start of every maintenance tick,
 on every instance, ahead of the maintainer-duty check and the idle gate (see the collector, above). Every instance of a
 service therefore reports the same ledger and the same delivery queue, so read these as one value per service (the
 maximum across its instances), never a sum.
@@ -3404,6 +3723,211 @@ as those rows are re-checked and cleared.
 | `deliveries_pending` | [Integrity deliveries](#integrity-deliveries-are-queued) recorded and waiting for the maintainer's drain: received checkpoints, manifest requests and chunks, redelivery requests and bundle reconciles. Near zero on a healthy service. |
 | `oldest_delivery_age_seconds` | How long the oldest waiting integrity delivery has waited (0 when none). Under load the drain is deferred by the idle gate for up to `Whizbang:Housekeeping:MaxDeferral`, so an age above that, or one that keeps climbing, means the drain is not running: check which instance holds the maintainer duty. |
 | `sealed_through` (tag `origin_service_id`) | The per-origin **verified watermark** — the exclusive end of the highest window that audited clean and complete. This is the top-level convergence needle: a lane is provably in sync exactly as far as its seal. Each origin is its own series; one aggregated number would hide a stuck lane. |
+| `unhealed_buckets_by_kind` (tag `kind`) | `unhealed_buckets` split into `deficit`, `surplus`, `digest_mismatch` and `unknown`; the four add up to it. Only a deficit is one repair heals. See [unhealed buckets by kind](#unhealed-buckets-by-kind). |
+| `verified_percent` (tag `origin_service_id`), `verified_percent_all_origins` | `sealed_through` as a percentage of what each origin announced it committed, and all origins weighted by what each committed. Derived; see [derived completion meters](#derived-completion-meters). |
+
+### Repair backlog and ETA {#repair-backlog-and-eta}
+
+{verified: StreamIntegrityBacklogMetricsTests.TheBacklogInstruments_AreCreatedWithTheirNamesAsync, StreamIntegrityBacklogMetricsTests.NoReading_ReportsNoSeries_NeverAZeroAsync, StreamIntegrityBacklogMetricsTests.AReportedReading_IsOneSeriesPerOriginAndState_AndTheQueueDepthAsync, StreamIntegrityBacklogMetricsTests.BucketsMarkedUnhealable_CountAsRepairsUnhealable_AndAsClosedAsync, MaintenanceWorkerIntegrityBacklogTests.TheMaintainer_PublishesTheBacklog_ReadAgainstTheRepairBudgetAsync, MaintenanceWorkerIntegrityBacklogTests.AnInstanceThatIsNotTheMaintainer_NeitherReadsNorReportsTheBacklogAsync, MaintenanceWorkerIntegrityBacklogTests.AnInstanceThatLosesItsTurn_WithdrawsTheBacklogItReportedAsync, MaintenanceWorkerIntegrityBacklogTests.AFailedRead_WithdrawsTheReading_AndTheCycleCarriesOnAsync, IntegrityLedgerBacklogSqlTests.Backlog_CountsEachOriginsBucketsOncePerState_NamesTheOrigin_AndReadsTheQueueDepthAsync, IntegrityLedgerBacklogSqlTests.AHealedBucket_IsClosedOnce_AndLowersTheOpenGaugeAsync, IntegrityLedgerBacklogSqlTests.AnUnhealableBucket_MovesToStateUnhealable_AndIsNotClosedAgainWhenItsRowGoesAsync}
+
+The ledger deletes a row when its bucket heals, so it never holds the starting total and every row still present is
+open: a "percent healed" query over it reads 0% everywhere, and the only sign of progress used to be the open count
+falling between two samples taken by hand (#2256). Two counters and two gauges make completion and an ETA readable in
+any metrics backend:
+
+| Instrument | Type | Meaning |
+| --- | --- | --- |
+| `ledger_open_buckets` (tags `origin`, `state`) | Gauge | The open buckets of each origin in each state, every known origin in every state (zero when empty, so a healed origin falls to zero instead of going stale). `origin` is the origin's service name, or its id when the name is not known |
+| `outbound_deliveries` | Gauge | Integrity deliveries waiting in the queue the maintainer drains |
+| `ledger_buckets_opened` (tag `how`) | Counter | Buckets opened: `new` (a row recorded for a bucket the ledger did not hold) or `reopened` (a bucket marked unhealable whose local side changed or whose deficit grew, so repair can act on it again) |
+| `ledger_buckets_closed` (tag `how`) | Counter | Buckets closed, each once: `healed` (a comparison removed the row), `forgotten` (removed without a heal: an unconsumed type, a type its origin does not own, the row cap, a purged stream) or `unhealable` (marked as a bucket repair cannot change; a later removal of that row is not counted again) |
+
+**Each bucket is in exactly one state**, decided in this order:
+
+| `state` | The bucket |
+| --- | --- |
+| `unhealable` | Is marked as one [repair cannot change](#unhealable-buckets) |
+| `exhausted` | Spent its repair budget (`MaxRepairAttemptsPerBucket`); repair asks no more |
+| `waiting` | Has a repair request out whose answer has not landed |
+| `answered` | Was answered, and waits for the next comparison to decide healed or still divergent |
+| `open` | Everything else: divergent and waiting its turn in the drain or the next comparison |
+
+**The accounting.** A bucket is opened when its row is recorded, or reopened when an unhealable mark lifts. It is
+closed once: when its row is removed, or when it is marked unhealable (counted with `repairs_unhealable`, so the two
+cannot disagree). Removing a row already marked unhealable does not close it again. So the rows not marked unhealable
+change by exactly `opened - closed`. One exception is documented in the code: the ledger's row-cap trim
+(`integrity_ledger_max_entries`) counts every row it removes as `forgotten`, including a row an unhealable mark already
+closed; the cap is reached only by a ledger past its row limit, and the open gauge stays exact either way.
+
+**Only the maintainer reports the backlog.** `ledger_open_buckets` and `outbound_deliveries` are read in one grouped
+query (`wh_integrity_ledger_backlog`, migration 393) by the instance whose turn it is to do the maintainer's work, ahead
+of the idle gate, and by no other. An instance without the turn reports no series at all, never a zero, and an
+instance that loses its turn withdraws the reading it had. A **sum across instances therefore counts the backlog
+once**. A failed read is logged at Debug and withdraws the reading, since a frozen one would read as progress stopped.
+The counters, by contrast, are counted wherever a bucket opens or closes, on every instance: sum them across
+instances.
+
+**The batch heal now heals unscoped streams.** Migration 393 keys an unscoped (no tenant) stream's bucket as the empty
+scope in the batch heal too, as every report and the single-key heal already did. Before it, the bucket of an unscoped
+stream never healed through the batch heal every comparison and re-check uses.
+
+**Older releases keep working during a rolling deploy.** Each ledger function that records or removes rows gets a
+counting form under a new name holding the logic, and the existing name becomes a wrapper that answers exactly what it
+answered before. The current release calls the counting forms; an older release calls the existing names and reads
+the shapes it always read. Migration 393 is reversible.
+{verified: IntegrityLedgerBacklogSqlTests.ThePreviousReleasesFunctions_AnswerInTheirOldShapesAsync, IntegrityLedgerBacklogSqlTests.TheReverse_RestoresThePreviousDefinitions_AndDropsTheCountingFormsAsync, IntegrityLedgerBacklogSqlTests.TheBatchHeal_OfAnUnscopedBucket_RemovesItsRowAsync, StreamPurgeTests.Purge_CountsTheLedgerRowsItRemoves_AsForgottenBucketsAsync, MaintenanceWorkerIntegrityBacklogTests.TheLedgerRowCapTrim_CountsItsRowsAsForgottenAsync}
+
+### Unhealed buckets by kind {#unhealed-buckets-by-kind}
+
+{verified: StreamIntegrityBucketKindMetricsTests.BeforeTheFirstReading_EveryKindReadsZeroAsync, StreamIntegrityBucketKindMetricsTests.AReading_ReportsEachKind_AndKeepsTheUntaggedTotalAsync, IntegrityLedgerBucketKindGaugesSqlTests.Summary_SplitsTheUnhealedBucketsByKind_AndTheKindsAddUpToTheTotalAsync, IntegrityLedgerBucketKindGaugesSqlTests.Summary_OfAnEmptyLedger_ReadsZeroForEveryKindAsync, IntegrityLedgerBucketKindGaugesSqlTests.TheReverse_RestoresTheGaugesWithoutTheKindsAsync}
+
+`unhealed_buckets` counts every ledger row, and a comparison writes one for every divergence it reports. Only a
+deficit is one a redelivery heals. A service holding many buckets of another kind showed a backlog that redelivery
+could never heal, and nothing said so (#2260). `unhealed_buckets_by_kind` splits it, from the same periodic ledger
+read, with nothing to configure:
+
+| `kind` | Read from the ledger row | Meaning | Repair |
+| --- | --- | --- | --- |
+| `deficit` | `is_deficit` | Fewer events here than at the origin: data genuinely missing | Heals it |
+| `surplus` | not `is_deficit`, a negative size | More events here than at the origin | Cannot: asking the origin for more adds nothing, and local history is never deleted on a remote's say-so |
+| `digest_mismatch` | not `is_deficit`, a size of zero | The same number of events under different ids | Cannot: a redelivery re-ships what is already here |
+| `unknown` | anything else | A row no comparison has classified yet (written before kinds were recorded, or by the single-key report) | The next comparison that sights the bucket states its kind |
+
+The four are exclusive and add up to `unhealed_buckets`, which keeps its single untagged series; each kind is always
+reported, zero when none, so a healed kind falls to zero. `unhealed_deficit_events` still counts only the events
+genuinely missing. A sustained `digest_mismatch` usually means two services derive different ids for the same events
+(for example, a [composite's children](../fundamentals/messaging/composite-events#deterministic-child-ids) on two
+builds of a contract assembly). Migration 394 adds four columns at the end of `wh_integrity_ledger_gauges`, so a caller
+that names the earlier columns reads them unchanged; it is reversible.
+
+### Derived completion meters {#derived-completion-meters}
+
+{verified: IntegrityCompletionTests.VerifiedPercent_IsTheVerifiedSequencesOverTheOriginsLatestAsync, IntegrityCompletionTests.Verified_ReportsEachKnownOrigin_AndAllOriginsWeightedByWhatEachCommittedAsync, IntegrityCompletionTests.RepairProgressPercent_IsClosedOverOpenedAsync, IntegrityCompletionTests.BacklogEtaSeconds_IsTheOpenBacklogOverTheNetCloseRateAsync, IntegrityCompletionTests.BacklogEtaSeconds_WhenTheBacklogIsFlatOrGrowing_IsNoMeasurementAsync, IntegrityCompletionTests.RepairableOpenBuckets_SumsEveryStateButUnhealable_AndAnUnreportedBacklogHasNoneAsync, StreamIntegrityCompletionMetricsTests.TheDerivedGauges_AreCreatedWithTheirNamesAsync, StreamIntegrityCompletionMetricsTests.BeforeAnyReading_NoDerivedGaugeReportsASeriesAsync}
+
+Three gauges answer "how complete is it, and when will it be done" directly (#2261). Each is **derived** from the base
+meters above with the formula below (`IntegrityCompletion` in `Whizbang.Core.Observability` holds each one), so a team
+that drops the derived gauges from its telemetry feed can compute the same numbers itself.
+
+| Gauge | Formula | No measurement when |
+| --- | --- | --- |
+| `verified_percent` (tag `origin_service_id`) | `100 * min(max(sealed_through - 1, 0), latest) / latest` | The origin's latest commit sequence is not known yet. An origin that committed nothing reads 100 |
+| `verified_percent_all_origins` | `100 * sum(min(max(sealed_through - 1, 0), latest)) / sum(latest)` over the origins whose latest is known | No origin's latest is known |
+| `repair_progress_percent` | `100 * closed / opened` over the window | Nothing opened in the window |
+| `backlog_eta_seconds` | `open / ((closed - opened) / window_seconds)`; 0 when nothing is open | The backlog is flat or growing (`closed - opened <= 0`), or the backlog was not read |
+
+- **`sealed_through` is exclusive**, so a seal of 51 verified sequences up to 50; a seal past the latest is complete.
+  `latest` is the highest commit sequence (inclusive) the origin's checkpoints announced, kept in
+  `wh_integrity_known_origins.last_commit_sequence` (migration 395), and NULL until a checkpoint announces one.
+  `verified_percent` is read on every instance, as `sealed_through` is: read it as one value per service.
+- **`open` is the repairable backlog**: `ledger_open_buckets` summed over every state but `unhealable`, whose buckets
+  were closed when they were marked. Above 100, `repair_progress_percent` means the backlog shrank in the window.
+- **`opened` and `closed` are the window's `ledger_buckets_opened` and `ledger_buckets_closed`**, all `how` values
+  summed. The window is `RepairProgressWindowMinutes` (default 60).
+- **No ETA is ever a sentinel.** While the backlog is flat or growing there is no finish time to report, so the gauge
+  reports no measurement at all rather than an infinity, a negative or a zero that would read as done.
+
+**Per service, across restarts.** The opened and closed counters are per process and start over on a restart, and a
+service runs several instances. Progress and ETA are per service: every instance adds what its counters counted since
+its last write to one shared per-minute tally (`wh_integrity_ledger_tally`, through `wh_integrity_ledger_tally_add`,
+migration 395) on every maintenance tick, ahead of the maintainer check, and only when its counters moved. The
+instance that reports the backlog reads the window from it (`wh_integrity_ledger_tally_since`). A write that does not
+land is retried on the next tick with the counts it carried, so none are lost while the process lives; the counts of a
+process that stops between two ticks are. Each write also removes the minutes before twice the window, so the tally
+holds about 120 rows by default and needs no index beyond its primary key. Like the backlog gauges, progress and ETA
+are reported by the maintainer only: a sum across instances counts them once.
+{verified: MaintenanceWorkerIntegrityCompletionTests.EveryInstance_ReportsTheVerifiedPercent_FromTheSealsItReadsAsync, MaintenanceWorkerIntegrityCompletionTests.EachTick_WritesWhatTheCountersAddedSinceTheLast_OnceAsync, MaintenanceWorkerIntegrityCompletionTests.ATallyNotWritten_IsWrittenOnTheNextTickAsync, MaintenanceWorkerIntegrityCompletionTests.TheMaintainer_ReportsProgressAndEta_OverTheWindowAsync, MaintenanceWorkerIntegrityCompletionTests.AnInstanceThatIsNotTheMaintainer_NeitherReadsTheTallyNorReportsProgress_ButStillWritesItsOwnAsync, MaintenanceWorkerIntegrityCompletionTests.ATallyThatCannotBeRead_WithdrawsTheProgressAsync, IntegrityCompletionSqlTests.TheTally_AddsPerMinute_AndIsSummedOverTheWindowAsync, IntegrityCompletionSqlTests.TheTally_PrunesMinutesOlderThanItKeeps_InTheSameCallAsync, IntegrityCompletionSqlTests.TheSeals_CarryTheLatestCommitSequenceTheOriginsCheckpointsAnnouncedAsync}
+
+**Switching them off.** Each derived gauge has its own switch under `Whizbang:StreamIntegrity`, all on by default. With
+both progress and ETA off, no instance writes or reads the tally.
+
+| Option | Default | Switches off |
+| --- | --- | --- |
+| `VerifiedPercentGaugeEnabled` | `true` | `verified_percent` and `verified_percent_all_origins` |
+| `RepairProgressGaugeEnabled` | `true` | `repair_progress_percent` |
+| `BacklogEtaGaugeEnabled` | `true` | `backlog_eta_seconds` |
+| `RepairProgressWindowMinutes` | `60` | (the window both are computed over; at least 1, checked at host start) |
+
+{verified: StreamIntegrityOptionsDefaultsTests.Defaults_TheDerivedCompletionGaugesAreOn_OverAnHourAsync, MaintenanceWorkerIntegrityCompletionTests.TheVerifiedPercent_SwitchedOff_IsNotReportedAsync, MaintenanceWorkerIntegrityCompletionTests.EachDerivedGauge_SwitchesOffOnItsOwnAsync, MaintenanceWorkerIntegrityCompletionTests.BothSwitchedOff_NeitherWritesNorReadsTheTallyAsync}
+
+```json{
+title: "Drop the derived completion gauges"
+description: "Switches off verified_percent, repair_progress_percent and backlog_eta_seconds for a team that computes them from the base meters itself; the base meters are unaffected."
+category: "Configuration"
+difficulty: "BEGINNER"
+tags: ["stream-integrity", "metrics", "derived-gauges", "appsettings"]
+tests: ["MaintenanceWorkerIntegrityCompletionTests.EachDerivedGauge_SwitchesOffOnItsOwnAsync", "MaintenanceWorkerIntegrityCompletionTests.BothSwitchedOff_NeitherWritesNorReadsTheTallyAsync"]
+}
+{
+  "Whizbang": {
+    "StreamIntegrity": {
+      "VerifiedPercentGaugeEnabled": false,
+      "RepairProgressGaugeEnabled": false,
+      "BacklogEtaGaugeEnabled": false
+    }
+  }
+}
+```
+
+**Computing them yourself.** The same numbers from the base meters, in PromQL. The names assume the OpenTelemetry
+Prometheus exporter's default translation (dots become underscores, counters gain `_total`), and the queries group by
+`service_name`, the OpenTelemetry service resource attribute; adjust both to your pipeline.
+`ledger_open_buckets` is reported by one instance, so `sum` counts it once; the counters are summed across every
+instance, and `increase` absorbs a pod's restart.
+
+```promql{title="Repair progress and backlog ETA from the base meters" description="repair_progress_percent and backlog_eta_seconds computed over a one-hour window from ledger_buckets_opened, ledger_buckets_closed and ledger_open_buckets; the ETA query returns nothing while the backlog is flat or growing" category="Observability" difficulty="INTERMEDIATE" tags=["stream-integrity", "metrics", "promql", "eta"]}
+# Repair progress over the last hour, per service (above 100 means the backlog shrank)
+100 * sum by (service_name) (increase(whizbang_stream_integrity_ledger_buckets_closed_total[1h]))
+    / sum by (service_name) (increase(whizbang_stream_integrity_ledger_buckets_opened_total[1h]))
+
+# Backlog ETA in seconds: the repairable open backlog over the net close rate
+  sum by (service_name) (whizbang_stream_integrity_ledger_open_buckets{state!="unhealable"})
+/ (
+    sum by (service_name) (rate(whizbang_stream_integrity_ledger_buckets_closed_total[1h]))
+  - sum by (service_name) (rate(whizbang_stream_integrity_ledger_buckets_opened_total[1h]))
+  > 0
+)
+
+# Verified percent of one origin (sealed_through is exclusive)
+100 * clamp_min(whizbang_stream_integrity_sealed_through - 1, 0)
+```
+
+The last query needs the origin's latest commit sequence, which no meter exports; read it from the database, where
+every number above is also available. Against the service's schema:
+
+```sql{title="The derived completion meters, read from the database" description="verified percent per origin from the seals and the kept watermark, and repair progress and ETA over the last hour from the shared tally and the backlog read" category="Observability" difficulty="INTERMEDIATE" tags=["stream-integrity", "sql", "verified-percent", "eta"]}
+-- Verified percent per origin: the seal is exclusive, the latest inclusive
+SELECT s.origin_service_id,
+       k.origin_service_name,
+       CASE WHEN k.last_commit_sequence IS NULL THEN NULL
+            WHEN k.last_commit_sequence <= 0 THEN 100.0
+            ELSE 100.0 * LEAST(GREATEST(s.sealed_through - 1, 0), k.last_commit_sequence)
+                       / k.last_commit_sequence
+       END AS verified_percent
+FROM wh_integrity_seals s
+JOIN wh_integrity_known_origins k ON k.origin_service_id = s.origin_service_id;
+
+-- Repair progress and ETA over the last 60 minutes (8 = MaxRepairAttemptsPerBucket)
+WITH window_counts AS (
+  SELECT opened, closed FROM wh_integrity_ledger_tally_since(now() - interval '60 minutes')
+), backlog AS (
+  SELECT COALESCE(SUM(buckets), 0) AS open_buckets
+  FROM wh_integrity_ledger_backlog(8)
+  WHERE state <> 'unhealable'
+)
+SELECT CASE WHEN w.opened > 0 THEN 100.0 * w.closed / w.opened END AS repair_progress_percent,
+       CASE WHEN b.open_buckets = 0 THEN 0.0
+            WHEN w.closed - w.opened > 0 THEN b.open_buckets * 3600.0 / (w.closed - w.opened)
+       END AS backlog_eta_seconds
+FROM window_counts w, backlog b;
+```
+
+:::warning
+**`verified_percent` saws to zero on a seal reset.** A seal resets when a new origin generation cannot be vouched for
+(an origin on an earlier release, or a consumer further behind than the origin's rewrite log), so `verified_percent`
+drops to 0 and climbs again as the audit re-verifies. Since #2262 a [rewrite lowers a seal only as far as it
+reached](#rewrite-floor), so routine maintenance no longer resets it; a sawtooth on an upgraded pair of services means
+real rewrites below the seal.
+:::
 
 ### Durations (histograms, seconds)
 
@@ -3440,6 +3964,8 @@ as those rows are re-checked and cleared.
 | `deliveries_processed` (tag `type`) | Integrity deliveries the drain handled. Falling behind `deliveries_queued` for long means the drain is deferred by the idle gate or bounded by `MaxIntegrityDeliveriesPerPass`. |
 | `deliveries_failed` (tag `type`) | Failed attempts at an integrity delivery, each retried after a backoff. |
 | `deliveries_dropped` (tags `type`, `reason`) | Integrity deliveries dropped: `attempts_exhausted` (spent `MaxIntegrityDeliveryAttempts`) or `no_handler` (no handler for the type on this instance, such as a delivery recorded by another version). Each drop is also a Warning naming the type. |
+| `ledger_buckets_opened` (tag `how`) / `ledger_buckets_closed` (tag `how`) | Ledger buckets opened (`new`, `reopened`) and closed, each once (`healed`, `forgotten`, `unhealable`). Completion over a window is `closed / opened`; see [repair backlog and ETA](#repair-backlog-and-eta). |
+| `repaired_events` (tags `delivery`, `reason`) | Repaired events by how their receptors were decided: `state_only` or `receptors`, with the reason. See [repaired events and receptors](#repaired-events-and-receptors). |
 | `repairs_unhealable` | Buckets a redelivery could not change (every event already stored under its origin, or a child [refused as truncated](#remembered-but-missing)), counted once each. Repair stops asking for them; see [repair that cannot change a bucket](#unhealable-buckets). |
 | `manifests_requested`, `manifest_chunks_sent`, `drill_downs_requested`, `backfills_requested`, `redelivery_requests_received` | The exchange itself, hop by hop. |
 | `checkpoints_published` / `checkpoints_received`, `gaps_detected`, `coverage_gaps_detected`, `rebuilds_requested` | The continuity-checkpoint and coverage halves of the system. |
@@ -3452,7 +3978,10 @@ as those rows are re-checked and cleared.
 A deficient service converging looks like: `repairs_requested` active → `redelivery_events_shipped`
 climbing at the origin → `unhealed_buckets` and `unhealed_deficit_events` falling (heals deleting rows) with `bucket_heal_seconds`
 recording each one → `sealed_through` stepping upward as whole windows certify → everything quiet
-except the checkpoint heartbeat. After an upgrade from a schema older than 087, `origins_adopted` rises first while
+except the checkpoint heartbeat. The [completion meters](#derived-completion-meters) say the same in one number each:
+`repair_progress_percent` above 100 while the backlog shrinks, `backlog_eta_seconds` counting down, and
+`verified_percent` climbing to 100. A backlog that `unhealed_buckets_by_kind` shows as mostly `digest_mismatch` or
+`surplus` will not fall under repair: those buckets need their cause found, not more redelivery. After an upgrade from a schema older than 087, `origins_adopted` rises first while
 pre-087 history is redelivered once. While repair works, `repair_answer_pending_buckets` rises with each paced batch and
 turns into `repair_answered_buckets` as bundles land, and both fall at the next audit. The failure signatures:
 `repair_exhausted_buckets` rising (buckets out of budget), `repair_answer_pending_buckets` held high past

@@ -12,6 +12,7 @@ description: >-
   perspective, work coordinator, and lifecycle coordinator subsystems
 tags: 'metrics, opentelemetry, counters, histograms, monitoring, Prometheus, Grafana, passive-counters, maintenance'
 codeReferences:
+  - src/Whizbang.Core/Observability/IntegrityCompletion.cs
   - src/Whizbang.Core/Observability/WhizbangMetrics.cs
   - src/Whizbang.Core/Observability/PassiveCounter.cs
   - src/Whizbang.Core/Observability/MaintenanceMetrics.cs
@@ -51,6 +52,9 @@ codeReferences:
   - src/Whizbang.Core/Transports/ITrafficClassOpsRateSource.cs
   - src/Whizbang.Transports.AzureServiceBus/AsbTrafficClassOpsRateSource.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/Observability/StreamIntegrityBacklogMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Observability/StreamIntegrityCompletionMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsRepairedEventsTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/CollectiveReplayRunnerTests.cs
   - tests/Whizbang.Core.Tests/Observability/InstanceLivenessMetricsTests.cs
   - tests/Whizbang.Core.Tests/Lifecycle/LifecycleTrackingEndsTests.cs
@@ -969,10 +973,24 @@ Meter name: `Whizbang.StreamIntegrity` (`StreamIntegrityMetrics`)
 | `whizbang.stream_integrity.repair_answered_buckets` | ObservableGauge\<long\> | Buckets a redelivery answered that wait for the next comparison to decide healed or still divergent ([integrity gauges](../../resilience/stream-integrity#integrity-gauges)) |
 | `whizbang.stream_integrity.deliveries_pending` | ObservableGauge\<long\> | Integrity deliveries waiting for the maintainer's drain ([integrity gauges](../../resilience/stream-integrity#integrity-gauges)) |
 | `whizbang.stream_integrity.oldest_delivery_age_seconds` | ObservableGauge\<double\> | How long the oldest waiting integrity delivery has waited (0 when none) ([integrity gauges](../../resilience/stream-integrity#integrity-gauges)) |
+| `whizbang.stream_integrity.unhealed_buckets_by_kind` | ObservableGauge\<long\> | `unhealed_buckets` split by `kind` (deficit \| surplus \| digest_mismatch \| unknown); the four add up to it, and only a deficit is one repair heals ([unhealed buckets by kind](../../resilience/stream-integrity#unhealed-buckets-by-kind)) |
+| `whizbang.stream_integrity.ledger_open_buckets` | ObservableGauge\<long\> | Open ledger buckets by `origin` and `state` (unhealable \| exhausted \| waiting \| answered \| open); reported by the maintainer duty's holder only, so a sum across instances counts the backlog once ([repair backlog and ETA](../../resilience/stream-integrity#repair-backlog-and-eta)) |
+| `whizbang.stream_integrity.outbound_deliveries` | ObservableGauge\<long\> | Integrity deliveries waiting in the queue the maintainer drains; reported by the maintainer duty's holder only ([repair backlog and ETA](../../resilience/stream-integrity#repair-backlog-and-eta)) |
+| `whizbang.stream_integrity.ledger_buckets_opened` | Counter\<long\> | Ledger buckets opened; tagged by `how` (new \| reopened) ([repair backlog and ETA](../../resilience/stream-integrity#repair-backlog-and-eta)) |
+| `whizbang.stream_integrity.ledger_buckets_closed` | Counter\<long\> | Ledger buckets closed, each once; tagged by `how` (healed \| forgotten \| unhealable). Completion over a window is `closed / opened` ([repair backlog and ETA](../../resilience/stream-integrity#repair-backlog-and-eta)) |
+| `whizbang.stream_integrity.verified_percent` | ObservableGauge\<double\> (`%`) | Derived: each origin's `sealed_through` as a percentage of the latest commit sequence its checkpoints announced; tagged by `origin_service_id`. Switch: `VerifiedPercentGaugeEnabled` ([derived completion meters](../../resilience/stream-integrity#derived-completion-meters)) |
+| `whizbang.stream_integrity.verified_percent_all_origins` | ObservableGauge\<double\> (`%`) | Derived: `verified_percent` over all origins, weighted by what each committed. Switch: `VerifiedPercentGaugeEnabled` ([derived completion meters](../../resilience/stream-integrity#derived-completion-meters)) |
+| `whizbang.stream_integrity.repair_progress_percent` | ObservableGauge\<double\> (`%`) | Derived: buckets closed as a percentage of buckets opened over `RepairProgressWindowMinutes`, per service; maintainer only. Switch: `RepairProgressGaugeEnabled` ([derived completion meters](../../resilience/stream-integrity#derived-completion-meters)) |
+| `whizbang.stream_integrity.backlog_eta_seconds` | ObservableGauge\<double\> (`s`) | Derived: repairable open buckets over the window's net close rate; no measurement while the backlog is flat or growing; maintainer only. Switch: `BacklogEtaGaugeEnabled` ([derived completion meters](../../resilience/stream-integrity#derived-completion-meters)) |
+| `whizbang.stream_integrity.repaired_events` | Counter\<long\> | Repaired events by how their receptors were decided; tagged by `delivery` (state_only \| receptors) and `reason` ([repaired events and receptors](../../resilience/stream-integrity#repaired-events-and-receptors)) |
 
-The ledger gauges above, from `sealed_through` to `oldest_delivery_age_seconds`, are read together in one round trip
-at the start of every maintenance tick on every instance, so every instance of a service reports the same values:
-read each as one value per service (the maximum across instances), never a sum. `unhealed_deficit_events` is the
+The ledger gauges above, from `sealed_through` to `oldest_delivery_age_seconds`, with `unhealed_buckets_by_kind` and
+`verified_percent`, are read together in one round trip at the start of every maintenance tick on every instance, so
+every instance of a service reports the same values: read each as one value per service (the maximum across
+instances), never a sum. `ledger_open_buckets`, `outbound_deliveries`, `repair_progress_percent` and
+`backlog_eta_seconds` are the exception: only the maintainer duty's holder reports them, and every other instance
+reports no series, so a sum counts them once. The counters are counted where the work happens; sum them across
+instances. `unhealed_deficit_events` is the
 amount of data left to heal; `unhealed_buckets` counts buckets in every state. See
 [which number to watch](../../resilience/stream-integrity#integrity-gauges).
 

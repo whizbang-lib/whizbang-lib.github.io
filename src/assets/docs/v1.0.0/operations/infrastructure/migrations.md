@@ -37,6 +37,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/385_StoredFormConversionsRecordWhoAppliedThem.sql
   - src/Whizbang.Data.Postgres/Migrations/386_TheLedgerRecordsHowToReverseEachChange.sql
   - src/Whizbang.Data.Postgres/MigrationSqlNormalizer.cs
+  - src/Whizbang.Core/TypeNameFormatter.cs
   - src/Whizbang.Data.Postgres/MigrationHashUpgrade.cs
   - src/Whizbang.Data.Postgres/SchemaBootstrapPhase.cs
   - src/Whizbang.Data.Postgres/SchemaBootstrapException.cs
@@ -97,6 +98,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupMigrationStepsTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationConstantsTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/NormalizeClrTypeNamesMigrationTests.cs
+  - tests/Whizbang.Core.Tests/TypeNameWireFormTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresSchemaInitializerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/CanonicalTemporalFunctionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/FleetVersionsTests.cs
@@ -1513,8 +1515,19 @@ A stored CLR type name has one canonical form: `Namespace.Type, Assembly`, with 
 `, Version=…, Culture=…, PublicKeyToken=…` decoration removed at any depth. Whizbang computes it in C# with
 `EventTypeMatchingHelper.NormalizeTypeName` and in SQL with `wh_normalize_clr_type_name`. The two agree byte for
 byte, and a parity test holds them to it over plain, nested (`Ns.Outer+Inner`) and generic
-(`` Ns.Box`1[[Ns.Inner, Inner.Asm, Version=…]] ``) names. For a type with no type arguments the form is also what
-`TypeNameFormatter.Format` writes.
+(`` Ns.Box`1[[Ns.Inner, Inner.Asm, Version=…]] ``) names. It is also what `TypeNameFormatter.Format` writes for
+every type, generic types included: `Format` is version-free at every depth, so the form a type renders is the form
+any rendering of its name normalizes to, whichever build wrote it. `TypeNameFormatter.Parse` delegates to the same
+normalizer and splits the result only at the commas outside a generic name's brackets.
+{verified: TypeNameWireFormTests.Format_CarriesNoVersionAtAnyDepthAsync, TypeNameWireFormTests.Format_IsWhatTheStringNormalizerMakesOfEveryRenderingAsync, TypeNameWireFormTests.Parse_DelegatesToTheNormalizer_ForEveryRenderingAsync, TypeNameWireFormTests.Parse_KeepsItsContract_ForTheShortAndPaddedFormsAsync}
+
+**Generic type names stored by an earlier release.** Before #2267, `Format` wrote a generic type's name with each type
+argument's versioned assembly-qualified name inside the brackets. From this release a generic event type is stored
+under the version-free name, so rows written before and after the upgrade can spell one type two ways. Comparisons
+that normalize both sides, which every framework comparison does, match both spellings, and nothing is rewritten for
+you. A query of yours that compares a stored name by equality should normalize it first with
+`wh_normalize_clr_type_name`, or find the columns with two spellings with
+[`wh_find_qualified_type_names()`](#finding-qualified-type-names).
 
 | Function | Returns |
 |---|---|
@@ -1770,6 +1783,12 @@ connection has. The rules for authors are in [Writing SQL migrations](../../../c
 | `364_InstanceExitRetentionIsASetting.sql` | `wh_record_instance_exit` reads `wh_settings.instance_exit_retention_days` (30 days when unset) instead of a fixed 30 days | yes |
 | `385_StoredFormConversionsRecordWhoAppliedThem.sql` | Adds `applied_library_version` and `applied_application_version` to `wh_stored_form_migrations` and `wh_perspective_forms`, so [the rollback gate](../startup/rolling-upgrades#the-rollback-gate) counts stored-form conversions. Rewrites no row. Irreversible | yes |
 | `386_TheLedgerRecordsHowToReverseEachChange.sql` | Adds `wh_schema_migrations.reversal` and `down_sql` ([how a migration is reversed](#how-a-migration-is-reversed)), and redefines 359's trigger so a re-apply that records no reversal clears the old one. Irreversible | no |
+| `392_AnsweredRowsAreRecheckedFirst.sql` | Redefines `wh_integrity_claim_ledger_recheck` so rows whose repair was answered are re-checked first, and adds the partial index `idx_integrity_ledger_answered_unrechecked` ([answered rows are re-checked first](../../resilience/stream-integrity#answered-rows-are-rechecked-first)). Reversible | no |
+| `393_TheLedgerCountsWhatItOpensAndCloses.sql` | Gives each integrity ledger function a counting form and keeps the existing names as wrappers that answer as before, adds `wh_integrity_ledger_backlog`, and heals unscoped buckets in the batch heal ([repair backlog and ETA](../../resilience/stream-integrity#repair-backlog-and-eta)). Reversible | no |
+| `394_LedgerGaugesSplitBucketsByKind.sql` | Adds four columns at the end of `wh_integrity_ledger_gauges`, the unhealed buckets by kind ([unhealed buckets by kind](../../resilience/stream-integrity#unhealed-buckets-by-kind)). Reversible | no |
+| `395_IntegrityCompletionIsReportedDirectly.sql` | Adds `wh_integrity_known_origins.last_commit_sequence`, the per-minute tally `wh_integrity_ledger_tally` and its two functions ([derived completion meters](../../resilience/stream-integrity#derived-completion-meters)). Lossy: the reverse drops the tally's minutes and the kept watermarks, which the next ticks and checkpoints rebuild | no |
+| `396_ASealFallsOnlyAsFarAsARewriteReached.sql` | Adds the origin rewrite log `wh_integrity_origin_rewrites`, its two settings and `wh_integrity_seal_guard`; the generation moves only after a rewrite of the origin's own lane ([a rewrite lowers a seal only as far as it reached](../../resilience/stream-integrity#rewrite-floor)). Lossy: the log, its settings and the new guard are dropped, seals are kept, and the next generation change resets them as before | no |
+| `397_RepairedEventsRunOnlyReceptorsThatNeverRan.sql` | Adds the handled ledger `wh_receptor_handled` (partitioned by event id), its coverage, lookup and sweep, and records each processed event in `process_inbox_completions` ([repaired events and receptors](../../resilience/stream-integrity#repaired-events-and-receptors)). Lossy: the ledger and its coverage are dropped, and a later forward run starts coverage afresh, so nothing reads the lost records as complete | no |
 
 ## Upgrade notes {#upgrade-notes}
 
@@ -1800,6 +1819,14 @@ Notes for upgrading a running deployment to this release. Each links to the page
   third. See [Current](../startup/rolling-upgrades#current).
 - **An evicted instance exits with code 3**, a capability that is not ready exits with code 4 (it was 1), and the
   killswitch's stop ends the process. See [Instance Exits](../startup/instance-exits).
+- **A repaired event no longer runs every receptor.** Stream-integrity repair now delivers a repaired event state only
+  unless the receptor is declared `[RunOnRepair]` and the handled ledger (migration 397) proves this service never
+  handled it. A receptor that should converge state from repaired events, and is idempotent, adds `[RunOnRepair]`. See
+  [repaired events and receptors](../../resilience/stream-integrity#repaired-events-and-receptors).
+- **Repair answers bundle across streams.** Finish the rollout of a requesting service before its next repair cycle:
+  an instance on an earlier release that receives a stream-spanning answer requested by an upgraded instance files its
+  children under the answer's session key. See
+  [only a requester that asks gets the new shape](../../resilience/stream-integrity#accepts-stream-spanning-bundles).
 - **An app signal published inside a transaction is delivered on commit.** A custom `ISignalTopicTransport`
   implements the new `PublishTopicAsync` overload. See [transactional publish](../../fundamentals/work-coordinator/app-signals#transactional-publish).
 

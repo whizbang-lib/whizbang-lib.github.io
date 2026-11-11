@@ -13,6 +13,7 @@ tags: >-
   operations, partitioning, partitions, retention, wh_log, wh_signals, wh_lifecycle_completions, uuidv7, maintenance,
   postgres, storage, vacuum, maintainer duty, pg_partman, create_parent, run_maintenance
 codeReferences:
+  - src/Whizbang.Data.Postgres/Migrations/397_RepairedEventsRunOnlyReceptorsThatNeverRan.sql
   - src/Whizbang.Data.Postgres/Migrations/226_PartitionManager.sql
   - src/Whizbang.Data.Postgres/Migrations/233_PartitionSignalsAndLifecycleCompletions.sql
   - src/Whizbang.Data.Postgres/Migrations/237_PartitionsCarryTheLedgersAutovacuumSettings.sql
@@ -29,6 +30,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Notifications/PgDurableSignalRetentionWorker.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/HandledLedgerSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/PartitionMaintainSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/LogPartitionConversionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/UuidPartitionSqlTests.cs
@@ -78,6 +80,7 @@ flowchart LR
 | `wh_log` | `logged_at`, primary key `(log_id, logged_at)` | weekly | `log_retention_days` (default 14), the window the row sweep used |
 | `wh_signals` | `created_at`, primary key `(id, created_at)` | daily | `SignalRetention` (default 7 days), the durable-signal window ([signal bus](../../fundamentals/signal-bus/signal-bus#retention)) |
 | `wh_lifecycle_completions` | `event_id` range, primary key `event_id` unchanged | daily | `LifecycleCompletionRetentionDays` (default 7); `0` keeps every partition |
+| `wh_receptor_handled` | `event_id` range, primary key `event_id` | daily | `Whizbang:StreamIntegrity:RepairReceptorLookback` (default seven days), the window inside which a repaired event can be [proven never handled](../../resilience/stream-integrity#handled-ledger). Created partitioned by migration 397, so never converted |
 
 Every partitioned table also has a **default partition** (`<table>_default`) that catches a row no partition covers,
 so a writer never fails because maintenance has fallen behind. The default partition is never dropped.
@@ -455,13 +458,18 @@ Two differences from the row sweep follow from dropping by range:
 - **Signals.** The signal sweep never deletes past the slowest instance's cursor, whether or not that instance is
   still registered. A partition drop goes by age, and carries forward only what a live instance still needs
   ([signals](#signals)), so a dead instance's cursor holds back the sweep but not the drop.
+- **The handled ledger.** Its sweep (`wh_receptor_handled_sweep`) first moves the ledger's coverage start up to the
+  retention cutoff, then removes older rows from the relation `wh_partition_sweep_relation` names (the table, or only
+  its default partition once partitions are maintained), in one transaction. Coverage moves before anything is
+  removed, so a reader never sees a window with records missing as complete, and the maintenance cycle runs the sweep
+  before its partition step drops the partitions behind it.
 - **Lifecycle completions.** The row sweep goes by `completed_at`; the partition drop goes by the time in the event
   id, which is never later. A completion is only looked up for events of the last 30 minutes, far inside the window,
   so dropping by the event's time loses nothing the reconcile reads.
 
 ## How a table registers {#how-a-table-registers}
 
-{verified: PartitionedTableTests.TheLog_IsWeeklyByLoggedAt_KeptForItsRetentionSettingAsync, PartitionedTableTests.TheSignals_AreDailyByCreatedAt_KeptForTheDurableSignalWindowAsync, PartitionedTableTests.TheLifecycleCompletions_AreDailyByEventId_KeptForTheirRetentionDaysAsync, PartitionedTableTests.TheFrameworkTables_TakeTheirWindowsFromTheConfiguredOptionsAsync, DapperPartitionMaintenanceStepTests.AnIndefiniteWindow_DropsNothingAsync, PartitionedTableTests.AFixedWindow_IsCarriedAsIsAsync, DapperPartitionMaintenanceStepTests.AFixedWindow_DropsWhatEndedBeforeItAsync, DapperPartitionMaintenanceStepTests.TheLogsWindow_IsReadFromItsSettingAsync}
+{verified: PartitionedTableTests.TheHandledLedger_IsDailyByEventId_KeptForTheRepairReceptorLookbackAsync, PartitionedTableTests.TheLog_IsWeeklyByLoggedAt_KeptForItsRetentionSettingAsync, PartitionedTableTests.TheSignals_AreDailyByCreatedAt_KeptForTheDurableSignalWindowAsync, PartitionedTableTests.TheLifecycleCompletions_AreDailyByEventId_KeptForTheirRetentionDaysAsync, PartitionedTableTests.TheFrameworkTables_TakeTheirWindowsFromTheConfiguredOptionsAsync, DapperPartitionMaintenanceStepTests.AnIndefiniteWindow_DropsNothingAsync, PartitionedTableTests.AFixedWindow_IsCarriedAsIsAsync, DapperPartitionMaintenanceStepTests.AFixedWindow_DropsWhatEndedBeforeItAsync, DapperPartitionMaintenanceStepTests.TheLogsWindow_IsReadFromItsSettingAsync}
 
 A framework table joins the manager by registering a declaration in the driver's service registration; the manager
 itself does not change. The declaration names the table, its partition column (a `timestamptz`, or a time-ordered
