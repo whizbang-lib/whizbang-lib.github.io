@@ -381,26 +381,28 @@ perspectives later is added to the suite, so every mode is held to it.
 
 ## Measurements {#measurements}
 
-Measured with `Measure_FanOutOfNewStreamsAsync`: new streams with one event each, applied through the real pipeline,
-counting the statements issued against the perspective table and in total.
+Measured with `Measure_FanOutOfNewStreamsAsync`: new streams with one event each, applied through the real pipeline
+with the completion path a service runs (the batched completion strategy and the completion flush worker), four
+consumer loops and a claim batch of 1,000, one mode at a time, on PostgreSQL (2026-11-12):
 
-100,000 new streams, one event each, on PostgreSQL, four consumer loops and a claim batch of 1,000, each mode on a
-fresh pipeline (2026-11-12):
+| | Per-stream, 10,000 | Set-based, 10,000 | Per-stream, 100,000 | Set-based, 100,000 |
+|---|---|---|---|---|
+| Statements against the perspective table | 116,676 | 179 | 905,956 | 1,907 |
+| of which inserts | 10,000 | 33 | 100,000 | 355 |
+| Commit-sequence reads | 10,000 | 33 | 100,000 | 355 |
+| Completion calls (`complete_perspective`) | 269 | 217 | 2,154 | 2,010 |
+| Statements in total | 128,971 | 1,244 | 1,020,247 | 15,297 |
+| Wall time | 47.8 s | 25.7 s | 1,284.1 s | 1,190.2 s |
+| Rows per second | 209 | 389 | 78 | 84 |
 
-| | Per-stream | Set-based |
-|---|---|---|
-| Statements against the perspective table | 574,928 | 2,915 |
-| of which inserts | 100,000 | 709 |
-| of which row reads (versions and models) | 474,928 | 2,206 |
-| Commit-sequence reads | 100,000 | 709 |
-| Statements in total | 1,255,840 | 662,087 |
-| Wall time | 683.6 s | 764.0 s |
-| Rows per second | 146 | 131 |
+The write goes from four to six statements per stream to a handful per batch, and a fan-out sends the database about
+one percent of the statements. At 10,000 streams that makes set-based mode almost twice as fast. At 100,000 both modes
+slow down, and by the same amount per 1,000 streams claimed (from 2.6 s to 11.9 s set-based, from 4.8 s to 12.8 s per
+stream): the set-based run issued 15,297 statements in 1,190 seconds, so its time is no longer its statements' count
+but the cost of each work-queue call (claim, stream fetch, completion, cleanup) over a backlog of 100,000 streams. That
+cost is the same in both modes and is the next thing to measure for a large fan-out.
 
-The write itself goes from about six statements per stream to a few per batch, and the statements a fan-out sends to
-the database in total halve. Rows per second do not move, because neither mode is bound by its writes here: in both,
-most of what remains is the completion of each pair (`complete_perspective_cursor_work` and its read, about three per
-stream in this harness, which reports completions one pair at a time), followed by the claim and drain round trips.
-Batching the completion reports is the next step for a fan-out's throughput; until then, set-based mode's gain is
-database load, not latency.
-
+Completions are batched already: the batched completion strategy hands each batch's cursors and work rows to the
+completion flush worker, which writes them with one `complete_perspective` call per flush, so no pair reports its own
+completion (`NewStreams_CompletedAsAServiceCompletesThem_CostAFewBatchedCallsNotOnePerStreamAsync` locks it). The
+instant completion strategy, which reports each pair with its own call, exists for tests.
