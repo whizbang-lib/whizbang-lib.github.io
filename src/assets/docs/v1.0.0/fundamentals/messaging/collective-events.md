@@ -638,12 +638,22 @@ per-model `Where` you supply (see below).
 
 Handlers are discovered at **compile time** by the
 `CollectiveApplyDiscoveryGenerator`, which emits a reflection-free
-`CollectiveApplyRegistry.Entries` dispatch table **per assembly** —
+`CollectiveApplyRegistry.Entries` dispatch table **per assembly**:
 one typed `Invoker` lambda per `(ModelType, EventType)`. At runtime the
 dispatcher indexes by `(ModelType, EventType)` and invokes the lambda;
 no reflection, AOT-clean by construction. The attribute is read on the
 **method**, not the type, so one perspective class can declare several
 `[CollectiveApplyFor]` handlers for different events.
+
+Each assembly's table registers itself: you never pass it in. The
+dispatcher reads the union of every registered assembly's handlers, so
+handlers spread across several assemblies all receive their events, and
+a handler registered twice still runs once. In a process that loads
+several services' code (a test host, a gateway), a host anchored to its
+service gets only its own service's handlers and those of the libraries
+it uses, the same [service scoping](../../extending/extensibility/replaceable-services.md#service-scope)
+every generated registration follows.
+{verified: MultiAssemblyCollectiveDispatchTests.TwoAssemblies_TheDispatcher_AppliesEachAssemblysCollectiveEventsAsync, MultiAssemblyCollectiveDispatchTests.AddWhizbang_GivesTheDispatcherThisAssemblysHandlers_WithNothingPassedByHandAsync, MultiAssemblyCollectiveDispatchTests.AHandPassedTableTheHostAlsoContributes_DispatchesEachHandlerOnceAsync, DapperMultiAssemblyCollectiveDispatchTests.TwoAssemblies_TheDispatcher_AppliesEachAssemblysCollectiveEventsAsync}
 
 ### Handler shapes {#handler-shapes}
 
@@ -1581,7 +1591,7 @@ event is investigable by type/namespace, not just an aggregate metric:
 
 ```csharp{
 title: "Register collective events on the EF Core Postgres driver"
-description: "AddCollectiveEventsEFCore takes the generated CollectiveApplyRegistry.Entries and wires the dispatcher, tenant resolver, session accessor, and replay applier; one AddCollectiveExecutorEFCore per perspective model that has a [CollectiveApplyFor] handler."
+description: "AddCollectiveEventsEFCore reads every registered assembly's collective handlers and wires the dispatcher, tenant resolver, session accessor, and replay applier; one AddCollectiveExecutorEFCore per perspective model that has a [CollectiveApplyFor] handler."
 framework: "NET10"
 category: "Messaging"
 difficulty: "INTERMEDIATE"
@@ -1589,10 +1599,8 @@ tags: ["collective-events", "dependency-injection", "ef-core", "postgres", "regi
 unverified: "Consumer DI-wiring illustration; the AddCollectiveEventsEFCore and AddCollectiveExecutorEFCore extension methods are not exercised by a candidate test (EFCoreServiceRegistrationGeneratorTests covers generator-emitted registration and schema, not these calls)."
 }
 services
-  // entries = your assembly's generated Whizbang.Core.Generated.CollectiveApplyRegistry.Entries
-  // (the framework assembly's own copy is empty). Required — no parameterless overload.
-  .AddCollectiveEventsEFCore<MyPerspectiveDbContext>(CollectiveApplyRegistry.Entries) // dispatcher + resolver + session + replay applier
-  .AddCollectiveExecutorEFCore<OrderModel>();                                         // one per model with a [CollectiveApplyFor]
+  .AddCollectiveEventsEFCore<MyPerspectiveDbContext>() // dispatcher + resolver + session + replay applier
+  .AddCollectiveExecutorEFCore<OrderModel>();// one per model with a [CollectiveApplyFor]
 // Custom scope kinds: also register your ICollectiveScopeResolver.
 ```
 
@@ -1603,12 +1611,21 @@ for the rebuild path.
 
 ### Dapper (Postgres)
 
-Dapper DI mirrors EF Core: `AddCollectiveEventsDapper(entries)` +
+Dapper DI mirrors EF Core: `AddCollectiveEventsDapper()` +
 `AddCollectiveExecutorDapper<TModel>(tableName)` (Dapper supplies the
 `wh_per_*` table name since it has no entity model to derive it from),
 plus `AddCollectiveTableDapper<TOther>(tableName)` for any **query-only
-sibling** a handler reaches via `q.Of<TOther>()`. `entries` is the same
-generated `CollectiveApplyRegistry.Entries`.
+sibling** a handler reaches via `q.Of<TOther>()`.
+
+:::updated
+**Upgrading: the handler table is no longer passed in (#2238).** `AddCollectiveEventsEFCore<TDbContext>()` and
+`AddCollectiveEventsDapper()` take no argument and read every registered assembly's handlers. The overloads that take
+`CollectiveApplyRegistry.Entries` still work but are obsolete: drop the argument. A table still passed in is added to the
+registered handlers, so no handler runs twice. Any `CS0436` suppression added to pick one assembly's
+`CollectiveApplyRegistry` can go too. A build that treats warnings as errors fails on the obsolete overload until the
+argument is dropped.
+{verified: MultiAssemblyCollectiveDispatchTests.TheObsoleteHandPassedTable_StillApplies_AlongsideTheContributedOnesAsync, DapperMultiAssemblyCollectiveDispatchTests.TheObsoleteHandPassedTable_StillApplies_AlongsideTheContributedOnesAsync}
+:::
 
 ## Driver support
 
