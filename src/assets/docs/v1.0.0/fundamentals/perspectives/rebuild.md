@@ -33,7 +33,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/274_DeletedArchiveIsRecordedInTheLedger.sql
   - src/Whizbang.Data.EFCore.Postgres/EFCorePostgresPerspectiveCheckpointCompleter.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperPostgresPerspectiveCheckpointCompleter.cs
-  - src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs
+  - src/Whizbang.Data.Postgres/RebuildPerspectiveCommandReceptor.cs
+  - src/Whizbang.Data.Postgres/RebuildCommandReceptorRegistrar.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/RebuildCreatedAtIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveSnapshotFloorTests.cs
@@ -52,6 +53,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRebuildSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchivedStreamRebuildTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RebuildPerspectiveCommandReceptorCoverageTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperRebuildCommandTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveReplayOrderingTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindWriteCheckTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CollectiveReplayRebuildIntegrationTests.cs
@@ -408,6 +411,21 @@ await dispatcher.SendAsync(new CancelPerspectiveRebuildCommand("OrderPerspective
 
 `ArchivedData` (default `Skip`) says what the rebuild may read of archived streams; see
 [archived data](#archived-data).
+
+### On every data layer {#on-every-data-layer}
+
+Both Postgres data layers handle `RebuildPerspectiveCommand` the same way. `AddWhizbangPostgres` (Dapper) and the
+EF Core driver both register the command's receptor at the same three lifecycle stages (local dispatch, the sender's
+outbox copy, and a copy arriving from another service). Both also register the background rebuild worker that a
+whole-perspective blue-green rebuild is queued to. The receptor lives in `Whizbang.Data.Postgres`, which both drivers
+reference.
+
+| Choice | Why | |
+|---|---|---|
+| One shared registration, called by both drivers, rather than a copy in each. | The handler only needs Core abstractions. Before #1959 it lived in the EF Core driver, so a Dapper host that sent the command rebuilt nothing and could rebuild only by calling `IPerspectiveRebuilder` itself. A parity test fails if either driver stops registering it. | {verified: StartupParityTests.EachDriver_HandlesTheRebuildCommand_AndRunsItsBackgroundRebuildsAsync, DapperRebuildCommandTests.ABlueGreenRebuildCommand_OnADapperHost_IsHandedToTheBackgroundWorkerAsync} |
+
+Code that constructs the receptor directly imports `Whizbang.Data.Postgres` (it was in
+`Whizbang.Data.EFCore.Postgres` before #1959). Hosts that only send the command change nothing.
 
 ### Large stream selections {#large-stream-selections}
 

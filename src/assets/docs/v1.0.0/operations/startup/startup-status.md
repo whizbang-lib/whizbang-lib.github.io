@@ -516,8 +516,9 @@ differ in Elect and Migrate, which follow the [Assess verdict](rolling-upgrades#
   instance`, Elect with the election's result, and Migrate with the schema pass it runs.
 - **A restart whose schema is not yet shown current** (`Serve`): the same Preflight and Elect, and Migrate recorded as
   skipped once the pass's fast path finds every hash matching (`Stage 3 of 7: Migrate - skipped: the schema is
-  already current`). The first restart after a fresh start is one of these on a model with stored forms, because
-  its pass is the one that [settles them](rolling-upgrades#current).
+  already current`). The first restart after rows reached a table the first start built is one of these on a model
+  with stored forms, because its conversion is the one that [settles them](rolling-upgrades#current); a restart on a
+  database one pass built, with no rows written since, is `Current`.
 - **A restart on a current schema** (`Current`): Preflight is recorded as `the schema is current; registering this
   instance`, then Elect and Migrate are both skipped with the reason, and nothing takes the schema lock:
 
