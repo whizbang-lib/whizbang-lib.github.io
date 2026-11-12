@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "42910554745",
-    "sha": "6e0356d247fc81c1665d8272acaeb35845224ad7",
+    "runId": "43130508587",
+    "sha": "c7aae3fded5dc75a083932ed19ae824b3917d334",
     "branch": "develop",
-    "libraryVersion": "0.2627.0-alpha.1093",
-    "completedAt": "2026-11-10T22:17:00.592Z"
+    "libraryVersion": "0.2627.0-alpha.1150",
+    "completedAt": "2026-11-12T01:11:10.924Z"
   },
   "total": {
-    "passed": 40673,
+    "passed": 40861,
     "failed": 0,
     "skipped": 12
   },
@@ -18,7 +18,7 @@
       "skipped": 0
     },
     "component": {
-      "passed": 5965,
+      "passed": 5966,
       "failed": 0,
       "skipped": 0
     },
@@ -33,12 +33,12 @@
       "skipped": 3
     },
     "postgres-dapper": {
-      "passed": 1559,
+      "passed": 1565,
       "failed": 0,
       "skipped": 0
     },
     "postgres-efcore-": {
-      "passed": 9844,
+      "passed": 9908,
       "failed": 0,
       "skipped": 0
     },
@@ -58,7 +58,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 22278,
+      "passed": 22395,
       "failed": 0,
       "skipped": 8
     }
@@ -168,7 +168,7 @@
     },
     "Whizbang.Core.Component.Tests": {
       "file": "Whizbang.Core.Component.Tests.json",
-      "passed": 4629,
+      "passed": 4630,
       "failed": 0,
       "skipped": 0
     },
@@ -180,19 +180,19 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 14259,
+      "passed": 14343,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.Dapper.Postgres.Tests": {
       "file": "Whizbang.Data.Dapper.Postgres.Tests.json",
-      "passed": 1559,
+      "passed": 1565,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.EFCore.Postgres.Tests": {
       "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
-      "passed": 9844,
+      "passed": 9908,
       "failed": 0,
       "skipped": 0
     },
@@ -240,7 +240,7 @@
     },
     "Whizbang.Generators.Tests": {
       "file": "Whizbang.Generators.Tests.json",
-      "passed": 3988,
+      "passed": 4021,
       "failed": 0,
       "skipped": 0
     },

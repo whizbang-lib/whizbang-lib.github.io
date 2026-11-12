@@ -130,6 +130,7 @@ Additional subsystem meters:
 | `Whizbang.Workers.PinnedPool` | `PinnedPoolMetrics` | Pinned connection pool borrows, timeouts, recycles |
 | `Whizbang.TableStatistics` | `TableStatisticsMetrics` | Queue depths, and every table's size, size split, rows and bloat |
 | `Whizbang.TypeRegistry` | `TypeRegistryMetrics` | Message type registry renames and drift |
+| `Whizbang.Ephemeral` | `EphemeralBlockerMetrics` | Events of ephemeral types kept Sourced by durable types in the same streams |
 | `Whizbang.StreamIntegrity` | `StreamIntegrityMetrics` | Continuity checkpoints, gap/divergence detection, repair and manifest flows |
 | `Whizbang.Housekeeping` | `HousekeepingCoordinator` | Arbitration verdicts, the running activity, per-activity volume rollup, and idle seconds-since-activity |
 | `Whizbang.Core.Routing.MessageDiscard` | `MessageDiscardPolicy` | Unsubscribed-message skips at the inbox and outbox gates |
@@ -924,6 +925,16 @@ Meter name: `Whizbang.TypeRegistry` (`TypeRegistryMetrics`)
 |-------------|------|-------------|
 | `whizbang.type_registry.renamed` | Counter\<long\> | Registry rows reconciled old→new for an acknowledged rename; tagged by `service` |
 | `whizbang.type_registry.drift_detected` | Counter\<long\> | Un-acknowledged registry drift left untouched; tagged by `service` |
+
+## Whizbang.Ephemeral {#ephemeral}
+
+{verified: EphemeralBlockerMetricsTests.BlockedEvents_ReportsEachPair_TaggedByEphemeralAndBlockingTypeAsync, EphemeralBlockerMetricsTests.BlockedEvents_APairThatLeftTheReport_ReadsZero_NotItsLastCountAsync}
+
+Meter name: `Whizbang.Ephemeral` (`EphemeralBlockerMetrics`)
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.ephemeral.blocked_events` | ObservableGauge\<long\> | Events of an ephemeral type kept Sourced because their streams hold a durable event type; tagged by `ephemeral_type` and `blocking_type`. A pair that is released or cleared reads zero. See [What holds ephemeral history back](../../fundamentals/events/ephemeral-events#what-holds-ephemeral-history-back) |
 
 ## Whizbang.StreamIntegrity {#stream-integrity}
 
