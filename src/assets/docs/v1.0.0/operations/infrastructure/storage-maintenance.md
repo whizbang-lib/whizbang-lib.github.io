@@ -794,6 +794,7 @@ already bounds the work.
 
 - [Table rewrites run post-ready](./migrations#table-rewrites-run-post-ready-under-the-maintainer-duty)
 - [Capabilities](./capabilities)
+- [Maintenance cycle](./maintenance)
 
 - [Maintenance steps: ledger retention](../../fundamentals/workers/maintenance-steps#ledger-retention)
 - [Maintenance steps: queue-index rebuild](../../fundamentals/workers/maintenance-steps#queue-index-rebuild)

@@ -169,6 +169,11 @@ public class OrderAnalyticsProjection : IPerspectiveFor<OrderAnalytics, OrderCre
 
 The unique constraint `(clr_type_name, service_name)` allows the same model type name in different services.
 
+Within one service, perspectives can be declared in more than one assembly. Each assembly's generated registration
+contributes its runners to the one `IPerspectiveRunnerRegistry` the service resolves, so every assembly's perspectives
+are found whatever order they are registered in. See
+[Replaceable Services](../../extending/extensibility/replaceable-services.md#perspective-runner-registry-contributions).
+
 ## Schema JSON Format
 
 The registry stores the full schema definition as JSON for debugging and migration tooling:
@@ -241,3 +246,4 @@ await dbContext.EnsureWhizbangDatabaseInitializedAsync();
 - [Table Naming](table-naming.md) - Configure table name generation
 - [Schema Migration](../../data/schema-migration.md) - Database schema management
 - [Temporal Perspectives](temporal.md) - Append-only perspective pattern
+- [Replaceable Services](../../extending/extensibility/replaceable-services.md#perspective-runner-registry-contributions) - How every perspective assembly's runners reach the one registry a service resolves

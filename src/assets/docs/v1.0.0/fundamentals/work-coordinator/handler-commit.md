@@ -14,11 +14,13 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Core/Messaging/HandlerCommitRequest.cs
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
+  - src/Whizbang.Data.Postgres/Migrations/369_RepairAnswersAreAbsorbedCheaply.sql
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/InboxHandlerWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/FailureFlushWorkerTests.cs
   - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerControlPlaneDropLogTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceiveDoorbellCostSqlTests.cs
 ---
 
 # Handler commit
@@ -38,7 +40,7 @@ Atomic transaction:
   │  INSERT event_store rows for new events  │  ← (auto, downstream of outbox storage)
   │  INSERT perspective_event rows           │  ← (auto, from message_associations)
   │  pg_notify('wh_work', 'outbox')          │  ← if any outbox rows inserted
-  │  pg_notify('wh_work', 'inbox')           │  ← if any inbox rows inserted
+  │  inbox doorbell, by store_inbox_messages │  ← only a stream that was empty, never a duplicate
   │  pg_notify('wh_work', 'perspective')     │  ← if any perspective rows created
   └──────────────────────────────────────────┘
 ```
@@ -176,6 +178,21 @@ Category `Whizbang.Core.Workers.InboxHandlerWorker`.
 After a successful bundle commits, `pg_notify('wh_work', '<category>')` fires for each category that received new rows. Postgres dedups `(channel, payload)` pairs at COMMIT, so 10 000 outbox inserts in one bundle deliver exactly **one** notification — burst-tolerant by design.
 
 Listeners on other instances wake immediately (see [Notifications and pgbouncer](notifications-and-pgbouncer.md)).
+
+### Inbox children are rung by the store {#inbox-children-rung-by-the-store}
+{verified: ReceiveDoorbellCostSqlTests.CommitHandlerResult_AChildOnAStreamWithNoPendingWork_RingsItsOwnerOnceAsync, ReceiveDoorbellCostSqlTests.CommitHandlerResult_AChildAlreadySeen_RingsNoOneAsync, ReceiveDoorbellCostSqlTests.CommitHandlerResult_AChildOnAStreamWithPendingWork_RingsNoOneAsync}
+
+`commit_handler_result` rings the owners of the outbox streams it stored, for `outbox` and `perspective`.
+It does not ring the inbox streams of the inbox messages it stores. Those go through
+`store_inbox_messages`, which already rings exactly the streams that need it: a stream whose queue was
+empty, and never for a duplicate. A stream is therefore rung once per stored batch, not once by the store
+and again by the commit.
+
+This is a design choice (migration 369), with its reason on [A stream is rung once per stored
+batch](notifications-and-pgbouncer.md#rung-once-per-stored-batch): the store alone knows which streams went
+from empty to non-empty and which messages were duplicates, so a second ring from the commit can only ring
+too much. It matters most when a handler stores a redelivery bundle's children, which are mostly
+duplicates. Delivery, deduplication and ordering are unchanged.
 
 ## Related
 

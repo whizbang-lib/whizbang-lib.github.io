@@ -68,6 +68,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IntegrityDeliveryId.cs
   - src/Whizbang.Core/Startup/MaintainerDuty.cs
   - src/Whizbang.Data.Postgres/Migrations/320_RepairWaitsForItsAnswer.sql
+  - src/Whizbang.Data.Postgres/Migrations/395_ARepairSendThatFailsIsWithdrawn.sql
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Core/Messaging/IConsumerRegistry.cs
   - src/Whizbang.Core/Messaging/ConsumedMessageTypes.cs
@@ -98,9 +99,11 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/347_DigestWindowsReadTheirTypes.sql
   - src/Whizbang.Data.Postgres/Migrations/348_IdleLedgerRecheck.sql
   - src/Whizbang.Data.Postgres/Migrations/357_AnAnswerMarksOnlyWhatItCovered.sql
+  - src/Whizbang.Data.Postgres/Migrations/369_RepairAnswersAreAbsorbedCheaply.sql
   - src/Whizbang.Data.Postgres/Migrations/370_LedgerForgetsANonOwnersRows.sql
   - src/Whizbang.Data.Postgres/Migrations/371_RepairAnswersAreCapped.sql
   - src/Whizbang.Data.Postgres/Migrations/372_LedgerAgesOutUnownedTypes.sql
+  - src/Whizbang.Data.Postgres/Migrations/373_LedgerGaugesCountDataLeftToHeal.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileCoordinatorTests.cs
@@ -217,6 +220,10 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMisattributedOriginCorrectionTests.cs
   - tests/Whizbang.Core.Tests/Messaging/RedeliveryAnswerCoverageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAnswerCoverageSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBundleCatalogChurnSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceiveDoorbellCostSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerHealRemainingGaugesSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RepairDrainRecordsBeforeSendingTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -673,6 +680,22 @@ sequenceDiagram
 - **An answer applies only to the window awaiting it.** A late answer to an earlier window, or a duplicate, changes
   nothing and counts nothing, so a retried window can never move the position twice.
   {verified: SubscriptionBackfillStoreTests.RecordAnswer_LateDuplicateOrForAnotherWindow_ChangesNothingAsync, BackfillWindowAnswerReceptorTests.AnAnswerThatAppliesToNothing_CountsNothingAsync, BackfillWindowAnswerReceptorTests.FinalAnswer_EndsTheBackfill_AndCountsItCompleteAsync}
+- **A window is recorded as requested before it is sent.** An answer applies only to a window already recorded as
+  waiting, and an owner can answer before the requester's publish returns, on a fast transport or when the requester
+  is busy. Recording after the send dropped that answer as late, and the window then cost a timeout and an attempt.
+  A send that fails withdraws the record, putting the row back as it was asked from, so a broker failure still costs
+  no attempt. The withdraw applies only while that request is still the latest and still waiting: an answer that
+  landed meanwhile, a later request or an ended backfill stands.
+  {verified: SubscriptionBackfillWorkerTests.Tick_RecordsTheWindowAsRequested_BeforeItLeaves_SoAnAnswerThatOutrunsThePublishFindsItAsync, PacedBackfillEndToEndTests.AnAnswerThatLandsBeforeThePublishReturns_IsApplied_AndTheBackfillCompletesAsync, SubscriptionBackfillStoreTests.Withdraw_PutsANewWindowThatNeverLeftBack_AsTheAnsweredStateItWasAskedFromAsync, SubscriptionBackfillStoreTests.Withdraw_PutsAReAskThatNeverLeftBack_AsTheUnansweredStateItWasAskedFromAsync, SubscriptionBackfillStoreTests.Withdraw_AfterAnAnswerLandedMeanwhile_LeavesTheAnswerAsItAppliedAsync, SubscriptionBackfillStoreTests.Withdraw_AfterALaterRequestFollowed_LeavesTheLaterRequestAsync}
+- **The paced repair drain follows the same rule.** It records each request's buckets as awaiting their answer before
+  it sends the request, so an origin that answers before the publish returns finds them waiting, and its answer is
+  kept. Recording after the send let the late record put the wait back over that answer: the bucket lost its answered
+  state and counted against `MaxOutstandingRepairAnswers` until the answer timeout. A send that fails withdraws the
+  record and returns the attempt the claim spent, so a broker failure does not use up a bucket's repair budget; the
+  bucket keeps its backoff, so a broker that just failed is not asked again on the next tick. The withdrawal applies
+  only to a bucket still awaiting that record's answer: an answer that landed meanwhile stands. See
+  [repair waits for its answer](#repair-waits-for-its-answer).
+  {verified: RepairDrainWorkerTests.DrainTick_RecordsTheAnswerPending_BeforeTheRequestLeaves_SoAnAnswerThatOutrunsThePublishIsKeptAsync, RepairDrainRecordsBeforeSendingTests.AnAnswerThatLandsBeforeThePublishReturns_IsKept_AndTheBucketIsNotLeftAwaitingAnotherAsync, RepairDrainRecordsBeforeSendingTests.ASendThatFails_IsWithdrawn_AndCostsNoAttemptAsync, RepairDrainRecordsBeforeSendingTests.Withdraw_ClearsTheWait_AndReturnsTheAttemptAsync, RepairDrainRecordsBeforeSendingTests.Withdraw_AfterTheAnswerLanded_LeavesTheAnswerStandingAsync}
 - **A token bucket paces events, not windows.** Every window spends its full `BackfillWindowSize` from a bucket that
   refills at `BackfillEventsPerMinute` and holds at most one minute's worth, or one window when a window is larger, so
   the rate bounds the events asked for whatever the window size, and a window larger than a minute's rate can still be
@@ -2010,7 +2033,7 @@ affected: each page echoes only what it covered.
 
 ### Repair waits for its answer {#repair-waits-for-its-answer}
 
-{verified: IntegrityRepairAnswerSqlTests.Claim_ABucketWithItsAnswerPending_IsNotClaimed_UntilTheAnswerTimeoutPassesAsync, IntegrityRepairAnswerSqlTests.TryBeginRepair_WhileItsOwnAnswerIsPending_IsRefusedAsync, IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ClearsThePending_AndTheBucketWaitsForTheNextComparisonAsync, IntegrityRepairAnswerSqlTests.Claim_PastTheAttemptBudget_StopsForGood_AndCountsAsExhaustedAsync, IntegrityRepairAnswerSqlTests.TryBeginRepair_PastTheAttemptBudget_IsRefusedForGoodAsync, RepairDrainWorkerTests.DrainTick_MarksTheDispatchedBucketsAnswerPending_ButNotAGroupWhoseSendFailedAsync, StreamIntegrityOptionsValidatorTests.RepairAnswerTimeout_DefaultsToThreeHoursAsync}
+{verified: IntegrityRepairAnswerSqlTests.Claim_ABucketWithItsAnswerPending_IsNotClaimed_UntilTheAnswerTimeoutPassesAsync, IntegrityRepairAnswerSqlTests.TryBeginRepair_WhileItsOwnAnswerIsPending_IsRefusedAsync, IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ClearsThePending_AndTheBucketWaitsForTheNextComparisonAsync, IntegrityRepairAnswerSqlTests.Claim_PastTheAttemptBudget_StopsForGood_AndCountsAsExhaustedAsync, IntegrityRepairAnswerSqlTests.TryBeginRepair_PastTheAttemptBudget_IsRefusedForGoodAsync, RepairDrainWorkerTests.DrainTick_MarksTheDispatchedBucketsAnswerPending_AndWithdrawsAGroupWhoseSendFailedAsync, StreamIntegrityOptionsValidatorTests.RepairAnswerTimeout_DefaultsToThreeHoursAsync}
 
 A repair request is answered by a redelivery bundle, and the answer takes time to arrive: the origin
 records the request for its maintainer, which handles it under the housekeeping idle gate, and the bundle
@@ -2024,6 +2047,11 @@ every repair ledger row moves through explicit states:
 | **Answered** | A redelivery bundle for the bucket committed (`answered_at`) | The drain does not claim it until the next comparison sights the bucket again; a heal deletes the row |
 | **Exhausted** | The claim or grant that spent the last of `MaxRepairAttemptsPerBucket` attempts (`exhausted_at`) | Never asked for again until a [reset](#what-resets-the-repair-ladder) |
 | **Unhealable** | A bundle for the bucket [changed nothing](#unhealable-buckets) and [covered its deficit](#an-answer-marks-only-what-it-covered) | Never asked for again until a [reset](#what-resets-the-repair-ladder) |
+
+The paced drain moves a bucket to **answer pending** just before it sends the request, not after, because the answer can
+arrive before the send returns; a send that fails puts the bucket back as **claimable**, with its attempt returned and
+its backoff kept (#2223, migration 395).
+{verified: RepairDrainRecordsBeforeSendingTests.AnAnswerThatLandsBeforeThePublishReturns_IsKept_AndTheBucketIsNotLeftAwaitingAnotherAsync, RepairDrainRecordsBeforeSendingTests.ASendThatFails_IsWithdrawn_AndCostsNoAttemptAsync, RepairDrainRecordsBeforeSendingTests.Withdraw_OfTheClaimThatSpentTheLastAttempt_LiftsTheExhaustionAsync, RepairDrainRecordsBeforeSendingTests.Withdraw_OfAnotherRecord_LeavesItStandingAsync}
 
 ```mermaid{caption="The repair ladder of one ledger row: a request waits for its answer, an answered bucket waits for the next comparison, and only a local change or a grown deficit re-arms a bucket that spent its budget or that repair cannot change." tests=["IntegrityRepairAnswerSqlTests.Claim_ABucketWithItsAnswerPending_IsNotClaimed_UntilTheAnswerTimeoutPassesAsync", "IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ClearsThePending_AndTheBucketWaitsForTheNextComparisonAsync", "IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ABundleWhoseEventsWereAllStoredAlready_MarksTheBucketAtCommitAsync", "IntegrityRepairAnswerSqlTests.Claim_PastTheAttemptBudget_StopsForGood_AndCountsAsExhaustedAsync", "IntegrityRepairAnswerSqlTests.Report_TheLocalDigestMoved_ResetsTheLadder_AndLiftsTheMarkAsync", "IntegrityRepairAnswerSqlTests.Report_TheDeficitGrew_ResetsTheLadder_AndLiftsTheMarkAsync", "IntegrityRepairAnswerSqlTests.Report_OnlyTheOriginsDigestMoved_KeepsTheAttempts_AndTheMarkAsync"]}
 stateDiagram-v2
@@ -2245,17 +2273,45 @@ uses it instead of its own reading. A reconcile recorded by a version without th
 judges by presence as before. If recording the answer fails, a Warning says so, the buckets wait out
 their answer timeout, and the reconcile judges the bundle without the commit's view.
 
-#### Per-bundle work keeps its working table for the connection {#per-bundle-work-table}
+#### Recording an answer creates no temporary table {#per-bundle-work-table}
 
-{verified: RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_ASecondCallOnTheConnection_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBundle_ASecondCallOnTheConnection_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_TwiceInOneTransaction_AnswersEachBundleForItsOwnEventsAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBundle_TwiceInOneTransaction_StartsFromAnEmptyWorkingTableAsync}
+{verified: RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_AfterTheSessionIsReset_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_ASecondCallOnTheConnection_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_TwiceInOneTransaction_AnswersEachBundleForItsOwnEventsAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBundle_ASecondCallOnTheConnection_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBundle_TwiceInOneTransaction_StartsFromAnEmptyWorkingTableAsync}
 
-The commit-time answer and the deferred reconcile each gather a bundle's rows in a temporary working
-table. The table is created once per database connection and emptied at commit, not created and dropped
-by every call. A consumer can receive hundreds of small bundles a minute, and a table created per call
-cost far more than the bundle's own work: system catalog rows written and deleted on every bundle, cache
-invalidations sent to every other connection to the database, and every statement in the function planned
-again because each call's table was a new one. Each call empties the table before it starts, so a second
-bundle in the same transaction sees only its own rows.
+The commit-time answer runs once for every redelivery bundle a consumer absorbs, and answers to repair
+requests can arrive in bulk long after the requests left, since [repair waits for its
+answer](#repair-waits-for-its-answer). So the receive side, not the request rate, is where repair spends the
+database, and a cost paid per call that bears no relation to the bundle's size multiplies by every bundle.
+
+Since migration 369 the answer gathers the bundle's children into arrays with one statement, and writes
+nothing to the system catalog. Its logic and its results are unchanged; the array form was checked against
+the table form on 1,500 recorded bundles with identical answers.
+
+Before, the answer gathered the children in a temporary working table. Migration 321 kept that table for
+the life of the database connection instead of creating and dropping it per call, but a pooled connection
+is reset each time the pool hands it out (`DISCARD ALL`), and the reset drops every temporary table the
+session made. In practice the table was created again on almost every bundle, and each creation:
+
+- wrote and later deleted about 70 system catalog rows;
+- sent a cache invalidation to every other session of the database;
+- planned every statement that read the table again, because each call's table was a new one;
+- added a new statement-statistics entry for each of those statements, since the table's identity changed
+  every time, which keeps an extension that tracks statements evicting entries for the whole server.
+
+Measured on one call, recording an answer went from 1.443 ms to 0.705 ms, and from about 70 catalog rows
+written to none.
+
+**The rule (design choice): a function the framework calls per message, per bundle or per commit does not
+create a temporary table.** It holds its working set in arrays, a CTE or a single statement. Why: the
+framework does not own the session. Behind a connection pool or a transaction pooler, any session state
+(temporary tables, prepared plans tied to them) can be discarded between two calls, so a temporary table
+"kept for the connection" is a temporary table created per call, with catalog writes and invalidations that
+reach every other session. The test that holds the rule resets the session between two calls, as the pool
+does, and fails if the second call writes a single catalog row.
+
+The deferred reconcile still keeps its working table for the connection. It runs on the maintainer [as a
+batch](#redelivery-reconciles-run-as-a-batch), many bundles per call, so a table created once per batch is
+not a cost paid per bundle. Each call empties the table before it starts, so a second batch in the same
+transaction sees only its own rows.
 
 ---
 
@@ -3566,13 +3622,26 @@ patterns worth understanding before building a dashboard:
 
 ### Integrity gauges {#integrity-gauges}
 
-{verified: MaintenanceWorkerIntegrityGaugeTests.AnInstanceThatIsNotTheMaintainer_StillPublishesTheLedgerReadingAsync, MaintenanceWorkerIntegrityGaugeTests.ATickTheIdleGateDefers_StillPublishesTheLedgerReadingAsync, IntegrityRepairAnswerSqlTests.Summary_CountsBucketsAwaitingAnAnswer_AnsweredBuckets_AndTheIntegrityDeliveriesWaitingAsync, IntegrityRepairAnswerSqlTests.Summary_WithNoIntegrityDeliveries_ReportsNoneWaitingAsync, StreamIntegrityMetricsCoverageTests.AnswerAndDeliveryGauges_ReportLiveSnapshotValuesAsync}
+{verified: MaintenanceWorkerIntegrityGaugeTests.AnInstanceThatIsNotTheMaintainer_StillPublishesTheLedgerReadingAsync, MaintenanceWorkerIntegrityGaugeTests.ATickTheIdleGateDefers_StillPublishesTheLedgerReadingAsync, IntegrityRepairAnswerSqlTests.Summary_CountsBucketsAwaitingAnAnswer_AnsweredBuckets_AndTheIntegrityDeliveriesWaitingAsync, IntegrityRepairAnswerSqlTests.Summary_WithNoIntegrityDeliveries_ReportsNoneWaitingAsync, StreamIntegrityMetricsCoverageTests.AnswerAndDeliveryGauges_ReportLiveSnapshotValuesAsync, IntegrityLedgerHealRemainingGaugesSqlTests.Summary_SumsTheDeficitOfRepairableBuckets_AndCountsTheUnhealableOnesAsync, IntegrityLedgerHealRemainingGaugesSqlTests.Summary_ABucketWhoseDeficitIsUnknown_AddsNothing_AndAnEmptyLedgerReadsZeroAsync, StreamIntegrityMetricsCoverageTests.HealRemainingGauges_ReportLiveSnapshotValuesAsync}
 
 Every gauge on the `Whizbang.StreamIntegrity` meter except the two [backfill gauges](#watching-a-backfill), which the
 backfill worker publishes on the maintainer, is read in one round trip at the start of every maintenance tick,
 on every instance, ahead of the maintainer-duty check and the idle gate (see the collector, above). Every instance of a
 service therefore reports the same ledger and the same delivery queue, so read these as one value per service (the
 maximum across its instances), never a sum.
+
+**Which number to watch.** `unhealed_buckets` is the headline but a coarse one: it counts ledger rows in every state
+(repairable, waiting for an answer, answered and waiting for the next comparison, unhealable, exhausted), and it counts
+buckets, not events. `unhealed_deficit_events` is the data left to heal, the number to read when the question is how
+much is still missing. Split the headline with `unhealable_buckets` (repair cannot change them),
+`repair_answer_pending_buckets` (a request is out), `repair_answered_buckets` (answered, waiting for the next
+comparison) and `repair_exhausted_buckets` (out of budget, needs an operator). Read heal throughput from the rate of
+the `bucket_heal_seconds` count (buckets proven healed) and from `ledger_rows_recheck_cleared` (rows the
+[idle re-check](#idle-ledger-recheck) removed because their bucket now matches). Both gauges come from the same single
+read of the ledger as the others, with no extra query and the same plan. A row written under an older comparison rule
+keeps the deficit that rule recorded until a comparison or a re-check visits its bucket again, so after an upgrade
+that changes the compare rule `unhealed_deficit_events` can read high for rows whose events are already held; it falls
+as those rows are re-checked and cleared.
 
 | Instrument | Meaning |
 | --- | --- |
@@ -3581,6 +3650,8 @@ maximum across its instances), never a sum.
 | `oldest_unhealed_age_seconds` | Age of the longest-standing unhealed divergence. Distinguishes a transient blip from a stuck bucket. |
 | `repair_answer_pending_buckets` | Buckets whose repair request is out and whose answer has not landed. They are not asked for again until the answer lands or `RepairAnswerTimeoutMinutes` passes ([repair waits for its answer](#repair-waits-for-its-answer)). The paced drain claims nothing while this is at `MaxOutstandingRepairAnswers` ([outstanding repair answers are capped](#outstanding-repair-answers-are-capped)). A value that stays high for longer than the timeout means answers are not arriving: the origin is not serving requests (`ReportOnly`, or its own integrity queue is behind) or its bundles are not reaching this service. |
 | `repair_answered_buckets` | Buckets a redelivery bundle answered that wait for the next comparison to decide healed or still divergent. Rises after a repair burst and falls at the next audit; a value that never falls means comparisons are not running for those buckets. |
+| `unhealed_deficit_events` | **The data left to heal**: the missing events, summed, of the deficit buckets repair can still act on (neither [unhealable](#unhealable-buckets) nor exhausted). Each ledger row records its bucket's deficit, so a bucket missing a hundred thousand events weighs a hundred thousand here and one missing a single event weighs one. A bucket whose deficit is unknown adds nothing; 0 when none. |
+| `unhealable_buckets` | Ledger rows marked [unhealable](#unhealable-buckets), exhausted or not: buckets a redelivery could not change, which repair no longer asks for. Splits `unhealed_buckets` into repairable and unhealable; each was named once in a Warning when it was marked. |
 | `deliveries_pending` | [Integrity deliveries](#integrity-deliveries-are-queued) recorded and waiting for the maintainer's drain: received checkpoints, manifest requests and chunks, redelivery requests and bundle reconciles. Near zero on a healthy service. |
 | `oldest_delivery_age_seconds` | How long the oldest waiting integrity delivery has waited (0 when none). Under load the drain is deferred by the idle gate for up to `Whizbang:Housekeeping:MaxDeferral`, so an age above that, or one that keeps climbing, means the drain is not running: check which instance holds the maintainer duty. |
 | `sealed_through` (tag `origin_service_id`) | The per-origin **verified watermark** — the exclusive end of the highest window that audited clean and complete. This is the top-level convergence needle: a lane is provably in sync exactly as far as its seal. Each origin is its own series; one aggregated number would hide a stuck lane. |
@@ -3631,7 +3702,7 @@ maximum across its instances), never a sum.
 ### Reading a recovery
 
 A deficient service converging looks like: `repairs_requested` active → `redelivery_events_shipped`
-climbing at the origin → `unhealed_buckets` falling (heals deleting rows) with `bucket_heal_seconds`
+climbing at the origin → `unhealed_buckets` and `unhealed_deficit_events` falling (heals deleting rows) with `bucket_heal_seconds`
 recording each one → `sealed_through` stepping upward as whole windows certify → everything quiet
 except the checkpoint heartbeat. After an upgrade from a schema older than 087, `origins_adopted` rises first while
 pre-087 history is redelivered once. While repair works, `repair_answer_pending_buckets` rises with each paced batch and

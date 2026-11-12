@@ -26,8 +26,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/330_CoordinationOnTheSignalBus.sql
   - src/Whizbang.Core/Commands/System/RebuildPerspectiveStreamsCommand.cs
   - src/Whizbang.Core/Perspectives/RebuildPerspectiveStreamsHandler.cs
-  - src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs
-  - src/Whizbang.Data.EFCore.Postgres/RebuildBackgroundQueue.cs
+  - src/Whizbang.Data.Postgres/RebuildPerspectiveCommandReceptor.cs
+  - src/Whizbang.Data.Postgres/RebuildBackgroundQueue.cs
   - src/Whizbang.Core/Workers/NullPartitionAssignmentSource.cs
 testReferences:
   - tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandIntakeTests.cs

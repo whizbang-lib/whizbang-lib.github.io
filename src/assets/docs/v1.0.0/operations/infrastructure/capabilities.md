@@ -169,7 +169,7 @@ public sealed class SearchFeature(ICapabilityRegistry capabilities) {
 ```
 
 ## Validation {#validation}
-{verified: CapabilityVerdictTests.Explicit_Ready_ProceedsAsync, CapabilityVerdictTests.Explicit_KnownAndNotReady_FailsStartWithTheFixAsync, CapabilityVerdictTests.Explicit_Unknown_WarnsAsync, CapabilityVerdictTests.Implicit_Ready_UsesItAsync, CapabilityVerdictTests.Implicit_NotReady_DegradesAsync, CapabilityVerdictEnforcerTests.AFailingVerdict_StopsTheHostWithExitCodeOne_NamingTheLineAsync}
+{verified: CapabilityVerdictTests.Explicit_Ready_ProceedsAsync, CapabilityVerdictTests.Explicit_KnownAndNotReady_FailsStartWithTheFixAsync, CapabilityVerdictTests.Explicit_Unknown_WarnsAsync, CapabilityVerdictTests.Implicit_Ready_UsesItAsync, CapabilityVerdictTests.Implicit_NotReady_DegradesAsync, CapabilityVerdictEnforcerTests.AFailingVerdict_ExitsAsAStartupFailure_NamingTheLineAsync, CapabilityVerdictEnforcerTests.StoppedBeforeAnyVerdict_EndsWithoutExitingAsync}
 
 A capability satisfies a requirement only when it is `Ready`. `Provisionable` is not enough on its own, but the
 step [provisions](#provisioning) a required capability before it judges it, so one the library may create reads
@@ -183,9 +183,10 @@ step [provisions](#provisioning) a required capability before it judges it, so o
 | implicit | `Ready` | the feature uses it |
 | implicit | not `Ready` | the feature degrades, with a warning |
 
-When the verdict has a failing line, a hosted service logs every failing line at Critical, sets the process
-exit code to 1 and stops the application, so an orchestrator sees a failed start rather than an orderly
-shutdown. It waits for the verdict in the background, so it never holds the host's own start: the probe runs
+When the verdict has a failing line, a hosted service ends the process through the
+[one exit path](../startup/instance-exits) as a `StartupFailure`, exit code 4, whose one entry lists every failing
+line, so an orchestrator sees a failed start rather than an orderly shutdown. Earlier releases logged each line at
+Critical and exited with code 1. It waits for the verdict in the background, so it never holds the host's own start: the probe runs
 after the schema is migrated. Fix the capability, or remove the setting that turns the feature on.
 
 With `Whizbang:Capabilities:ProbeOnStartup` set to `false`, the verdict is still judged with every capability

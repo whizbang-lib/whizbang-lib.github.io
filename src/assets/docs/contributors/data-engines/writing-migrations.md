@@ -207,6 +207,45 @@ same holds in the other direction: a function the closure creates early is copie
 word, as 277 copies 231's `wh_record_startup_stage`, so the closure makes it exist earlier and never makes it do
 something else.
 
+## Declaring how a migration is reversed {#declaring-how-a-migration-is-reversed}
+
+An older version that starts against a database a newer version migrated
+[rolls back](../../v1.0.0/operations/startup/rolling-upgrades.md#rolling-back) only what the newer version recorded how
+to reverse ([how a migration is reversed](../../v1.0.0/operations/infrastructure/migrations.md#how-a-migration-is-reversed)).
+So every migration numbered after 384 declares its kind in its header:
+
+```sql{
+title: "A migration declares how it is reversed"
+description: "One of three kinds, optionally followed by why, in the migration's header."
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["migrations", "rollback", "reversal"]
+}
+-- Reversal: reversible
+-- Reversal: lossy (reversing it drops the column the newer version filled)
+-- Reversal: irreversible (it rewrites stored rows, which nothing converts back)
+```
+
+| Kind | When | What ships beside it |
+|---|---|---|
+| `reversible` | Undoing it loses nothing: an added index, an added function, an added table no row has reached yet | `NNN_Name.down.sql` |
+| `lossy` | Undoing it discards data the newer version wrote: dropping a column or a table it added. A rollback across it runs only when the operator sets `Whizbang:Startup:AllowLossyRollback` | `NNN_Name.down.sql` |
+| `irreversible` | It cannot be undone: a data rewrite, for example | Nothing |
+
+The reverse script sits in `Migrations/` beside its migration, named like it with `.down.sql`, and uses the same
+placeholders (`__SCHEMA__` and the [constants](../../v1.0.0/operations/infrastructure/migrations.md#constants)), which
+are substituted exactly as the forward text's are. It is embedded under `MigrationReversals`, so no forward-migration
+reader ever applies it, and the version that applies the migration stores the rendered script in the ledger. The
+script undoes the migration's effect and nothing else; it does not touch the ledger, which the rollback updates itself.
+Write the newest-first order in mind: a rollback runs every newer version's reverses before this one.
+
+Choose `irreversible` when in doubt. An irreversible migration costs an operator a stand-down with an error naming it;
+a reverse that does not really undo its migration costs a schema that matches no version, silently.
+
+Migrations 385 and 386 declare `irreversible`: they ship with the release that first runs reversals, so no rollback
+ever crosses them. Every migration through 384 predates the declaration and counts as irreversible; adding a reverse
+for one is optional follow-up work.
+
 ## Enforcement
 
 - `MigrationSchemaQualificationTests` fails the build if a new migration calls `current_schema()` in code,
@@ -227,5 +266,10 @@ something else.
 - `MigrationAgainstRunningWorkersTests` re-applies the closure and every file that alters these tables while a worker
   holds them, and fails if any of it waits for the worker.
   {verified: MigrationAgainstRunningWorkersTests.ARerun_WhileAWorkerHoldsTheInstanceAndRoleTables_CompletesWithoutWaitingForItAsync}
+- `MigrationReversalDeclarationGuardTests` fails the build's tests when a migration after 384 declares no
+  `-- Reversal:` kind, when a reversible or lossy one ships no `.down.sql`, when an irreversible one ships one, when a
+  `.down.sql` has no migration declaring it, and when a reverse script would be applied as a forward migration. A
+  header that names a kind other than the three fails at apply time, naming it.
+  {verified: MigrationReversalDeclarationGuardTests.EveryNewMigration_DeclaresHowItIsReversedAsync, MigrationReversalDeclarationGuardTests.AReversibleOrLossyMigration_ShipsItsReverse_AndAnIrreversibleOneShipsNoneAsync, MigrationReversalDeclarationGuardTests.AReverseScript_IsNeverAppliedAsAForwardMigrationAsync, MigrationReversalDeclarationGuardTests.TheGuard_ReadsTheRealMigrationsAsync, MigrationReversalTests.AKindThatIsNotOneOfTheThree_IsRefusedAsync, MigrationReversalTests.AReversibleMigrationWithoutItsReverseScript_IsRefusedNamingTheFileAsync}
 - `MigrationSchemaQualifierTests` covers each case of the qualification: literals, escape strings, doubled quotes,
   quoted identifiers, comments, dollar quotes and positional parameters.

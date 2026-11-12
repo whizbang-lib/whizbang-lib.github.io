@@ -47,6 +47,13 @@ declared over such a document would be rebuilt on every write and scanned by not
 
 {verified: JsonIndexStorageAnalyzerTests.AnIndexOnAnOpaquelyStoredModelIsReportedAsync}
 
+A model that holds a **recursive** type (a tree node holding its children, or two types holding each other) is stored
+the same way, because the mapped path keeps only the first level of a recursion (see [WHIZ202](whiz202.md)). The
+message then names the member as recursive, with that reason, instead of as one "the mapped path cannot construct".
+`[Indexed]` and promoted-field document indexes on such a model are no longer generated; indexes an earlier release
+created stay until you drop them.
+{verified: JsonIndexDeclarationAnalyzerTests.Whiz304_OnARecursiveModel_SaysTheMemberIsRecursiveAsync}
+
 ## Why it is reported rather than skipped
 
 The index **is** skipped. The generator does not emit it, because emitting it would be the same waste
