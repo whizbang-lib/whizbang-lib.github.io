@@ -27,6 +27,9 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainmentRewriter.cs
   - src/Whizbang.Data.Postgres/OptionalExtensionBlocks.cs
   - src/Whizbang.Data.Postgres/PostgresSchemaRequirements.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveRowColumns.cs
+  - src/Whizbang.Data.Postgres/Schema/PerspectiveRetentionIndexes.cs
+  - src/Whizbang.Data.Postgres/Schema/ManagedSchemaReconciler.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/PerspectiveDocumentIndexGenerationTests.cs
   - tests/Whizbang.Generators.Tests/EFCorePerspectiveConfigurationGeneratorCoverageTests.cs
@@ -43,6 +46,10 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/IndexStatisticsMaintenanceStepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/OptionalExtensionBlocksTests.cs
   - tests/Whizbang.Core.Tests/PostgresExtensions/PostgresSchemaRequirementsTests.cs
+  - tests/Whizbang.Generators.Tests/UpdatedAtIndexGenerationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/RetentionUpdatedAtIndexReconcileTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRetentionIndexNameTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
 ---
 
 # Perspective Indexes
@@ -61,13 +68,121 @@ see [JSONB Containment Queries](jsonb-containment.md).
 | Index | Over | Why |
 |---|---|---|
 | `idx_<table>_created_at` | `created_at` | Time-ordered reads |
-| `idx_<table>_updated_at` | `updated_at` | The retention sweep's `updated_at < now() - interval` |
 | `idx_<table>_scope_gin` | the `scope` document | Scope matching |
 | `idx_<table>_scope_tenant` | `scope ->> 't'` | The tenant filter every tenant-scoped read and every collective apply adds |
 | `idx_<table>_data_gin` | the `data` document | **Only when you declare that your queries match on any field** (below) |
 | `idx_<table>_metadata_gin` | the `metadata` document | **Only when you declare that your queries match on metadata** (below) |
 
 `<table>` is the table name without its `wh_per_` prefix. Every field index you declare comes on top.
+
+There is no index on `updated_at` unless something asks for one; see
+[the `updated_at` index](#the-updated_at-index).
+
+## The `updated_at` index {#the-updated_at-index}
+
+Every update to a perspective row rewrites its `updated_at`. A btree over that column means PostgreSQL
+can never make the update HOT (a heap-only tuple update, which writes no index entries), so every
+apply writes an entry into every index on the table. Measured on PostgreSQL 17 at fillfactor 80, a
+table with the index made no HOT updates; without it, about 56 percent of updates were HOT.
+
+So a perspective table gets the index in exactly two cases:
+
+| The table... | Gets `idx_<table>_updated_at` because | Built by |
+|---|---|---|
+| declares row retention (`[RowTtl]`, `[RowCap]`, or a TTL resolved from its `[Ephemeral]` events) | the sliding-TTL and row-cap sweeps range-scan `updated_at` | the managed-object reconcile, at every start and in the maintenance step |
+| has a model that declares it with `[PerspectiveIndex(PerspectiveRowColumns.UpdatedAt)]` | the model's own queries sort or filter on `UpdatedAt` | the schema pass, like any declared index |
+
+Every other table has none, on both drivers.
+
+{verified: UpdatedAtIndexGenerationTests.EFCore_AModelThatDeclaresNothing_GetsNoUpdatedAtIndexAsync, UpdatedAtIndexGenerationTests.Dapper_AModelThatDeclaresNothing_GetsNoUpdatedAtIndexAsync, StartupParityTests.TheUpdatedAtIndex_IsBuiltAndKeptForATableThatDeclaresRetentionAsync, StartupParityTests.TheUpdatedAtIndex_IsRetiredFromATableWithoutRetentionAsync}
+
+### Declaring it
+
+Name the row's column with `PerspectiveRowColumns` where you would name a property with `nameof`. The
+same attribute makes a composite or a partial index:
+
+```csharp{title="Indexing a perspective row's updated_at" description="The row's system column, alone, after a model property, or restricted to a subset of rows." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "indexing", "updated_at"] tests=["UpdatedAtIndexGenerationTests.EFCore_DeclaredOnItsOwn_BuildsTheIndexUnderItsFormerNameAsync", "UpdatedAtIndexGenerationTests.EFCore_DeclaredInAComposite_FollowsTheModelPropertyAsync", "UpdatedAtIndexGenerationTests.EFCore_DeclaredWithAPredicate_IsAPartialIndexAsync"]}
+// Recently changed tickets, newest first
+[PerspectiveIndex(PerspectiveRowColumns.UpdatedAt)]
+// Recently changed tickets of one tenant
+[PerspectiveIndex(nameof(TenantId), PerspectiveRowColumns.UpdatedAt)]
+// Only open tickets are ever listed by recency
+[PerspectiveIndex(PerspectiveRowColumns.UpdatedAt, Where = "(data ->> 'Status') = 'open'")]
+public record TicketModel {
+  public Guid TenantId { get; init; }
+  public string Status { get; init; } = "";
+}
+```
+
+| Declaration | Index |
+|---|---|
+| `[PerspectiveIndex(PerspectiveRowColumns.UpdatedAt)]` | `idx_<table>_updated_at` on `(updated_at)` |
+| `[PerspectiveIndex(nameof(TenantId), PerspectiveRowColumns.UpdatedAt)]` | `idx_<table>_tenantid_updated_at` on `((data ->> 'TenantId'), updated_at)` |
+| `[PerspectiveIndex(PerspectiveRowColumns.UpdatedAt, Where = "...")]` | `idx_<table>_updated_at_partial` on `(updated_at) WHERE ...` |
+
+`PerspectiveRowColumns.CreatedAt` names `created_at` the same way, for a composite such as
+`(TenantId, CreatedAt)`; `created_at` alone is already indexed on every table.
+
+A declaration on its own derives the name every table's index had before, so an existing index is kept
+as the declared one rather than built again. A model property that happens to be called `UpdatedAt` is
+a field in the document: `nameof(UpdatedAt)` indexes that field, and only `PerspectiveRowColumns.UpdatedAt`
+reaches the row's column.
+
+{verified: UpdatedAtIndexGenerationTests.EFCore_AModelPropertyNamedUpdatedAt_IsIndexedInTheDocumentAsync, UpdatedAtIndexGenerationTests.EFCore_CreatedAt_ComposesLikeUpdatedAtAsync, UpdatedAtIndexGenerationTests.Dapper_CompositeAndPartialDeclarations_AreBuiltAsync, UpdatedAtIndexGenerationTests.Discovery_ResolvesEachWellKnownNameToItsColumnAsync}
+
+### Tables that declare retention
+
+Whether a table declares retention isn't known when its schema is generated: a TTL can come from the
+model's events, and the declaration reaches SQL at startup. The managed-object reconcile reads
+enrollment from `wh_perspective_registry.row_retention_enrolled`, the column the sweeps themselves
+read, so the index follows exactly the tables they sweep. For each enrolled table that exists and has
+the column, it:
+
+- builds the index when it is missing, inside its plan transaction and before it reads the table's
+  objects, so it never plans to retire an index it just built;
+- declares it to the [managed-object ledger](managed-schema-objects.md), so it is kept;
+- leaves an index of the same definition under another name in place (the `ix_<table>_updated_at` an
+  earlier Dapper release built), and builds no second one.
+
+It builds only in the `Apply` and `AddOnly` modes. In `ReportOnly` it reports the index as missing.
+
+A table enrolled after its start's reconcile ran (the retention sync runs after the schema pass) gets
+its index from the maintenance step's reconcile, within one claim window (15 minutes). The build is a
+plain `CREATE INDEX`, which blocks writes to the table while it runs. It happens once, the first time a
+table is enrolled; a table enrolled before this release already has the index.
+
+{verified: RetentionUpdatedAtIndexReconcileTests.WithRetention_AMissingIndexIsBuilt_OnceAsync, RetentionUpdatedAtIndexReconcileTests.WithRetention_TheExistingIndexIsKeptAsync, RetentionUpdatedAtIndexReconcileTests.WithRetention_AnEquivalentUnderAnotherName_IsKept_AndNotDuplicatedAsync, RetentionUpdatedAtIndexReconcileTests.WithRetention_AStandInDroppedByHand_IsReplacedAsync, RetentionUpdatedAtIndexReconcileTests.InAddOnlyMode_AMissingIndexIsBuiltAsync, RetentionUpdatedAtIndexReconcileTests.InReportOnlyMode_AMissingIndexIsReported_NotBuiltAsync, RetentionUpdatedAtIndexReconcileTests.AnEnrolledRowWithNoUsableTable_IsPassedOverAsync, PerspectiveRetentionIndexNameTests.TheName_IsTheGeneratorsAsync}
+
+### Upgrading: queries on `UpdatedAt` lose the index unless declared {#updated-at-upgrade}
+
+Every table an earlier release built has `idx_<table>_updated_at` (or, on the Dapper driver,
+`ix_<table>_updated_at`). After the upgrade, on a table that neither declares retention nor declares
+the index, nothing declares it any more, so the managed-object reconcile retires it under its usual
+rules: the first start records it, a later start or the maintenance step drops it, and a running
+instance of the earlier release holds it until it stops (see
+[Every later start](managed-schema-objects.md#every-later-start)).
+
+Before you deploy:
+
+1. **Find the queries that order or filter on `UpdatedAt`** against a perspective with no row
+   retention: a lens sorted by recency, a "changed since" filter, a paging cursor on `UpdatedAt`.
+2. **Declare the index on those models** with `[PerspectiveIndex(PerspectiveRowColumns.UpdatedAt)]`, or
+   the composite or partial form the query needs. The existing index is kept as the declared one.
+3. **To keep an index without declaring it**, pin it: the `Whizbang:Schema:Reconcile:Pins` setting or a
+   `whizbang:pin` comment on the index (see [Pinning](managed-schema-objects.md#pinning-keeping-an-object-no-matter-what)).
+
+To see which `updated_at` indexes are read before they are retired:
+
+```sql{title="Scans of each perspective updated_at index" description="Read over a full traffic cycle to find the queries that rely on an updated_at index before it is retired." category="Perspectives" difficulty="INTERMEDIATE" tags=["postgres", "indexing", "operations", "updated_at"]}
+SELECT s.relname AS table_name, s.indexrelname AS index_name, s.idx_scan AS scans
+FROM pg_stat_user_indexes s
+WHERE s.relname LIKE 'wh\_per\_%' AND s.indexrelname LIKE '%\_updated\_at'
+ORDER BY s.idx_scan DESC;
+```
+
+An index with scans, on a table without retention, belongs to a query that needs the declaration.
+
+{verified: RetentionUpdatedAtIndexReconcileTests.WithoutRetentionOrADeclaration_TheOldIndexIsRetiredAsync, RetentionUpdatedAtIndexReconcileTests.ADeclaredIndex_IsKeptWithoutRetentionAsync, RetentionUpdatedAtIndexReconcileTests.WithoutRetention_NoIndexIsBuiltAsync}
 
 ## Say what your queries do: `[PerspectiveQueries]`
 
@@ -188,6 +303,10 @@ databases don't get it. Existing ones keep it until an operator removes it.
 That is deliberate. Keeping an unused index costs write time. Removing one a production query relies
 on turns that query into a full table scan. Only the first is safe to do by default.
 
+The `updated_at` index is the exception: it is retired from tables that neither declare retention nor
+declare it, because it costs every update its HOT eligibility. See
+[Upgrading: queries on `UpdatedAt`](#updated-at-upgrade).
+
 ### Dropping an index that is no longer declared
 
 Check that nothing reads it first. `idx_scan` counts every use since statistics were last reset, so
@@ -291,7 +410,7 @@ definition and leaves it in place. The tenant index needs nothing, because every
 PostgreSQL truncates an identifier longer than 63 bytes instead of rejecting it. Two derived index
 names that differed only past that point used to land on one name, and the second index was never
 created. Examples were the case-sensitive and case-insensitive indexes of a long property, or the
-`created_at` and `updated_at` indexes of a long table. A derived name that wouldn't fit now keeps
+`created_at` and a declared `updated_at` index of a long table. A derived name that wouldn't fit now keeps
 its first 54 characters and ends in `_` plus an 8-character digest of the full name. It is stable and
 unique. Names that already fit are unchanged. For a name that changed, `wh_ensure_index` finds the
 existing index under its truncated name and doesn't build it again. The one that had never been

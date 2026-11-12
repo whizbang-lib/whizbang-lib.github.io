@@ -208554,7 +208554,7 @@
     ],
     "RebuildCommandRoutingTests.BlueGreen_WithAQueue_IsQueuedAndTheHandlerDoesNotRunItAsync": [
       {
-        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RebuildBackgroundQueue.cs",
+        "sourceFile": "src/Whizbang.Data.Postgres/RebuildBackgroundQueue.cs",
         "sourceLine": 19,
         "sourceSymbol": "RebuildBackgroundQueue",
         "sourceType": "Class",
@@ -208563,7 +208563,7 @@
     ],
     "RebuildBackgroundWorkerTests.AQueuedRebuild_IsRunByTheWorkerAndReportedAsync": [
       {
-        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RebuildBackgroundQueue.cs",
+        "sourceFile": "src/Whizbang.Data.Postgres/RebuildBackgroundQueue.cs",
         "sourceLine": 40,
         "sourceSymbol": "RebuildBackgroundWorker",
         "sourceType": "Class",
@@ -208572,7 +208572,7 @@
     ],
     "RebuildBackgroundWorkerTests.ARebuildThatThrows_IsReportedAndTheNextQueuedRebuildStillRunsAsync": [
       {
-        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RebuildBackgroundQueue.cs",
+        "sourceFile": "src/Whizbang.Data.Postgres/RebuildBackgroundQueue.cs",
         "sourceLine": 41,
         "sourceSymbol": "RebuildBackgroundWorker",
         "sourceType": "Class",
@@ -208581,7 +208581,7 @@
     ],
     "PerspectiveRebuilderIntegrationTests.RebuildPerspectiveCommand_WithNamedPerspective_UpdatesCursorAsync": [
       {
-        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs",
+        "sourceFile": "src/Whizbang.Data.Postgres/RebuildPerspectiveCommandReceptor.cs",
         "sourceLine": 41,
         "sourceSymbol": "RebuildPerspectiveCommandReceptor",
         "sourceType": "Class",
@@ -208590,7 +208590,7 @@
     ],
     "PerspectiveRebuilderIntegrationTests.RebuildPerspectiveCommand_WithIncludeStreamIds_UpdatesOnlyTargetedCursorsAsync": [
       {
-        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs",
+        "sourceFile": "src/Whizbang.Data.Postgres/RebuildPerspectiveCommandReceptor.cs",
         "sourceLine": 42,
         "sourceSymbol": "RebuildPerspectiveCommandReceptor",
         "sourceType": "Class",
@@ -208599,7 +208599,7 @@
     ],
     "PerspectiveRebuilderIntegrationTests.RebuildPerspectiveCommand_WithNullPerspectiveNames_FansOutToAllRegisteredAsync": [
       {
-        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs",
+        "sourceFile": "src/Whizbang.Data.Postgres/RebuildPerspectiveCommandReceptor.cs",
         "sourceLine": 43,
         "sourceSymbol": "RebuildPerspectiveCommandReceptor",
         "sourceType": "Class",
@@ -342484,7 +342484,7 @@
     ],
     "RebuildCommandReceptorRegistrarTests.RegistersTheReceptorAtEveryStageAnUnattributedReceptorFiresAtAsync": [
       {
-        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RebuildCommandReceptorRegistrar.cs",
+        "sourceFile": "src/Whizbang.Data.Postgres/RebuildCommandReceptorRegistrar.cs",
         "sourceSymbol": "RebuildCommandReceptorRegistrar",
         "sourceType": "Class",
         "linkSource": "Convention"
@@ -342492,7 +342492,7 @@
     ],
     "RebuildCommandReceptorRegistrarTests.WithoutAReceptorRegistry_TheHostStillStartsAsync": [
       {
-        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RebuildCommandReceptorRegistrar.cs",
+        "sourceFile": "src/Whizbang.Data.Postgres/RebuildCommandReceptorRegistrar.cs",
         "sourceSymbol": "RebuildCommandReceptorRegistrar",
         "sourceType": "Class",
         "linkSource": "Convention"
@@ -342500,7 +342500,7 @@
     ],
     "RebuildCommandReceptorRegistrarTests.StoppingRegistersNothingAndCompletesAsync": [
       {
-        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RebuildCommandReceptorRegistrar.cs",
+        "sourceFile": "src/Whizbang.Data.Postgres/RebuildCommandReceptorRegistrar.cs",
         "sourceSymbol": "RebuildCommandReceptorRegistrar",
         "sourceType": "Class",
         "linkSource": "Convention"
