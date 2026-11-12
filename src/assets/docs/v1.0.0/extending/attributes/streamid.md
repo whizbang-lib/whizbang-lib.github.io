@@ -362,6 +362,12 @@ the stream of a source whose stream id is:
   {verified: StrongIdStreamInheritanceGeneratorTests.ASourceTheAttributeLists_IsWrittenAsync}.
 
 Any other source is refused {verified: StrongIdStreamInheritanceGeneratorTests.ASourceOfAnotherStrongId_IsRefusedAsync}.
+A listed type is matched as the exact type the attribute names, also when it is an id the strong-id generator emits
+from a property's or record parameter's `[WhizbangId]`: `typeof(OrderKey)` resolves as C# resolves it there (a
+qualified name, an alias, a `using`, or the id's own namespace), so an id of the same simple name in another namespace
+is still refused {verified: StrongIdStreamInheritanceGeneratorTests.AListedDiscoveredId_IsAcceptedByItsFullNameNotItsSimpleNameAsync}.
+A listed type that names no such id adds nothing to the accepted sources
+{verified: StrongIdStreamInheritanceGeneratorTests.AListedTypeThatNoStrongIdDeclares_AddsNoAcceptClauseAsync}.
 The value always goes through the id's `From`, so an id that takes only UUIDv7 refuses an inherited Guid of another
 version the same way, without throwing during dispatch
 {verified: StrongIdStreamInheritanceGeneratorTests.AGuidTheStrongIdsFromRefuses_IsRefusedAsync}. A `Guid` stream id
@@ -413,9 +419,16 @@ Type? GetStreamIdType(Type messageType) => null;
 bool SetStreamId(object message, Guid streamId, Type? sourceStreamIdType) => SetStreamId(message, streamId);
 ```
 
-The generated extractor implements both. A custom extractor that implements neither reports no stream-id types and
-keeps its own `SetStreamId(object, Guid)`, so it behaves as before. `SetStreamId(object, Guid)` treats the value as
-coming from a plain `Guid` source.
+The generated extractor implements both. Its `GetStreamIdType` reports the strong id of a message type's stream id,
+`Guid` for a stream id that is not a strong id, and null for a type it does not know
+{verified: StrongIdStreamInheritanceGeneratorTests.GetStreamIdType_ReportsTheStrongIdOfEachMessageTypeAsync}. Because
+it answers for every type it extracts, the registry, which takes the first extractor's answer, reads a message's
+stream-id type from the same extractor as its value: a message that names its own `Guid` stream id over a strong-id
+base in another assembly is a plain `Guid` source, not the base's strong id
+{verified: StrongIdStreamInheritanceGeneratorTests.ADerivedGuidStreamIdInAnotherAssembly_IsNotReportedAsItsBasesStrongIdAsync}.
+A setter takes a source type of null or `Guid` as a plain `Guid` source. A custom extractor that implements neither
+member reports no stream-id types and keeps its own `SetStreamId(object, Guid)`, so it behaves as before.
+`SetStreamId(object, Guid)` treats the value as coming from a plain `Guid` source.
 
 ## Diagnostics
 
