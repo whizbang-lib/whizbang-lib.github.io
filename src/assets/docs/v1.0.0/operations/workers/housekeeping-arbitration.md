@@ -237,7 +237,7 @@ budget within the service's own schema, the same scope the backlog that decides 
 measured over, so every instance of the service shares it: any instance deferring starts the
 clock, and any instance completing a pass of that activity clears it.
 
-```mermaid
+```mermaid{caption="The first deferral of a run is recorded in the service's store, read back with the backlog after a restart, forces the pass at the ceiling, and is cleared once the pass ends." tests=["HousekeepingPersistedDeferralTests.AfterARestart_TheCeilingRunsFromTheStoredFirstDeferralAsync", "HousekeepingPersistedDeferralTests.TheFirstDeferral_IsReportedForTheStore_AndOnlyOnceItHoldsNoneAsync", "MaintenanceWorkerDeferralStoreTests.ADeferredSweep_RecordsItsFirstDeferral_AndAPassThatEnds_ClearsItAsync"]}
 sequenceDiagram
     participant W as Worker (maintenance, recovery, integrity)
     participant C as HousekeepingCoordinator
