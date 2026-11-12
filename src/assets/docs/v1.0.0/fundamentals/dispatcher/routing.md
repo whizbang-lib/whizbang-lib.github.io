@@ -13,7 +13,7 @@ description: >-
   service's own commands local while its events still broadcast, with transport-layer echo suppression
   storing self-delivered copies settled, never processed. Absorbed namespaces keep events nothing here
   consumes yet in the local event store, so a perspective added later can rebuild from them.
-tags: 'routing, namespace-routing, message-routing, inbox, topics, pub-sub, owned-domains, echo-suppression, absorbed-namespaces'
+tags: 'routing, namespace-routing, message-routing, inbox, topics, pub-sub, owned-domains, echo-suppression, absorbed-namespaces, excluded-event-types, opt-out'
 codeReferences:
   - src/Whizbang.Core/Routing/RoutingOptions.cs
   - src/Whizbang.Core/Routing/NamespaceRoutingStrategy.cs
@@ -37,6 +37,11 @@ codeReferences:
   - src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
   - src/Whizbang.Core/Routing/MessageDiscardPolicy.cs
+  - src/Whizbang.Core/Routing/EventSubject.cs
+  - src/Whizbang.Core/Routing/ExcludedEventTypePlanner.cs
+  - src/Whizbang.Core/Routing/RoutingOptionsConfigurationBinder.cs
+  - src/Whizbang.Core/Routing/TransportSubscriptionBuilder.cs
+  - src/Whizbang.Core/Workers/TransportPublishStrategy.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOwnedDomainTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCoverageSweepRoutedCascadeTests.cs
@@ -66,6 +71,12 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/ServiceBusConsumerWorkerDropGateTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AbsorbedEventReachesEventStoreTests.cs
+  - tests/Whizbang.Core.Tests/Routing/EventSubjectTests.cs
+  - tests/Whizbang.Core.Tests/Routing/ExcludedEventTypePlannerTests.cs
+  - tests/Whizbang.Core.Tests/Routing/RoutingOptionsExcludedEventTypesTests.cs
+  - tests/Whizbang.Core.Tests/Routing/TransportSubscriptionBuilderExcludedEventTypesTests.cs
+  - tests/Whizbang.Core.Tests/Workers/TransportPublishStrategyCoverageTests.cs
+  - tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusExcludedEventTypesTests.cs
 lastMaintainedCommit: '62abd3a45'
 ---
 
@@ -120,7 +131,9 @@ the same helper, `CommandInboxNaming.TopicFor`, so they cannot disagree on casin
 **What a service subscribes to.** `NamespaceInboxStrategy` gives a service:
 
 - one inbox per distinct contract namespace it handles commands from, taken from its receptors,
-  lowercased and deduplicated;
+  lowercased and deduplicated, and [filtered to the command types it handles](#command-inbox-type-filter);
+- its own [control inbox](#service-control-inbox), `inbox.whizbang.service.<service>`, which only it
+  subscribes to;
 - the system broadcast inbox, `inbox.whizbang`, which carries system commands, control-plane
   messages and minted composites (the whole `whizbang.core` namespace subtree is reserved for it and
   never gets a per-namespace inbox);
@@ -152,8 +165,53 @@ settings: no command namespace is routed to its own inbox, and the shared inbox 
 a non-standard shared topic for the transitional subscription.
 {verified: DefaultNamespaceTopologyTests.ExplicitLegacyStrategies_AreByteIdenticalToTodaysSharedTopologyAsync, DefaultNamespaceTopologyTests.ExplicitLegacyInboxAlone_ClearsFlipAndRetirementAsync, DefaultNamespaceTopologyTests.UseDomainTopics_EitherSide_ClearsFlipAndRetirementAsync, DefaultNamespaceTopologyTests.UseCustom_EitherSide_ClearsFlipAndRetirementAsync, DefaultNamespaceTopologyTests.ExplicitFlipCalls_WinOverTheLegacyStrategyClearingAsync, NamespaceInboxStrategyTests.Inbox_UseNamespaceInboxes_SetsNamespaceStrategyAsync}
 
-Because each per-namespace inbox belongs to one service, a second service subscribing to it would
-receive every command twice. See [Command Ownership and Ownership Drift](#ownership-drift).
+#### Each subscription receives only the commands it handles {#command-inbox-type-filter}
+
+A command inbox entity is not exclusive: every service that handles any command of a namespace
+subscribes to that namespace's inbox. A service that handles two export commands of another service's
+namespace therefore has a subscription on that namespace's inbox. Each subscription is filtered to the
+exact command types its service handles, matched on the wire subject the publisher stamps,
+`{namespace}.{typename}` in lowercase. A nested command type matches under both spellings a publisher
+can stamp, `outer+inner` and `inner`. One send reaches exactly the services that handle that command,
+and nothing else sent to the entity matches.
+{verified: NamespaceInboxStrategyTests.GetSubscriptions_PerNamespaceInbox_FiltersToTheHandledCommandTypesAsync, NamespaceInboxStrategyTests.GetSubscriptions_ForeignNamespace_ReceivesOnlyTheCommandsThisServiceHandlesAsync, NamespaceInboxStrategyTests.GetSubscriptions_NestedCommandType_MatchesBothWireSpellingsAsync, NamespaceInboxStrategyTests.GetSubscriptions_TypeNameOutsideItsNamespace_UsesTheSimpleNameAsync}
+
+**Why.** The filter used to match the whole namespace. A service handling one command of another
+service's namespace received every command sent there, and every directed integrity message addressed
+to the owner, only to discard them. On Azure Service Bus a long type list is split across several filter
+rules (see [routing filters](../../messaging/transports/azure-service-bus#routing-filters)), and on
+RabbitMQ the queue's old match-all `#` binding is removed once explicit patterns are bound.
+{verified: AzureServiceBusProvisioningPathTests.SubscribeAsync_RoutingPatternsBeyondOneFilterLimit_SplitAcrossRulesWithinTheLimitAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_ExistingCommandInboxSubscription_ConvergesToTheTypeFilterAsync, RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_ExplicitPatterns_UnbindTheLegacyMatchAllBindingAsync, RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_MatchAllSubscription_KeepsItsMatchAllBindingAsync}
+
+A second service subscribed to a command inbox without that filter would receive the owner's commands
+and might handle them twice. See [Command Ownership and Ownership Drift](#ownership-drift).
+
+### Each Service's Own Control Inbox {#service-control-inbox}
+
+Every service subscribes to an entity of its own, `inbox.whizbang.service.<service>`: the service name
+in lowercase, with every character other than letters, digits, `.`, `-` and `_` replaced by `-`. Only
+that service subscribes to it, so the subscription has no filter; the entity is the filter. It is
+provisioned with the transport's usual settings, and its subscription is marked as the service's
+control inbox, not as a command inbox, so the [ownership drift check](#ownership-drift) never inspects it.
+{verified: CommandInboxNamingTests.ServiceControlTopicFor_IsTheServicesOwnLowercaseControlEntityAsync, CommandInboxNamingTests.ServiceControlTopicFor_ReplacesCharactersAnEntityNameCannotCarryAsync, NamespaceInboxStrategyTests.GetSubscriptions_AlwaysIncludesThisServicesOwnControlInboxAsync}
+
+Directed integrity traffic addressed to the service travels here: repair and redelivery requests,
+manifests, and the bundles that answer them. The service advertises this entity as its request and
+reply address (see [directed integrity traffic](../../resilience/stream-integrity#directed-integrity-traffic)).
+A second service that handles a command of the addressee's namespace never receives that traffic: it is
+not subscribed to the addressee's control inbox, and its command inbox filter matches only command types.
+{verified: NamespaceInboxStrategyTests.SecondServiceHandlingACommandInTheAddresseesNamespace_NeverReceivesItsIntegrityTrafficAsync, IntegrityControlDestinationTests.ADirectedMessage_ToTheAddresseesAdvertisedTopic_ReachesOnlyTheAddresseeAsync}
+
+**Why its own entity.** A command inbox is not exclusive, and its type filter would drop control
+traffic sent to it. A per-service entity is exclusive by construction on every transport and needs no
+target property or header filter.
+
+**Services on an earlier version.** Senders always answer on the address the receiver advertised, so a
+service that still advertises a command inbox or the shared broadcast inbox keeps receiving there. Once
+it upgrades, it advertises its control inbox on its next checkpoint. Until peers see that checkpoint,
+traffic they send to its old command inbox matches no subscription and is dropped; integrity messages
+expire and are regenerated on the next cycle, so the cost is one cycle's delay.
+
 
 ### How Command Filtering Works {#own-namespace-of}
 
@@ -305,6 +363,107 @@ A manual subscription to a namespace this service also **owns** is refused at st
 discovery would otherwise discard it silently. See
 [Owned and subscribed namespaces](#owned-and-subscribed) for the rule and the two remedies.
 :::
+
+### Excluded event types {#excluded-event-types}
+
+An event subscription delivers every event published to its topic. That stays the default: an event the
+service does not consume is discarded at the receive boundary and recorded (see
+[skipped messages](../../messaging/transports/transport-consumer#skipped-messages)), so nothing is lost
+silently and nothing has to be declared. When a topic carries high-volume event types a service never
+wants, it can name them in an **opt-out list**, and only those types are excluded at the broker. Every
+other event on the topic, including types added to the topic later, is still delivered.
+
+```csharp{title="Opt out of event types at the broker" description="Names event types this service does not want; they are excluded on the subscription of the topic each one is published to, while every other event on the topic is still delivered." category="Architecture" difficulty="INTERMEDIATE" tags=["Dispatcher", "Routing", "Excluded Event Types", "Subscriptions"] tests=["RoutingOptionsExcludedEventTypesTests.ExcludeEventType_Generic_RecordsTheWireFormAsync", "RoutingOptionsExcludedEventTypesTests.ExcludeEventType_NestedType_RecordsTheWireFormAsync", "RoutingOptionsExcludedEventTypesTests.ExcludeEventTypes_Names_StripVersionAndSkipBlankAsync", "RoutingOptionsExcludedEventTypesTests.ExcludeEventTypes_ReturnsTheSameOptionsForChainingAsync"]}
+.WithRouting(routing => {
+  routing
+    .ExcludeEventType<InventoryLevelSampledEvent>()             // by type
+    .ExcludeEventType(typeof(PriceTickEvent))                   // by Type
+    .ExcludeEventTypes("MyApp.Telemetry.Events.HeartbeatEvent"); // by name (wire or CLR form)
+})
+```
+
+| API | Accepts | Verified |
+|-----|---------|----------|
+| `ExcludeEventType<TEvent>()` | An `IEvent` type | {verified: RoutingOptionsExcludedEventTypesTests.ExcludeEventType_Generic_RecordsTheWireFormAsync} |
+| `ExcludeEventType(Type)` | A `Type`, including a nested type; `null` throws | {verified: RoutingOptionsExcludedEventTypesTests.ExcludeEventType_NestedType_RecordsTheWireFormAsync, RoutingOptionsExcludedEventTypesTests.ExcludeEventType_NullType_ThrowsAsync} |
+| `ExcludeEventTypes(params string[])` | Names in the wire form (`"MyApp.Events.Noisy, MyApp"`) or the CLR form (`"MyApp.Events.Outer+Noisy"`); version details are stripped and blank entries skipped | {verified: RoutingOptionsExcludedEventTypesTests.ExcludeEventTypes_Names_StripVersionAndSkipBlankAsync, RoutingOptionsExcludedEventTypesTests.ExcludeEventTypes_NullArray_ThrowsAsync} |
+| `ExcludedEventTypes` | The merged list, empty by default | {verified: RoutingOptionsExcludedEventTypesTests.ExcludedEventTypes_ByDefault_IsEmptyAsync} |
+
+#### Configuration {#excluded-event-types-configuration}
+{verified: RoutingOptionsExcludedEventTypesTests.WithRouting_ConfigurationList_IsMergedWithTheCodeListAsync, RoutingOptionsExcludedEventTypesTests.WithRouting_ConfigurationSectionWithoutTheList_LeavesTheCodeListAsync}
+
+The same list can be set with the configuration key `Whizbang:Routing:ExcludedEventTypes`, a string array
+in either name form, read when `.WithRouting(…)` is called. It is **merged** with the code list: a type
+named in either is excluded. A routing section without the key leaves the code list as it is.
+
+```json{title="Excluded event types in appsettings.json" description="The opt-out list bound from configuration; merged with the types named in code."}
+{
+  "Whizbang": {
+    "Routing": {
+      "ExcludedEventTypes": [
+        "MyApp.Inventory.Events.InventoryLevelSampledEvent, MyApp.Contracts",
+        "MyApp.Telemetry.Events.HeartbeatEvent"
+      ]
+    }
+  }
+}
+```
+
+As environment variables: `Whizbang__Routing__ExcludedEventTypes__0`, `Whizbang__Routing__ExcludedEventTypes__1`, and so on.
+See the [configuration reference](../../operations/configuration/configuration-reference#routing).
+
+#### The subject an event is filtered on {#excluded-event-types-subject}
+{verified: EventSubjectTests.For_WireForm_IsTheLowercasedClrFormAsync, EventSubjectTests.For_VersionedForm_DropsTheAssemblyDetailsAsync, EventSubjectTests.For_ClrForm_IsLowercasedAsync, EventSubjectTests.For_Type_IsTheSubjectOfItsWireFormAsync, TransportPublishStrategyCoverageTests.ResolveEntityDestination_EventRow_IsPublishedUnderItsEventSubjectAsync}
+
+The broker filters on the message subject (Azure Service Bus `Subject`, `sys.Label` in a SQL filter). A
+publisher stamps every event with its **full CLR name, lowercased**, without the assembly:
+`MyApp.Events.Outer+OrderPlaced, MyApp` is published as `myapp.events.outer+orderplaced`. One rendering,
+`EventSubject.For(string)` or `EventSubject.For(Type)`, produces it for both the publish path and the
+exclusion rule, so the two cannot disagree on a nested or renamed type.
+
+#### Which subscription a type is excluded on {#excluded-event-types-per-topic}
+{verified: ExcludedEventTypePlannerTests.Plan_ExcludedTypes_LandOnlyOnTheTopicTheyArePublishedTo_OrderedAndDistinctAsync, ExcludedEventTypePlannerTests.Plan_NothingExcluded_EveryTopicExcludesNothingAndNothingIsLoggedAsync, TransportSubscriptionBuilderExcludedEventTypesTests.BuildEventDestinations_ExcludedType_IsOnlyOnItsOwnTopicAsync, TransportSubscriptionBuilderExcludedEventTypesTests.BuildEventDestinations_NothingExcluded_EveryDestinationCarriesAnEmptyListAsync, TransportSubscriptionBuilderExcludedEventTypesTests.AddTransportConsumer_ExcludedType_LandsOnTheConsumerDestinationAsync}
+
+An event is published to the topic named by its namespace, lowercased, so each excluded type lands only
+on the rule of that one topic's subscription. Each event destination the
+[transport subscription builder](#transport-subscription-builder) produces carries its own excluded
+subjects, ordered and distinct, under the metadata key
+`TransportSubscriptionBuilder.ExcludedEventSubjectsMetadataKey` (`ExcludedEventSubjects`). A destination
+that excludes nothing carries an empty list, which tells the transport to deliver every event on the
+topic, so a subscription converges back when a type leaves the list.
+
+#### Startup checks {#excluded-event-types-startup-checks}
+
+The list is checked every time event destinations are built, so a bad list fails the service before it
+subscribes to anything.
+
+| Condition | Result | Verified |
+|-----------|--------|----------|
+| An excluded type is one this service consumes: a compile-time receptor or perspective, a tag consumer, a receptor registered at startup, or any type the receive boundary would keep | **Startup fails**, naming the type. An excluded type is never delivered, so a consumed one would silently stop arriving | {verified: ExcludedEventTypePlannerTests.Plan_ExcludedTypeConsumedByACompileTimeConsumer_FailsStartupAsync, ExcludedEventTypePlannerTests.Plan_ExcludedTypeConsumedByARuntimeSubscription_FailsStartupAsync, ExcludedEventTypePlannerTests.Plan_ExcludedTypeTheReceiveBoundaryKeeps_FailsStartupAsync, TransportSubscriptionBuilderExcludedEventTypesTests.BuildDestinations_ExcludedTypeThisServiceConsumes_FailsAsync, TransportSubscriptionBuilderExcludedEventTypesTests.AddTransportConsumer_ExcludedTypeThisServiceConsumes_FailsWhenTheConsumerOptionsResolveAsync} |
+| An excluded type is in an [absorbed namespace](#absorbed-namespaces) | **Allowed, with a startup Warning** naming the type and the namespace: the type is excluded at the broker and will not be delivered, even though the namespace is absorbed. Use it to drop one noisy type from a namespace you otherwise take whole. | {verified: ExcludedEventTypePlannerTests.Plan_ExcludedTypeOnAnAbsorbedNamespace_IsAllowedWithAWarningAndExcludedAsync} |
+| Several types break the rules above | One failure names **every** offending type, so one fix covers them all | {verified: ExcludedEventTypePlannerTests.Plan_SeveralViolations_AreAllNamedInOneFailureAsync} |
+| An excluded type is not a message type the application declares | **Warning** (check for a typo). It is still excluded, in case a peer publishes it. Skipped when no message catalog is available | {verified: ExcludedEventTypePlannerTests.Plan_ExcludedTypeUnknownToTheApplication_IsAWarningAndStillExcludedAsync, ExcludedEventTypePlannerTests.Plan_NoCatalogAvailable_DoesNotWarnUnknownAsync, ExcludedEventTypePlannerTests.Plan_NullCatalog_DoesNotWarnUnknownAsync} |
+| An excluded type is published to a topic this service does not subscribe to, or its name has no namespace | **Warning**. It is never delivered here anyway, so it is excluded nowhere | {verified: ExcludedEventTypePlannerTests.Plan_ExcludedTypeOnATopicThisServiceDoesNotSubscribeTo_IsAWarningAndExcludedNowhereAsync, ExcludedEventTypePlannerTests.Plan_NameWithoutNamespace_IsAWarningAndExcludedNowhereAsync} |
+| The list is valid | **Information** log per subscription naming the subjects it excludes; nothing is logged when the list is empty | {verified: ExcludedEventTypePlannerTests.Plan_ExcludedTypes_LandOnlyOnTheTopicTheyArePublishedTo_OrderedAndDistinctAsync, ExcludedEventTypePlannerTests.Plan_NothingExcluded_EveryTopicExcludesNothingAndNothingIsLoggedAsync} |
+
+The consumed check compares subjects, the broker's own comparison, so a type that differs from a
+consumed one only by assembly or version is still caught.
+
+#### Transport support {#excluded-event-types-transports}
+
+- **Azure Service Bus** excludes the types with one SQL rule per event subscription. The rule form, how
+  it is reconciled across instances, the filter length limit and rollout behavior are on the
+  [Azure Service Bus page](../../messaging/transports/azure-service-bus#excluded-event-types).
+- **RabbitMQ** ignores the list. A binding has no "not" filter, so an excluded event still arrives and is
+  discarded at the receive boundary like any other event the service does not consume. The startup
+  checks still run.
+
+#### Design choices {#excluded-event-types-design-choices}
+
+| Choice | Reason | Verified |
+|--------|--------|----------|
+| Event subscriptions keep `$Default` (deliver everything); a service may only name types to **exclude**, never a list of types to receive. | Stability and guaranteed delivery. A filter generated from the consumed set would have to be complete forever: a type missing from it (a runtime receptor, a new handler, a type a generator did not see) is dropped silently at the broker, before the service can record it. With an opt-out list the failure mode is the reverse: a type left off the list is delivered and discarded, which costs a little traffic and is recorded. A subscription that excludes nothing is never touched. | {verified: ExcludedEventTypePlannerTests.Plan_ExcludedTypeConsumedByACompileTimeConsumer_FailsStartupAsync, ServiceBusExcludedEventTypesTests.Apply_NothingExcluded_NeverExcluded_TouchesNothingAsync} |
+| Excluding a type the service consumes fails startup instead of being ignored. | The list is the one place a consumed type could be dropped at the broker, so the contradiction is refused where it is made, using the same consumer data as the receive boundary. | {verified: ExcludedEventTypePlannerTests.Plan_ExcludedTypeConsumedByACompileTimeConsumer_FailsStartupAsync, ExcludedEventTypePlannerTests.Plan_ExcludedTypeTheReceiveBoundaryKeeps_FailsStartupAsync} |
 
 ## System Commands {#system-commands}
 
@@ -1732,11 +1891,13 @@ transport — you do **not** need `Route.Outbox(...)`/`Route.Both(...)` to force
 
 A command type has one owner. Events fan out to every interested service, but a command is handled
 by exactly one. With per-namespace command inboxes (`NamespaceInboxStrategy`, which is what
-`new RoutingOptions()` uses and what `Inbox.UseNamespaceInboxes()` selects), a service gets one inbox
-entity per command contract namespace it handles, named `inbox.<contract-namespace>` in lowercase,
-and subscribes to it. If a second service also subscribes to that entity, every command on it is
-delivered to both services and handled twice.
-{verified: RoutingOptionsTests.Inbox_DefaultStrategy_IsPerNamespaceInboxesAsync, NamespaceInboxStrategyTests.GetSubscriptions_HandledCommandNamespaces_OnePerDistinctNamespaceAsync, NamespaceInboxStrategyTests.GetSubscriptions_MixedCaseNamespace_LowercasesTopicAsync, NamespaceInboxStrategyTests.GetSubscriptions_PerNamespaceSubscriptions_CarryOwnedCommandInboxMarkerAsync}
+`new RoutingOptions()` uses and what `Inbox.UseNamespaceInboxes()` selects), every service that handles
+a command of a namespace subscribes to that namespace's inbox, named `inbox.<contract-namespace>` in
+lowercase, [filtered to exactly the command types it handles](#command-inbox-type-filter). A second
+subscriber filtered that way is the topology working. A second subscriber that matches more than its
+exact command types (the whole namespace, or everything) receives the owner's commands and may handle
+them twice.
+{verified: RoutingOptionsTests.Inbox_DefaultStrategy_IsPerNamespaceInboxesAsync, NamespaceInboxStrategyTests.GetSubscriptions_HandledCommandNamespaces_OnePerDistinctNamespaceAsync, NamespaceInboxStrategyTests.GetSubscriptions_PerNamespaceInbox_FiltersToTheHandledCommandTypesAsync, NamespaceInboxStrategyTests.GetSubscriptions_PerNamespaceSubscriptions_CarryOwnedCommandInboxMarkerAsync}
 
 Whizbang checks this rule twice: at build time for receptors compiled together, and at startup for
 services built separately.
@@ -1761,25 +1922,29 @@ the system broadcast inbox `inbox.whizbang` carry every service's subscription b
 checked.
 
 **Azure Service Bus.** The provisioner lists every subscription on the command inbox topic with
-`IServiceBusAdminClient.GetSubscriptionsAsync(topicName)`. Any subscription other than this service's
-own is drift. A subscription this service created on an earlier boot is not.
-{verified: ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_OwnedCommandInbox_ForeignSubscription_RecordsDriftAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_OwnedCommandInbox_OwnSubscriptionOnly_NoDriftAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_SharedEntities_NeverDriftCheckedAsync}
+`IServiceBusAdminClient.GetSubscriptionsAsync(topicName)` and reads each foreign subscription's rules. A
+subscription whose every rule is a SQL filter of exact subject matches (`sys.Label LIKE '<subject>'`
+clauses joined by `OR`, with no wildcard) is a service handling some of the namespace's commands, and
+is not drift. Anything else is drift: the match-all `$Default` rule, a wildcard such as
+`sys.Label LIKE 'myapp.orders.commands.%'`, an extra clause such as `OR 1=1`, any other kind of filter,
+or no rules at all. A subscription this service created on an earlier boot is not drift.
+{verified: ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_CommandInbox_ForeignSubscriptionFilteredToExactTypes_IsNotDriftAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_CommandInbox_ForeignSubscriptionMatchingTheNamespace_IsDriftAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_CommandInbox_ForeignSubscriptionWithTheMatchAllDefaultRule_IsDriftAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_CommandInbox_ForeignSubscriptionWithACorrelationRule_IsDriftAsync, ExactSubjectFilterClassificationTests.AnythingElse_IsNotExactAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_OwnedCommandInbox_OwnSubscriptionOnly_NoDriftAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_SharedEntities_NeverDriftCheckedAsync}
 
 `GetSubscriptionsAsync` has a default interface implementation that returns no subscriptions, so a
 custom `IServiceBusAdminClient` that does not override it compiles but turns the check off. The
 built-in `ServiceBusAdminClientWrapper` overrides it with the real listing.
 
-**RabbitMQ.** AMQP cannot list the queues bound to an exchange, so the check is indirect: if the
-command inbox exchange already exists but this service's own queue for it does not, another service
-is taken to have claimed the entity. An exchange and queue that both exist are this service's earlier
-boot, and entities that do not exist yet are a first boot; neither is drift. An operator who recreates
-a queue with this service's name can hide a real claim.
-{verified: RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_OwnedInboxExchangeExistsWithoutOurQueue_RecordsDriftAsync, RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_OwnedInboxExchangeAndOurQueueExist_NoDriftAsync, RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_FreshEntities_NoDriftAsync, RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_SharedEntities_NeverDriftProbedAsync}
+**RabbitMQ.** AMQP cannot list the queues bound to an exchange, or another queue's bindings. The only
+observable is that the command inbox exchange already exists while this service's own queue for it does
+not, and with type-filtered subscriptions that is what a second service handling some of the
+namespace's commands legitimately leaves behind. It cannot be told apart from a match-all subscriber, so
+it is logged at Information and never recorded as drift; RabbitMQ records no ownership drift.
+{verified: RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_CommandInboxExchangeExistsWithoutOurQueue_IsNotDriftAsync, RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_OwnedInboxExchangeAndOurQueueExist_NoDriftAsync}
 
-**What a finding does.** Each foreign claim is logged at `Error` level and recorded in the singleton
-`TopologyDriftState` as a `TopologyDriftFinding(Entity, ObservedSubscription, Detail)`: the topic or
-exchange, the foreign subscription (on RabbitMQ, a placeholder naming the missing queue), and a short
-diagnosis. The check never blocks startup: the service still creates its own subscription and runs. If
+**What a finding does.** Each foreign subscription that is not filtered to exact command types is logged
+at `Error` level and recorded in the singleton `TopologyDriftState` as a
+`TopologyDriftFinding(Entity, ObservedSubscription, Detail)`: the topic, the foreign subscription, and a
+short diagnosis. The check never blocks startup: the service still creates its own subscription and runs. If
 listing the subscriptions fails, the check is skipped for that entity with a `Debug` log line and
 provisioning continues.
 {verified: ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_OwnedCommandInbox_ForeignSubscription_RecordsDriftAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_OwnershipDriftCheck_EnumerationFails_LogsAndContinuesAsync, TopologyDriftStateTests.State_Findings_SnapshotsInRecordOrderAsync}
@@ -1789,19 +1954,24 @@ component named `topology` (see [Managed-Resource Health](../../resilience/manag
 It reports `Operational` while no finding exists, and `Degraded`, never faulted, once any finding is
 recorded, with a detail that names each command inbox and the foreign subscription on it. Findings
 are kept for the life of the process, so the drift stays visible after the startup log has scrolled
-away.
+away. `Degraded` maps to readiness `Degraded` (HTTP 200, the instance stays in rotation) and liveness
+`Healthy` under both built-in health policies, so drift is visible on dashboards and never restarts or
+removes an instance.
 {verified: TopologyDriftStateTests.HealthSource_NoFindings_ReportsOperationalAsync, TopologyDriftStateTests.HealthSource_WithFinding_ReportsDegradedWithDetailAsync, TopologyDriftStateTests.HealthSource_Component_IsTopologyAsync}
 
-To clear drift, make one service the owner of the command namespace: remove the other service's
-receptor for the command (or turn it into a lifecycle observer with `[FireAt(...)]`), then delete its
-subscription or queue on the command inbox entity. The health component returns to `Operational` on
+To clear drift, find the foreign subscription that matches more than its service's command types. Usually
+it was provisioned before the type filter by a service on an earlier version: upgrading that service, or
+re-provisioning its subscription, replaces the rule. If the other service really handles the same command,
+make one service the owner: remove the other service's receptor for the command (or turn it into a
+lifecycle observer with `[FireAt(...)]`). The health component returns to `Operational` on
 the next start once nothing foreign is found.
 
 ## Broker Integration
 
 ### RabbitMQ
 
-- **Commands (default)**: One exchange per command namespace, `inbox.<contract-namespace>`, bound to the handling service's queue `<service>-inbox.<contract-namespace>`
+- **Commands (default)**: One exchange per command namespace, `inbox.<contract-namespace>`, bound to each handling service's queue `<service>-inbox.<contract-namespace>` with one binding per command type that service handles
+- **Directed integrity traffic**: One exchange per service, `inbox.whizbang.service.<service>`, bound to that service's queue
 - **Commands (legacy shared inbox)**: Single "inbox" exchange with routing key pattern matching
 - **Events**: One exchange per namespace with topic routing
 
@@ -1821,7 +1991,8 @@ Exchange: myapp.orders.events
 
 ### Azure Service Bus
 
-- **Commands (default)**: One topic per command namespace, `inbox.<contract-namespace>`, with the handling service's subscription on it
+- **Commands (default)**: One topic per command namespace, `inbox.<contract-namespace>`, with a subscription per handling service, each filtered to the command types that service handles
+- **Directed integrity traffic**: One topic per service, `inbox.whizbang.service.<service>`, with that service's subscription on it
 - **Commands (legacy shared inbox)**: Single "inbox" topic with CorrelationFilter on routing key
 - **Events**: One topic per namespace with subscriptions
 
@@ -1918,6 +2089,19 @@ observation count before any handler runs, including a Service Bus session lock-
 broker's delivery count stays at 1. Once the count reaches `MaxDurableObservations` (default 10) and the
 message has been claimed at least once, the inbox gate dead-letters it with `PoisonRedeliveryLoop`. A
 message that was never claimed is not quarantined, so broadcast fan-out is not mistaken for a loop.
+
+{verified: TransportConsumerWorkerPoisonQuarantineTests.Batch_ControlPlaneMessageObservedPastTheBound_IsNotMovedToDeadLettersAsync, TransportConsumerWorkerPoisonQuarantineTests.Batch_DomainMessageBesideAControlPlaneMessage_IsStillQuarantinedAsync, TransportConsumerWorkerPoisonQuarantineTests.Batch_RedeliveryObservationsPastBound_MovesTheInboxRowToDeadLettersAsync}
+
+**Control-plane traffic is never quarantined by observations.** An
+[integrity checkpoint](../../resilience/stream-integrity#phase-b-continuity-checkpoints-fast-drop-detection) is
+published once per topic of its origin's owned types, and every copy carries the same message id, so the inbox stores
+it once and handles it once. A consumer subscribed to ten of those topics still observes that id ten times, while the
+first copy is being handled, so the count reaches the bound after one claim. That is fan-out, not a redelivery loop.
+Quarantining it moved the checkpoint to dead letters and took its row from the handler, so the origin was reported as
+not checkpointing. Control-plane messages (checkpoints, manifests, repair and redelivery requests) past the bound are
+therefore left in place and logged at Debug. This matches the dead-letter boundary, which already drops control-plane
+traffic rather than storing it: the next cycle re-derives it. A control-plane message that keeps failing is still
+ended by the inbox attempt bound. Domain messages are quarantined as before.
 
 Without a trustworthy first-enqueue timestamp (for example a RabbitMQ message from a foreign publisher),
 aged messages are not reported, and the poison-detection health component shows the surface degraded.

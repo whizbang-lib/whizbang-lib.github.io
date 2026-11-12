@@ -3246,25 +3246,25 @@
     "docs": "fundamentals/security/security#principal-filtering"
   },
   "RebuildBackgroundQueue": {
-    "file": "src/Whizbang.Data.EFCore.Postgres/RebuildBackgroundQueue.cs",
+    "file": "src/Whizbang.Data.Postgres/RebuildBackgroundQueue.cs",
     "line": 18,
     "symbol": "RebuildBackgroundQueue",
     "docs": "fundamentals/perspectives/perspectives#rebuild"
   },
   "RebuildBackgroundWorker": {
-    "file": "src/Whizbang.Data.EFCore.Postgres/RebuildBackgroundQueue.cs",
+    "file": "src/Whizbang.Data.Postgres/RebuildBackgroundQueue.cs",
     "line": 39,
     "symbol": "RebuildBackgroundWorker",
     "docs": "fundamentals/perspectives/perspectives#rebuild"
   },
   "RebuildCommandReceptorRegistrar": {
-    "file": "src/Whizbang.Data.EFCore.Postgres/RebuildCommandReceptorRegistrar.cs",
+    "file": "src/Whizbang.Data.Postgres/RebuildCommandReceptorRegistrar.cs",
     "line": 35,
     "symbol": "RebuildCommandReceptorRegistrar",
     "docs": "fundamentals/perspectives/rebuild"
   },
   "RebuildPerspectiveCommandReceptor": {
-    "file": "src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs",
+    "file": "src/Whizbang.Data.Postgres/RebuildPerspectiveCommandReceptor.cs",
     "line": 40,
     "symbol": "RebuildPerspectiveCommandReceptor",
     "docs": "fundamentals/perspectives/rebuild"

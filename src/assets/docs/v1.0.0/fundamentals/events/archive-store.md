@@ -8,7 +8,7 @@ description: >-
   IArchiveStore moves a stream's events out of the hot event store and back: copy then truncate in one
   transaction, a byte-identical read in version order, a tombstone that refuses version reuse, and an exact restore.
   The Postgres-table store is built in; the Azure Blob store is the production default.
-tags: 'archive, archive-store, stream-end-of-life, tombstone, origin-generation, wh_event_archive, azure-blob, brotli, wh_archive_manifest, read-through, restore-request, append-to-archived, perspective-rows, wh_event_archive_rows'
+tags: 'archive, archive-store, stream-end-of-life, tombstone, origin-generation, wh_event_archive, azure-blob, brotli, wh_archive_manifest, read-through, restore-request, append-to-archived, perspective-rows, wh_event_archive_rows, archive-locations, wh_archive_locations, repoint, disaster-recovery'
 codeReferences:
   - src/Whizbang.Core/Archival/IArchiveStore.cs
   - src/Whizbang.Core/Archival/ArchiveBatch.cs
@@ -29,6 +29,9 @@ codeReferences:
   - src/Whizbang.Archive.AzureBlob/ArchiveChunk.cs
   - src/Whizbang.Archive.AzureBlob/ArchiveObjectCorruptedException.cs
   - src/Whizbang.Archive.AzureBlob/ArchiveObjectDeletionStep.cs
+  - src/Whizbang.Core/Archival/ArchiveLocation.cs
+  - src/Whizbang.Core/Archival/ArchiveLocationMismatchException.cs
+  - src/Whizbang.Data.Postgres/Migrations/353_ArchiveLocations.sql
   - src/Whizbang.Data.Postgres/Migrations/271_ArchiveReadThroughAndAppendPolicy.sql
   - src/Whizbang.Core/Archival/ArchiveAwareEventStoreDecorator.cs
   - src/Whizbang.Core/Archival/ArchivedStreamAutoRestore.cs
@@ -74,6 +77,9 @@ testReferences:
   - tests/Whizbang.Archive.AzureBlob.Tests/AzureBlobArchiveRegistrationTests.cs
   - tests/Whizbang.Archive.AzureBlob.Tests/ArchiveObjectCorruptedExceptionTests.cs
   - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs
+  - tests/Whizbang.Archive.AzureBlob.Tests/AzureBlobArchiveLocationTests.cs
+  - tests/Whizbang.Core.Tests/Archival/ArchiveLocationMismatchExceptionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchiveLocationSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchiveAppendPolicySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchiveRulesSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchiveRestoreRequestSqlTests.cs
@@ -314,12 +320,13 @@ The tombstone records where an archive lives and how to read it as text:
 ```text
 {store}://{address}?codec={codec}&format={format}
 postgres-table://svc.wh_event_archive?codec=none&format=1
+azure-blob://0199a1b2-7c4e-7d10-9a3f-5b2c8e1d4f60?codec=brotli&format=1
 ```
 
 | Part | Meaning | Reason |
 |---|---|---|
 | `store` | The store that wrote the archive (`postgres-table`). Lowercase letters, digits and hyphens. | Once a blob store and the table store have both existed in one database, a reader must tell their archives apart. |
-| `address` | Where in that store: a table for the Postgres store, a container and path for a blob store. Anything without `?`. | Each store owns its address space. It may itself contain `://`, which is why the text is not parsed as a URI (a URI parser would normalize it). |
+| `address` | Where in that store: a table for the Postgres store, the stream for the Azure Blob store. Anything without `?`. | Each store owns its address space. It may itself contain `://`, which is why the text is not parsed as a URI (a URI parser would normalize it). The Azure Blob store's address names no account or container: where its objects live is the [archive location](#archive-locations), which configuration decides. |
 | `codec` | How the archive's bytes are compressed: `none` or `brotli`. | Recorded per archive, so a store can change codec later without rewriting older archives. |
 | `format` | The layout of the archived events, 1 or more; this release writes `1`. | The layout can change the same way. |
 
@@ -754,7 +761,9 @@ registered store. The truncator's destruction hook and destruction-stage recepto
 database: each archive becomes one or more **objects** in an Azure Blob container, Brotli-compressed JSON lines, and the
 service database keeps only a small **manifest** row per object (`wh_archive_manifest`, migration 268) and the stream's
 tombstone. The guards, the tombstone, the cursor parking, the origin generation and the restore are the table store's
-own SQL, so both stores behave the same; only where the events rest differs.
+own SQL, so both stores behave the same; only where the events rest differs. Where the objects live is the store's
+configuration, never a database record: every record is checked against the configured
+[archive location](#archive-locations) before the store touches storage.
 
 ```mermaid{caption="An Azure Blob archive write: the database moves the events and the store uploads them inside one transaction; the manifest rows commit with the truncate, so an object is part of an archive only once everything committed." tests=["AzureBlobArchiveStoreTests.Write_WholeStream_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync", "AzureBlobArchiveStoreTests.Write_TheUploadFails_TheStreamStaysFullyHot_AndNothingIsListedAsync", "AzureBlobArchiveStoreTests.Write_ACrashAfterTheUploadBeforeTheCommit_IsRetriedWithoutADuplicateAsync"]}
 sequenceDiagram
@@ -809,6 +818,8 @@ builder.Services.AddWhizbangAzureBlobArchive(builder.Configuration);
 | `Whizbang:Archive:AzureBlob:ServiceUri` | `Uri?` | `null` | `Whizbang__Archive__AzureBlob__ServiceUri` | The Blob service endpoint; authenticates with the registered `TokenCredential` |
 | `Whizbang:Archive:AzureBlob:ConnectionString` | `string?` | `null` | `Whizbang__Archive__AzureBlob__ConnectionString` | A storage connection string (Azurite, or an account key from the host's secret store); set this or `ServiceUri` |
 | `Whizbang:Archive:AzureBlob:ContainerName` | `string` | `whizbang-archive` | `Whizbang__Archive__AzureBlob__ContainerName` | The container the objects are written to; created on the first write |
+| `Whizbang:Archive:AzureBlob:ConnectionName` | `string` | `default` | `Whizbang__Archive__AzureBlob__ConnectionName` | The logical name of the storage connection, recorded in the [archive location](#archive-locations); a name, never a connection string: a value with `;` or `=` is refused |
+| `Whizbang:Archive:AzureBlob:VerifyLocation` | `bool` | `true` | `Whizbang__Archive__AzureBlob__VerifyLocation` | Whether every archive record's location is compared with the configured one before a read, restore, delete or write ([turning the check off](#verify-location)) |
 | `Whizbang:Archive:AzureBlob:CompressionLevel` | `int` | `4` | `Whizbang__Archive__AzureBlob__CompressionLevel` | The Brotli quality, 0 (fastest) to 11 (smallest); a value outside the range fails when the store is built |
 | `Whizbang:Archive:AzureBlob:MaxEventsPerChunk` | `int` | `10000` | `Whizbang__Archive__AzureBlob__MaxEventsPerChunk` | The most events one object holds; 1 or more |
 | `Whizbang:Archive:AzureBlob:AccessTier` | `AccessTier?` | `null` (the account's default tier) | `Whizbang__Archive__AzureBlob__AccessTier` | The tier every object is written at: `Hot`, `Cool` or `Cold`, in any case ([access tier](#access-tier)) |
@@ -818,6 +829,8 @@ builder.Services.AddWhizbangAzureBlobArchive(builder.Configuration);
 | Brotli quality 4 by default. | Measured on 10,000 event rows (13.3 MB of JSON lines): quality 4 wrote 1.90 MB in about 0.25 s; qualities 5 to 9 saved under 1% more for two to seven times the time; 11 saved 15% more but took 38 s per object. An archive is written by a maintenance sweep and read rarely, so the point where more time stops buying bytes is the right default. | {verified: ArchiveChunkTests.Quality_IsPassedToTheEncoder_HigherQualityWritesFewerBytesAsync, AzureBlobArchiveRegistrationTests.Configuration_BindsEverySetting_AndKeepsTheDefaultsForWhatIsAbsentAsync} |
 | The quality range is Brotli's own, 0 to 11; 0 and 11 are accepted, -1 and 12 refused. | Anything else is not a Brotli quality. | {verified: AzureBlobArchiveRegistrationTests.Store_RefusesAQualityOrAChunkSizeOutOfRangeAsync, AzureBlobArchiveRegistrationTests.Store_AcceptsTheEdgesOfTheRangeAsync} |
 | At most 10,000 events per object by default; one is the smallest chunk. | Neither a write nor a read holds more than one object's events in memory (about 13 MB of JSON at the measured row size), and a long stream becomes several objects that read in order. | {verified: AzureBlobArchiveStoreTests.Write_WholeStream_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync, AzureBlobArchiveRegistrationTests.Store_AcceptsTheEdgesOfTheRangeAsync} |
+| `ConnectionName` is a logical name, and a value containing `;` or `=` is refused when it is bound and when the store is built, without echoing it. | It is stored in the database as part of the location, which must never hold a secret; a value shaped like a connection string may be one, so it is neither stored nor written to a log. | {verified: AzureBlobArchiveLocationTests.ConnectionName_ThatLooksLikeAConnectionString_IsRefused_WhenBoundAndWhenBuiltAsync, AzureBlobArchiveLocationTests.ConnectionName_Empty_IsRefused_WhenBuiltAsync} |
+| `ConnectionName` defaults to `default`. | A service with one storage connection needs no setting; environments that share a storage account tell their locations apart by giving each its own name or container. | {verified: AzureBlobArchiveLocationTests.ConnectionName_DefaultsToDefault_AndIsBoundFromConfigurationAsync} |
 | The container is created on the first write when it does not exist. | A fresh account or emulator starts without it, as the offload provider assumes too; the identity therefore needs the right to create the container (the Storage Blob Data Contributor role has it). | {verified: AzureBlobArchiveStoreTests.Write_WholeStream_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync} |
 
 ### Access tier {#access-tier}
@@ -876,13 +889,14 @@ the colder tier's read price and its early-deletion charge.
 | A refusal (`blocked`, `held`, a prefix the truncate refused, `nothing_to_archive`, `debug_skipped`) uploads nothing and keeps its status. | Nothing moved, so nothing is written. | {verified: AzureBlobArchiveStoreTests.Write_ARefusal_KeepsItsStatus_AndUploadsNothingAsync} |
 | A prefix archive adds its own objects; a later prefix adds more. | Each archive is one batch, and the manifest lists every object of the stream in version order. | {verified: AzureBlobArchiveStoreTests.Write_TwoPrefixes_EachAddsItsObjects_AndAReadSpansThemAsync} |
 | A write also moves any rows the table store archived for the stream into its objects. | After a service switches stores, its older archives move out of the database the next time each stream is archived, and the stream's archive ends in one place. | {verified: AzureBlobArchiveStoreTests.Read_EventsTheTableStoreArchived_ComeBackInVersionOrderWithTheObjectsAsync} |
-| The tombstone records the stream's locator, `azure-blob://{container}/{stream}?codec=brotli&format=1`. | A reader can tell this store's archives from the table store's, as the [locator format](#locator-format) intends. | {verified: AzureBlobArchiveRegistrationTests.LocatorFor_NamesTheStoreTheContainerAndTheStream_WithBrotliAndFormat1Async} |
+| The tombstone records the stream's locator, `azure-blob://{stream}?codec=brotli&format=1`. It is informational only: no operation reads a container or an account from it. | A reader can tell this store's archives from the table store's, as the [locator format](#locator-format) intends. Naming no container means it never goes stale when a location is [repointed](#repointing-an-environment), and it can never redirect an operation. | {verified: AzureBlobArchiveRegistrationTests.LocatorFor_NamesTheStoreAndTheStream_NeverTheContainer_WithBrotliAndFormat1Async} |
+| A write records the configured location's id and, for each object, only its path from the stream. | The account and container belong to the location row, so moving an environment is one row's update rather than a rewrite of every record. | {verified: AzureBlobArchiveStoreTests.Write_RecordsTheConfiguredLocation_AndOnlyAPathFromTheStreamOnEachObject_NeverASecretAsync} |
 
 ### Object format {#azure-blob-object-format}
 
 {verified: ArchiveChunkTests.Brotli_RoundTrip_ReturnsEveryLineExactly_NullsAndEscapesIncludedAsync, ArchiveChunkTests.None_RoundTrip_IsPlainJsonLines_OnePerEventAsync}
 
-An object is **format 1**: one JSON object per line, in version order, compressed by the codec its locator names, and
+An object is **format 1**: one JSON object per line, in version order, compressed by the codec its name's extension names, and
 named `{stream}/{first version}-{last version}-{sha256}.jsonl.br` (versions zero-padded to ten digits, so a stream's
 objects list in version order). Each line holds every column of `wh_event_archive` a restore needs:
 
@@ -899,8 +913,8 @@ tests: ["ArchiveChunkTests.None_RoundTrip_IsPlainJsonLines_OnePerEventAsync"]
 |---|---|---|
 | The body, metadata and scope are stored as text, not re-serialized JSON. | They are the exact `jsonb` text the hot store returned, so a read compares byte for byte with a hot read, and a restore puts the same `jsonb` back. | {verified: ArchiveChunkTests.Brotli_RoundTrip_ReturnsEveryLineExactly_NullsAndEscapesIncludedAsync, AzureBlobArchiveStoreTests.Write_WholeStream_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync} |
 | Every column is written, a missing one as `null`. | A row the earlier archiving truncate copied has no flags or commit position; a reader must see null, not a default, and a restore must leave it for the stamper. | {verified: ArchiveChunkTests.None_RoundTrip_IsPlainJsonLines_OnePerEventAsync} |
-| Each object's own locator, with its codec and format, is recorded in its manifest row, and an object is decoded by that codec. | The codec or layout can change later without rewriting older objects; decoding by any other codec is an error, never data. | {verified: ArchiveChunkTests.Decode_WithTheWrongCodec_FailsRatherThanReturningEventsAsync, AzureBlobArchiveStoreTests.Write_WholeStream_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync} |
-| A manifest row whose locator this store did not write (another store, another format, no container and name) is refused, not guessed at. | The manifest is shared database state; a row that is not one of this store's objects is a fault to report. | {verified: ArchiveChunkTests.TryReadObjectLocator_RefusesWhatThisStoreDidNotWrite_RatherThanGuessingAsync, AzureBlobArchiveStoreTests.Read_AManifestRowThisStoreDidNotWrite_IsRefusedAsync} |
+| An object's codec is read from the extension of its name (`.jsonl.br` Brotli, `.jsonl` none), and an object is decoded by that codec. | The record holds only a location and a path from the stream, and the name the store wrote already says how it was encoded; the codec can change later without rewriting older objects, and decoding by any other codec is an error, never data. | {verified: ArchiveChunkTests.TryReadCompression_ReadsTheCodecFromTheObjectNamesExtensionAsync, ArchiveChunkTests.Decode_WithTheWrongCodec_FailsRatherThanReturningEventsAsync, AzureBlobArchiveStoreTests.Write_WholeStream_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync} |
+| A manifest row whose object name this store did not write is refused, not guessed at. | The manifest is shared database state; a row that is not one of this store's objects is a fault to report. | {verified: ArchiveChunkTests.TryReadCompression_RefusesANameThisStoreDidNotWrite_RatherThanGuessingAsync, AzureBlobArchiveStoreTests.Read_AnObjectNameThisStoreDidNotWrite_IsRefusedAsync} |
 | The JSON is written by a source-generated serializer. | No reflection (AOT), and the same bytes every time. | {verified: ArchiveChunkTests.Encode_IsDeterministic_SoARetryWritesTheSameObjectName_AndOtherEventsAnotherAsync} |
 
 ### Integrity {#azure-blob-integrity}
@@ -908,8 +922,8 @@ tests: ["ArchiveChunkTests.None_RoundTrip_IsPlainJsonLines_OnePerEventAsync"]
 {verified: AzureBlobArchiveStoreTests.Read_ACorruptedObject_IsDetectedByItsHash_AndNothingIsDecodedAsync}
 
 Every object is checked against the byte length and SHA-256 its manifest row recorded **before** a byte of it is
-decoded. A mismatch throws `ArchiveObjectCorruptedException`, which names the stream, the object's locator and both
-hashes.
+decoded. A mismatch throws `ArchiveObjectCorruptedException`, which names the stream, the object (its path from the
+stream inside the configured location) and both hashes.
 
 | Choice | Reason | Verified |
 |---|---|---|
@@ -926,7 +940,7 @@ hashes.
 |---|---|---|
 | A read downloads only the objects whose range reaches `fromVersion`, one at a time, and filters inside the first. | A read from a late version does not download the whole archive, and memory holds one object. | {verified: AzureBlobArchiveStoreTests.Write_WholeStream_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync} |
 | A read returns the objects, then any rows the table store still holds for the stream. | Every archive takes a stream's lowest hot versions and every write of this store moves the table rows into an object, so a table row is either the whole archive (written before the switch) or above every object: this order is version order. Archives written before the switch stay readable, restorable and deletable. | {verified: AzureBlobArchiveStoreTests.Read_EventsTheTableStoreArchived_ComeBackInVersionOrderWithTheObjectsAsync} |
-| An object is read from the container its locator names, even after `ContainerName` changes. | Changing the setting moves new archives only; older objects are never stranded. | {verified: AzureBlobArchiveStoreTests.Read_AnObjectInTheContainerItsLocatorNames_AfterTheSettingChangedAsync} |
+| An object is read, restored and deleted only in the configured location. A record of another location (another container, endpoint or connection name) throws `ArchiveLocationMismatchException` before any request reaches storage. | A record never redirects an operation: before 353 a record naming another container sent the read there, so a database copied to another environment read and deleted the source environment's objects. Changing `ContainerName` now needs the objects copied and the location [repointed](#repointing-an-environment). | {verified: AzureBlobArchiveStoreTests.Read_Restore_Delete_InAnotherContainer_ThrowTheMismatch_AndTouchNoObjectAsync} |
 | A restore downloads and checks every object, stages its events back into `wh_event_archive`, removes the manifest rows and runs the table store's restore, all in one transaction under the stream's append lock. | The restore is the table store's own (exact versions and commit positions, digests, epochs, cursors, the tombstone back to `Active`), and it is all or nothing. | {verified: AzureBlobArchiveStoreTests.Restore_PutsTheStreamBackExactly_AndRemovesItsObjectsAsync} |
 | A `version_conflict` (or `nothing_archived`) restore keeps the manifest and the objects and leaves nothing staged. | A refused restore must leave the archive exactly as it was. | {verified: AzureBlobArchiveStoreTests.Restore_AVersionConflict_KeepsTheArchiveAndItsObjectsAsync} |
 | A restored or deleted archive's objects are queued for deletion in its transaction and deleted right after the commit; one that cannot be deleted is logged and stays queued for the [maintenance step](#purging-a-stream-archived-to-blob), and the call still succeeds. | Deleting objects before the commit could leave a manifest naming objects that are gone; queuing them in the transaction means none is ever left unreachable. | {verified: AzureBlobArchiveStoreTests.Delete_AnObjectThatCannotBeRemoved_IsLogged_AndTheDeleteStillCompletesAsync, AzureBlobArchiveStoreTests.Restore_PutsTheStreamBackExactly_AndRemovesItsObjectsAsync} |
@@ -937,12 +951,14 @@ hashes.
 {verified: ArchiveStoreSqlTests.Purge_AStreamArchivedOutsideTheDatabase_TakesItsManifestRows_AndLeavesOthersAsync, ArchiveStoreSqlTests.Manifest_ARowForAStreamWithNoLifecycleRow_IsRefusedAsync}
 
 `wh_archive_manifest` (migration 268) holds one row per object: the stream, the first and last version and the event
-count, the object's locator, its byte length and SHA-256, the origin generation of the archive that wrote it and when.
-The key is `(stream_id, first_version)`.
+count, the object's location (`location_id`, a row of `wh_archive_locations`) and its path from the stream
+(`relative_path`, `{stream}/{object}`), its byte length and SHA-256, the origin generation of the archive that wrote it
+and when. The key is `(stream_id, first_version)`. The `locator` column of rows written before migration 353 is kept
+readable but is never used to find an object; new rows write none ([archive locations](#archive-locations)).
 
 | Choice | Reason | Verified |
 |---|---|---|
-| The table is store-neutral: the locator names the store. | Another byte-stream store can list its objects the same way. | {verified: AzureBlobArchiveStoreTests.Write_WholeStream_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync} |
+| The table is store-neutral: the location row names the provider. | Another byte-stream store can list its objects the same way. | {verified: AzureBlobArchiveStoreTests.Write_WholeStream_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync} |
 | Each row references its stream's lifecycle row, `ON DELETE CASCADE`; a row for a stream with no lifecycle row is refused. | Every archive writes the lifecycle row first, so an orphan row is a bug. A [stream purge](../../operations/infrastructure/purging-streams) deletes the lifecycle row, which takes the manifest rows with it, so a purged stream can never be restored from an object that outlived it. The purge report does not count the cascaded rows. The key of a lifecycle row never changes, so the append path's updates to it queue no check. | {verified: ArchiveStoreSqlTests.Purge_AStreamArchivedOutsideTheDatabase_TakesItsManifestRows_AndLeavesOthersAsync, ArchiveStoreSqlTests.Manifest_ARowForAStreamWithNoLifecycleRow_IsRefusedAsync, AzureBlobArchiveStoreTests.Purge_QueuesTheObjects_AndTheStepDeletesThemAsync} |
 | A purge queues the stream's objects for deletion in its own transaction, and a maintenance step deletes them. | The purge is one SQL transaction and cannot reach blob storage, so it records what to delete and the step does it; see [Purging a stream archived to blob](#purging-a-stream-archived-to-blob). | {verified: AzureBlobArchiveStoreTests.Purge_QueuesTheObjects_AndTheStepDeletesThemAsync} |
 
@@ -957,13 +973,177 @@ included. Every object a manifest row stops naming is queued in `wh_archive_obje
 | Choice | Reason | Verified |
 |---|---|---|
 | The queue is written by a trigger on `wh_archive_manifest`, in the transaction that removes the rows: a purge (by the cascade from the lifecycle row), a restore or a delete. A purge that rolls back queues nothing. | The objects to delete are recorded atomically with the rows that named them, so a committed purge always has them queued and a rolled-back one never does. The trigger covers every way a row can go without redefining `wh_purge_streams`. | {verified: ArchiveStoreSqlTests.Purge_QueuesTheObjectsItsManifestRowsNamed_InItsOwnTransactionAsync} |
-| Each queued row keeps the object's locator: the store, the container and the object name. | The step deletes from the container the object was written to, even after `ContainerName` changes. | {verified: ArchiveStoreSqlTests.Purge_QueuesTheObjectsItsManifestRowsNamed_InItsOwnTransactionAsync, AzureBlobArchiveStoreTests.Purge_QueuesTheObjects_AndTheStepDeletesThemAsync} |
+| Each queued row keeps the object's location id and its path from the stream; the step drains only the rows of the configured location, and every other row stays queued, untouched. | Deleting is the one operation that cannot be undone: a database copied from another environment queues the source environment's objects, and draining them by what the row says would delete that environment's archive. | {verified: AzureBlobArchiveStoreTests.CopiedDatabase_CannotDeleteTheSourceEnvironmentsObjectsAsync, ArchiveLocationSqlTests.Purge_QueuesEachObjectsLocationAndRelativePathAsync, AzureBlobArchiveStoreTests.Purge_QueuesTheObjects_AndTheStepDeletesThemAsync} |
 | The step runs in the maintenance cycle, so under the maintainer duty when role assignment manages it, and deletes at most 100 due objects per cycle. | Deleting is fleet-wide work on shared state, done by one instance; a purge of many streams drains over several cycles instead of holding one cycle for a long run of storage calls. | {verified: AzureBlobArchiveRegistrationTests.Registration_AddsTheObjectDeletionStep_OnlyWithThePackageAsync, AzureBlobArchiveStoreTests.Purge_QueuesTheObjects_AndTheStepDeletesThemAsync} |
 | A row is removed only once storage confirms the delete; an object that is already gone (404) counts as deleted. | Nothing is forgotten before it is really gone, and a delete that succeeded on a run whose confirmation was lost is not retried forever. | {verified: AzureBlobArchiveStoreTests.Step_AnObjectAlreadyGone_CountsAsDeletedAsync} |
 | A failed delete stays queued: the attempt is counted, the error kept and logged as a warning naming the object, and the next try waits one minute, doubling each failure, at most one hour. | A storage outage is retried without hammering the service, and an object that keeps failing is visible in the log and in `last_error`. An hour caps the wait so a recovered account is cleaned up the same day. | {verified: AzureBlobArchiveStoreTests.Step_AFailingDelete_StaysQueued_AndIsRetriedAfterItsBackoffAsync} |
 | An object whose stream's append lock is held (a write is archiving the stream) is left for a later cycle, without counting an attempt. | That write may be uploading an object of the same name: names follow content, so archiving the same events again after a restore writes the same name. | {verified: AzureBlobArchiveStoreTests.Step_AnObjectWhoseStreamIsBeingArchived_IsLeftForALaterRun_WithoutCountingAnAttemptAsync} |
 | A write takes the names it uploads back out of the queue, in its transaction and under the stream's lock. | An object that is live again must never be deleted. | {verified: AzureBlobArchiveStoreTests.Restore_ThenArchiveTheSameEventsAgain_KeepsTheLiveObject_OutOfTheQueueAsync} |
 | A service with only the Postgres-table store queues nothing and has no such step. | Its archive never leaves the database, so a purge already removed every byte. | {verified: ArchiveStoreSqlTests.Purge_OfATableStoreArchive_QueuesNothingAsync, AzureBlobArchiveRegistrationTests.Registration_AddsTheObjectDeletionStep_OnlyWithThePackageAsync} |
+
+### Archive locations {#archive-locations}
+
+{verified: AzureBlobArchiveStoreTests.Read_Restore_Delete_InAnotherContainer_ThrowTheMismatch_AndTouchNoObjectAsync, AzureBlobArchiveStoreTests.CopiedDatabase_CannotDeleteTheSourceEnvironmentsObjectsAsync, AzureBlobArchiveStoreTests.Write_OfAStreamWhoseObjectsAreElsewhere_ThrowsTheMismatch_AndWritesNothing_UntilRepointedAsync}
+
+Configuration drives every read, restore, delete and write of the Azure Blob store. The database records where each
+archive's objects were written, and the store uses that record only to check it against its configuration, never to
+decide where to go.
+
+A **location** is one row of `wh_archive_locations` (migration 353): an id, the provider (`azure-blob`), the storage
+account endpoint (for example `https://account.blob.core.windows.net`), the logical connection name
+(`Whizbang:Archive:AzureBlob:ConnectionName`) and the container. Each archive record, a manifest row or a queued
+deletion, holds its location id plus a relative path that starts at the stream (`{stream}/{object}`). The store's
+configured location is the endpoint of its container client, its connection name and its container
+(`AzureBlobArchiveStore.ConfiguredLocation`).
+
+Before any operation reaches storage, the store compares every record of the stream with the configured location. On
+any difference it throws [`ArchiveLocationMismatchException`](../../operations/diagnostics/error-reference#archive-location-mismatch),
+naming the stream, the operation, the record's location and its id, and the configured location, and no object is
+read, written or deleted.
+
+```mermaid{caption="A database copied to another environment: its records name the source location, so every read, restore and delete is refused before a request reaches storage, and the deletion queue drains nothing; the source environment's objects stay untouched." tests=["AzureBlobArchiveStoreTests.CopiedDatabase_CannotDeleteTheSourceEnvironmentsObjectsAsync", "AzureBlobArchiveStoreTests.Read_Restore_Delete_InAnotherContainer_ThrowTheMismatch_AndTouchNoObjectAsync"]}
+sequenceDiagram
+  participant S as Store (configured: container B)
+  participant D as Copied database
+  participant A as Container A (source environment)
+  participant B as Container B
+  S->>D: read the stream's manifest rows
+  D-->>S: rows at location 1 (container A)
+  S->>D: look up the configured location (never created by a read)
+  D-->>S: none, or location 2
+  Note over S: location 1 is not the configured one
+  S--xS: throw ArchiveLocationMismatchException (read, restore or delete)
+  Note over S,A: no request reaches container A or container B
+  S->>D: drain the deletion queue for the configured location only
+  D-->>S: no rows (every queued row names location 1)
+  Note over A: the source environment's objects are never deleted
+```
+
+| Choice | Reason | Verified |
+|---|---|---|
+| Configuration decides where every operation goes; a record never redirects one. | Before 353 a manifest row naming another container sent the read there, so a database copied to another environment read, restored and, through retention and purge, deleted the source environment's objects. Configuration is per environment; a database can be copied, restored or failed over without it. | {verified: AzureBlobArchiveStoreTests.Read_Restore_Delete_InAnotherContainer_ThrowTheMismatch_AndTouchNoObjectAsync, AzureBlobArchiveStoreTests.CopiedDatabase_CannotDeleteTheSourceEnvironmentsObjectsAsync} |
+| Locations are normalized into their own table, and each record holds an id plus a path from its stream. | Repointing an environment is then one row's update, not a rewrite of every record, and the account and container are stated once where an operator can read them. | {verified: AzureBlobArchiveStoreTests.Write_RecordsTheConfiguredLocation_AndOnlyAPathFromTheStreamOnEachObject_NeverASecretAsync, ArchiveLocationSqlTests.Repoint_UpdatesTheOneRow_OrMergesItIntoTheConfiguredLocationAsync} |
+| A location holds logical information only, and a check constraint refuses anything else: an endpoint with a query, fragment, `;` or `@`, a connection name with `;` or `=`, a container with a separator. | The database is copied, backed up and read by more people than the secret store; a key, a signature or a connection string must never reach it, even by mistake. | {verified: ArchiveLocationSqlTests.Locations_RefuseAnythingThatIsNotLogicalInformationAsync, AzureBlobArchiveLocationTests.ConfiguredLocation_FromAnAccountKeyConnectionString_IsTheEndpoint_NeverTheKeyAsync, AzureBlobArchiveLocationTests.ConfiguredLocation_FromASharedAccessSignature_DropsTheSignatureAsync} |
+| The endpoint keeps an emulator's account path segment. | The emulator serves every account on one host, so the path is what tells two accounts apart. | {verified: AzureBlobArchiveLocationTests.ConfiguredLocation_ForTheEmulator_KeepsTheAccountInThePathAsync} |
+| The same container and connection name at another account endpoint is another location. | Disaster recovery to a second account keeps the names; reading it without an acknowledgement would read whatever that account holds at the path. | {verified: AzureBlobArchiveStoreTests.Read_AtAnotherAccountEndpoint_ThrowsTheMismatch_UntilTheLocationRowIsUpdatedAsync} |
+| A record with no location at all is refused like a mismatch. | It cannot be shown to be in the configured location, and guessing is how the wrong objects get deleted. | {verified: AzureBlobArchiveStoreTests.Read_ARecordWithNoLocation_IsRefused_AndTouchesNoObjectAsync} |
+| A read, restore or delete only looks the configured location up; only a write creates it. | A database that never knew the configured location (a fresh copy) then has no row that could match, so every record is refused rather than one being created to fit. | {verified: ArchiveLocationSqlTests.LocationId_AdoptsItsContainersLegacyLocation_ThenFindsIt_AndALookupNeverCreatesOneAsync} |
+| A write of a stream whose earlier objects are recorded in another location is refused (operation `write`) before anything moves, under the stream's lock, and writes nothing. | A stream never spans two locations: a later restore or delete would otherwise find half its objects refused, and repointing one location could not make the stream whole. | {verified: AzureBlobArchiveStoreTests.Write_OfAStreamWhoseObjectsAreElsewhere_ThrowsTheMismatch_AndWritesNothing_UntilRepointedAsync} |
+| The deletion queue is drained only for the configured location; a row of any other location stays queued, untouched. | Deleting cannot be undone, so it is the operation that most needs the check; a row left queued costs nothing and drains once its location is repointed. | {verified: AzureBlobArchiveStoreTests.CopiedDatabase_CannotDeleteTheSourceEnvironmentsObjectsAsync} |
+| The exception names both locations and the record's location id. | The operator's next step is either to repoint that id or to fix the configuration, and the message holds what both need. | {verified: ArchiveLocationMismatchExceptionTests.TheLocationsConstructor_NamesTheStreamTheOperationBothLocationsAndTheRowAsync, ArchiveLocationMismatchExceptionTests.ARecordWithNoLocation_SaysSo_RatherThanNamingOneAsync} |
+
+The [body-offload store](../offloads/providers/azure-blob) records no locations: its claim names a provider and a key,
+and the provider always uses its configured container, so a record there already cannot redirect anything.
+
+Whether the database should pin locations at all, rather than configuration alone deciding with no record compared, is
+an open design question ([#2141](https://github.com/whizbang-lib/whizbang/issues/2141)). The check is on by default and
+can be [turned off](#verify-location) while that is settled.
+
+#### Records written before migration 353 {#legacy-archive-locations}
+
+{verified: ArchiveLocationSqlTests.Backfill_SplitsEveryLegacyLocator_IntoALocationPerContainerAndARelativePath_AndRunsOnceAsync, AzureBlobArchiveStoreTests.Read_ALegacyRecord_IsReadByTheStoreConfiguredForItsContainer_AndRefusedByAnyOtherAsync}
+
+Before 353 each record held a full locator, `azure-blob://{container}/{stream}/{object}?codec=brotli&format=1`.
+Migration 353 splits each one: the container becomes a location row (one per distinct container, with no endpoint and
+no connection name, which the database never knew) and the rest becomes the record's relative path. No object is moved
+or deleted.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A legacy location is adopted by the first store configured for its container: its endpoint and connection name are filled in from that store's configuration. When both a legacy and a configured location exist for the container, the legacy one is merged into it. | An upgrade needs no operator step, and the database never recorded another endpoint to contradict it. | {verified: ArchiveLocationSqlTests.LocationId_AdoptsItsContainersLegacyLocation_ThenFindsIt_AndALookupNeverCreatesOneAsync, ArchiveLocationSqlTests.LocationId_ALegacyLocationBesideTheConfiguredOne_IsMergedIntoItAsync} |
+| The container is still checked: a store configured for any other container refuses the legacy records. | The container is the one fact the legacy locator did record, and it is exactly what a copied database gets wrong. | {verified: AzureBlobArchiveStoreTests.Read_ALegacyRecord_IsReadByTheStoreConfiguredForItsContainer_AndRefusedByAnyOtherAsync} |
+| The backfill changes only rows with no location yet, so a re-run changes none. | Migrations must be safe to re-apply. | {verified: ArchiveLocationSqlTests.Backfill_SplitsEveryLegacyLocator_IntoALocationPerContainerAndARelativePath_AndRunsOnceAsync} |
+| A manifest row an older instance writes with only a locator is given its container's legacy location and path by a trigger. | During a rolling deploy older instances keep archiving; their records must be checkable like any other. | {verified: ArchiveLocationSqlTests.OlderInstanceWrite_WithOnlyALocator_IsGivenALocationAndPathAsync} |
+
+#### Upgrading during a rolling deploy {#upgrading-to-archive-locations}
+
+While a deploy rolls, older instances keep the old behavior. A read on an older instance of a stream archived by a new
+instance, or an older instance's drain of a deletion a new instance queued, finds no locator and fails safe: nothing is
+read from or deleted in another container. The operation succeeds once the deploy completes. Rows an older instance
+writes are given a location by the trigger above, so they need nothing once the deploy completes.
+
+### Repointing an environment {#repointing-an-environment}
+
+{verified: AzureBlobArchiveStoreTests.RepointLocation_MakesAMismatchedDatabaseConsistent_ForAnotherContainerAsync, AzureBlobArchiveStoreTests.RepointLocation_AfterTheCopyArchivedItsOwnStreams_MergesTheSourceLocationAsync, AzureBlobArchiveStoreTests.Read_AtAnotherAccountEndpoint_ThrowsTheMismatch_UntilTheLocationRowIsUpdatedAsync}
+
+When a database is restored from a backup, failed over for disaster recovery, or copied to another environment, its
+records still name the location they were written to, and the store refuses them until an operator says where the
+objects now are. The procedure:
+
+1. Make sure the objects are in the configured location. If they are not there yet, copy them first (for example with
+   AzCopy), keeping each object's path from the stream unchanged.
+2. Update the configuration of the target environment, if it is not already right (`ServiceUri` or `ConnectionString`,
+   `ContainerName`, `ConnectionName`).
+3. Update the one location row to the configured location. No record is rewritten: every manifest row and queued
+   deletion of the location follows the row.
+
+```sql{
+title: "Repoint an archive location after a database restore or copy"
+description: "Find the location the refusal named and update its one row to the configured endpoint, connection name and container; every record of it follows."
+tags: ["archive", "azure-blob", "archive-locations", "repoint", "disaster-recovery"]
+tests: ["AzureBlobArchiveStoreTests.Read_AtAnotherAccountEndpoint_ThrowsTheMismatch_UntilTheLocationRowIsUpdatedAsync", "ArchiveLocationSqlTests.Repoint_UpdatesTheOneRow_OrMergesItIntoTheConfiguredLocationAsync"]
+}
+-- The locations this database knows; ArchiveLocationMismatchException.RecordedLocationId names the one to repoint.
+SELECT location_id, provider, account_endpoint, connection_name, container FROM wh_archive_locations;
+
+-- Usual case: the configured location has no row of its own yet, so the one row changes.
+UPDATE wh_archive_locations
+SET account_endpoint = 'https://target.blob.core.windows.net', connection_name = 'default', container = 'whizbang-archive'
+WHERE location_id = 1;
+
+-- When the configured location already has a row (the service archived since the move), merge into it instead.
+SELECT wh_repoint_archive_location(1, 'azure-blob', 'https://target.blob.core.windows.net', 'default', 'whizbang-archive');
+```
+
+Or call the store, which repoints to its own configured location and merges into it when it already exists:
+
+```csharp{
+title: "Repoint an archive location from the service"
+description: "After the objects are in the configured location, acknowledge it: the location the refusal named now names the configured one."
+framework: "NET10"
+category: "Core Concepts"
+difficulty: "ADVANCED"
+tags: ["archive", "azure-blob", "archive-locations", "repoint"]
+nugetPackages: ["SoftwareExtravaganza.Whizbang.Archive.AzureBlob"]
+tests: ["AzureBlobArchiveStoreTests.RepointLocation_MakesAMismatchedDatabaseConsistent_ForAnotherContainerAsync", "AzureBlobArchiveStoreTests.RepointLocation_AfterTheCopyArchivedItsOwnStreams_MergesTheSourceLocationAsync"]
+}
+var store = services.GetRequiredService<AzureBlobArchiveStore>();
+try {
+  await foreach (var archived in store.ReadAsync(streamId)) {
+    // ...
+  }
+} catch (ArchiveLocationMismatchException ex) when (ex.RecordedLocationId is { } locationId) {
+  // Only once the objects are known to be in the configured location.
+  var now = await store.RepointLocationAsync(locationId);
+}
+```
+
+| Choice | Reason | Verified |
+|---|---|---|
+| Repointing is an explicit operator step, never automatic. | Whether the objects really are in the configured location is something only the operator knows; doing it automatically would bring back the redirect the check exists to stop. | {verified: AzureBlobArchiveStoreTests.Read_AtAnotherAccountEndpoint_ThrowsTheMismatch_UntilTheLocationRowIsUpdatedAsync} |
+| The location row is updated; no record is rewritten and no object is moved or deleted. | One row for any number of records keeps the step small and atomic, and the objects are the operator's to copy. | {verified: ArchiveLocationSqlTests.Repoint_UpdatesTheOneRow_OrMergesItIntoTheConfiguredLocationAsync, AzureBlobArchiveStoreTests.RepointLocation_MakesAMismatchedDatabaseConsistent_ForAnotherContainerAsync} |
+| When the configured location already exists, `RepointLocationAsync` merges the old location's records into it and removes the old row. | A service that archived after the move already has a row for its location, and two rows for one location would break the unique key. | {verified: AzureBlobArchiveStoreTests.RepointLocation_AfterTheCopyArchivedItsOwnStreams_MergesTheSourceLocationAsync} |
+| `RepointLocationAsync` refuses an id below 1, and one that names no row. | Repointing nothing silently would look like success. | {verified: AzureBlobArchiveLocationTests.RepointLocation_RefusesAnIdThatCannotNameARowAsync, ArchiveLocationSqlTests.Repoint_UpdatesTheOneRow_OrMergesItIntoTheConfiguredLocationAsync} |
+
+### Turning the location check off {#verify-location}
+
+{verified: AzureBlobArchiveStoreTests.VerifyLocationOff_AMismatchedRecord_IsRead_Restored_AndDeleted_InTheConfiguredLocationOnlyAsync, AzureBlobArchiveLocationTests.VerifyLocation_DefaultsToOn_AndIsBoundFromConfigurationAsync}
+
+`Whizbang:Archive:AzureBlob:VerifyLocation` is `true` by default. Set to `false`, configuration alone decides: the store
+reads, restores, deletes and writes in the configured location and compares no record's location, and the deletion
+queue drains every queued object from the configured container.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| On by default. | The check is what stops a copied or restored database from reading the wrong objects or deleting another environment's; a safety net should not need opting into. | {verified: AzureBlobArchiveLocationTests.VerifyLocation_DefaultsToOn_AndIsBoundFromConfigurationAsync} |
+| Off, the configured location is still the only place the store goes. | Turning the check off never brings back the redirect: a record still cannot send an operation to another container. | {verified: AzureBlobArchiveStoreTests.VerifyLocationOff_AMismatchedRecord_IsRead_Restored_AndDeleted_InTheConfiguredLocationOnlyAsync} |
+| Off, location rows are still written, and a record written while it was off names the configured location. | The check can be turned back on later without a backfill. | {verified: AzureBlobArchiveStoreTests.VerifyLocationOff_AMismatchedRecord_IsRead_Restored_AndDeleted_InTheConfiguredLocationOnlyAsync} |
+| A value that is not a boolean is refused naming the key; a blank one keeps the default. | A misread value would otherwise fall back to a default nobody chose. | {verified: AzureBlobArchiveRegistrationTests.Configuration_AValueThatCannotBeRead_IsRefused_NamingTheKeyAsync, AzureBlobArchiveLocationTests.VerifyLocation_DefaultsToOn_AndIsBoundFromConfigurationAsync} |
+
+What turning it off gives up: a copied or restored database, or a configuration pointed at another account or
+container, is no longer refused. Reads may return objects that belong to another environment, a restore or a delete may
+remove the objects at the same path in the configured container even when they are another environment's, and a write
+no longer keeps a stream in one location.
 
 ## Related
 

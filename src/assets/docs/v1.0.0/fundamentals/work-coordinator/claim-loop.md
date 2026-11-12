@@ -8,7 +8,9 @@ description: >-
   feedback on the adaptive window, work stealing, the per-category outstanding
   budget with the perspective drain cap, the release of unstarted leases by a
   stuck instance, outbox stream runs with the immediate re-claim after a full
-  outbox acquisition, how a claim keeps the queue tables' planner statistics
+  outbox acquisition, why the re-offer hands on only streams the drain can
+  fetch, why a claim runs only the statements that can find work, how a claim
+  keeps the queue tables' planner statistics
   true, how a claim ranks only the peers that are alive and eligible for work,
   why a caller that is not eligible claims nothing,
   and why a claim no longer announces the caller's lifecycle phase.
@@ -30,6 +32,10 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/229_OnlyReadyInstancesAreEligibleForWork.sql
   - src/Whizbang.Data.Postgres/Migrations/278_OneWriterOfTheInstancePhase.sql
   - src/Whizbang.Data.Postgres/Migrations/300_AnIneligibleCallerClaimsNothing.sql
+  - src/Whizbang.Data.Postgres/Migrations/230_ReceivedStreamsKeepTheProducersOrder.sql
+  - src/Whizbang.Data.Postgres/Migrations/349_ReOfferOnlyFetchableStreams.sql
+  - src/Whizbang.Data.Postgres/Migrations/367_TheClaimRunsOnlyWhatCanFindWork.sql
+  - src/Whizbang.Data.Postgres/Migrations/390_TheClaimLeasesNoInboxAFullWorkingSetWouldHandBack.sql
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/Signals/BasePollSignalSource.cs
   - src/Whizbang.Core/Signals/PollIdleBackoff.cs
@@ -41,11 +47,15 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HeartbeatPhaseOrderSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerAcquisitionBoundsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimInboxWorkingSetSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerRunPermitTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperWorkCoordinatorGuardAndGateTests.cs
   - tests/Whizbang.Core.Tests/Workers/AdaptiveClaimWindowLatencyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BoundedAcquisitionRewriteSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkPlanShapeTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/HeldBackEventsDoNotCrowdTheReOfferTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimReofferPlanShapeTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimFixedCostSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkStaleStatisticsTests.cs
   - tests/Whizbang.Core.Component.Tests/Signals/PollSignalSourceIdleBackoffTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OutboxStreamRunSqlTests.cs
@@ -369,6 +379,117 @@ once at a full budget of holdings and again at double it: blocks catch the heap 
 catch an index-only pass over the whole holdings, which is cheap in blocks and still grows with the
 backlog.
 
+### The re-offer hands on only what the drain can fetch {#the-re-offer-hands-on-only-what-the-drain-can-fetch}
+{verified: HeldBackEventsDoNotCrowdTheReOfferTests.OneStreamReOffer_PassesOverAHeldBackEvent_ToAFetchableCheckpointAsync, HeldBackEventsDoNotCrowdTheReOfferTests.HeldBackStream_OnceItsPredecessorIsHeldToo_IsStoredAndReOfferedAsync}
+
+A received event keeps its producer's order (migration 230). When an event sorts after an earlier pending event of its
+stream that this instance does not hold, the claim's store pass **holds it back**: the row stays leased but unstored
+(`chain_emitted_at` is still null) until the earlier event is held too. The drain's fetch, `fetch_inbox_batch`, never
+returns an unstored event, so a held-back stream handed to the drain yields nothing.
+
+Since migration 349 the inbox re-offer walk applies the same predicate the fetch applies: on an event lane it skips a
+held event that is still unstored, so a stream whose held rows are all such events is not offered, and a stream that
+also holds a stored event or a command is still walked and lands on that row. Once the earlier event is held, both are
+stored in order and the stream is re-offered like any other. The walk is otherwise the one migration 158 bounded.
+
+**Why the re-offer has to agree with the fetch.** The re-offer is what the drainers work from, and when the
+[outstanding budget](#the-outstanding-budget-reads-inbox-rows-only-perspective-has-its-own-cap) is spent it narrows to
+a few streams, under load to one. The walk takes the most urgent bucket first, a held-back interactive event
+outranks background traffic such as checkpoints, and a held-back stream stays held back on every poll, so a one-stream
+re-offer went to the held-back stream every time, and the drain fetched it as nothing. Every other row the claim acquired was charged an attempt and never offered. A row that is never offered
+is never dispatched, and the attempt ceiling is enforced at dispatch, so those rows were not dead-lettered either:
+each lease lapsed, the next claim took the row again and charged it again, and rows climbed attempts for days. The
+starved rows included received [integrity checkpoints](../../resilience/stream-integrity.md), so a consumer that owns
+nothing never processed one and never learned who owns the types it consumes. Filtering in the walk, rather than in the
+drain, is what lets a narrowed re-offer go to work that can actually dispatch: the drain cannot give back a slot the
+walk already spent.
+
+Rows that were charged past the ceiling before this change, or by any future path that acquires a row and never hands
+it on, are concluded by the maintenance cycle; see
+[exhausted rows are concluded](../../operations/observability/stuck-row-sentinel.md#exhausted-rows-are-concluded).
+
+**What it costs.** `chain_emitted_at` is not a column of `idx_inbox_state_held_lanes`, so on the event lanes the walk's
+probe is an index scan that reads the row, where it was index-only, and it reads past each held-back row it skips.
+Measured on a busy store, a claim that took about 52 ms takes about 3 ms more, and the extra cost grows with the number
+of held-back rows the instance holds, not with its whole holdings. Migration 349 adds no index: putting the column in
+the lane index would make the probe index-only again, but would widen an index that every lease and every store pass
+writes, to save a cost that only held-back rows incur. The plan shape is locked: the test reads the plans the claim's own statements ran, on a store
+with many held streams, held-back streams and a deep unowned backlog, under the custom plan the function declares and
+under a forced generic plan, and fails if any read of `wh_inbox_state` in the walk is not an index scan, if
+`idx_inbox_state_held_lanes` is not among them, or if the predicate is applied after the scan instead of on it.
+{verified: ClaimReofferPlanShapeTests.TheReOfferWalk_ReadsTheWorkTableOnlyThroughItsHeldLanesIndexAsync}
+
+## The claim runs only what can find work {#the-claim-runs-only-what-can-find-work}
+{verified: ClaimFixedCostSqlTests.InboxReOffer_AnInstanceHoldingOneLane_WalksOnlyThatLane_AndOffersItsStreamAsync, ClaimFixedCostSqlTests.InboxReOffer_ALaneHoldingOnlyUnfetchableRows_IsStillWalked_AndOffersNothingAsync, ClaimFixedCostSqlTests.Claim_AnInstanceHoldingNothing_RunsNoReOfferWalkAsync, ClaimFixedCostSqlTests.PerspectiveReOffer_AnInstanceHoldingOneBucket_WalksOnlyThatBucket_AndOffersItsStreamAsync, ClaimFixedCostSqlTests.PerspectiveReOffer_TheIdleBucketWhileWithheld_IsNotOffered_AndNotWalkedAsync, ClaimFixedCostSqlTests.StorePass_ARowWhoseEventIsAlreadyStored_IsStamped_WithoutRunningTheCopyAsync, ClaimFixedCostSqlTests.StorePass_AfterAPassWithNoCandidate_AReadyRowIsStoredByTheNextClaimAsync, ClaimFixedCostSqlTests.StorePass_AnOrdinaryEvent_RunsNoCollectiveRoutingAsync, ClaimFixedCostSqlTests.StorePass_ACollectiveEvent_IsStillRoutedToTheCollectiveSinkAsync}
+
+Every bound above makes a statement cheap to execute. A claim also pays to **plan** each statement it runs, and that
+cost is per statement, not per row. `claim_work` runs under `plan_cache_mode = force_custom_plan` (migration 157), and
+the functions it calls inherit it, so every execution of every statement is planned for the tables as they are. On a
+pooled connection the driver also resets the session between uses (`DISCARD ALL`), which drops every cached plan,
+plpgsql's included. Planning was measured at about half of a typical claim, so the claim's fixed cost is the number of
+statements it runs, and several groups of them ran with nothing to do: the inbox re-offer walk ran once per lane (four
+buckets, commands and events, so eight walks) and returned a row on about one execution in five, about 7.5 empty walks
+a claim; the perspective walk ran up to four times; and the inbox store pass and its collective routing insert ran on
+every claim whether or not there was anything to store or route.
+
+Migration 367 skips each of them when it can prove the skipped statement would find nothing:
+
+- **One lane probe decides which walks run.** Before the walks, one statement asks every inbox lane and every
+  perspective bucket whether this instance holds a pending row there: one correlated `EXISTS` per lane, each answered
+  by the first entry of `idx_inbox_state_held_lanes` or `idx_perspective_held_lanes` under (instance, bucket[, kind]),
+  index-only, so it costs the same whatever the instance holds. A walk runs only for a lane the probe reports held.
+- **The store pass stops when its lock pass finds no candidate.** `_emit_event_store_chain_for_inbox` first locks the
+  streams it will store. When that selects nothing, it runs only the stamp for rows whose event is already in the
+  event store and returns, skipping the refusals, the copy and everything after it.
+- **The collective routing insert runs only when a stored event is collective.** Whether any stored event carries the
+  collective flag is read from the rows the copy statement itself stored, and the insert runs only when one does.
+
+```mermaid{caption="What one claim plans after migration 367: one lane probe gates the inbox and perspective walks, an empty lock pass ends the store pass after its stamp, and the collective insert runs only for a stored collective event." tests=["ClaimFixedCostSqlTests.Claim_AnInstanceHoldingNothing_RunsNoReOfferWalkAsync", "ClaimFixedCostSqlTests.InboxReOffer_AnInstanceHoldingOneLane_WalksOnlyThatLane_AndOffersItsStreamAsync", "ClaimFixedCostSqlTests.StorePass_ARowWhoseEventIsAlreadyStored_IsStamped_WithoutRunningTheCopyAsync", "ClaimFixedCostSqlTests.StorePass_ACollectiveEvent_IsStillRoutedToTheCollectiveSinkAsync"]}
+flowchart TD
+  L[Store pass: lock pass] -->|no candidate| S[Stamp rows already stored, return]
+  L -->|candidates| C[Refusals and copy]
+  C -->|a stored event is collective| R[Collective routing insert]
+  C -->|none collective| D[Rest of the pass]
+  R --> D
+  S --> P
+  D --> P[Lane probe: 8 inbox lanes, 4 perspective buckets]
+  P -->|lane held| W[Walk that lane]
+  P -->|lane empty| X[Skip, no statement planned]
+```
+
+**Why a skip can never drop real work.**
+
+- *The probe asks a wider question than the walk.* It asks only whether a pending row of this instance sits in the
+  lane. Every row a walk can land on satisfies that, so a lane reported empty is one whose walk would return nothing.
+  The converse does not hold and does not need to: a lane holding only rows the walk passes over (a lapsed lease, an
+  unstored event held back for order) is reported held and walked exactly as before, and offers nothing.
+- *The probe reads the state the walks would read.* It runs after the store pass, which is what makes rows fetchable,
+  and after every acquisition, in the same transaction; nothing between it and the perspective walks writes a
+  perspective event. A perspective bucket is skipped at the point its walk would run, after the idle band's trickle
+  bound, so the remaining batch and the row counts derived from it are what they were.
+- *The store pass's lock pass selects by the same predicate as every later read of the pass.* The refusals'
+  candidates and the copy's inbox events are drawn from the rows it locks, so when it locks nothing they find nothing,
+  and only the stamp has work. A row a concurrent claim commits after the lock pass is still unstamped, so the next
+  claim runs the pass for it, as it would have after any pass that missed it.
+- *The collective flag is read from the stored rows, not from a separate query.* A row stored by this statement
+  cannot be missed by a check made before or beside it, so a race cannot drop a collective event's routing.
+
+What a claim offers, stores, stamps and refuses is unchanged. On a copy of a busy service's inbox, a claim taking
+three new events went from 9.8 ms to 7.9 ms median (planning from 5.8 ms to 3.9 ms). A claim whose instance holds a
+row in every lane runs every walk, so the worst case is unchanged.
+
+**Why `force_custom_plan` stays.** A generic plan is chosen once and kept, and the queue tables swing between empty
+and deep. A session that settles on plans while the tables are empty keeps plans that scan them whole once they fill,
+which is the stall [the plans follow the tables](#the-outbox-and-perspective-acquisitions-are-bounded-the-same-way)
+describes. Custom plans cost planning time on every execution, and that is the cost this section reduces by running
+fewer statements, not by risking the plans again.
+
+**Why plan caching is not the lever.** On a connection the driver resets between uses, `DISCARD ALL` drops every
+cached plan, so a generic plan would be rebuilt on the next call anyway: relaxing `plan_cache_mode` would save nothing
+there and would bring back the empty-table plans. The reset stays because it is what releases session advisory locks
+and drops temporary tables when a connection returns to the pool, and work that relied on neither leaking would be
+exposed by removing it. So the lever left is the number of statements a claim executes.
+
 ## Outbox streams move in runs
 {verified: OutboxStreamRunSqlTests.ClaimWork_OneLongStream_DrainsInRunsNotRowsAsync, OutboxStreamRunSqlTests.ProcessOutboxFailures_MidRun_ReleasesTheRestOfTheRunToBeRetriedInOrderAsync, ClaimWorkerAcquisitionBoundsTests.FullOutboxAcquisition_ClaimsAgainWithoutSpacingAsync, OutboxDrainWorkerStreamRunTests.ALongStream_IsContinuedFromItsCursorWithoutAClaimCycleAsync}
 
@@ -472,6 +593,14 @@ Unowned rows are assigned to instances by residue: `partition_number % active_in
 Stealing is a last resort, never a first move. The worker sets `AllowSteal` only after its own inbox claims have come back empty **twice running** (`STEAL_AFTER_EMPTY_CLAIMS = 2`) and clears it the moment its own work returns, so under normal load the residues stay disjoint and ownership stays stable. The store enforces the rule that matters for safety: stealing applies to **unowned** rows only, and never to a stream another live instance is mid-drain on. A stream in which another instance holds a live row lease is skipped whatever the flag says, because taking its next row would interleave one stream across two instances and break per-stream order. The check is a row-level probe on the steal path only, so the normal path pays nothing for it. {verified: BoundedAcquisitionRewriteSqlTests.ClaimOrphanedInbox_Steal_SkipsAStreamAnotherInstanceIsMidDrainAsync}
 
 Permission is decided per cycle: the rows a stealer leaves behind in a stream still belong to their residue, and the stealer takes more only while its own residue keeps coming back empty. {verified: BoundedAcquisitionRewriteSqlTests.ClaimOrphanedInbox_IdleRank_TakesAnotherResiduesRowsOnlyWhenStealingIsAllowedAsync}
+
+A claim that skipped inbox acquisition (`AcquireInbox = false`, below) did not look in this instance's residue, so coming back empty proves nothing about it: it neither counts towards the two empty claims nor resets them. {verified: ClaimWorkerAcquisitionBoundsTests.WorkingSetFull_ClaimsLeaseNoNewInboxRows_UntilItDrainsAsync}
+
+## Inbox acquisition pauses while the working set is full {#inbox-acquisition-pauses-while-the-working-set-is-full}
+
+`ClaimWorkRequest.AcquireInbox` (default `true`) says whether the claim leases new inbox rows this cycle. The claim worker passes `false` while the inbox drain has turned rows away for its working-set byte budget and the working set has not yet drained to where the smallest of them fits (`IInboxChannelWriter.InboxAcquisitionDeferred`). `claim_work` then skips the inbox acquisition (`p_acquire_inbox = FALSE`, migration 390). It still re-offers inbox work the instance holds, and the outbox, perspective and receptor acquisitions are unchanged. The removal that reaches the mark raises the inbox writer's new-work signal, so the next claim acquires again at once. See [working-set budget](per-stream-drain#working-set-budget). {verified: ClaimWorkerAcquisitionBoundsTests.WorkingSetFull_ClaimsLeaseNoNewInboxRows_UntilItDrainsAsync, ClaimWorkerAcquisitionBoundsTests.WorkingSetWithRoom_ClaimsLeaseInboxRowsAsBeforeAsync, ClaimInboxWorkingSetSqlTests.ClaimWork_WithoutInboxAcquisition_LeasesNoNewInboxRow_AndStillReOffersWhatItHoldsAsync, ClaimInboxWorkingSetSqlTests.ClaimWork_WithoutInboxAcquisition_StillAcquiresPerspectiveWorkAsync}
+
+The worker logs `Inbox acquisition paused` (EventId 22) and `Inbox acquisition resumed` (EventId 23), once each way, with the held payload bytes.
 
 ## The outstanding budget reads inbox rows only; perspective has its own cap
 {verified: ClaimWorkerAcquisitionBoundsTests.Budget_ReadsInboxRowsOnly_SoAPerspectiveBacklogCannotCloseInboxHeadroomAsync, ClaimWorkerAcquisitionBoundsTests.Claim_PausesPerspectiveAcquisitionWhileTheDrainBacklogIsAboveItsCapAsync, ClaimWorkerAcquisitionBoundsTests.Claim_LeavesPerspectiveAcquisitionAloneWhileTheDrainBacklogIsUnderItsCapAsync, BoundedAcquisitionRewriteSqlTests.ClaimWork_PerspectiveBoundOfZero_LeasesNoNewPerspectiveWorkButKeepsReemittingHeldWorkAsync}

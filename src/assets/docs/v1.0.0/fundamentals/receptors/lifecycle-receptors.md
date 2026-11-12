@@ -738,6 +738,17 @@ var receptors = _registry.GetReceptorsFor(typeof(ProductCreatedEvent), Lifecycle
 - ✅ Incremental compilation (sealed records, syntactic filtering)
 - ✅ **Scoped dependency support** - receptors can inject `DbContext`, `IOrchestratorAgent`, etc.
 
+### Receptors in several assemblies {#several-assemblies}
+{verified: ReceptorRegistryContributionTests.TwoAssemblies_EachAssemblysLifecycleReceptorFires_WhicheverRegisteredLastAsync, ReceptorRegistryContributionTests.AReceptorTwoAssembliesDeclare_AnswersOnce_FromTheLatestAsync, ReceptorRegistryContributionTests.RuntimeRegistrations_GoToTheLatestContribution_AndAreAskedThereAsync}
+
+Every assembly that declares receptors generates its own `GeneratedReceptorRegistry`, and its generated registration
+contributes it to the one `IReceptorRegistry` the host serves (`AddReceptorRegistryContribution<T>()`). Lifecycle
+receptors in every assembly fire, whatever order the assemblies are registered in. A receptor two assemblies declare
+under the same class name runs once, from the assembly registered latest, and startup names the collision
+([registration collisions](../../extending/extensibility/replaceable-services#registration-collisions)). Receptors
+registered at run time (below) all go to the latest assembly's registry, so each is found once and unregistered from
+where it was registered.
+
 ---
 
 ## Runtime Registration (Testing)
@@ -779,6 +790,10 @@ public interface IReceptorRegistry {
   /// <summary>True when a runtime-registered receptor consumes the given CLR type name -
   /// consulted by the receive/inbox discard gates alongside the compile-time tables</summary>
   bool HasRuntimeConsumerFor(string clrTypeName) => false;
+
+  /// <summary>The ids of the receptors compiled into this registry - read by the startup
+  /// report of a receptor two assemblies both declare</summary>
+  IReadOnlyCollection<string> GetCompiledReceptorIds() => [];
 }
 ```
 

@@ -19,6 +19,8 @@ tags: 'liveness, eligibility, heartbeat, advisory-lock, recovery, workers, watch
 codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/316_OneDurableInstanceRecord.sql
   - src/Whizbang.Data.Postgres/Migrations/317_EveryReaderJudgesLivenessByTheRule.sql
+  - src/Whizbang.Data.Postgres/Migrations/355_RoleHoldersAreJudgedByTheLivenessRule.sql
+  - src/Whizbang.Data.Postgres/Migrations/369_RepairAnswersAreAbsorbedCheaply.sql
   - src/Whizbang.Data.Postgres/Migrations/204_DirectInstancesAreLiveByTheirAliveLock.sql
   - src/Whizbang.Data.Postgres/Migrations/229_OnlyReadyInstancesAreEligibleForWork.sql
   - src/Whizbang.Data.Postgres/Notifications/PostgresNotificationsServiceCollectionExtensions.cs
@@ -29,12 +31,15 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Notifications/PgSharedNotifyConnection.cs
   - src/Whizbang.Data.Postgres/Notifications/PgInstanceLifecycleMonitor.cs
   - src/Whizbang.Core/Workers/IInstanceAliveLockSource.cs
+  - src/Whizbang.Core/Notifications/WhizbangNotificationOptions.cs
   - src/Whizbang.Core/Workers/HeartbeatWorker.cs
   - src/Whizbang.Core/Workers/HeartbeatLivenessThreshold.cs
   - src/Whizbang.Core/Observability/InstanceLivenessMetrics.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceLivenessRuleSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/LivenessRuleReadersSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleHolderLivenessSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceiveDoorbellCostSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ListenLivenessSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/CoordinationSourceGuardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockLivenessSqlTests.cs
@@ -43,6 +48,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockSourcePostgresTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageWiringTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockSourceRegistrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/NpgsqlWaitTimeoutTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PgSharedNotifyConnectionCoverageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/AliveLockRankCostScenarioTests.cs
   - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerAdaptiveCadenceTests.cs
   - tests/Whizbang.Core.Tests/Workers/HeartbeatLivenessThresholdTests.cs
@@ -211,6 +218,48 @@ instance's liveness signal, as for any instance not holding its lock.
 Earlier releases took the alive-lock but never registered the shared connection as the lock source, so every instance beat on the fast cadence and the slow cadence below was dormant. Registering it is what puts direct instances on the slow cadence, and the rule above is what makes that safe: without it, a reader comparing heartbeat age against its own window would take a direct instance for dead between two slow beats.
 :::
 
+### The LISTEN connection's keepalive {#listen-keepalive}
+{verified: PgSharedNotifyConnectionCoverageTests.Keepalive_DuringIdlePeriod_IssuesSelectOneAndStaysAvailableAsync, PgSharedNotifyConnectionCoverageTests.Keepalive_WhoseWakeIsLost_RunsSelectOneOnceTheWaitTimesOutAsync, PgSharedNotifyConnectionCoverageTests.Resync_WhoseWakeIsLost_IsListenedOnceTheWaitTimesOutAsync}
+
+The shared LISTEN connection spends almost all of its time parked in Npgsql's wait for a notification. Two things
+must interrupt that wait even when nothing is sent: the keepalive, which runs `SELECT 1` to prove the connection is
+still alive (and makes the deferred alive-lock claim described above), and a resync, which LISTENs on a channel
+subscribed after the connection came up.
+
+**The bound.** Every wait carries a timeout equal to `Whizbang:Database:ListenKeepaliveInterval` (default 30 s). A
+wait that times out runs the keepalive, and the next pass of the loop syncs any subscription still waiting to be
+LISTENed before it parks again. So a dead connection is noticed, and a late subscription is LISTENed, within one
+keepalive interval. A new subscription still cancels the wait as a fast path, which in the usual case LISTENs at once;
+the timeout is the guarantee behind it.
+
+**What a timeout does.** A timed-out wait returns `false`; it does not throw. The connection stays open on the same
+server session and its LISTENs stay in place, so the `SELECT 1` that follows runs on it and a notification sent
+afterward still arrives. This is verified on a real PostgreSQL server, because it is the driver behavior the keepalive
+depends on: if an Npgsql upgrade turned a timed-out wait into a broken connection, every keepalive would recycle the
+LISTEN connection, and those tests fail first.
+{verified: NpgsqlWaitTimeoutTests.WaitAsync_TimeoutElapses_ReturnsFalseAndLeavesTheSameSessionOpenAsync, NpgsqlWaitTimeoutTests.WaitAsync_NotificationAfterATimeout_ArrivesOnTheSameConnectionAsync}
+
+:::updated
+Earlier releases woke the wait for the keepalive and for a resync by canceling its token. Npgsql 10.0.1 can lose a
+cancellation that lands as the wait begins: it checks the token, then re-arms the read's own cancellation source, which
+discards a cancel delivered in between. A lost wake left the wait on an idle socket until the server sent something,
+so a subscription made after the connection came up could stay unlistened (every notification on its channel lost),
+and a dead connection could go unnoticed. The stop path was fixed separately, by ending the pass on the stopping token
+itself ([#2150](https://github.com/whizbang-lib/whizbang/issues/2150)). The keepalive and the resync are now bounded
+by the wait's timeout ([#2155](https://github.com/whizbang-lib/whizbang/issues/2155)).
+:::
+
+The interval must be greater than zero. Zero would mean an unbounded wait to the driver, which is exactly the lost-wake hang this bound exists to prevent, so a zero or negative `Whizbang:Database:ListenKeepaliveInterval` is refused when the options are first read, with an error naming the key.
+
+#### Design choices {#listen-keepalive-design-choices}
+
+| Choice | Reason | Verified |
+|--------|--------|----------|
+| The wait is bounded by a timeout, not woken by a cancel. | Npgsql arms its read timeout afresh on every read, after the reset that can lose a cancel, so a timeout cannot be lost; a token cancel can. | {verified: PgSharedNotifyConnectionCoverageTests.Keepalive_WhoseWakeIsLost_RunsSelectOneOnceTheWaitTimesOutAsync, NpgsqlWaitTimeoutTests.WaitAsync_TimeoutElapses_ReturnsFalseAndLeavesTheSameSessionOpenAsync} |
+| The timeout is `ListenKeepaliveInterval`, and the keepalive has no timer of its own. | One interval already decided how often the connection is checked; the same interval bounds a lost resync, so there is one setting to reason about and no second cancellation source that could itself be lost. | {verified: PgSharedNotifyConnectionCoverageTests.Keepalive_DuringIdlePeriod_IssuesSelectOneAndStaysAvailableAsync} |
+| A resync still cancels the wait, and every pass drains the resync request before it parks. | The cancel usually works and LISTENs at once; when it is lost, the timed-out pass drains it, so the subscription is LISTENed within one interval instead of never. | {verified: PgSharedNotifyConnectionCoverageTests.Resync_WhoseWakeIsLost_IsListenedOnceTheWaitTimesOutAsync} |
+| Rejected: waking the wait with a NOTIFY sent to itself from another connection. | It needs a second connection for every wake, in a topology that keeps direct connections scarce (one per instance), and it cannot detect a dead LISTEN connection: a NOTIFY never reaches a dead socket, so a timeout is still needed, and the timeout alone covers both cases. | {verified: PgSharedNotifyConnectionCoverageTests.Keepalive_WhoseWakeIsLost_RunsSelectOneOnceTheWaitTimesOutAsync, NpgsqlWaitTimeoutTests.WaitAsync_NotificationAfterATimeout_ArrivesOnTheSameConnectionAsync} |
+
 ### The lock check: `wh_direct_alive_lock_holders` {#wh-direct-alive-lock-holders}
 {verified: AliveLockLivenessSqlTests.Holders_ADirectInstanceHoldingItsLock_IsListedAsync, AliveLockLivenessSqlTests.Holders_APooledInstanceHoldingALock_IsNotListedAsync, AliveLockLivenessSqlTests.Holders_ADirectInstanceWhoseLockIsReleased_IsNotListedAsync}
 
@@ -241,14 +290,42 @@ from its last definition with only the liveness check replaced, and the C# reade
 | `wh_partition_assignment_candidates` and the partition assigner | The heartbeat's age, judged by the assigner's own two windows | The function returns `is_live`; the assigner reads it. See [Partition assignment](/v1.0.0/fundamentals/work-coordinator/partition-assignment). |
 | `claim_orphaned_outbox`, `claim_orphaned_inbox`, a stream's owner | A heartbeat inside the caller's cutoff, or a connection named for the owner in `pg_stat_activity` | The rule. A named connection is no longer a signal; see [LISTEN as heartbeat](/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer#listen-as-heartbeat). |
 | `claim_orphaned_perspective_events`, `get_stream_events` | Any row at all, or a named connection | The rule. An owner whose row the reap has not removed yet, but whom the rule calls dead, no longer holds its streams. |
-| `calculate_instance_rank`, `notify_instance_owners_with_payload`, `_notify_debounced` | A heartbeat inside a fixed 30 s | The rule. |
+| `calculate_instance_rank`, `notify_instance_owners_with_payload`, `_notify_debounced` | A heartbeat inside a fixed 30 s | The rule. Since migration 369 a doorbell call reads it once (`wh_live_instance_ids()`) for every owner it rings and passes each answer to `_wh_notify_debounced_for`; `_notify_debounced` asks it for its one target. See [Liveness is read once per doorbell call](/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer#liveness-read-once-per-notify). |
 | `_notify_dead_letter_ready` | A heartbeat inside 5 minutes | The rule. |
 | The stale-peer reap (`cleanup_stale_instances`) and the heartbeat's opportunistic reap | The caller's cutoff and its definitive-dead cutoff, sparing a held lock | Removes exactly what the rule calls not live and wakes exactly what it calls live; the cutoff parameters stay for older callers and are not read. The heartbeat's cheap pre-check asks the rule by heartbeat alone (no lock read) before calling the reap. |
 | `is_instance_alive` | A held lock or the caller's threshold | Delegates to the rule; the threshold is not read. |
 | The lifecycle monitor | `is_instance_alive` with its own derived threshold | `wh_instance_is_live`; the threshold only paces its scan. |
 | The standby handshake and `StandbyWatcher` | The heartbeat against the host's clock and `RequesterLivenessWindow`, or a held lock | `FleetInstanceStatus.IsLive` and `StandbyRequest.RequesterIsLive`, read through `wh_instance_is_live`. See [The standby handshake](#the-standby-handshake). |
 | The migrator's other-releases warning (`FleetVersions`) and the managed-schema fleet gate | A heartbeat inside 2 minutes | `wh_live_instance_ids()`. See [Managed schema objects](/v1.0.0/fundamentals/perspectives/managed-schema-objects#rolling-deploys). |
-| Role votes and bridge expiry | The registration | Unchanged: they read the registration, which the reap removes by the rule. |
+| Role votes, renewals, the role status and the epoch fence (`_role_lapse_reason`, `wh_assert_role_epoch`) | The registration, and the role's own lease: a holder lapsed 15 s after its last renewal whatever the rule said | The rule, through one helper, `_role_holder_kept_live` (migration 355): a holder past its lease keeps its role while the rule calls it live and it renewed inside its progress window. See [Role holders](#role-holders). |
+| Bridge expiry | The registration | Unchanged; since migration 326 it ends nothing. |
+
+### Role holders {#role-holders}
+{verified: RoleHolderLivenessSqlTests.Vote_AHolderPastItsLease_ThatTheRuleCallsLive_AndThatMadeProgressInsideItsWindow_KeepsTheRoleAsync, RoleHolderLivenessSqlTests.Vote_ADirectHolderHoldingItsAliveLock_DoesNotLapse_WhileItsHeartbeatIsPastOneBeatAsync, RoleHolderLivenessSqlTests.Vote_AHolderTheRuleCallsDead_LapsesAtItsLease_InsideItsWindowAsync, RoleHolderLivenessSqlTests.Vote_AConnectedButStuckHolder_LapsesAtItsProgressWindow_ThoughTheRuleCallsItLiveAsync, CoordinationSourceGuardTests.ARoleHolder_IsJudgedPastItsLeaseByTheOneLivenessRuleAsync, CoordinationSourceGuardTests.SqlLeaseVerdicts_AppearOnlyInTheAllowlistedFunctionsAsync}
+
+A duty's holder ([role assignment](/v1.0.0/operations/startup/capabilities-and-duties#role-assignment-the-default)) is
+the last reader that kept a rule of its own, and since [#2140](https://github.com/whizbang-lib/whizbang/issues/2140) it
+asks this one. Inside its lease a holder holds. Past its lease it keeps the role only while this rule calls its instance
+live **and** it renewed inside the progress window it declared for its epoch (`RoleAssignmentOptions.ProgressWindow`, 2
+minutes by default). The vote and the fence both decide through one helper, `_role_holder_kept_live`, so they never
+disagree about a holder.
+
+- **Why the rule.** A holder busy with startup, or inside one long unit of work, used to lapse 15 seconds after its last
+  renewal while every other reader called it live, and a restart could bounce the role between instances.
+- **Why a progress window as well.** This rule answers whether the instance is there, not whether its duty loop is
+  moving: the heartbeat comes from `HeartbeatWorker`, so a holder whose duty loop is wedged keeps beating. Progress is
+  counted from renewals, which only the duty loop sends, so a holder that is connected but stuck loses the role at the
+  end of its window.
+- **What it costs.** A crashed holder is replaced when this rule calls it dead, never before its lease: about one beat
+  (30 s) for a direct instance, whose alive-lock goes with its process, and at most the progress window for one behind a
+  transaction pooler, whose heartbeat window is longer. A holder on an older release declares no window and is judged
+  by its lease alone, as before.
+- **Gravity.** A lease comparison outside the role's two deciding functions fails
+  [the coordination source guard](../../../contributors/gravity.md#coordination-source-guard), so the lease cannot become
+  a liveness verdict again.
+
+The full model, the grant watch that tells a holder of its loss within one renew interval, and each trade-off are in
+[Duty Role Assignment](../../../proposals/duty-role-assignment#liveness).
 
 ### When a direct instance loses its lock {#lock-loss}
 {verified: AliveLockLivenessSqlTests.Rank_ADirectPeerWhoseLockIsReleased_IsCountedOutAtOnceAsync, AliveLockLivenessSqlTests.Reap_ADirectPeerHoldingItsLock_IsNeverReapedAsync, AliveLockLivenessSqlTests.Reap_ADirectPeerWhoseLockIsReleased_IsReapedOnTheNextPeerBeatAsync, AliveLockLivenessSqlTests.Vote_ARoleHeldByADirectInstanceHoldingItsLock_IsNotVotedAwayAsync, AliveLockLivenessSqlTests.Vote_ARoleHeldByADirectInstanceWhoseLockIsReleased_IsVotedAwayOnTheNextPeerBeatAsync}
@@ -329,6 +406,21 @@ before a transition and undo it; a pause or a stand-by, which are off the startu
 them. A write the stage record could not make is held and written again on the next accepted heartbeat, so nothing is
 left for a beat to repair.
 {verified: HeartbeatPhaseOrderSqlTests.ABeatAheadOfTheRow_DoesNotMoveThePhase_TheStageRecordIsItsOnlyWriterAsync, HeartbeatPhaseOrderSqlTests.APhaseOffTheLadder_OnABeat_IsNotWritten_EitherWayAsync, StartupStageReporterTests.AWriteThatFails_IsHeld_AndWrittenOnTheNextRegistrationSignalAsync, WorkEligibilitySqlTests.ARegistration_NoLongerMovesARecordedPhase_TheStageRecordMakesTheRowCurrentAsync}
+
+## The heartbeat starts at registration {#startup-beat}
+
+An instance registers at the end of Preflight, and its heartbeat starts right after, at Elect, not when its schema is
+ready. Until the schema-ready gate opens, each beat is a [startup beat](/v1.0.0/operations/startup/startup-status#the-startup-beat)
+(`wh_record_startup_heartbeat`, migration 362): it refreshes the heartbeat, the connection mode and the liveness window
+of the instance's row and nothing else, and it refuses an evicted instance. The registration itself records the
+connection mode and the window, so the rule judges a starting instance by its own window from the moment its row
+exists.
+
+**Why.** The heartbeat used to start at schema ready, and the registration recorded no window, so the rule judged a
+starting instance by 30 seconds: any live peer's reap evicted an instance still electing or migrating (seen after a 63
+second Migrate). A starting instance is now live by beats it really sends, and is still not
+[eligible for work](#alive-versus-eligible) until it records Accept commands.
+{verified: StartingInstanceHeartbeatE2ETests.AStartingInstanceHeldInMigrate_PastThirtySeconds_IsNotEvictedByALivePeersReapAsync, HeartbeatStartPointTests.TheHeartbeat_StartsAtElect_TheFirstStageAfterRegistrationAsync, SchemaBootstrapPhaseTests.ARegistration_RecordsTheConnectionModeAndTheLivenessWindowAsync, StartingInstanceHeartbeatE2ETests.AStartingInstanceThatBeats_KeepsItsStageAndPhase_AndIsNotEligibleForWork_UntilItRecordsAcceptingCommandsAsync}
 
 ## Adaptive HeartbeatWorker cadence
 
@@ -510,19 +602,32 @@ Migration **106** closes that:
 - Every reaped instance is **tombstoned** in `wh_instance_evictions` (instance id, when, why). A tombstone rather than the deletion itself, because deletion is precisely what the returning zombie's heartbeat undoes.
 - `record_heartbeat` **consults the tombstone and refuses** — its return type changed `VOID → BOOLEAN`. `true` = registered/renewed; `false` = this instance has been evicted and must not consider itself part of the fleet.
 - The refusal travels through the **heartbeat itself** — the same call that used to let the zombie back in is now the one that tells it it may not. No new channel, no dependency on the signal bus, and notice is bounded by one heartbeat interval.
-- `HeartbeatWorker` **stops its loop** on a refused heartbeat and logs the eviction at Error. Retrying can never succeed: the tombstone does not expire on the evicted instance's clock.
+- `HeartbeatWorker` **stops its loop** on a refused heartbeat, and the instance **exits** through the [one exit path](/v1.0.0/operations/startup/instance-exits#evictions) with `ClusterEviction`, exit code 3, so its host restarts it. Retrying can never succeed: the tombstone does not expire on the evicted instance's clock. A refused startup beat or claim registration exits the same way.
 
-The fence is per **process**, not per pod: instance ids are generated per process, so a restarted pod draws a fresh id and is unaffected — correct, because a restart means fresh state — while the zombie keeps its id and stays fenced.
+The fence is per **process**, not per pod: instance ids are generated per process, so a restarted pod draws a fresh id and is unaffected (correct, because a restart means fresh state). The zombie keeps its id only until its next beat is refused; then it exits and its host starts a new process under a new id. Nothing re-registers in place.
+{verified: HeartbeatWorkerStartupBeatTests.OnceTheSchemaIsReady_ARefusedBeat_ExitsOnce_AsAClusterEvictionAsync, StartingInstanceHeartbeatE2ETests.AnInstanceEvictedWhileRunning_ExitsOnce_WithCodeThree_AndRecordsWhoEvictedItAsync, ClaimWorkerLifecyclePhaseTests.ARefusedRegistration_ExitsAsAClusterEvictionAsync}
+
+**Why exit rather than stay sidelined.** An evicted instance that kept running held nothing, served nothing and could
+not rejoin under its id, so it sat out of the fleet until someone noticed and restarted it. Exiting with a failure code
+hands that to the supervisor that already restarts failed processes.
+
+**The tombstone says what the rule judged.** Since migration 363 the tombstone records the evicting peer for a reap
+too (`evicted_by`; before, only the standby handshake's fence recorded it), the instance's last heartbeat as the reap
+saw it (`last_heartbeat_at`), and the liveness window it was judged by (`liveness_window_seconds`, `NULL` when its row
+recorded none and the rule used 30 seconds). `record_heartbeat` names itself as the reaper for the reap it runs, and
+`cleanup_stale_instances` writes that name; a reap by any other caller records no reaper. The exit's entry states all
+of it.
+{verified: InstanceExitRecordSqlTests.APeersReap_RecordsTheReaper_AndTheHeartbeatAndWindowItJudgedAsync, InstanceExitRecordSqlTests.AReapByAnyOtherCaller_RecordsNoReaperAsync}
 
 Tombstones are bounded: `perform_maintenance` purges rows older than `instance_eviction_retention_hours` (`wh_settings`, default 24; set from `Whizbang__Workers__Maintenance__Retention__InstanceEvictionTombstoneHours`, see [database-side settings](../../operations/configuration/configuration-reference#database-side-settings)). The tombstone only needs to outlive a realistic pause-and-resume window, and since ids are per-process, anything calling with that id after a day is not the process that was reaped.
 
 ## Capabilities: won, recorded, and fenced
 
-A **capability** names what an instance may do; an exclusive one (`migrator`, `maintainer`) is a **duty**, held by one instance at a time. Capabilities are *won*, never handed out: an instance votes through `IDutyElector`, and the vote grants or refuses. Every duty is then a [role assignment](/v1.0.0/operations/startup/capabilities-and-duties#role-assignment-the-default), a row with a lease and an epoch; no duty is held by a session advisory lock. A holder that dies stops renewing, and the duty goes to the next vote once its lease lapses or this page's rule has the instance reaped. Its writes are fenced by the epoch, so a holder judged dead while still running cannot act beside its successor.
+A **capability** names what an instance may do; an exclusive one (`migrator`, `maintainer`) is a **duty**, held by one instance at a time. Capabilities are *won*, never handed out: an instance votes through `IDutyElector`, and the vote grants or refuses. Every duty is then a [role assignment](/v1.0.0/operations/startup/capabilities-and-duties#role-assignment-the-default), a row with a lease and an epoch; no duty is held by a session advisory lock. A holder that dies stops renewing, and the duty goes to the next vote once this page's rule calls it dead, no earlier than its lease (see [Role holders](#role-holders)). Its writes are fenced by the epoch, so a holder judged dead while still running cannot act beside its successor.
 
 Holdings are **recorded**: *the vote decides, the row reports.* `wh_instance_capabilities` is keyed `(instance, capability)` with `acquired_at`: "which instance is the migrator right now, and for how long" as a query (and in the startup status surface's fleet section, as a join). It rides the same rails as liveness: reaped instances cascade their holdings, so the record's only staleness window is the heartbeat lease the system already bounds.
 
-The eviction fence reaches acquisition: the vote refuses a tombstoned instance, and so does `record_capability`, so a zombie cannot hold a duty. Long-tenure holders fence themselves with `IDutyGrant.VerifyStillHeldAsync`: a grant that lapsed or was taken over reports lost before the next unit of exclusive work, because another instance may already hold it. During a rolling deploy, a holding that an older release records outside the role table counts only while this rule calls that instance live (see [a rolling deploy from a release that held duties by session lock](/v1.0.0/operations/startup/capabilities-and-duties#legacy-holder)).
+The eviction fence reaches acquisition: the vote refuses a tombstoned instance, and so does `record_capability`, so a zombie cannot hold a duty. Long-tenure holders fence themselves with `IDutyGrant.VerifyStillHeldAsync`: a grant that lapsed or was taken over reports lost before the next unit of exclusive work, because another instance may already hold it. Each grant also watches its assignment once per renew interval and cancels `IDutyGrant.LostToken` on a loss, so a holder learns of it without waiting for its next verify. During a rolling deploy, a holding that an older release records outside the role table counts only while this rule calls that instance live (see [a rolling deploy from a release that held duties by session lock](/v1.0.0/operations/startup/capabilities-and-duties#legacy-holder)).
 {verified: DutyElectionE2ETests.DirtyDeath_JudgedByTheLivenessRule_HandsTheDutyOver_AndTheGrantKnowsItIsLostAsync, RoleAssignmentElectorE2ETests.EvictedInstance_IsRefused_NotContendedAsync, RoleAssignmentResilienceSqlTests.Vote_DoesNotCountAHolderOutsideTheTable_ThatTheLivenessRuleCallsDeadAsync}
 
 ## The Standby Handshake {#the-standby-handshake}
@@ -535,12 +640,12 @@ The handshake reads the rule through `wh_instance_is_live(id)`. The rule is in P
 
 Every path out of standby is bounded:
 
-- **Committed** — the ledger now records the newer version; standing-by peers re-assess, see `StandDown`, and shut down, as the handshake promises. The orchestrator replaces them.
+- **Committed**: the ledger now records the newer version; standing-by peers re-assess, see `StandDown`, and [exit](/v1.0.0/operations/startup/instance-exits) with `UpgradeStandDown`, exit code 0, as the handshake promises. The orchestrator replaces them.
 - **Rolled back** — the requester withdraws; the ledger is exactly as peers last read it. Revival is *not a second pipeline*: peers re-enter the re-entrant runner at `Assess`, find the schema unchanged, and resume.
 - **Dead migrator** — its heartbeat lapses, its request is void, revival begins. Nobody is stranded.
 - **Unresponsive peer** — eviction is the deliberate instrument (never an automatic consequence of slowness): `evict_instance` writes the tombstone the fence already honours, recording **who** issued it and why, and the handshake completes without the fenced peer — which can no longer heartbeat, win capabilities, or claim work.
 
-The verdict is also **not a startup-only fact**: the watcher re-assesses on a slow cadence, so an instance that was current when it booted stands down when a newer peer migrates underneath it — alive, not ready, reapable, awaiting replacement.
+The verdict is also **not a startup-only fact**: the watcher re-assesses on a slow cadence, and at once when a newer version comes online or an instance goes away, so an instance that was current when it booted stands down when a newer peer serves or migrates underneath it, alive, not ready and reapable, and resumes if nothing newer is serving any more (see [cluster-wide stand-down](/v1.0.0/operations/startup/rolling-upgrades#cluster-wide-stand-down)).
 
 ## Migration touch points
 
@@ -556,6 +661,9 @@ The verdict is also **not a startup-only fact**: the watcher re-assesses on a sl
 | **316** (new) | [The liveness rule](#liveness-rule): `wh_instance_liveness(row, alive_lock_held)`, `wh_live_instance_ids()` and `wh_instance_is_live(id)`, with the `liveness_window_seconds` and `application_version` columns, all in the bootstrap region. `is_instance_alive` delegates to the rule; `record_heartbeat` records the window and the application version; `cleanup_stale_instances` removes exactly what the rule calls not live |
 | **317** (new) | Every SQL reader asks the rule: `claim_work`, `wh_claim_multi_stream_work`, `wh_partition_assignment_candidates` (now returns `is_live`), the three orphan claims, `get_stream_events`, `calculate_instance_rank`, `notify_instance_owners_with_payload`, `_notify_debounced` and `_notify_dead_letter_ready`. See [Who applies the rule](#liveness-readers) |
 | **330** (new) | `cleanup_stale_instances` redefined from 316, changing only how it wakes the live instances: each `orphan` wake goes through the signal bus's SQL publish, `wh_publish_signal`, as a best-effort doorbell (never recorded). Channel and payload are unchanged (`wh_work_i_<instance>`, `orphan`). See [Coordination signals](/v1.0.0/fundamentals/signal-bus/signal-bus#coordination-signals) |
+| **355** (new) | Role holders ask the rule: `_role_holder_kept_live` (the rule plus the holder's per-epoch progress window), called by the redefined `_role_lapse_reason` and `wh_assert_role_epoch`; `wh_declare_role_progress_window` and `wh_role_is_held`; the `progress_window` and `progress_epoch` columns on `wh_role_assignments`. All in the bootstrap region. See [Role holders](#role-holders) |
+| **362** (new) | `wh_record_startup_heartbeat`: [the startup beat](#startup-beat), in the bootstrap region; refreshes the heartbeat, the connection mode and the window of an existing row, inserts nothing, writes no stage or phase, reaps no peer, refuses an evicted instance |
+| **363** (new) | `wh_instance_evictions` gains `last_heartbeat_at` and `liveness_window_seconds`; `record_heartbeat` and `cleanup_stale_instances` record the reaper for a reap; `wh_instance_exits` and `wh_record_instance_exit` record every [exit](/v1.0.0/operations/startup/instance-exits#the-exit-record) |
 
 ## Operator notes
 
@@ -565,7 +673,7 @@ The verdict is also **not a startup-only fact**: the watcher re-assesses on a sl
 - To see which instances the rule calls live, `SELECT * FROM wh_live_instance_ids();`; to see each one's window, `SELECT instance_id, connection_mode, liveness_window_seconds, clock_timestamp() - last_heartbeat_at AS heartbeat_age FROM wh_service_instances;`.
 - To see which instances are live by their lock right now, `SELECT * FROM wh_direct_alive_lock_holders();`. A direct instance missing from that list is live for one beat (30 s) past its last heartbeat.
 - An instance that is up but receives no work is usually alive and not eligible: check the `lifecycle_phase` its row records (see [Alive versus eligible for work](#alive-versus-eligible)). A row stuck in `Migrating` or `Connecting` means its startup has not reached `AcceptingCommands`; a row in `Stopping` is draining.
-- An instance logging `has been evicted … heartbeat refused` is not broken and needs no intervention — it was reaped as stale while paused, its work was redistributed, and it is correctly refusing to rejoin. Restart the pod (a new process gets a new instance id) if it should return to service.
+- An instance that exits with `ClusterEviction` (exit code 3; `WhizbangInstanceExit` EventId 1) was reaped as stale while paused or starved, and its work was redistributed. Its host restarts it under a new instance id, so it needs no intervention. The exit's entry and its row in `wh_instance_exits` name the evicting peer, the last heartbeat and the window it was judged by; a steady stream of them points at heartbeat starvation or connectivity, which the entry names. Earlier releases logged `has been evicted … heartbeat refused` (`HeartbeatWorker` EventId 8) and left the process running sidelined until restarted by hand.
 - A Warning `is alive again after being announced dead; retracting with InstanceJoinedSignal` means a heartbeat landed late, not that the monitor is wrong. The fleet has already healed; look for what stalled the beat (a long-running commit on the writer's connection, a saturated pool). `whizbang.liveness.deaths_retracted` counts these.
 - Watchdog Warnings (EventId 9) mean the regular beat ran late enough to approach the threshold and the writer forced one. Occasional watchdog beats under load are the mechanism working; a steady stream points at a starved heartbeat writer.
 - Each instance declares its own window from its `HeartbeatWorkerOptions` on every beat, and every reader asks the rule, which reads it. Changing `IntervalSeconds` or `SlowIntervalSeconds` changes the window of the instances that run the change, from their next beat; there is no reader-side threshold to keep in step.
@@ -589,7 +697,7 @@ After deploy + restart, the heartbeat UPDATE call count in `pg_stat_statements` 
 
 ## Related
 
-- [Capabilities and Duties](/v1.0.0/operations/startup/capabilities-and-duties): every duty a role assignment; a dead holder is replaced through this rule, and holdings ride the liveness rails.
+- [Capabilities and Duties](/v1.0.0/operations/startup/capabilities-and-duties): every duty a role assignment; a holder past its lease is judged by this rule, and holdings ride the liveness rails.
 - [Rolling Upgrades](/v1.0.0/operations/startup/rolling-upgrades) — the standby handshake and eviction in the deployment story.
 - [Pinned connection pool](./pinned-connection-pool.md) — also uses direct conn(s); future work may add a per-pinned-conn lock for redundancy.
 - [Worker classification](./worker-classification.md) — HeartbeatWorker is classified `E` (timed) with an adaptive twist.

@@ -111,6 +111,15 @@ cannot outrun dispatch without bound. Over-cap buckets are deferred to a later a
 See [repair caps](/v1.0.0/resilience/stream-integrity#repair-caps).
 :::
 
+:::updated
+**As built, what the drain waits for is capped too ([#2184](https://github.com/whizbang-lib/whizbang/issues/2184)).**
+A token bucket paces the requests, but an answer can land hours after its request, so answers to requests
+sent over hours could arrive together. The drain claims nothing while `MaxOutstandingRepairAnswers`
+(default 500) requested buckets await their answer, and never more than the room left, so it is paced to
+the rate answers land at whenever they lag. See
+[outstanding repair answers are capped](/v1.0.0/resilience/stream-integrity#outstanding-repair-answers-are-capped).
+:::
+
 ## Observability
 
 The drain exposes: current rate (gauge), tokens available, requests dispatched (by origin

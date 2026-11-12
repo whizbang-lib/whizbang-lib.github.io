@@ -888,9 +888,10 @@ How a collection member is declared decides which path the model takes:
 | Member | Storage | Indexable fields |
 |--------|---------|------------------|
 | An array of primitives (`string[]`, `Guid[]`, `int[]`, an enum array) | Mapped, as a value | Yes |
-| `List<T>`, `IList<T>` or `ImmutableList<T>` of records | Mapped | Yes |
+| `List<T>`, `IList<T>` or `ImmutableList<T>` of records that are not recursive | Mapped | Yes |
 | An array of records (`T[]` of a non-primitive element), or an array of arrays, at any depth | Opaque | No |
 | `IReadOnlyList<T>`, `IReadOnlyCollection<T>`, `ICollection<T>` or `IEnumerable<T>` of records | Opaque | No |
+| A [recursive type](#recursive-models) in any shape, at any depth | Opaque | No |
 
 "At any depth" includes an array inside a collection element, such as a `Tag[]` on the records of a `List<Group>`: the whole model is stored opaquely.
 
@@ -912,13 +913,67 @@ public record IndexedTaggedOrderModel {
 }
 ```
 
-To keep a model with a collection of records indexable, declare the member as `List<T>`. In a project that references the Entity Framework driver, [WHIZ200](../../operations/diagnostics/whiz200.md) warns at each array of records that stores a model opaquely; it can be suppressed per property or turned off for the project.
+To keep a model with a collection of records indexable, declare the member as `List<T>` (of a record that is not recursive). In a project that references the Entity Framework driver, [WHIZ200](../../operations/diagnostics/whiz200.md) warns at each array of records that stores a model opaquely; it can be suppressed per property or turned off for the project.
 
 {verified: MappedPathDiscoveryTests.AnArrayOfAComplexElementIsReportedAsync, MappedPathDiscoveryTests.AnArrayInsideACollectionElementIsNamedByItsPathAsync, MappedPathDiscoveryTests.AnArrayOfArraysIsReportedAsync, MappedPathDiscoveryTests.AnArrayOfPrimitivesIsNotReportedAsync, MappedPathDiscoveryTests.ACollectionTheMappedPathCanFillIsNotReportedAsync, MappedPathDiscoveryTests.ACollectionTheMappedPathCannotFillIsReportedAsync, RecordArrayRoundTripTests.ArraysOfRecords_TopLevelAndNested_ReadBackAsWrittenAsync, RecordArrayRoundTripTests.ArraysOfRecords_ReadThroughTheContextQuery_ReadBackAsWrittenAsync, RecordArrayRoundTripTests.ARowWrittenBeforeTheChange_StillReadsAsync, RecordArrayRoundTripTests.ArraysOfPrimitives_ReadBackAsWrittenAsync, DapperRecordArrayRoundTripTests.ArraysOfRecords_TopLevelAndNested_ReadBackAsWrittenAsync}
 
 :::updated
 A model holding an array of records used to stay on the mapped path. Entity Framework accepted it while building the model and then refused it at the first read ("Collection navigations cannot be arrays") and when the change tracker took its snapshot ("Collection was of a fixed size"), with nothing at build time saying so. Such a model is now stored as one opaque document, so `T[]` of records reads back on both drivers with no change to the model, and rows written before the change still read. An array of primitives stays mapped. Switch the member to `List<T>` if you need its fields indexed.
 :::
+
+**Collection interfaces round-trip.** An opaque model (or any message) holding `ICollection<T>`,
+`IReadOnlyCollection<T>` or `IEnumerable<T>` of records is written and read back by the generated JSON context, read
+back into a `List<T>`; `IList<T>`, `IReadOnlyList<T>` and `ImmutableList<T>` are covered the same way. Earlier releases
+had metadata for `IReadOnlyList<T>` alone among the interfaces, so a model declaring one of the others failed its first
+write with `NotSupportedException` ("JsonTypeInfo metadata ... was not provided"). No upgrade step and no schema change.
+{verified: InterfaceCollectionRoundTripTests.AnICollectionOfRecords_ReadsBackAsWrittenAsync, InterfaceCollectionRoundTripTests.AnIReadOnlyCollectionOfRecords_ReadsBackAsWrittenAsync, InterfaceCollectionRoundTripTests.AnIEnumerableOfRecords_ReadsBackAsWrittenAsync, MessageJsonContextInterfaceCollectionTests.AnIListProperty_GetsAFactoryAndATypeCheckAsync, MessageJsonContextInterfaceCollectionTests.AnImmutableListProperty_GetsAFactoryAndItsElementIsDiscoveredAsync, MessageJsonContextInterfaceCollectionTests.AnIReadOnlyListProperty_KeepsItsFactoryNamesAsync, MessageJsonContextInterfaceCollectionTests.AnIListInsideAList_IsDiscoveredAsync}
+
+#### Recursive models are stored whole {#recursive-models}
+
+A **recursive type** holds itself, at any depth: a tree node with `List<Node> Children` (or `IList<Node>`,
+`ImmutableList<Node>`, `Node[]`), or two types holding each other. Entity Framework maps a recursive complex type one
+level deep, so on the mapped path every level below the first self-reference was dropped on write and read back as
+null, with no error at model build, save or query. The generator therefore stores a model that holds a recursive type
+as **one opaque document**, so the whole tree round-trips at any depth, through the store and through the context
+query. [WHIZ202](../../operations/diagnostics/whiz202.md) (Info) reports the recursive property and why the model has no
+indexes. A type reached twice without recursion stays mapped.
+
+```csharp{title="A tree on a read model" description="A node holding a list of itself is stored as one opaque document, and every level reads back." category="Perspectives" difficulty="INTERMEDIATE" tags=["Perspectives", "Read Models", "EF Core", "Recursion"] tests=["RecursiveModelRoundTripTests.AListOfItself_ReadsBackEveryLevelAsync", "RecursivePerspectiveModelGenerationTests.MutualRecursion_IsConfiguredOpaqueAsync"]}
+public sealed record Node {
+  public string Label { get; init; } = "";
+  public List<Node>? Children { get; init; }
+}
+
+public record CatalogModel {
+  [StreamId]
+  public Guid CatalogId { get; init; }
+  public Node? Root { get; init; }   // stored whole: every level reads back
+}
+```
+
+A tree, two types holding collections of each other, and a linked list are writable. A recursion that also holds a
+single reference **back up** the document (`Node.Parent`, `Line.Order`) can reach its own container and cannot be
+saved: [WHIZ201](../../operations/diagnostics/whiz201.md) is a build error at the back-reference. An object cycle the
+analyzer cannot see fails the write with the serializer's cycle detection and stores nothing; it is never truncated
+in silence.
+
+| Behavior | Why | Verified by |
+|---|---|---|
+| A list, `IList`, `ImmutableList` or array of itself, mutual recursion and a deeper replacement read back every level. | Truncation in silence is the worst failure a store can have: nothing says data was lost until a reader misses it. | {verified: RecursiveModelRoundTripTests.AListOfItself_ReadsBackEveryLevelAsync, RecursiveModelRoundTripTests.AnIListOfItself_ReadsBackEveryLevelAsync, RecursiveModelRoundTripTests.AnImmutableListOfItself_ReadsBackEveryLevelAsync, RecursiveModelRoundTripTests.AnArrayOfItself_ReadsBackEveryLevelAsync, RecursiveModelRoundTripTests.MutualRecursion_ReadsBackEveryLevelAsync, RecursiveModelRoundTripTests.ReplacingTheDocumentWithADeeperTree_KeepsEveryLevelAsync, RecursiveModelRoundTripTests.TheContextQuery_ReadsBackEveryLevelAsync} |
+| The mapped path maps a recursive type one level deep, which is why the model is stored opaquely. | A probe of Entity Framework itself fails if a later version stops truncating, so the choice is revisited rather than kept by habit. | {verified: CollectionMemberShapeProbeTests.TheMappedPathMapsARecursiveTypeOneLevelDeepAsync, CollectionMemberShapeProbeTests.TheMappedPathMapsARecursiveObjectOneLevelDeepAsync, MappedPathDiscoveryRecursionTests.ARecursiveModel_MustBeStoredOpaquelyAsync, MappedPathDiscoveryRecursionTests.AModelHoldingItself_IsNamedAsync, MappedPathDiscoveryRecursionTests.ANestedObjectOfItself_IsNamedAsync, MappedPathDiscoveryRecursionTests.DescribeUnmappable_SaysWhyTheMemberIsOpaqueAsync, MappedPathDiscoveryRecursionTests.IsRecursive_AnswersForTheTypeAndWhatItHoldsAsync} |
+| A type reached twice without recursion stays mapped. | Only recursion is truncated; storing ordinary repeated types opaquely would cost indexing for nothing. | {verified: RecursivePerspectiveModelGenerationTests.ATypeReachedTwice_StaysMappedAsync, MappedPathDiscoveryRecursionTests.ATypeReachedTwice_IsNotRecursionAsync} |
+| A row an earlier release truncated still reads what it holds, and a rewrite of it keeps every level. | The `data` column is `jsonb` in both forms, so no schema change is needed; the lost levels come back only from the events. | {verified: RecursiveModelRoundTripTests.ARowTheMappedPathTruncated_StillReadsWhatItHoldsAsync, RecursiveModelRoundTripTests.ATruncatedRowRewritten_ReadsBackEveryLevelAsync} |
+| An object cycle the analyzer cannot see fails the write. | A document that never ends cannot be stored; failing loudly beats storing part of it. | {verified: RecursiveModelRoundTripTests.AnObjectCycleTheAnalyzerCannotSee_FailsTheWriteLoudlyAsync} |
+
+:::updated{version="1.0.0" type="breaking"}
+**Upgrading ([#2112](https://github.com/whizbang-lib/whizbang/issues/2112)).** Rows an earlier release wrote for a
+recursive model hold only the first level of the recursion; the rest was never written and nothing in the database can
+restore it. **Perspectives whose models are recursive must be rebuilt after upgrading; the startup log names them.**
+Nothing is rebuilt automatically. See [Recursive models after an upgrade](rebuild.md#recursive-models-after-upgrade).
+`[Indexed]` and promoted-field document indexes on such a model are no longer generated, as for any opaque model
+([WHIZ304](../../operations/diagnostics/whiz304.md)); indexes an earlier release created stay until dropped.
+:::
+
 
 ---
 

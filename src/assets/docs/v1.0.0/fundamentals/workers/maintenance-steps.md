@@ -16,6 +16,13 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/279_CollectiveApplyProgress.sql
   - src/Whizbang.Core/Workers/RetentionSettingsBridge.cs
   - src/Whizbang.Core/Workers/QueueIndexReindexStep.cs
+  - src/Whizbang.Data.EFCore.Postgres/FrameworkIndexBuildMaintenanceStep.cs
+  - src/Whizbang.Data.Postgres/ConcurrentIndexBuild.cs
+  - src/Whizbang.Data.EFCore.Postgres/StreamDigestIdLaneBackfillMaintenanceStep.cs
+  - src/Whizbang.Data.Postgres/StreamDigestIdLaneBackfill.cs
+  - src/Whizbang.Data.Postgres/Migrations/337_StreamDigestIdLanesBackfill.sql
+  - src/Whizbang.Data.Postgres/MisattributedOriginCorrectionStep.cs
+  - src/Whizbang.Data.Postgres/Migrations/346_MisattributedOriginCorrection.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerStepTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerRetentionSyncTests.cs
@@ -25,6 +32,10 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveApplyProgressSqlTests.cs
   - tests/Whizbang.Core.Tests/Workers/QueueIndexReindexStepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueueIndexReindexSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ConcurrentIndexBuildTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestIdLaneBackfillSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/MisattributedOriginCorrectionSqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMisattributedOriginCorrectionTests.cs
 ---
 
 # Maintenance steps {#maintenance-steps}
@@ -89,6 +100,50 @@ A claim per window keeps it to one rebuild per window across the fleet. `AddWhiz
 
 [Storage maintenance: rebuilding queue-table indexes](../../operations/infrastructure/storage-maintenance#queue-index-rebuild)
 has the survey, the threshold, the leftovers and the reason for each rule.
+
+## Framework index build {#framework-index-build}
+
+{verified: ConcurrentIndexBuildTests.AfterTheMigrations_TheIndexIsNotThereYet_AndTheMaintenanceStepBuildsItAsync, ConcurrentIndexBuildTests.ThePostgresDriver_RegistersTheStepAsync, ConcurrentIndexBuildTests.TheStep_RefusesWhatItCannotRunAsync}
+
+The EF Core Postgres driver's `framework-index-build` step builds the framework indexes a migration must not build,
+with `CREATE INDEX CONCURRENTLY` outside any transaction, so writes to the indexed table go on during the build. It is
+a step for the same reason the queue-index rebuild is: a ready schema, a settled service and the maintainer duty are
+exactly what an index build on a large table needs. Once every index is valid, each run is one catalog read per index.
+[Indexes built after the migrations](../../operations/infrastructure/migrations#indexes-built-after-the-migrations)
+has the indexes, the leftovers and the reason for each rule.
+
+## Stream digest id-lane backfill {#stream-digest-id-lane-backfill}
+
+{verified: StreamDigestIdLaneBackfillSqlTests.Run_FillsInBatches_ReportsDriftAtWarningAndOnTheMeter_AndFinishesAsync, StreamDigestIdLaneBackfillSqlTests.Run_StopsAtItsRoundLimit_AndWhenBusy_StepsAsideAsync, StreamDigestIdLaneBackfillSqlTests.Backfill_OnceDone_ReadsNothingAndChangesNothingAsync, StreamDigestIdLaneBackfillSqlTests.TheStep_RunsTheBackfill_WithTheServicesMetricsAsync, StreamDigestIdLaneBackfillSqlTests.ThePostgresDriver_RegistersTheStepAsync}
+
+The EF Core Postgres driver's `stream-digest-id-lane-backfill` step fills the id lanes of the stream digests stored
+before migration 336, which a repair needs to [name the one event a stream is missing](../../resilience/stream-integrity#one-missing-event-is-named).
+Filling them reads every stream's events, which is why it is a step and not part of the migration: a migration would
+hold every stream it touched until it committed, while the cycle runs it only on a settled service, on the maintainer,
+a bounded piece at a time. Each run walks at most 20 batches of 500 streams, each batch its own transaction under its
+streams' append locks, from a cursor kept in `wh_settings`; an instance that finds the cursor held steps aside for the
+cycle. A bucket it finds drifted from its events is logged at Warning with both values and counted on
+`whizbang.stream_integrity.stream_digest_drift_corrected` before it is corrected. Once nothing is left it records the
+backfill as done, and each later run is one keyed read; a new database is done from its first start.
+[Buckets stored before the id lanes](../../resilience/stream-integrity#id-lane-backfill) has the measured cost and the
+reason for each rule.
+
+## Misattributed-origin correction {#misattributed-origin-correction}
+
+{verified: MisattributedOriginCorrectionSqlTests.Step_CorrectsInBoundedBatches_AndResumesFromItsCursorAsync, MisattributedOriginCorrectionSqlTests.Step_ATypeThisServiceOwns_IsLeft_AndTheWalkStillAdvancesAsync, MisattributedOriginCorrectionSqlTests.Step_WithNoKnownOwner_OrSwitchedOff_TouchesNothingAsync, MisattributedOriginCorrectionSqlTests.ThePostgresDriver_RegistersTheStepAsync, DapperMisattributedOriginCorrectionTests.AnEventUnderAnOriginThatDoesNotOwnItsType_IsReattributedByTheRegisteredStepAsync}
+
+Both Postgres drivers register the `misattributed-origin-correction` step. It moves stored events recorded under an
+origin that does not own their type (a relay that answered a redelivery with events it only received) to the owner
+this service's ownership map names, with their origin sequence cleared, moving their digests through the shared fold,
+refolding the wrong origin's sealed epochs and re-arming both lanes' ledger buckets. It never deletes an event. It is a
+step because it walks the event store and rewrites digests: a settled service and the maintainer duty are exactly what
+that needs, and a timer of its own would have to decide both again. Each run walks at most
+`Whizbang:StreamIntegrity:MaxReattributionBatchesPerPass` batches of `ReattributionBatchSize` rows by commit sequence,
+each batch its own transaction, from a durable cursor (migration 346); a changed ownership map restarts the walk, and a
+store where no service has announced an owned domain costs one read per run. `ReattributionEnabled` turns it off.
+Each correction is logged at Warning and counted on `whizbang.stream_integrity.misattributed_origins_corrected`.
+[An origin that does not own the type](../../resilience/stream-integrity#misattributed-origin-correction) has the
+failure it repairs and the reason for each rule.
 
 ## Ledger retention {#ledger-retention}
 

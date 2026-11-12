@@ -24,7 +24,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/Redelivery.cs
   - src/Whizbang.Core/SystemEvents/AuditLedgerRebuild.cs
   - src/Whizbang.Data.EFCore.Postgres/AuditRebuildRequestReceptor.cs
-  - src/Whizbang.Core/Messaging/RedeliveryComposite.cs
+  - src/Whizbang.Core/Minting/RedeliveryComposite.cs
+  - src/Whizbang.Core/Messaging/RedeliveryAnswerWindow.cs
   - src/Whizbang.Core/Messaging/RedeliveryPump.cs
   - src/Whizbang.Core/Workers/SubscriptionExpansionWorker.cs
   - src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs
@@ -67,6 +68,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IntegrityDeliveryId.cs
   - src/Whizbang.Core/Startup/MaintainerDuty.cs
   - src/Whizbang.Data.Postgres/Migrations/320_RepairWaitsForItsAnswer.sql
+  - src/Whizbang.Data.Postgres/Migrations/395_ARepairSendThatFailsIsWithdrawn.sql
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Core/Messaging/IConsumerRegistry.cs
   - src/Whizbang.Core/Messaging/ConsumedMessageTypes.cs
@@ -74,7 +76,38 @@ codeReferences:
   - src/Whizbang.Core/Transports/IntegrityControlDestination.cs
   - src/Whizbang.Data.Postgres/Migrations/331_LedgerKeepsOnlyConsumedTypes.sql
   - src/Whizbang.Data.Postgres/Migrations/332_DigestWindowsReadOnlyTheirWindow.sql
+  - src/Whizbang.Data.Postgres/Migrations/335_RedeliveryReconcilesRunAsABatch.sql
+  - src/Whizbang.Core/Workers/SubscriptionBackfillWorker.cs
+  - src/Whizbang.Core/Messaging/SubscriptionBackfill.cs
+  - src/Whizbang.Data.EFCore.Postgres/BackfillWindowAnswerReceptor.cs
+  - src/Whizbang.Data.Postgres/SubscriptionBackfillSql.cs
+  - src/Whizbang.Data.Postgres/Migrations/334_PacedSubscriptionBackfill.sql
+  - src/Whizbang.Data.Postgres/ConcurrentIndexBuild.cs
+  - src/Whizbang.Core/Messaging/IntegrityDigestMath.cs
+  - src/Whizbang.Core/Messaging/IntegrityGapTrackerState.cs
+  - src/Whizbang.Data.Postgres/StreamDigestIdLaneBackfill.cs
+  - src/Whizbang.Data.EFCore.Postgres/StreamDigestIdLaneBackfillMaintenanceStep.cs
+  - src/Whizbang.Data.Postgres/Migrations/336_StreamDigestsFoldThroughOneHelper.sql
+  - src/Whizbang.Data.Postgres/Migrations/337_StreamDigestIdLanesBackfill.sql
+  - src/Whizbang.Data.Postgres/Migrations/338_RepairNamesTheMissingEvent.sql
+  - src/Whizbang.Data.Postgres/Migrations/339_IntegrityGapTrackerSurvivesARestart.sql
+  - src/Whizbang.Core/Workers/IntegrityLedgerRecheckWorker.cs
+  - src/Whizbang.Core/Messaging/MisattributedOrigin.cs
+  - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
+  - src/Whizbang.Data.Postgres/MisattributedOriginCorrectionStep.cs
+  - src/Whizbang.Data.Postgres/Migrations/346_MisattributedOriginCorrection.sql
+  - src/Whizbang.Data.Postgres/Migrations/347_DigestWindowsReadTheirTypes.sql
+  - src/Whizbang.Data.Postgres/Migrations/348_IdleLedgerRecheck.sql
+  - src/Whizbang.Data.Postgres/Migrations/357_AnAnswerMarksOnlyWhatItCovered.sql
+  - src/Whizbang.Data.Postgres/Migrations/369_RepairAnswersAreAbsorbedCheaply.sql
+  - src/Whizbang.Data.Postgres/Migrations/370_LedgerForgetsANonOwnersRows.sql
+  - src/Whizbang.Data.Postgres/Migrations/371_RepairAnswersAreCapped.sql
+  - src/Whizbang.Data.Postgres/Migrations/372_LedgerAgesOutUnownedTypes.sql
+  - src/Whizbang.Data.Postgres/Migrations/373_LedgerGaugesCountDataLeftToHeal.sql
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileCoordinatorTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcileBatchTests.cs
   - tests/Whizbang.Core.Tests/Routing/OwnedNamespaceMatcherLocalLaneTests.cs
   - tests/Whizbang.Core.Tests/Messaging/IntegrityDomainOwnershipTests.cs
   - tests/Whizbang.Core.Tests/Workers/IntegrityCheckpointOwnershipTests.cs
@@ -146,12 +179,51 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsCoverageTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerIntegrityGaugeTests.cs
   - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerBranchCoverageTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAnswerPendingCountSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerUnownedAgeOutSqlTests.cs
+  - tests/Whizbang.Core.Component.Tests/Messaging/IntegrityOwnershipRuleSourceGuardTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorDefaultsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/ConsumedMessageTypesTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerForgetUnconsumedSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerForgetNonOwnerSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ConsumedEventReachesEventStoreTests.cs
   - tests/Whizbang.Core.Tests/Workers/RepairTopicResolverTests.cs
   - tests/Whizbang.Core.Tests/Transports/IntegrityControlDestinationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WindowedDigestLaneReadTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/SubscriptionBackfillWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/SubscriptionBackfillCursorTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/SubscriptionBackfillOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RepairTrafficTests.cs
+  - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsBackfillGaugeTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/BackfillWindowAnswerReceptorTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryWindowAnswerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/SubscriptionBackfillStoreTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PacedBackfillEndToEndTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PacedBackfillIndexTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RunPermitAuditTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/HeldWithoutOriginSequenceTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/SingleMissingEventTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/IntegrityGapTrackerDurabilityTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedReceivedDigestSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestFoldHelperSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestWritersTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestIdLaneReadsSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestIdLaneBackfillSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/StreamDigestFoldGuardTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityGapTrackerStoreSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/WindowedDigestTypeIndexTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/LedgerRecheckWorkerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerRecheckSqlTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/MisattributedOriginTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/MisattributedOriginCorrectionSqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMisattributedOriginCorrectionTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RedeliveryAnswerCoverageTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAnswerCoverageSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBundleCatalogChurnSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceiveDoorbellCostSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerHealRemainingGaugesSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RepairDrainRecordsBeforeSendingTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -337,7 +409,10 @@ repair never shipped. Raw carry removes the class — the origin needs **no type
 to repair, and the receive-side fan-out builds children directly from the raw payloads (the child
 envelope IS the inbox storage form; no serializer runs on the path). Original ids and continuity
 sequences ride as `RedeliveryComposite.InnerEventIds` / `OriginServiceId` /
-`InnerCommitSequences` — identity and gap-tracking are preserved; there is no dedicated
+`InnerCommitSequences`, so identity and gap-tracking are preserved. An answer to a request also echoes the window it
+answered (`RedeliveryComposite.AnswersWindow`, `AnsweredFromCommitSequence`, `AnsweredToCommitSequence`), stamped by
+`RedeliveryPump.PublishAnswerAsync`, so the receiver marks as unchangeable only the buckets the answer
+[covered](#an-answer-marks-only-what-it-covered); `PublishAsync` sends no window; there is no dedicated
 `redelivery` marker — the directed `tgt` (and, for backfill, state-only `sto`) envelope markers
 ride the composite and its fanned-out children. Ordering by stream version makes damaged streams
 append-only composites and wholly-missing streams (bootstrap) naturally init-first.
@@ -474,13 +549,55 @@ rather than sequence windows.
 An event whose transaction drew its insertion order before the floor and committed after it is left out of the window
 as well. It is still covered by the digests.
 
+#### The gap tracker survives a restart {#the-gap-tracker-survives-a-restart}
+
+{verified: IntegrityGapTrackerDurabilityTests.Hydrate_LoadsTheKeptOriginsAndPendingGaps_OnceAsync, IntegrityGapTrackerDurabilityTests.Hydrate_NeverOverwritesWhatThisProcessAlreadyLearnedAsync, IntegrityGapTrackerDurabilityTests.Hydrate_AFailedLoad_IsRetriedByTheNextCaller_NotLatchedAsync, IntegrityGapTrackerDurabilityTests.Hydrate_AStoreThatKeepsNothing_LeavesTheTrackerAsItIsAsync, IntegrityGapTrackerDurabilityTests.Hydrate_KeepsAtMostTheBoundOfPendingGapsAsync, IntegrityGapTrackerStoreSqlTests.ACheckpoint_IsKept_AndALaterOneMovesTheTimeAndKeepsAKnownAddressAsync, IntegrityGapTrackerStoreSqlTests.PendingGaps_AreReplacedPerOrigin_AndReadBackAsync, IntegrityGapTrackerStoreSqlTests.ReplacingWithNothing_ClearsTheOriginsPendingGapsAsync, IntegrityCheckpointReceptorTests.Checkpoint_IsKeptByTheStore_WithTheOriginsAddressAndTimeAsync, IntegrityCheckpointReceptorTests.APendingGapSeenBeforeARestart_IsConfirmedByTheFirstCheckpointAfterItAsync, IntegrityAuditWorkerTests.AfterARestart_KnownOriginsAreAskedBeforeAnyNewCheckpointArrivesAsync}
+
+The consumer's gap tracker (`IntegrityGapTracker`) holds two things the checks depend on: every origin it has recorded
+a checkpoint from (its name, the address it takes directed integrity requests on, and when its last checkpoint
+arrived), and every deficit waiting for its origin's next checkpoint to confirm it. Until #2104 both lived only in
+memory, so every restart cost three things: the audit had no origins to ask until each origin checkpointed again, the
+liveness alarm's clock started over, and a gap seen just before the restart was detected again from scratch and
+confirmed a cycle late.
+
+Migration 339 keeps both in two tables:
+
+| Table | One row per | Written |
+| --- | --- | --- |
+| `wh_integrity_known_origins` | Origin: name, request address, last checkpoint time | On every recorded checkpoint. Only unindexed columns change, so the write is a heap-only update. A checkpoint without an address keeps the one already known. |
+| `wh_integrity_pending_gaps` | Pending gap: origin, tenant, type, window, expected count | Replaced for one origin when a checkpoint changes that origin's pending set (a gap first seen, confirmed or healed). A checkpoint that changes nothing writes nothing. |
+
+A new process loads both once, before the first read that needs them: the checkpoint receptor, the audit worker, the
+checkpoint worker's liveness check and the repair drain each call `IntegrityGapTracker.EnsureHydratedAsync`, and
+concurrent first callers share one load (`IWorkCoordinator.IntegrityLoadGapTrackerStateAsync`). So the first audit
+after a restart asks the origins the service already knew, and the first checkpoint after it confirms a gap seen
+before it.
+
+Why each choice:
+
+- **What the process learned live wins.** A checkpoint can arrive before the load finishes. The load adds only
+  origins and gaps the tracker does not hold, so a fresher in-memory value is never replaced by an older kept one.
+- **A failed load is retried, not latched.** A load that throws leaves the tracker unloaded, and the next caller tries
+  again. Marking it loaded before the read had succeeded would leave the process on an empty tracker until its next
+  restart while reporting nothing wrong.
+- **The pending bound still holds.** Kept gaps are loaded up to the tracker's cap, so a large kept set cannot grow the
+  tracker past the bound it has in memory.
+- **The pending set is replaced only when it changes.** Checkpoints arrive every interval from every origin; a write
+  per checkpoint for an unchanged set would be pure churn.
+- **Its own table, not the domain claims.** The origins could have been read from `wh_integrity_domain_claims`, but an
+  origin that announces no owned domains has no row there, and the liveness clock needs a time per checkpoint.
+- **A store that keeps nothing behaves as before.** The interface's defaults keep nothing and load nothing, so a
+  driver without the tables starts with an empty tracker and learns from the next checkpoints, as every version
+  before #2104 did.
+
 ### Phase S — subscription-expansion backfill (startup, on by default) {#phase-s-subscription-expansion-backfill}
 
 The startup type-definition reconciler already diffs each service's catalog against its persisted
 registration. It gains one comparison: **the consumed-type set**. When a deploy grows it (new
 perspective; perspective adds a type; first boot of a new consumer), the
-`SubscriptionExpansionWorker` records the expansion in the consumed-type registry and sends **one
-broadcast, state-only `RequestRedeliveryCommand`** for the new types' history. Delivered history
+`SubscriptionExpansionWorker` records the expansion in the consumed-type registry and **queues a
+paced backfill** of each new type's history, which the `SubscriptionBackfillWorker` walks in bounded,
+state-only windows (see [paced backfill](#paced-backfill)). Nothing is sent from the reconciler itself. Delivered history
 folds into projections through the normal pipeline (state-only children are event-stored and
 projected); an explicit "schedule the local rebuild once delivery completes" step is design
 intent, not yet wired as of a64ba9a.
@@ -495,11 +612,12 @@ worker itself.)
 :::updated
 **Design specifics (as built):**
 
-- **The backfill request BROADCASTS** (no `Target`) — an expanding consumer cannot know which
-  origins emitted a type's history. Every service's re-delivery receptor runs the scoped selection;
-  origins holding matching events answer with bundles targeted back at the requester, everyone
-  else selects nothing. A consumer that persisted forwarded copies may answer too — extra sources
-  converge harmlessly by event-id identity.
+- **Each window is asked of the type's owner**, directed on the owner's request topic, when the
+  owner is known from the [domain claims](#ownership-is-exchanged-on-the-checkpoint) and has announced
+  a request address. A type with no usable owner is **broadcast** (no `Target`): an expanding consumer
+  cannot know which origins emitted that type's history. Every service's re-delivery receptor runs
+  the scoped selection; origins holding matching events they wrote answer with bundles targeted back
+  at the requester, everyone else selects nothing. Extra sources converge harmlessly by event-id identity.
 - **"Backfill builds state, never re-fires triggers" rides the ENVELOPE**: a `stateOnly` delivery
   marker (wire key `sto`, sibling of the directed `tgt`) stamped on the bundle by the pump and
   inherited by every fanned-out child. A state-only child is event-stored and projected normally,
@@ -511,6 +629,176 @@ worker itself.)
   (Baseline/Pending/Requested); today only the startup worker reads it — wiring it into the
   deep audit as the "pending backfill" surface is not yet done as of a64ba9a.
 :::
+
+### Paced backfill {#paced-backfill}
+
+{verified: SubscriptionExpansionTargetingTests.Backfill_TypesWithAKnownOwner_AreQueuedForThatOwner_AndNothingIsSentAtOnceAsync, SubscriptionExpansionTargetingTests.Backfill_TypesOfOneOwner_AreQueuedOnePerTypeAsync, SubscriptionExpansionWorkerTests.Expansion_QueuesAPacedBackfillAndMarksRequested_SendingNothingAtOnceAsync, SubscriptionBackfillWorkerTests.Tick_RequestsTheFirstWindowOfAQueuedBackfill_FromItsOwner_AndWaitsForTheAnswerAsync, SubscriptionBackfillWorkerTests.Tick_AnAnsweredWindow_IsFollowedByTheNextFromWhereItStoppedAsync, SubscriptionBackfillWorkerTests.Tick_AWindowAwaitingItsAnswer_IsNotAskedAgainAsync, PacedBackfillEndToEndTests.ATypeLargerThanTheOwnerBound_ArrivesWhole_AcrossSeveralWindows_AndTheBackfillCompletesAsync}
+
+A boot that grew the consumed set used to ask every owner for the whole history of every new type at once, and each
+owner answered with one bundle per event. On a store with millions of events that was a flood: the transport, the
+owner's database and the requester's inbox all took the whole history in one burst, while the services were also
+serving live traffic. The backfill is now a walk the requester paces:
+
+1. **The reconciler queues; it does not send.** For each new type it queues one backfill per (owner, event type):
+   for the type's owner when one is known with a request address, otherwise for a broadcast (the empty owner id).
+2. **The `SubscriptionBackfillWorker` asks for one window at a time.** A window is the type's events after the
+   backfill's position, in the owner's commit-sequence order, up to `BackfillWindowSize` events. The next window of a
+   type is asked for only once the previous one has been answered.
+3. **The owner answers the window and then says where it stopped.** It ships the window's events in as few bundles as
+   its size bounds allow, then sends a `BackfillWindowAnswer` with the last commit sequence the window covered and
+   whether more remains.
+4. **The answer moves the position.** The requester records it durably, and the next window starts after it. An
+   answer with nothing more ends the backfill as complete.
+
+```mermaid {caption="One paced backfill: the requester asks for a window, the owner ships it and answers where it stopped, and only then is the next window asked for" tests=["SubscriptionBackfillWorkerTests.Tick_AnAnsweredWindow_IsFollowedByTheNextFromWhereItStoppedAsync","RedeliveryWindowAnswerTests.Window_StoppedAtTheOwnerBound_SaysWhereAndThatMoreRemains_AndTheNextWindowsReceiveTheRestAsync","BackfillWindowAnswerReceptorTests.Answer_IsAppliedToItsBackfill_AndItsEventsCountedByTypeAsync"]}
+sequenceDiagram
+  participant R as Requester (maintainer)
+  participant T as wh_subscription_backfills
+  participant O as Owner
+  R->>T: read running backfills
+  R->>O: window n: type, after position, up to BackfillWindowSize
+  R->>T: window n requested, answer due by
+  O-->>R: bundles (many streams each, on the backfill's session)
+  O-->>R: BackfillWindowAnswer: stopped at, more remains
+  R->>T: position = stopped at
+  R->>O: window n+1 (only now)
+```
+
+#### Why each choice {#paced-backfill-why}
+
+- **Windows by the owner's commit sequence, not by stream.** One number is the whole position: the last commit
+  sequence a window covered is exactly where the next one starts, across every stream of the type. A (stream,
+  version) keyset would have to carry two values and would walk the type one stream at a time. Only stamped events
+  have a commit sequence, so only they are selected; an event the stamper has not reached is covered by the
+  [deep audit](#phase-a-digest-manifests) like any other gap.
+  {verified: SelectRedeliveryEventsTests.Select_ByCommitSequence_WalksStampedRowsInCommitOrderAsync, SelectRedeliveryEventsTests.Select_ByCommitSequence_WithoutEventTypes_IsRefusedAsync, RedeliveryWindowAnswerTests.Window_SelectsByCommitSequenceFromThePosition_ShipsOneBundle_AndAnswersAsync, RedeliveryWindowAnswerTests.Window_PagesByCommitSequence_NeverByStreamKeysetAsync, RedeliveryWindowAnswerTests.Window_NamingNoEventType_IsNotAnsweredAsync}
+- **The position is durable, one row per (owner, event type).** Migration 334 adds `wh_subscription_backfills`: the
+  position, the window awaiting its answer and until when, attempts, counts and the outcome. A restart resumes from the
+  position instead of asking for the history again, a finished type stops, and queuing a pair that is already present
+  keeps its row, so every instance can queue the same expansion safely.
+  {verified: SubscriptionBackfillStoreTests.Enqueue_QueuesOnePerOwnerAndType_AndQueuingAgainKeepsTheRowAsync, SubscriptionBackfillStoreTests.MarkRequested_AwaitsTheAnswer_AndASecondRequestOfTheSameWindowCountsAnAttemptAsync, SubscriptionBackfillStoreTests.RecordAnswer_MovesThePositionToWhereTheWindowStopped_AndTheNextWindowStartsItsAttemptsAtOneAsync, SubscriptionBackfillStoreTests.RecordAnswer_WithNothingMore_CompletesTheBackfill_AndKeepsTheFirstSequenceAsync, SubscriptionBackfillStoreTests.End_EndsARunningBackfill_AndAnAnswerAfterwardsChangesNothingAsync}
+- **An answer applies only to the window awaiting it.** A late answer to an earlier window, or a duplicate, changes
+  nothing and counts nothing, so a retried window can never move the position twice.
+  {verified: SubscriptionBackfillStoreTests.RecordAnswer_LateDuplicateOrForAnotherWindow_ChangesNothingAsync, BackfillWindowAnswerReceptorTests.AnAnswerThatAppliesToNothing_CountsNothingAsync, BackfillWindowAnswerReceptorTests.FinalAnswer_EndsTheBackfill_AndCountsItCompleteAsync}
+- **A window is recorded as requested before it is sent.** An answer applies only to a window already recorded as
+  waiting, and an owner can answer before the requester's publish returns, on a fast transport or when the requester
+  is busy. Recording after the send dropped that answer as late, and the window then cost a timeout and an attempt.
+  A send that fails withdraws the record, putting the row back as it was asked from, so a broker failure still costs
+  no attempt. The withdraw applies only while that request is still the latest and still waiting: an answer that
+  landed meanwhile, a later request or an ended backfill stands.
+  {verified: SubscriptionBackfillWorkerTests.Tick_RecordsTheWindowAsRequested_BeforeItLeaves_SoAnAnswerThatOutrunsThePublishFindsItAsync, PacedBackfillEndToEndTests.AnAnswerThatLandsBeforeThePublishReturns_IsApplied_AndTheBackfillCompletesAsync, SubscriptionBackfillStoreTests.Withdraw_PutsANewWindowThatNeverLeftBack_AsTheAnsweredStateItWasAskedFromAsync, SubscriptionBackfillStoreTests.Withdraw_PutsAReAskThatNeverLeftBack_AsTheUnansweredStateItWasAskedFromAsync, SubscriptionBackfillStoreTests.Withdraw_AfterAnAnswerLandedMeanwhile_LeavesTheAnswerAsItAppliedAsync, SubscriptionBackfillStoreTests.Withdraw_AfterALaterRequestFollowed_LeavesTheLaterRequestAsync}
+- **The paced repair drain follows the same rule.** It records each request's buckets as awaiting their answer before
+  it sends the request, so an origin that answers before the publish returns finds them waiting, and its answer is
+  kept. Recording after the send let the late record put the wait back over that answer: the bucket lost its answered
+  state and counted against `MaxOutstandingRepairAnswers` until the answer timeout. A send that fails withdraws the
+  record and returns the attempt the claim spent, so a broker failure does not use up a bucket's repair budget; the
+  bucket keeps its backoff, so a broker that just failed is not asked again on the next tick. The withdrawal applies
+  only to a bucket still awaiting that record's answer: an answer that landed meanwhile stands. See
+  [repair waits for its answer](#repair-waits-for-its-answer).
+  {verified: RepairDrainWorkerTests.DrainTick_RecordsTheAnswerPending_BeforeTheRequestLeaves_SoAnAnswerThatOutrunsThePublishIsKeptAsync, RepairDrainRecordsBeforeSendingTests.AnAnswerThatLandsBeforeThePublishReturns_IsKept_AndTheBucketIsNotLeftAwaitingAnotherAsync, RepairDrainRecordsBeforeSendingTests.ASendThatFails_IsWithdrawn_AndCostsNoAttemptAsync, RepairDrainRecordsBeforeSendingTests.Withdraw_ClearsTheWait_AndReturnsTheAttemptAsync, RepairDrainRecordsBeforeSendingTests.Withdraw_AfterTheAnswerLanded_LeavesTheAnswerStandingAsync}
+- **A token bucket paces events, not windows.** Every window spends its full `BackfillWindowSize` from a bucket that
+  refills at `BackfillEventsPerMinute` and holds at most one minute's worth, or one window when a window is larger, so
+  the rate bounds the events asked for whatever the window size, and a window larger than a minute's rate can still be
+  afforded. At the defaults (1,000-event windows, 6,000 events a minute) a store with millions of events of a type is
+  backfilled over hours rather than in one burst.
+  {verified: SubscriptionBackfillWorkerTests.Tick_SpendsTheWholeWindowFromTheBucket_SoTheRateBoundsTheEventsRequestedAsync, SubscriptionBackfillWorkerTests.Tick_AWindowLargerThanAMinutesRate_IsStillAffordableAsync, SubscriptionBackfillOptionsTests.Defaults_PaceTheBackfillSoItCannotFloodAsync}
+- **At most `BackfillMaxConcurrentWindows` windows are out at once** (2 by default), across every type and owner, and
+  the backfill asked least recently goes first. The owner serves each window on its own
+  [idle-gated integrity queue](#integrity-deliveries-are-queued), so a small bound keeps the requester from piling
+  work on an owner that is busy.
+  {verified: SubscriptionBackfillWorkerTests.Tick_RequestsAtMostTheConfiguredWindowsAtOnceAsync, SubscriptionBackfillWorkerTests.Tick_TheLeastRecentlyAskedBackfillGoesFirstAsync}
+- **An unanswered window is asked again, then the type stops.** A window waits `RepairAnswerTimeoutMinutes` for its
+  answer, the same allowance a [repair waits](#repair-waits-for-its-answer), because the owner's queue may be deferred
+  for up to `MaxDeferral`. It is then asked again at the same position, up to `BackfillMaxWindowAttempts` (3 by
+  default), and the backfill ends as `Unanswered` with a Warning naming the type and owner. A bound is needed because
+  an owner on a release before windowed backfill ignores the window and answers the ordinary way, with bundles but no
+  window answer: the events still arrive, and the deep audit reports anything still missing.
+  {verified: SubscriptionBackfillWorkerTests.Tick_AWindowPastItsAnswerTimeout_IsAskedAgain_AtTheSamePositionAsync, SubscriptionBackfillWorkerTests.Tick_AWindowUnansweredForEveryAttempt_EndsTheBackfillAsUnanswered_AndAsksNoMoreAsync, SubscriptionBackfillWorkerTests.Tick_AnEndedBackfill_IsLeftAloneAsync}
+- **Bundles span streams, and the answer rides behind them.** A window's bundles group events by scope only, so a
+  window of a thousand events in a thousand streams ships in a few bundles instead of a thousand; each child still
+  names the stream it is stored on, and the receiver's fan-out takes each stream's events in version order. Every
+  bundle and the answer travel on the backfill's own broker session, so the answer arrives after the window's events.
+  An ordinary request keeps one stream per bundle, which every receiver understands; only a windowed backfill, whose
+  requester is new enough to ask for it, gets cross-stream bundles.
+  {verified: RedeliveryPumpWindowTests.Publish_WithABundleStream_ShipsManyStreamsInOneBundle_OnTheBackfillSessionAsync, RedeliveryPumpWindowTests.Publish_WithABundleStream_StillSplitsAtTheCountBoundAndByScopeAsync, RedeliveryPumpWindowTests.PublishWindowAnswer_SendsTheAnswerToTheRequester_OnTheBackfillSessionAsync}
+- **The answer is integrity traffic.** `BackfillWindowAnswer` is a control-plane message, applied by the requester's
+  [integrity delivery drain](#the-integrity-delivery-drain) like the request it answers, and a report-only service
+  applies none.
+  {verified: BackfillWindowAnswerReceptorTests.Registrar_JoinsTheAnswerReceptorAtTheThreeStagesAsync, BackfillWindowAnswerReceptorTests.Answer_InReportOnly_IsNotAppliedAsync, RepairTrafficTests.InboxMessageTypeNames_NameTheRequestTheBundleAndTheWindowAnswer_NormalizedAsync}
+- **It runs on the maintainer, under the idle gate, and only when repair is on.** The worker ticks every second to
+  refill its bucket, but asks for windows only on the instance holding the
+  [maintainer duty](#integrity-work-runs-on-the-maintainer), only once the housekeeping idle gate admits integrity
+  work, and never in `ReportOnly` or with `BackfillOnSubscriptionGrowth` off. A window is background work like every
+  other request the framework makes for itself.
+  {verified: SubscriptionBackfillWorkerTests.Tick_OnAnInstanceWhoseRunPermitIsClosed_SendsNothingAsync, SubscriptionBackfillWorkerTests.Tick_WhenTheIdleGateRefusesIntegrityWork_SendsNothingAsync, SubscriptionBackfillWorkerTests.Tick_InReportOnly_SendsNothing_AndReadsNothingAsync, SubscriptionBackfillWorkerTests.Tick_WithBackfillOnSubscriptionGrowthOff_SendsNothingAsync, SubscriptionBackfillWorkerTests.Tick_InsideAnInteractiveHandling_TheWindowStaysBackgroundAsync, RunPermitAuditTests.TheTurnkeyHost_RunsThePacedBackfillAsync}
+- **A failed send costs one window.** A broker failure is logged, the window is not recorded as requested, and it is
+  asked again on a later tick; the other backfills still go. An owner that has announced no request address is skipped
+  until it does.
+  {verified: SubscriptionBackfillWorkerTests.Tick_AFailedSend_IsNotRecorded_AndTheNextBackfillStillGoesAsync, SubscriptionBackfillWorkerTests.Tick_AnOwnerWithNoRequestAddress_IsSkipped_AndTheOthersStillGoAsync, SubscriptionBackfillWorkerTests.Tick_ABackfillWithNoKnownOwner_BroadcastsItsWindow_OnTheSharedTopicAsync}
+
+#### An answer never stops short in silence {#answers-say-where-they-stopped}
+
+{verified: RedeliveryWindowAnswerTests.Window_StoppedAtTheOwnerBound_SaysWhereAndThatMoreRemains_AndTheNextWindowsReceiveTheRestAsync, RedeliveryWindowAnswerTests.Window_SelectingNothing_AnswersThatNothingRemains_WithoutABundleAsync, RedeliveryWindowAnswerTests.Window_OfEventsThisServiceDoesNotOwn_ShipsNothing_ButStillMovesThePositionAsync, RedeliveryWindowAnswerTests.OrdinaryRequest_StoppedAtTheBoundWithMoreLeft_IsCountedAsCappedAsync, RedeliveryWindowAnswerTests.OrdinaryRequest_ThatSelectedEverything_IsNotCappedAsync, PacedBackfillEndToEndTests.ATypeLargerThanTheOwnerBound_ArrivesWhole_AcrossSeveralWindows_AndTheBackfillCompletesAsync}
+
+An owner caps every answer at its `Whizbang:Redelivery:MaxEventsPerRequest` (10,000 by default). Before windows, an
+answer that reached the cap simply stopped, and nothing told the requester, so a backfill of a larger type never
+completed. A window is clamped to the same cap, but its answer reports the last commit sequence it covered and that
+more remains, and the next window starts exactly there: a type of any size arrives whole across several windows. A
+window that selected only events of types the owner does not own ships nothing but still moves the position past them,
+so it cannot ask for the same events forever.
+
+An ordinary (non-window) request has no position to continue from. When one reaches the cap with more selected, the
+owner counts it on `redelivery_answers_capped` with `kind=ordinary` and logs it; a non-zero rate means requests wider
+than the cap.
+
+#### What it reads through {#paced-backfill-index}
+
+{verified: PacedBackfillIndexTests.AWindowRead_UsesTheTypeCommitSequenceIndex_InOrderAsync, PacedBackfillIndexTests.TheHeadRead_UsesTheTypeCommitSequenceIndexAsync, PacedBackfillIndexTests.BeforeTheBuild_AWindowRead_AnswersWithoutTheIndexAsync, PacedBackfillIndexTests.AProbeThatNamesNoType_IsNotOfferedTheIndexAsync}
+
+A window reads one type's stamped events in commit order from a position, under a limit, and the answer reads the
+type's head. Both go through `idx_event_store_type_commit_sequence` on `(event_type, commit_sequence)`. Its predicate
+also names `event_type IS NOT NULL`, which every row satisfies but only a query filtering on a type implies, so the
+planner never offers it to a commit-sequence probe that names no type, which has its own index.
+
+The index is **not built by migration 334**. A `CREATE INDEX` inside a migration's transaction would hold every write
+to the event store for the whole build, minutes on a large store. It is built with `CREATE INDEX CONCURRENTLY` after
+the migrations, by a maintenance step: see
+[indexes built after the migrations](../operations/infrastructure/migrations#indexes-built-after-the-migrations).
+Windows read without it, more slowly, until it is valid.
+
+#### Watching a backfill {#watching-a-backfill}
+
+{verified: SubscriptionBackfillWorkerTests.Tick_CountsWindowsRequested_AndPublishesTheInFlightAndRemainingGaugesAsync, StreamIntegrityMetricsBackfillGaugeTests.BackfillGauges_ReportTheLastReading_InFlightAndRemainingByTypeAsync, SubscriptionBackfillCursorTests.EstimateRemaining_ScalesWhatArrivedOverTheSpanAheadAsync, SubscriptionBackfillCursorTests.EstimateRemaining_BeforeAnyEvent_IsUnknownAsync}
+
+| Instrument | Meaning |
+| --- | --- |
+| `backfill_windows_requested` (tag `event_type`) | Windows asked of owners, retries included. |
+| `backfill_events_received` (tag `event_type`) | Events the answered windows selected. |
+| `backfills_ended` (tag `outcome`: `complete`, `unanswered`) | Backfills that ended. `unanswered` means an owner on an earlier release, or one that stopped answering. |
+| `backfill_windows_in_flight` (gauge) | Windows asked for and awaiting their answer; at most `BackfillMaxConcurrentWindows`. |
+| `backfill_remaining_events` (gauge, tag `event_type`) | Each running backfill's estimate of what is left: the density of what has arrived (events per commit sequence so far) over the span between the position and the owner's head. Unreported until a window has answered with events; falls to zero as the backfill finishes. |
+| `redelivery_answers_capped` (tag `kind`: `window`, `ordinary`) | Owner side: answers that stopped at `MaxEventsPerRequest` with more selected. |
+
+The two gauges are published by the backfill worker's own tick on the maintainer, not by the maintenance tick that
+reads the [integrity gauges](#integrity-gauges). The worker logs one line when a type's backfill starts, and the
+requester logs one when it finishes, with the events and window requests it took. The rows of
+`wh_subscription_backfills` are the durable record: `outcome` is 0 running, 1 complete, 2 unanswered.
+
+#### Settings {#paced-backfill-options}
+
+All bound from `Whizbang:StreamIntegrity`; each must be at least 1, checked at host start with the key named.
+{verified: SubscriptionBackfillOptionsTests.Defaults_PaceTheBackfillSoItCannotFloodAsync, SubscriptionBackfillOptionsTests.Validate_AValueBelowOne_FailsNamingTheKeyAsync}
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `BackfillWindowSize` | `1000` | Events one window asks an owner for. The owner clamps it to its `MaxEventsPerRequest` |
+| `BackfillEventsPerMinute` | `6000` | The backfill's pace in events asked for per minute, across every type |
+| `BackfillMaxConcurrentWindows` | `2` | Windows awaiting their answer at once, across every type and owner |
+| `BackfillMaxWindowAttempts` | `3` | Times one window is asked without an answer before the type's backfill ends as unanswered; each attempt waits `RepairAnswerTimeoutMinutes` |
+
+**Mixed versions.** An owner on an earlier release ignores the window and answers the ordinary way, so the events
+arrive and the backfill ends as unanswered after its attempts. A requester on an earlier release asks the old way, and
+an upgraded owner answers that the old way too. Nothing has to be deployed in a particular order.
 
 ### Phase A: digest manifests (the scheduled deep audit) {#phase-a-digest-manifests}
 
@@ -575,10 +863,10 @@ bucket's events. Properties that fit Whizbang's real lifecycle:
 Rollups: per (tenant, type) digests derive from the atomic buckets, giving a two-level drill-down
 as built (`ManifestLevel` has exactly `Types` and `Streams`) — mismatch at type level → compare
 that type's stream digests → a mismatched stream goes straight to a stream-scoped re-delivery
-request, which converges by event-id identity. An id-level third step — exchanging the stream's
-event-id list so the set difference IS the repair set (streams are short by design; a
-set-reconciliation encoding à la IBLT as an optimization) — is a future refinement, not yet built
-as of a64ba9a.
+request, which converges by event-id identity. When a stream's bucket is missing exactly one event, its id lanes
+name that event and the request asks for it alone ([one missing event is named](#one-missing-event-is-named)). A
+general id-level step, exchanging the stream's event-id list so the set difference IS the repair set (a
+set-reconciliation encoding such as an IBLT), remains a future refinement.
 
 **Maintenance strategy.** Digests are maintained **incrementally, transactionally, at batch
 granularity** inside the existing emit chain: one digest upsert per distinct (tenant, type) in the
@@ -616,8 +904,8 @@ size threshold). The consumer diffs locally against its own digest table — a m
 Origins serve manifests from the maintained digest table (a rollup `SELECT`, never a store scan)
 and may cache the answer per cycle for multi-consumer fan-in (not yet implemented). Drill-down is
 **one batched round-trip per level, never per bucket**: all mismatched (tenant, type) buckets in
-one stream-level exchange — a mismatched stream then goes straight to stream-scoped re-delivery
-(the id-level exchange is a future refinement) — so even a messy divergence costs a handful of
+one stream-level exchange. A mismatched stream then goes straight to stream-scoped re-delivery, or to the one
+event it is missing when its id lanes [name it](#one-missing-event-is-named), so even a messy divergence costs a handful of
 control messages plus the repair payload itself. The steady-state hum
 belongs to Phase B's checkpoints (one doorbell-sized ephemeral event per origin per interval),
 tunable as emit-on-publish with a slow max-idle heartbeat — never fully silent, because
@@ -642,6 +930,134 @@ and the paged answers of a large store each paid for all of it. Migration 332 sp
 because both columns were already indexed. The tests force the generic plan and count the rows each call actually
 reads (`pg_stat_xact_user_tables`) against a lane much larger than the window, so a return to the whole-lane read
 fails them.
+
+#### The windowed read is planned per call {#windowed-read-planned-per-call}
+{verified: WindowedDigestTypeIndexTests.TypeFilteredWindow_ReadsThroughAnIndexConditionOnTheType_UnderAGenericPlanAsync, WindowedDigestTypeIndexTests.TheRead_PlansEachCallAgainstItsOwnWindow_WhateverTheCallersPlanModeAsync, WindowedDigestTypeIndexTests.BeforeTheTypeIndexIsBuilt_TheReadAnswersTheSameAsync, WindowedDigestLaneReadTests.ManifestStreamWindow_ReadsTheWindow_NotTheLaneAsync}
+
+Reading only the window was not enough when the window is wide and the asked type is sparse. The stream-level read
+was an auto-prepared statement, and the generic plan it settled into cannot see how wide the window is or which types
+are asked for. It estimates the range as narrow, finds the window's rows through `idx_event_store_commit_sequence`,
+and filters the requested types on the heap. A wide window therefore read every event in it, of any type, to return
+the few hundred of the type it was asked about.
+
+The read is now a function, `wh_compute_stream_digests_window` (migration 347), declared with
+`plan_cache_mode = force_custom_plan`, the setting the claim already uses. Each call is planned against its own window
+and its own types, so the planner reads a sparse type through an index on the type
+(`idx_event_store_type_commit_sequence`, which the [framework index build](../fundamentals/workers/maintenance-steps#framework-index-build)
+creates after the migrations, or `idx_event_store_type_tenant` until it is valid) and a dense one through the window's
+commit range, whichever touches fewer pages. The page of whole streams is also assembled in one pass, keeping the
+window's rows up to the last picked stream id, instead of joining the window to the picked ids, which the planner ran
+as a nested loop over the materialized window. The answer is the same; no index was added.
+
+| Measured, same window | Generic plan (before) | Planned per call (after) |
+| --- | --- | --- |
+| A rare type | 1,000,000 rows read, about 40,450 buffers, 648 ms | 1,000 rows read, 56 buffers, 0.9 ms |
+| Dense types | 2,687 ms | 135 ms |
+
+**Why a function and not a hint on the statement.** The plan mode belongs to the statement's own definition, so every
+caller gets a per-call plan whatever its connection is set to, and the tests prove it by running the caller under
+`force_generic_plan`, the plan a production caller reaches once its prepared statement goes generic. A test that ran
+custom plans would pass against the defect. The cost of planning each call is a fraction of a millisecond, against a
+read that can touch hundreds of thousands of pages when the plan is wrong.
+
+#### One audit window is capped {#audit-window-cap}
+{verified: IntegrityManifestReceptorTests.RequestReceptor_AnOpenEndedAsk_ReadsOneCappedWindow_AndSaysItWasCappedAsync, IntegrityManifestReceptorTests.RequestReceptor_AWindowThatSettlesBeforeTheCap_IsNotCappedAsync, IntegrityManifestReceptorTests.RequestReceptor_ABoundedAskInsideTheCap_IsReadAsAskedAsync, IntegrityManifestReceptorTests.RequestReceptor_ABoundedAskWiderThanTheCap_IsCappedAsync, IntegrityManifestReceptorTests.RequestReceptor_AWindowStartingNearTheEndOfTheSequence_SaturatesTheCapAsync, IntegrityManifestReceptorTests.RequestReceptor_EchoesTheWindowNumber_OnItsAnswerAsync, StreamIntegrityOptionsValidatorTests.MaxAuditWindowSequences_DefaultsToFiveEpochsAsync, StreamIntegrityOptionsValidatorTests.Validate_AnAuditWindowBelowOneSequence_FailsNamingTheKeyAsync}
+
+An audit asks an origin for the window from the consumer's seal to the origin's settled head. After a seal reset, on a
+new consumer, or while a difference holds the seal back, that span is most of the origin's history, and the
+stream-level drill-down over it read every event in it. The origin now answers at most
+`MaxAuditWindowSequences` commit sequences (default 500,000) for one windowed request and marks the answer
+`IntegrityManifest.WindowCapped`: `ComputedThrough` is then the end of the slice it answered, not its settled head,
+and more settled history follows. A window that reaches the settled head before the cap is not marked.
+
+**Why 500,000.** It is five of the default 100,000-sequence digest epochs (`integrity_epoch_width`). A window that
+starts on an epoch boundary answers its type-level roll-up from sealed epochs, and the widest live fringe is two
+epochs. At about 20 events per 8 KB page, a drill-down into a type dense enough to fill every page of the window reads
+about 25,000 pages at worst, against the hundreds of thousands an uncapped window read on a large store. The origin
+applies the cap, so a consumer always follows the origin's setting. Lower it when drill-downs on a large store are
+still slow; raise it when a store with little history should need fewer round trips.
+
+#### The audit walks on, up to a budget {#audit-window-budget}
+{verified: IntegrityManifestReceptorTests.ManifestReceptor_ACleanCappedWindow_SealsIt_AndAsksForTheNextWindowAsync, IntegrityManifestReceptorTests.ManifestReceptor_ACleanWindowThatWasNotCapped_AsksForNothingMoreAsync, IntegrityManifestReceptorTests.ManifestReceptor_AStuckCappedWindow_KeepsTheSeal_AndStillAsksForTheNextWindowAsync, IntegrityManifestReceptorTests.ManifestReceptor_AGapInTheWindowAfterAStuckOne_IsFoundInTheSameAudit_AndTheSealHoldsAsync, IntegrityManifestReceptorTests.ManifestReceptor_TheLastWindowTheBudgetAllows_SealsButAsksForNoMoreAsync, IntegrityManifestReceptorTests.ManifestReceptor_ACappedWindowThisServiceCannotFold_AsksForNoNextWindowAsync, IntegrityManifestReceptorTests.ManifestReceptor_AMultiChunkCappedWindow_AsksForNoNextWindowAsync, IntegrityManifestReceptorTests.ManifestReceptor_AWindowThatStartsAboveTheSeal_NeverAdvancesItAsync, IntegrityManifestReceptorTests.ManifestReceptor_AQuietCappedWindow_EmptyOnBothSides_SealsIt_AndContinuesAsync, IntegrityManifestReceptorTests.ManifestReceptor_AQuietCappedWindow_WithLocalEvents_DoesNotSeal_ButContinuesAsync, IntegrityManifestReceptorTests.ManifestReceptor_ACleanCappedWindow_WithoutTheOriginsAddress_SealsButAsksNothingAsync, IntegrityManifestReceptorTests.ManifestReceptor_TheNextWindow_AsksForTheAbsorbedNamespacesTooAsync, IntegrityManifestReceptorTests.ManifestReceptor_AnEmptyStreamLevelAnswer_IsStillIgnoredAsync, StreamIntegrityOptionsValidatorTests.MaxAuditWindowsPerAudit_DefaultsToFiveAsync, StreamIntegrityOptionsValidatorTests.Validate_AnAuditWindowBudgetBelowOne_FailsNamingTheKeyAsync}
+
+A capped window is continued at once: after comparing it, the consumer asks the origin for the next window from where
+the capped one stopped, the same type-level ask the scheduled audit makes, so history is walked in bounded slices in
+one audit instead of one slice per audit interval. `MaxAuditWindowsPerAudit` (default 5) bounds the walk against one
+origin, the first window included. The rules:
+
+- **Every window counts against the budget, verified or not.** The request carries a window number and the origin
+  echoes it (`RequestIntegrityManifest.WindowNumber`, `IntegrityManifest.WindowNumber`), so the bound holds without
+  any state on the consumer. An answer from an origin that predates the field reads as window 1.
+- **A window that does not verify is never sealed.** The seal stays at the first such window, and the next audit
+  starts again from there.
+- **The walk does not stop at it.** The windows after an unverified one are still compared in the same audit, and
+  their deficits are recorded and repaired, so one stuck difference does not hide a gap behind it until the stuck one
+  heals.
+- **An empty capped answer seals only when this service holds nothing there either.** A windowed type-level answer
+  with no digests is compared now, against every type this service consumes, because only its watermark can move the
+  seal past a window with nothing to audit; ignored, a quiet capped slice would be asked for again on every audit.
+  An empty stream-level answer is still ignored.
+- **The seal advances only over a window that starts at or below it.** A continuation that arrives after a seal reset
+  starts above the seal, and sealing it would certify the history beneath it unverified.
+- **Only a single-chunk answer is continued.** A multi-chunk answer arrives as several messages and continuing from
+  each would ask for the next window once per chunk; it also never moves the seal, as before.
+- **Directed or not at all.** Without the origin's request address the walk stops and the next scheduled audit
+  continues from the seal. Reaching the budget is logged at Information with the windows walked and where they ended.
+
+**The trade-off of the budget.** It is read load per audit against how much history is checked behind a difference
+that has not healed. Each window is one bounded type-level answer, plus drill-downs for the types that disagree. Five
+windows at the default cap compare 2.5 million sequences of history per audit, which catches a consumer up on a large
+store in a few daily audits without turning one audit into a scan of the whole store. Raise it to check more history
+behind a stuck difference or to catch up faster; lower it to bound one audit's load more tightly. Both settings must be
+at least 1, and host start fails naming the key otherwise: a window below one sequence covers nothing, so no seal
+could ever advance, and an audit is at least its first window.
+
+### One missing event is named {#one-missing-event-is-named}
+
+{verified: SingleMissingEventTests.OneEventMissing_IsNamedByTheXorOfTheIdLanesAsync, SingleMissingEventTests.NothingHeldLocally_AndTheOriginHoldsOne_NamesItAsync, SingleMissingEventTests.TwoEventsMissing_NameNothingAsync, SingleMissingEventTests.NothingMissing_OrALocalSurplus_NamesNothingAsync, SingleMissingEventTests.EitherSideWithoutIdLanes_NamesNothingAsync, SingleMissingEventTests.AnXorOfZero_NamesNothingAsync, SingleMissingEventTests.PlacingHeldEvents_CarriesTheirIdLanes_SoTheMissingOneIsStillNamedAsync, IntegrityManifestReceptorTests.Repair_AStreamMissingOneEvent_AsksForThatEventOnlyAsync, IntegrityManifestReceptorTests.Repair_WithoutIdLanes_OrMoreThanOneMissing_AsksForTheWholeStreamAsync, IntegrityManifestReceptorTests.Repair_NamedAndWholeStreams_GoInSeparateRequests_AndManyNamedEventsArePagedAsync, IntegrityManifestReceptorTests.Repair_AStreamOfThreeTypes_ComparesOnlyTheTypeThisServiceKeepsAsync, IntegrityManifestReceptorTests.DrainMode_RecordsEachDeficitsMissingEvent_OrNullAsync, IntegrityRepairAnswerSqlTests.RecordMissingEvents_TheClaimCarriesEachRowsNamedEvent_OrNoneAsync, IntegrityRepairAnswerSqlTests.RecordMissingEvents_ALaterComparisonThatNamesNone_ClearsTheIdAsync, RepairDrainWorkerTests.DrainTick_ARowThatNamesItsMissingEvent_AsksForThatEventOnly_ApartFromWholeStreamRowsAsync, RedeliveryRequestReceptorTests.Receptor_NamedEvents_ShipsExactlyThoseEventsAsync, RedeliveryRequestReceptorTests.Receptor_ANamedEventItDoesNotHold_AnswersThatStreamOverTheWindowAsync, RedeliveryRequestReceptorTests.Receptor_EveryNamedEventFound_SyncsNoStreamWholeAsync, SelectRedeliveryEventsTests.Select_EventIds_SelectsOnlyThoseEvents_WithinTheOtherFiltersAsync, StreamDigestIdLaneReadsSqlTests.TheWindowedStreamAnswer_CarriesTheIdLanesAsync, StreamDigestIdLaneReadsSqlTests.AStoredBucketWithoutIdLanes_ReadsAsNullAsync}
+
+A stream-level repair used to name only types, streams and a commit-sequence range, so a stream missing one event
+cost its whole history (or its whole window) in transport and in processing at the consumer, where every event already
+held is a duplicate to skip. The usual case is exactly one event lost in transport.
+
+Every stream digest bucket also carries two **id lanes** (`id_lo`, `id_hi`): the XOR of the first and last 64 bits of
+every folded event id (see [one digest fold](#one-digest-fold)). XOR is its own inverse, so when the origin's bucket
+holds exactly one event more than the consumer's, origin XOR local over the id lanes is that event's id
+(`IntegrityDigestMath.SingleMissingEventId`). Every stream-level digest a comparison reads carries the lanes
+(`StreamDigest.IdLo` / `IdHi`): the stored table, the recompute, the windowed answer and the fold of
+[events held without an origin sequence](#events-held-without-an-origin-sequence).
+
+| The comparison finds | The repair asks for |
+| --- | --- |
+| The origin holds exactly one event more, both sides carry id lanes, and the XOR is not empty | That event, by id |
+| Two or more missing, a local surplus, or nothing missing | The stream over the window, as before |
+| Either side without id lanes (an older peer, or a bucket stored before 336 and not yet [backfilled](#id-lane-backfill)) | The stream over the window, as before |
+
+How the named event travels:
+
+- **The immediate (burst) path** sends it on `RequestRedeliveryCommand.EventIds`, beside the stream. Named streams go
+  in their own requests, at most 500 events each, so a large missing set is paged and one request never grows with the
+  divergence. The streams that cannot be named go together in one request for the window, as before.
+- **The paced drain** records it on the deficit's ledger row (`wh_integrity_ledger.missing_event_id`, migration 338,
+  through `IWorkCoordinator.IntegrityRecordMissingEventsAsync`), and sends it from there when it claims the row. Rows
+  that name an event and rows that do not are grouped apart, because an id list narrows a request to its ids. A later
+  comparison that cannot name one clears the id, so a stale name is never sent.
+- **The owner** ships exactly the named events (`RedeliveryRequest.EventIds`, selected within the request's other
+  filters). For a named stream where it holds no such event, it answers that stream over the window instead.
+
+Why each choice:
+
+- **Id lanes, not the hash lanes.** The hash lanes are a hash of the id and cannot be turned back into one. The id
+  lanes are the id itself, folded the same way, so the difference of one event is that event.
+- **Exactly one.** The XOR of two missing ids is neither of them, so the name is attempted only when the counts differ
+  by exactly one. Anything else syncs the stream whole, which is always correct.
+- **The owner checks the name.** A count difference of one does not prove the sets differ by one event: the consumer
+  could also hold an event the origin does not, and then the XOR names an id that does not exist. The owner finds no
+  such event and answers the stream over the window, so a wrong name costs one round trip, never a missed repair.
+- **The stream and window always ride along.** An owner that predates `EventIds` ignores the field and answers the
+  range as before, so a mixed-version fleet repairs correctly while it upgrades.
+- **Always per (stream, type).** A bucket is one (origin, tenant, type, stream), and the request keeps its type, so a
+  consumer that keeps only some of a stream's types compares and repairs only those.
 
 ### Phase L — local perspective-coverage audit {#phase-l-local-perspective-coverage-audit}
 
@@ -746,14 +1162,15 @@ namespace. A null consumed set forgets nothing: only an explicit set may empty t
 rows it forgot.
 
 #### After upgrading {#integrity-surface-after-upgrading}
-{verified: SubscriptionExpansionTargetingTests.Backfill_FirstPassAfterUpgrade_AsksTheReceptorOnlyEventOfItsOwner_NeverBroadcastsAsync, SubscriptionExpansionTargetingTests.Backfill_MixedOwnership_DirectsTheOwnedTypesAndBroadcastsTheRestAsync, ConsumedEventReachesEventStoreTests.WithNoPerspectives_AConsumedEvent_IsCopiedIntoTheEventStoreAsync}
+{verified: SubscriptionExpansionTargetingTests.Backfill_FirstPassAfterUpgrade_QueuesTheReceptorOnlyEventForItsOwnerAsync, SubscriptionExpansionTargetingTests.Backfill_MixedOwnership_QueuesTheOwnedTypeForItsOwnerAndTheRestAsBroadcastAsync, ConsumedEventReachesEventStoreTests.WithNoPerspectives_AConsumedEvent_IsCopiedIntoTheEventStoreAsync}
 
 The same change makes the receive path store every consumed event, whether or not a perspective folds it (see
 [classifying a received message](../extending/internals/receptor-registry-query#classifying-a-received-message)).
 On the first start after upgrading, the [subscription-expansion backfill](#phase-s-subscription-expansion-backfill)
-sees those newly stored types as an expansion of the consumed set and asks for their history under its existing caps.
-A type with a known owner is asked of that owner directly; only a type with no known owner is broadcast.
-`whizbang.stream_integrity.backfills_requested` counts the requests, so an operator can see the one-time backfill.
+sees those newly stored types as an expansion of the consumed set and queues a [paced backfill](#paced-backfill) of
+their history. A type with a known owner is asked of that owner directly; only a type with no known owner is broadcast.
+`whizbang.stream_integrity.backfills_requested` counts the types queued, and `backfill_remaining_events` shows how much
+of the one-time backfill is left.
 Set `BackfillOnSubscriptionGrowth` to `false` before upgrading to record the expansion as Pending instead.
 
 ### What is digested {#what-is-digested}
@@ -821,14 +1238,89 @@ An event stored with `IEventStore.AppendAsync` (either driver, through `wh_appen
 
 The stream recompute the verification sweep trusts has always counted directly-appended events in the local lane. Before migration 225 the incremental table did not, so a stream written by both paths (the global `$wb-system` stream, or any stream an application appends to directly) had a table digest that missed some of its events, and closing such a stream subtracted events that had never been added. Rows appended before migration 225 are not refolded by the migration; the verification sweep heals any bucket that still differs from the recompute.
 
+### One digest fold {#one-digest-fold}
+
+{verified: StreamDigestFoldGuardTests.EveryFunctionThatWritesOrHashesStreamDigests_FoldsThroughTheSharedHelperAsync, StreamDigestFoldGuardTests.NoCSharpSqlHashesAnEventIdOrWritesDigestLanesItselfAsync, StreamDigestFoldGuardTests.TheGuard_FlagsAFunctionThatWritesDigestsItself_AndPassesOneThatCallsTheHelperAsync, StreamDigestWritersTests.OutboxEmitChain_FoldsEveryLaneAsync, StreamDigestWritersTests.OutboxEmitChain_FoldingIntoARowWithoutIdLanes_KeepsThemNullAsync, StreamDigestWritersTests.InboxEmitChain_FoldsEveryLaneIntoTheOriginsBucketAsync, StreamDigestWritersTests.DirectAppend_FoldsEveryLaneAsync, StreamDigestWritersTests.TruncateStreamPrefix_SubtractsEveryLaneOfTheTruncatedEventsAsync, StreamDigestWritersTests.ReclassifyEphemeral_SubtractsEveryLaneOfTheReclassifiedEventsAsync, StreamDigestWritersTests.AdoptRedeliveredOrigin_MovesEveryLaneToTheOriginsBucketAsync, StreamDigestWritersTests.SeedStreamDigestsBatch_FoldsEveryLaneOfTheSeededStreamsAsync, StreamDigestFoldHelperSqlTests.Fold_ThenUnfold_EveryLaneRoundTripsAsync, StreamDigestFoldHelperSqlTests.Seed_WritesOnlyWhereNoBucketExistsAsync, StreamDigestFoldHelperSqlTests.UnderAGenericPlan_TheUnfoldFindsItsBucketsByPrimaryKeyAsync, StreamDigestFoldHelperSqlTests.Heal_ADriftedBucket_IsRewrittenWithEveryLane_AndReportedWithBothValuesAsync, StreamDigestFoldHelperSqlTests.Heal_APhantomBucketIsRemoved_AndAMissingOneAdded_EachReportedAsync, StreamDigestFoldHelperSqlTests.Heal_ABucketChangedInsideTheSettleWindow_IsLeftAloneAsync, StreamDigestIdLaneReadsSqlTests.TheTableRead_CarriesTheStoredIdLanesAsync, StreamDigestIdLaneReadsSqlTests.TheRecompute_CarriesTheIdLanesAsync}
+
+Fifteen SQL functions write `wh_stream_digests`: both emit chains and `wh_append_event`, redelivered-origin adoption
+and the bundle reconciles, re-attribution, refiling, the prefix truncate, the superseded-event reaper, ephemeral
+reclassification, at-most-once flagging, archive restore and the seeding pass. Each used to carry its own copy of the
+fold. A change to the digest made in one copy and missed in another corrupts the stored digests silently, and the
+audit trusts those digests: the direct-append gap above is what such a miss looks like. Migration 336 gives the math
+one home, three SQL helpers:
+
+| Helper | Does |
+| --- | --- |
+| `_wh_digest_lane(event_id, lane)` | The only place an event id becomes a digest lane: lanes 0 and 1 are the 128-bit hash (`hashtextextended`, seeds 0 and 1, unchanged since 087), lanes 2 and 3 the id's two 64-bit halves. A single-expression SQL function, so the planner inlines it. |
+| `_wh_fold_stream_digests(...)` | Folds a set of events into their buckets (`fold`), takes them out (`unfold`), or writes only buckets that do not exist yet (`seed`), every lane together, buckets in key order. |
+| `_wh_heal_stream_digests(streams, settle, fill_id_lanes)` | Recomputes the settled buckets of the named streams (or all) from their events and rewrites what differs, returning each changed bucket with its stored and recomputed values: `drift_updated`, `drift_removed`, `drift_added`, and `filled` for id lanes it was asked to fill. |
+
+Every writer was redefined with its digest statements replaced by a call to the fold helper, keeping its own
+predicates, bucket deletes and lock order. The epoch folds, the windowed and type-level answers, the C# reads that
+fold events live, and the verification sweep take each event's lanes from `_wh_digest_lane` or heal through
+`_wh_heal_stream_digests`. The hash lanes and counts every writer stores are unchanged, so no digest a peer already
+holds changes.
+
+`wh_stream_digests` gained two **id lanes**, `id_lo` and `id_hi`: the XOR of each folded event id's two 64-bit halves,
+which is what lets a repair [name the one missing event](#one-missing-event-is-named). They are NULL until computed,
+and a fold keeps NULL as NULL (`NULL # x` is NULL), so a partly folded value never appears. A bucket the fold creates
+is complete and carries its id lanes from the start.
+
+A guard test reads every function in the schema and all C# SQL, and fails when any of them writes digest lanes or
+hashes an event id outside the helpers. It is checked against a sample function that writes digests itself, so a
+guard that stops finding anything also fails.
+
+Why each choice:
+
+- **Helpers, not one big function.** The writers differ in what they select, which buckets they may delete and the
+  order they lock in. Those stay in each writer; only the arithmetic, the part that must never differ, moved.
+- **Inlined lanes.** `_wh_digest_lane` is a plain SQL expression the planner inlines, so a fold costs what it cost
+  before. Measured on the emit chain over 300 batches of 50 events: 25.49 ms per batch before and 25.08 ms
+  after (p95 41.2 ms and 40.4 ms).
+- **NULL stays NULL.** An id lane folded onto a value that was never computed would look complete and be wrong, and a
+  wrong id lane names the wrong event. NULL makes the comparison fall back to whole-stream sync until the lane is
+  filled.
+- **Heal reports before it corrects.** Drift means a write path changed a bucket without the shared fold. Returning
+  both values lets the caller say so before anything relies on the corrected value.
+
+#### Buckets stored before the id lanes {#id-lane-backfill}
+
+{verified: StreamDigestIdLaneBackfillSqlTests.Backfill_FillsEveryStreamsIdLanes_AndRecordsThatItIsDoneAsync, StreamDigestIdLaneBackfillSqlTests.Backfill_ADriftedBucket_IsReturnedWithBothValues_ThenCorrectedAsync, StreamDigestIdLaneBackfillSqlTests.Backfill_StoppedAfterOneBatch_ResumesAfterItsCursorAsync, StreamDigestIdLaneBackfillSqlTests.Backfill_WhileAnotherCallerHoldsTheCursor_ReportsBusyAndWritesNothingAsync, StreamDigestIdLaneBackfillSqlTests.Backfill_OnceDone_ReadsNothingAndChangesNothingAsync, StreamDigestIdLaneBackfillSqlTests.Backfill_WithItsCursorRowMissing_StartsFromTheBeginningAsync, StreamDigestIdLaneBackfillSqlTests.Run_FillsInBatches_ReportsDriftAtWarningAndOnTheMeter_AndFinishesAsync, StreamDigestIdLaneBackfillSqlTests.Run_StopsAtItsRoundLimit_AndWhenBusy_StepsAsideAsync, StreamDigestIdLaneBackfillSqlTests.ThePostgresDriver_RegistersTheStepAsync}
+
+A bucket stored before 336 keeps NULL id lanes until something recomputes it from its events. That is a read of every
+stream's events, which a migration must not do: it would hold every stream it touched until the migration committed.
+So migration 337 only records whether there is anything to fill (`stream_digest_id_lanes_backfill_version` in
+`wh_settings`, `1` at once on a store with nothing to fill), and the `stream-digest-id-lane-backfill`
+[maintenance step](../fundamentals/workers/maintenance-steps#stream-digest-id-lane-backfill), which the EF Core
+Postgres driver registers, calls `wh_backfill_stream_digest_id_lanes_batch` in batches:
+
+- **Bounded.** A batch takes the next 500 digest streams after its cursor (one index probe per stream), and a
+  maintenance cycle runs at most 20 batches, each its own transaction.
+- **Exact.** A batch takes its streams' append locks, in the emit chain's order, before it reads, so no fold is in
+  flight while it recomputes and no settle window is needed.
+- **Resumable and idempotent.** The cursor (`stream_digest_id_lanes_backfill_cursor`) moves in the batch's own
+  transaction; a failed batch is repeated, and a bucket already right is not rewritten. One instance walks the cursor
+  at a time; another steps aside for the cycle.
+- **Done once.** When a batch finds nothing left, the backfill is recorded as done and every later cycle costs one
+  keyed read. A new database is done from its first start.
+- **Drift is reported, never hidden.** A bucket whose hash lanes or count disagree with its events is corrected, and
+  first logged at Warning with its stored and recomputed values, and counted on `stream_digest_drift_corrected`
+  (tagged `kind`: `drift_updated`, `drift_removed`, `drift_added`). Sustained non-zero means some write path changes
+  digests without the shared fold.
+
+Measured on a store of 2.24 million events in 500,000 streams: 1,000 batches, 102.8 s of database time in all (a mean
+of 103 ms per batch, p95 108 ms), and 234 MiB of WAL. Because the step is idle-gated like every maintenance step,
+that time is spread over the service's quiet periods rather than spent at startup.
+
 ## Scheduling, startup, and the repair policy ladder
 
 ### How the phases unfold from a cold start
 
 A restarted service reconciles in **layers** — the local layer immediately, the cross-service
-layer as soon as it has *heard from* its origins. The origin set is deliberately in-memory
-(a restart re-baselines it), so the first audit after a fleet-wide deploy usually runs only the
-local half; the next cycle has a warm tracker and runs the full exchange.
+layer as soon as it knows its origins. The origins and their pending gaps are kept in the store
+([the gap tracker survives a restart](#the-gap-tracker-survives-a-restart)), so a restarted service audits the origins
+it already knew on its first cycle. Only a service that has never recorded a checkpoint (a new database, or a store
+that keeps no tracker state) starts with an empty origin set and waits for its origins to checkpoint.
 
 **A cycle that reached no origins re-arms the startup window instead of the steady interval.**
 That matters because the interval defaults to a day. On a cold fleet start the audit can fire
@@ -923,12 +1415,18 @@ services.Configure<StreamIntegrityOptions>(o => {
   o.MaxCoverageGapReportsPerAudit = 100;     // both the query and the report loop are bounded
   o.MaxDrillDownTypesPerAudit = 10;
   o.MaxDigestsPerManifest = 500;
+  o.MaxAuditWindowSequences = 500_000;      // the widest window one audit answer covers (five epochs)
+  o.MaxAuditWindowsPerAudit = 5;             // capped windows one audit walks against one origin
 
   // Convergence bounding (the IntegrityRepairLedger's dials)
   o.DivergenceReportCooldownMinutes = 60;    // unchanged divergence re-reports once per hour, not per cycle
   o.RepairRequestBackoffSeconds = 300;       // per-bucket retry base; each attempt doubles the wait
   o.MaxRepairAttemptsPerBucket = 8;          // then the bucket is exhausted: no more asks (reports continue) until a local change or a grown deficit
   o.RepairAnswerTimeoutMinutes = 180;        // a requested bucket waits this long for its answer before it may be asked for again
+  o.LedgerRecheckEnabled = true;             // idle re-check of stale ledger rows (see "Idle ledger re-check")
+  o.LedgerRecheckIntervalSeconds = 60;
+  o.LedgerRecheckRowsPerTick = 500;
+  o.LedgerRecheckAfterMinutes = 120;         // twice the settle window
 
   // The maintainer's integrity delivery drain (see "Integrity work runs on the maintainer")
   o.IntegrityDeliveryIntervalSeconds = 15;   // how often the drain runs
@@ -938,8 +1436,12 @@ services.Configure<StreamIntegrityOptions>(o => {
   o.MaxIntegrityDeliveryAttempts = 5;        // then the delivery is dropped with a warning
   o.IntegrityDeliveryRetryBackoffSeconds = 30;  // doubles per attempt, capped at one hour
 
-  // Phase S — subscription growth
+  // Phase S: subscription growth, backfilled in paced windows (see "Paced backfill")
   o.BackfillOnSubscriptionGrowth = true;
+  o.BackfillWindowSize = 1_000;              // events one window asks an owner for
+  o.BackfillEventsPerMinute = 6_000;         // the pace, across every type
+  o.BackfillMaxConcurrentWindows = 2;        // windows awaiting an answer at once
+  o.BackfillMaxWindowAttempts = 3;           // unanswered requests of one window before the type stops
 });
 ```
 
@@ -1059,6 +1561,10 @@ per second, 10,000 rows is a little over half an hour of dispatch. The admission
 `AutoRepairCapped` with the drain on: at `ReportOnly` the drain sends nothing, and the burst path keeps
 its own cap.
 
+These caps bound what is **queued**. What the drain is **waiting for** has its own cap: the drain claims nothing while
+`MaxOutstandingRepairAnswers` (default 500) requested buckets await their answer, because answers can land hours after
+their requests. See [outstanding repair answers are capped](#outstanding-repair-answers-are-capped).
+
 :::updated
 **Before this was fixed ([#1792](https://github.com/whizbang-lib/whizbang/issues/1792)),** the cap was
 consulted only on the burst path. With the drain on, a comparison wrote every deficit bucket of every
@@ -1111,6 +1617,67 @@ surpluses were re-requested from the origin at `RepairDrainRatePerSecond` on eve
 redelivery that could not change them, and they counted toward `MaxRepairDrainBacklog`, so a store
 with many of them could fill the backlog and defer real deficits.
 :::
+
+### Idle ledger re-check {#idle-ledger-recheck}
+{verified: LedgerRecheckWorkerTests.RecheckTick_AStaleRow_IsAskedForAgainAsAStreamLevelRecheck_NeverARepairAsync, LedgerRecheckWorkerTests.RecheckTick_ClaimsTheStalestRows_BoundedPerTick_OlderThanTheThresholdAsync, LedgerRecheckWorkerTests.RecheckTick_RowsThatShareAWindow_AreAskedInOneRequest_OthersInTheirOwnAsync, LedgerRecheckWorkerTests.RecheckTick_WhileTheServiceIsBusy_ClaimsAndSendsNothingAsync, LedgerRecheckWorkerTests.RecheckTick_DisabledOrAuditOff_DoesNothingAsync, LedgerRecheckWorkerTests.RecheckTick_WithNoOriginWhoseAddressIsKnown_ClaimsNothingAsync, LedgerRecheckWorkerTests.RecheckTick_NothingStale_SendsNothingAsync, LedgerRecheckWorkerTests.ExecuteAsync_ATickThatFails_IsLogged_AndTheNextTickRunsAsync, LedgerRecheckWorkerTests.TheWorker_IsRegisteredWithTheIntegrityWorkersAsync, StreamIntegrityOptionsValidatorTests.LedgerRecheck_DefaultsAreOn_EveryMinute_FiveHundredRows_TwoHoursAsync, StreamIntegrityOptionsValidatorTests.Validate_ALedgerRecheckBoundBelowOne_FailsNamingTheKeyAsync}
+
+A ledger row clears only when a comparison sees its bucket again, and the routine audit compares a bucket at most once
+a day. After an upgrade that changes the compare rule, rows written under the old rule otherwise wait for that daily
+audit and can linger for days, and with automatic repair on the paced drain turns them into repair requests for
+buckets that are not divergent at all. The idle ledger re-check compares those rows again as soon as the
+service is quiet.
+
+**Where and when.** `IntegrityLedgerRecheckWorker` ticks every `LedgerRecheckIntervalSeconds` (default 60) on the
+instance holding the maintainer duty, and each tick asks the housekeeping idle gate first through `IntegrityAdmission`
+(see [the idle gate](#integrity-idle-gate)), so a busy service spends nothing but that question. It does nothing when
+`LedgerRecheckEnabled` or `AuditEnabled` is off, and nothing until a checkpoint has taught it an origin's request
+address: like every integrity request, a re-check is directed or not sent.
+
+**What one tick does.**
+
+1. It claims up to `LedgerRecheckRowsPerTick` rows (default 500), oldest report first, whose last report is older than
+   `LedgerRecheckAfterMinutes` (default 120) (`wh_integrity_claim_ledger_recheck`, migration 348).
+2. Rows of one origin, type and window are asked in one request, because one stream-level answer covers every tenant
+   and stream of a type over a window: a directed, windowed, stream-level `RequestIntegrityManifest` over the row's
+   window, marked `Recheck`, at background priority. A tick therefore sends at most that many requests, usually far
+   fewer.
+3. The origin answers as it answers any stream-level request and echoes the flag (`IntegrityManifest.Recheck`); a
+   followed page of the answer is a re-check too.
+4. The comparison removes the rows that now match or are undecided **exactly as the audit removes them**, and a
+   bucket still divergent is reported again. A re-check answer **never leads to a repair request**, whatever the repair
+   mode: it is a compare, and a repair it caused would be a second repair path beside the drain.
+
+When no row is that old, the claim returns nothing and the tick sends nothing: the re-check has caught up.
+
+**The claim.** Migration 348 adds `wh_integrity_ledger.rechecked_at`. A claim stamps it and nothing else: no repair
+attempt is spent, no backoff moves and no pending answer is set, so a re-check cannot push a real deficit toward
+exhaustion. A row is claimed again only once its stamp, like its last report, is older than the threshold, so a row a
+re-check finds still divergent is reported again and waits the threshold before its next re-check instead of being
+asked every tick. `last_touched` could not serve, because every report, drain claim and pending mark moves it. Only
+rows stamped with their compared window are claimed, never the synthetic type lane, and concurrent claimers skip each
+other's locked rows. No index was added: the ledger is bounded by `MaxRepairDrainBacklog` and the report caps, and the
+claim runs at most once a tick on an idle service.
+
+**Rows the re-check leaves to the audit.** A row without a stamped window (a row from before windows were stamped, or a
+divergence that is not a deficit) has no window to ask about, and the next audit that covers its bucket decides it.
+
+**Why each default.**
+
+| Option | Default | Why |
+| --- | --- | --- |
+| `LedgerRecheckEnabled` | `true` | Stale rows are noise in the operator's record and, with automatic repair on, needless repair traffic; the re-check costs nothing on a busy service |
+| `LedgerRecheckIntervalSeconds` | `60` | Each tick asks the idle gate first, so a short interval reacts to a quiet spell quickly at no cost while busy |
+| `LedgerRecheckRowsPerTick` | `500` | Up to 30,000 rows an hour at the default interval, which clears an upgrade's worth of stale rows within a few idle hours without turning one tick into a burst of answers |
+| `LedgerRecheckAfterMinutes` | `120` | Twice the default `AuditSettleWindowMinutes`: a row reported within the last two hours was compared recently and settled history has not moved under it since, so re-checking it would only repeat that answer |
+
+Each is bound from `Whizbang:StreamIntegrity`, and a bound below 1 fails at host start naming the key: below one second
+the loop spins, below one row nothing is re-checked, and below one minute a row just reported is asked again.
+
+**Watching it.** `whizbang.stream_integrity.ledger_rows_rechecked` counts the rows claimed and asked again, and
+`ledger_rows_recheck_cleared` the rows a re-check answer removed, both tagged by `origin`. After an upgrade both rise
+together while the stale rows clear, then fall to near zero. Rechecked rising with cleared flat means the buckets are
+still divergent under the current rule: the rows are real, and the drain and audit handle them as before.
+{verified: IntegrityLedgerRecheckSqlTests.Claim_TakesTheStalestRowsFirst_BoundedAsync, IntegrityLedgerRecheckSqlTests.Claim_ARowItClaimed_IsNotClaimedAgainUntilTheThresholdPassesAsync, IntegrityLedgerRecheckSqlTests.Claim_SkipsRowsItCannotAsk_AndSpendsNothingAsync, IntegrityManifestReceptorTests.ManifestReceptor_ARecheckAnswer_RemovesTheRowWhoseBucketNowMatches_AndCountsItAsync, IntegrityManifestReceptorTests.ManifestReceptor_ARecheckAnswer_RemovesAnUndecidedRow_AndCountsItAsync, IntegrityManifestReceptorTests.ManifestReceptor_ARecheckAnswer_WithADeficit_NeverAsksForARepairAsync, IntegrityManifestReceptorTests.ManifestReceptor_AnOrdinaryAnswer_DoesNotCountAsARecheckAsync, IntegrityManifestReceptorTests.ManifestReceptor_ARecheckPage_FollowsItsCursorAsARecheckAsync, IntegrityManifestReceptorTests.RequestReceptor_EchoesTheRecheckFlag_OnItsAnswerAsync}
 
 ### Report-only is bilateral {#report-only-is-bilateral}
 
@@ -1333,7 +1900,10 @@ under its origin, with nothing to adopt, the redelivery changed nothing, and the
 same events again.
 
 The receiver records that on the bucket's ledger row (`wh_integrity_ledger.unhealable_at`) when the
-bundle's children commit ([below](#unhealable-recorded-at-commit)). From then on:
+bundle's children commit ([below](#unhealable-recorded-at-commit)), but only when the answer covered what the bucket is
+missing: an answer for a narrower window than the bucket's deficit cannot say the older gap is unrepairable, so it
+leaves the bucket repairable ([an answer marks only what it covered](#an-answer-marks-only-what-it-covered)). From
+then on:
 
 - neither the burst grant (`wh_integrity_try_begin_repair`) nor the paced drain
   (`wh_integrity_claim_repair_drain`) asks for the bucket again;
@@ -1353,9 +1923,117 @@ The checkpoint path keys its ledger rows by type and window rather than by strea
 [repair policy](#the-repair-decision-pipeline-as-wired) already stops a window whose count stopped
 improving, so it is unaffected by the mark.
 
+### An answer marks only what it covered {#an-answer-marks-only-what-it-covered}
+
+{verified: IntegrityAnswerCoverageSqlTests.RecordBundleAnswer_AWindowedAnswer_LeavesAWholeHistoryBucketRepairable_ButAnsweredAsync, IntegrityAnswerCoverageSqlTests.RecordBundleAnswer_AWholeHistoryAnswerThatStoredNothing_MarksAWholeHistoryBucketAsync, IntegrityAnswerCoverageSqlTests.RecordBundleAnswer_AWindowedBucket_IsMarkedOnlyByAnAnswerThatCoversItsWindowAsync, IntegrityAnswerCoverageSqlTests.RecordBundleAnswer_AnAnswerCarryingTheNamedMissingEvent_MarksHoweverNarrowItsWindowAsync, IntegrityAnswerCoverageSqlTests.MarkUnhealable_WithAWindow_MarksOnlyTheRowsTheAnswerCoveredAsync, RedeliveryAnswerCoverageTests.Reconcile_AWindowedAnswerThatChangedNothing_LeavesTheBucketRepairableAsync, RedeliveryAnswerCoverageTests.Reconcile_AWholeHistoryAnswerThatChangedNothing_MarksTheBucketAsync}
+
+A redelivery answer is a reply to one request, and a request names a window of the origin's commit sequences. Audit
+repairs and bulk backfills ask for the window their comparison looked at, often the recent one. An answer for a recent
+window carries only the stream's recent events, and a consumer that is missing older events usually holds the recent
+ones already. Such an answer stores nothing, which says only that nothing **inside its window** was missing. It says
+nothing about events before the window.
+
+Before this rule, a bundle that stored nothing marked every bucket it touched as [unhealable](#unhealable-buckets). A
+bucket whose missing events lay outside the window was marked too, and most of those were whole-history deficits (a
+ledger row with no stamped window) that had never had a repair request of their own: another request's answer had
+passed through their stream. Repair then stopped on real gaps, and the buckets stayed marked until a local change happened to re-arm
+them.
+
+**The origin says which window it answered.** Every bundle of an answer echoes the requested window:
+`RedeliveryComposite.AnswersWindow` is true, and `AnsweredFromCommitSequence` (exclusive, null = from the beginning)
+and `AnsweredToCommitSequence` (inclusive, null = to the head) carry the bounds, in the request's units. The origin
+publishes answers through `RedeliveryPump.PublishAnswerAsync`, which stamps the window on every bundle it builds. A
+[paced backfill](#paced-backfill) page echoes the commit sequences that page covered: from the previous page's last
+event through its own last event, or through the window's ceiling when the page ran out.
+{verified: RedeliveryPumpWindowTests.PublishAnswer_EchoesTheAnsweredWindowOnEveryBundle_AndPublishSaysNoneAsync, RedeliveryWindowAnswerTests.OrdinaryRequest_EveryBundleEchoesTheRequestedWindowAsync, RedeliveryWindowAnswerTests.OrdinaryRequest_NamingEvents_EchoesTheRequestedWindowOnTheNamedAndTheFallbackBundlesAsync, RedeliveryWindowAnswerTests.Window_EachPagesBundlesEchoTheSequencesThatPageCoveredAsync, RedeliveryAnswerCoverageTests.Composite_SaysItsWindow_OnlyWhenTheOriginEchoedOneAsync, RedeliveryAnswerCoverageTests.Window_IsWholeHistory_OnlyWithNeitherBoundAsync}
+
+**The coverage rule.** For a bundle that changed nothing, the receiver marks a bucket unhealable only when one of these
+holds:
+
+| The answer | Marks the bucket |
+| --- | --- |
+| Its window includes the ledger row's compared window (`window_from`, `window_until`) | Yes |
+| The row is whole-history (no stamped window) and the answer is whole-history too (neither bound set) | Yes |
+| It carried the row's [named missing event](#one-missing-event-is-named) (`missing_event_id`), however narrow its window | Yes |
+| The store refused to restore one of its events because the stream was truncated here | Yes, always: the refusal itself is the proof |
+| Anything else: a window narrower than the row's, or a windowed answer to a whole-history row | No: answered, still repairable |
+
+```mermaid{caption="How a bundle that stored nothing judges each bucket it touched: only an answer that covered the bucket's deficit marks it; any other bucket is answered and stays repairable." tests=["IntegrityAnswerCoverageSqlTests.RecordBundleAnswer_AWindowedAnswer_LeavesAWholeHistoryBucketRepairable_ButAnsweredAsync", "IntegrityAnswerCoverageSqlTests.RecordBundleAnswer_AWholeHistoryAnswerThatStoredNothing_MarksAWholeHistoryBucketAsync", "IntegrityAnswerCoverageSqlTests.RecordBundleAnswer_AWindowedBucket_IsMarkedOnlyByAnAnswerThatCoversItsWindowAsync", "IntegrityAnswerCoverageSqlTests.RecordBundleAnswer_AnAnswerCarryingTheNamedMissingEvent_MarksHoweverNarrowItsWindowAsync", "RedeliveryAnswerCoverageTests.Reconcile_AnAnswerThatDoesNotSayItsWindow_MarksAsBeforeAsync"]}
+flowchart TD
+  B[A bundle that changed nothing touches a bucket] --> R{Restore refused: stream truncated here?}
+  R -- yes --> M[Marked unhealable]
+  R -- no --> K{Did the origin say its window?}
+  K -- no, an older origin --> M
+  K -- yes --> N{Carried the row's named missing event?}
+  N -- yes --> M
+  N -- no --> C{Window includes the row's compared window?}
+  C -- yes --> M
+  C -- no --> A[Answered, still repairable]
+  classDef stopped fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+  classDef open fill:#d4edda,stroke:#28a745,stroke-width:2px
+  class M stopped
+  class A open
+```
+
+Why each choice:
+
+- **Coverage, not presence, decides.** "Every event the answer carried was already here" proves the bucket is beyond
+  repair only for the events the answer could have carried. Requiring the answer's window to include the row's
+  compared window keeps the mark for the case it was built for, an answer that covered the gap and still changed
+  nothing, and drops it everywhere else.
+- **A whole-history row needs a whole-history answer.** A row with no stamped window records a deficit somewhere in
+  the stream's history, so no bounded window can be shown to include it.
+- **The named missing event counts as coverage (#2103).** A row that names its one missing event is fully answered by
+  a bundle that carried that event: if it still stored nothing, the event is held under another origin or stream, and
+  asking again cannot change that.
+- **The answer is still recorded.** A bucket left repairable is marked answered all the same, so it stops
+  [waiting for its answer](#repair-waits-for-its-answer) and is claimed again only after the next comparison sights it.
+  Recording it costs nothing extra, and not recording it would leave the row waiting out `RepairAnswerTimeoutMinutes`
+  for an answer that already came.
+- **An origin that does not say its window marks as before.** A bundle from an origin on an earlier release has
+  `AnswersWindow` false (a missing field reads as false), and the receiver cannot tell what it covered, so it judges the
+  bucket as it always did. Guessing "not covered" would leave a real unhealable bucket asking forever; marking as before
+  keeps the existing behavior until the origin upgrades.
+  {verified: RedeliveryAnswerCoverageTests.Reconcile_AnAnswerThatDoesNotSayItsWindow_MarksAsBeforeAsync, RedeliveryAnswerCoverageTests.TheDrain_APayloadRecordedBeforeTheWindow_MarksAsBeforeAsync}
+- **The window travels with the deferred reconcile.** The commit-time answer and the maintainer's
+  [deferred reconcile](#unhealable-recorded-at-commit) both judge with the same window, so neither marks what the other
+  left repairable. A reconcile queued by an earlier release carries no window and marks as before.
+  {verified: RedeliveryAnswerCoverageTests.Reconcile_GivesTheCommitTimeRecordTheAnsweredWindowAsync, RedeliveryAnswerCoverageTests.TheDrain_ReadsTheWindowBack_AndAWindowedAnswerLeavesTheBucketRepairableAsync, CoordinatorIntegrityRepairLedgerUnhealableTests.MarkUnhealable_WithAWindow_GivesTheStoreTheWindowAndTheEventsAsync}
+- **Older pods keep working during a rolling upgrade.** Migration 357 adds the window to
+  `wh_integrity_record_bundle_answer` as trailing parameters with defaults, so a call from an earlier release still
+  resolves and marks as before. The reconcile's mark goes through a new function,
+  `wh_integrity_mark_unhealable_covered_batch`, rather than a second arity of `wh_integrity_mark_unhealable_batch`,
+  because the framework keeps exactly one overload per function. The rule itself lives in one helper,
+  `_wh_integrity_answer_covers`, which both call. It is evaluated only on ledger rows the call already found by primary
+  key, so the plan of the hot statement is unchanged.
+
+**The one-time correction.** Rows an earlier release marked this way do not repair themselves: an unhealable row is
+never asked for again until a local change re-arms it. Migration 357 therefore runs
+`wh_integrity_rearm_narrow_answers()` once per database (a `wh_settings` marker, `integrity_rearm_narrow_answers_version`,
+makes later runs change nothing). It clears the mark and the answer on every per-stream, whole-history row that is
+marked unhealable with no repair attempt of its own: such a row was marked by another request's answer, which never
+had to cover it. The paced drain then claims it and asks for its whole history; a whole-history answer that still
+stores nothing marks it again, correctly. Which answer marked a row is not recorded, so a row with attempts of its own,
+or a windowed row, is left alone; a wrongly marked one of those is re-armed by its next local change.
+{verified: IntegrityAnswerCoverageSqlTests.Correction_ReArmsWholeHistoryRowsMarkedWithoutAnAttemptOfTheirOwn_OnceAsync}
+
+The correction is a migration step, not a [maintenance](../operations/workers/housekeeping-arbitration.md#the-settledness-gate) step, on
+purpose. Maintenance waits for an idle service, and a service whose repair stalled this way, with a backlog of real gaps, may never be idle,
+which is exactly when the rows matter. The pass is bounded by the ledger, which is capped, reads it once and writes only
+the rows it re-arms.
+
+:::warning
+**Known limit.** An answer claims the full window it was asked for. An ordinary request that the origin capped at
+`MaxEventsPerRequest`, or split across bundles, still echoes the requested window on every bundle, so a capped answer
+that stored nothing can mark a bucket whose missing events lie past the cap. A capped ordinary answer is counted on
+`redelivery_answers_capped` with `kind=ordinary` ([an answer never stops short in silence](#answers-say-where-they-stopped));
+a non-zero rate there means some marks may rest on a window the answer did not fully ship. Paced backfill pages are not
+affected: each page echoes only what it covered.
+:::
+
 ### Repair waits for its answer {#repair-waits-for-its-answer}
 
-{verified: IntegrityRepairAnswerSqlTests.Claim_ABucketWithItsAnswerPending_IsNotClaimed_UntilTheAnswerTimeoutPassesAsync, IntegrityRepairAnswerSqlTests.TryBeginRepair_WhileItsOwnAnswerIsPending_IsRefusedAsync, IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ClearsThePending_AndTheBucketWaitsForTheNextComparisonAsync, IntegrityRepairAnswerSqlTests.Claim_PastTheAttemptBudget_StopsForGood_AndCountsAsExhaustedAsync, IntegrityRepairAnswerSqlTests.TryBeginRepair_PastTheAttemptBudget_IsRefusedForGoodAsync, RepairDrainWorkerTests.DrainTick_MarksTheDispatchedBucketsAnswerPending_ButNotAGroupWhoseSendFailedAsync, StreamIntegrityOptionsValidatorTests.RepairAnswerTimeout_DefaultsToThreeHoursAsync}
+{verified: IntegrityRepairAnswerSqlTests.Claim_ABucketWithItsAnswerPending_IsNotClaimed_UntilTheAnswerTimeoutPassesAsync, IntegrityRepairAnswerSqlTests.TryBeginRepair_WhileItsOwnAnswerIsPending_IsRefusedAsync, IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ClearsThePending_AndTheBucketWaitsForTheNextComparisonAsync, IntegrityRepairAnswerSqlTests.Claim_PastTheAttemptBudget_StopsForGood_AndCountsAsExhaustedAsync, IntegrityRepairAnswerSqlTests.TryBeginRepair_PastTheAttemptBudget_IsRefusedForGoodAsync, RepairDrainWorkerTests.DrainTick_MarksTheDispatchedBucketsAnswerPending_AndWithdrawsAGroupWhoseSendFailedAsync, StreamIntegrityOptionsValidatorTests.RepairAnswerTimeout_DefaultsToThreeHoursAsync}
 
 A repair request is answered by a redelivery bundle, and the answer takes time to arrive: the origin
 records the request for its maintainer, which handles it under the housekeeping idle gate, and the bundle
@@ -1368,7 +2046,12 @@ every repair ledger row moves through explicit states:
 | **Answer pending** | A request for the bucket was sent (`wh_integrity_ledger.answer_pending_until`) | Neither the drain nor the burst grant asks again until the answer lands or `RepairAnswerTimeoutMinutes` passes |
 | **Answered** | A redelivery bundle for the bucket committed (`answered_at`) | The drain does not claim it until the next comparison sights the bucket again; a heal deletes the row |
 | **Exhausted** | The claim or grant that spent the last of `MaxRepairAttemptsPerBucket` attempts (`exhausted_at`) | Never asked for again until a [reset](#what-resets-the-repair-ladder) |
-| **Unhealable** | A bundle for the bucket [changed nothing](#unhealable-buckets) | Never asked for again until a [reset](#what-resets-the-repair-ladder) |
+| **Unhealable** | A bundle for the bucket [changed nothing](#unhealable-buckets) and [covered its deficit](#an-answer-marks-only-what-it-covered) | Never asked for again until a [reset](#what-resets-the-repair-ladder) |
+
+The paced drain moves a bucket to **answer pending** just before it sends the request, not after, because the answer can
+arrive before the send returns; a send that fails puts the bucket back as **claimable**, with its attempt returned and
+its backoff kept (#2223, migration 395).
+{verified: RepairDrainRecordsBeforeSendingTests.AnAnswerThatLandsBeforeThePublishReturns_IsKept_AndTheBucketIsNotLeftAwaitingAnotherAsync, RepairDrainRecordsBeforeSendingTests.ASendThatFails_IsWithdrawn_AndCostsNoAttemptAsync, RepairDrainRecordsBeforeSendingTests.Withdraw_OfTheClaimThatSpentTheLastAttempt_LiftsTheExhaustionAsync, RepairDrainRecordsBeforeSendingTests.Withdraw_OfAnotherRecord_LeavesItStandingAsync}
 
 ```mermaid{caption="The repair ladder of one ledger row: a request waits for its answer, an answered bucket waits for the next comparison, and only a local change or a grown deficit re-arms a bucket that spent its budget or that repair cannot change." tests=["IntegrityRepairAnswerSqlTests.Claim_ABucketWithItsAnswerPending_IsNotClaimed_UntilTheAnswerTimeoutPassesAsync", "IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ClearsThePending_AndTheBucketWaitsForTheNextComparisonAsync", "IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ABundleWhoseEventsWereAllStoredAlready_MarksTheBucketAtCommitAsync", "IntegrityRepairAnswerSqlTests.Claim_PastTheAttemptBudget_StopsForGood_AndCountsAsExhaustedAsync", "IntegrityRepairAnswerSqlTests.Report_TheLocalDigestMoved_ResetsTheLadder_AndLiftsTheMarkAsync", "IntegrityRepairAnswerSqlTests.Report_TheDeficitGrew_ResetsTheLadder_AndLiftsTheMarkAsync", "IntegrityRepairAnswerSqlTests.Report_OnlyTheOriginsDigestMoved_KeepsTheAttempts_AndTheMarkAsync"]}
 stateDiagram-v2
@@ -1377,7 +2060,7 @@ stateDiagram-v2
   AnswerPending --> Claimable: RepairAnswerTimeoutMinutes passes with no answer
   AnswerPending --> Answered: a redelivery bundle commits
   Answered --> Claimable: the next comparison still sees a deficit
-  Answered --> Unhealable: the bundle changed nothing (judged at commit)
+  Answered --> Unhealable: the bundle changed nothing and covered the deficit (judged at commit)
   AnswerPending --> Exhausted: the last attempt is spent and the bucket is not healed
   Exhausted --> Claimable: re-armed by a local change or a grown deficit
   Unhealable --> Claimable: re-armed by a local change or a grown deficit
@@ -1389,6 +2072,15 @@ stateDiagram-v2
   class Exhausted,Unhealable stopped
   class Healed healed
 ```
+
+**Recording an answer costs in proportion to the bundle.** When a bundle's children commit,
+`wh_integrity_record_bundle_answer` finds the ledger rows the bundle covered (each bucket and its type lane) by primary
+key, never by reading the ledger, and leaves a row already answered with no answer pending untouched: `answered_at` is
+read only as set or not set, and the type lane row is shared by every bundle of its type, so rewriting it made
+concurrent answers queue on it. One consequence: `last_touched` is not refreshed on a row that was already answered.
+The rows a call writes are locked first, in primary key order, so two bundles covering the same buckets wait for each
+other instead of deadlocking.
+{verified: IntegrityBundleAnswerPlanShapeTests.RecordBundleAnswer_UnderAGenericPlan_FindsTheCoveredLedgerRowsByPrimaryKey_NotALedgerScanAsync, IntegrityBundleAnswerPlanShapeTests.RecordBundleAnswer_LocksTheRowsItWrites_InPrimaryKeyOrderAsync, IntegrityBundleAnswerPlanShapeTests.RecordBundleAnswer_ARowAlreadyAnswered_IsNotRewrittenAsync, IntegrityBundleAnswerPlanShapeTests.RecordBundleAnswer_ARowWithItsAnswerPending_IsStillAnsweredAsync}
 
 **Answer pending.** The drain records every bucket of a request that left, and only those: a group
 whose send failed is not marked and is claimed again after its backoff. The mark lasts
@@ -1434,6 +2126,78 @@ of the group's windows, which re-shipped every stream over the widest range any 
 comparison stamped share their window, so the change costs few extra requests. A row recorded before
 windows were (a null window) asks for the stream's whole history on its own, without widening its
 windowed neighbors.
+
+### Outstanding repair answers are capped {#outstanding-repair-answers-are-capped}
+
+{verified: RepairDrainWorkerTests.DrainTick_AtTheOutstandingAnswerCap_ClaimsNothing_AndSaysSoOnceAsync, RepairDrainWorkerTests.DrainTick_UnderTheCap_ClaimsNoMoreThanTheRoomLeftAsync, RepairDrainWorkerTests.DrainTick_WhenThePendingCountFallsUnderTheCap_ResumesAndSaysSoOnceAsync, RepairDrainWorkerTests.DrainTick_WithTheCapOff_NeverCountsTheAnswersAsync, RepairDrainWorkerTests.DrainTick_AtTheCap_OnAHostWithoutMetrics_StillHoldsAsync, RepairDrainWorkerTests.Options_MaxOutstandingRepairAnswers_DefaultsTo500Async, IntegrityAnswerPendingCountSqlTests.Count_TheBucketsAwaitingAnAnswer_AtTheDrainsInstantAsync, IntegrityAnswerPendingCountSqlTests.Count_ReadsNoFurtherThanTheCapAsync, IntegrityAnswerPendingCountSqlTests.Count_OnceTheIndexIsBuilt_IsAnsweredFromItAsync, StreamIntegrityOptionsValidatorTests.Validate_ANegativeOutstandingAnswerCap_FailsNamingTheKeyAsync}
+
+`RepairDrainRatePerSecond` paces the **requests**. It does not pace the **answers**: a redelivery bundle can land up to
+`RepairAnswerTimeoutMinutes` (three hours by default) after its request, because it waits in the origin's idle-gated
+integrity queue and then in this service's inbox. Answers to requests sent over hours can therefore arrive together,
+and every one of them is written into this service's store. At the default 5 rows a second, three hours of requests is
+54,000 buckets whose answers could land at once, however slowly they were asked for.
+
+So the drain also bounds what it is waiting for. Before each claim it counts the ledger buckets whose answer is on its
+way (a request left, and neither the answer landed nor the timeout passed: the same rows `repair_answer_pending_buckets`
+reports), and:
+
+- **at the cap**, it claims nothing this tick and sends nothing;
+- **under the cap**, it claims at most the room left (`MaxOutstandingRepairAnswers` minus the count), and never more
+  than its tokens and `RepairDrainBatchSize` already allow;
+- **with the cap off** (`MaxOutstandingRepairAnswers = 0`), it does not count at all, and runs as before.
+
+```mermaid {caption="One drain tick with the outstanding-answer cap: the count is read only up to the cap, a full cap claims nothing, and otherwise the claim is bounded by the room left" tests=["RepairDrainWorkerTests.DrainTick_AtTheOutstandingAnswerCap_ClaimsNothing_AndSaysSoOnceAsync","RepairDrainWorkerTests.DrainTick_UnderTheCap_ClaimsNoMoreThanTheRoomLeftAsync","RepairDrainWorkerTests.DrainTick_WhenThePendingCountFallsUnderTheCap_ResumesAndSaysSoOnceAsync","RepairDrainWorkerTests.DrainTick_WithTheCapOff_NeverCountsTheAnswersAsync"]}
+flowchart TD
+  T[Drain tick with at least one token] --> O{MaxOutstandingRepairAnswers<br/>is 0?}
+  O -- yes --> C[Claim up to tokens and batch size]
+  O -- no --> N[Count buckets awaiting an answer,<br/>reading no further than the cap]
+  N --> F{Count at the cap?}
+  F -- yes --> H[Claim nothing<br/>first held tick: Warning + repair_drain_holds]
+  F -- no --> R[Claim up to the room left<br/>first tick after a hold: Information]
+  R --> C
+```
+
+**The default is 500.** At the default rate, 500 answers is 100 seconds of requests. A drain whose answers land within
+that never meets the cap and runs at `RepairDrainRatePerSecond`. When answers lag, the drain is paced to the rate they
+land at instead, and the load late answers put on the store is bounded by the cap, not by how long they lagged. The cap
+counts **every origin**, because every answer lands in this service's store, whoever sent it.
+
+**A hold is visible once, not every second.** The tick that first finds the cap reached logs a Warning naming the count
+and the cap and adds one to `whizbang.stream_integrity.repair_drain_holds`; the ticks after it stay silent while the
+hold lasts. The first tick that finds the count back under the cap logs an Information line saying the drain resumed. A
+rising `repair_drain_holds` means answers lag their requests; read it alongside `repair_answer_pending_buckets`, which
+sits at the cap during a hold.
+
+**The count is bounded and indexed.** `wh_integrity_count_answer_pending` (migration 371) reads no further than the cap,
+because the drain only needs to know whether the cap is reached. It is answered from the partial index
+`idx_integrity_ledger_answer_pending` (`answer_pending_until`, only rows with a request out). That index is not created
+by the migration: it is one of the framework indexes [built concurrently after the migrations](../operations/infrastructure/migrations#indexes-built-after-the-migrations),
+so no write to the ledger waits on the build. Until it is built, the bounded count reads the ledger, which
+`MaxRepairDrainBacklog` and the admission rule keep small.
+
+**A count that cannot be read claims nothing.** The count is not best-effort: when it fails, the tick fails, is logged,
+and claims nothing; the next tick tries again. The cap never opens because the store could not say how many answers are
+out.
+
+`MaxOutstandingRepairAnswers` must not be negative; host start fails otherwise, naming the key. Zero is allowed and
+turns the cap off.
+
+#### Design choices {#outstanding-repair-answers-design-choices}
+
+Each choice below is locked by the test beside it, which fails if the behavior flips.
+
+| Choice | Why | Verified |
+|---|---|---|
+| Cap the answers awaited, not only the request rate | Answers land up to the answer timeout after their requests, so the rate alone does not bound what arrives together | {verified: RepairDrainWorkerTests.DrainTick_AtTheOutstandingAnswerCap_ClaimsNothing_AndSaysSoOnceAsync} |
+| Under the cap, claim at most the room left | A tick with a full token bucket could otherwise overshoot the cap by a whole batch | {verified: RepairDrainWorkerTests.DrainTick_UnderTheCap_ClaimsNoMoreThanTheRoomLeftAsync} |
+| Default 500, which is 100 seconds of requests at the default rate | A drain whose answers keep up never notices the cap; only lagging answers hold it | {verified: RepairDrainWorkerTests.Options_MaxOutstandingRepairAnswers_DefaultsTo500Async} |
+| 0 turns the cap off and skips the count | An operator who wants the old behavior pays no read for it | {verified: RepairDrainWorkerTests.DrainTick_WithTheCapOff_NeverCountsTheAnswersAsync, StreamIntegrityOptionsValidatorTests.Validate_AnOutstandingAnswerCapOfZeroOrMore_SucceedsAsync} |
+| A negative cap fails host start | A negative value has no meaning, and silently treating it as off would hide a typo | {verified: StreamIntegrityOptionsValidatorTests.Validate_ANegativeOutstandingAnswerCap_FailsNamingTheKeyAsync} |
+| One Warning and one count per hold, one Information when it ends | A hold lasts many one-second ticks; a line per tick would bury the signal | {verified: RepairDrainWorkerTests.DrainTick_AtTheOutstandingAnswerCap_ClaimsNothing_AndSaysSoOnceAsync, RepairDrainWorkerTests.DrainTick_WhenThePendingCountFallsUnderTheCap_ResumesAndSaysSoOnceAsync} |
+| The hold does not depend on metrics | A host without the integrity meter still must not over-claim | {verified: RepairDrainWorkerTests.DrainTick_AtTheCap_OnAHostWithoutMetrics_StillHoldsAsync} |
+| The count reads no further than the cap | The drain asks every tick it has tokens; a full count would grow with the ledger | {verified: IntegrityAnswerPendingCountSqlTests.Count_ReadsNoFurtherThanTheCapAsync} |
+| Its index is built concurrently after the migrations | A `CREATE INDEX` in a migration would block every ledger write until it committed | {verified: IntegrityAnswerPendingCountSqlTests.Count_OnceTheIndexIsBuilt_IsAnsweredFromItAsync} |
+| An engine with no ledger counts nothing | Nothing awaits an answer where nothing is requested | {verified: WorkCoordinatorDefaultsTests.IntegrityCountAnswerPendingAsync_WithoutProviderSupport_CountsNothingAsync} |
 
 ### What resets the repair ladder {#what-resets-the-repair-ladder}
 
@@ -1494,7 +2258,7 @@ A redelivery bundle's answer is recorded when its children commit, with one smal
 bundle's event ids: for each bucket, how many of its events the store already held, how many it did not
 (the bundle stores them), how many the store refused to restore, and how many present events could still
 take an origin. The covered rows become answered, and the buckets of a bundle that changed nothing are
-marked unhealable at once, each named in one Warning and counted once in `repairs_unhealable`. Adopting
+marked unhealable at once when the answer [covered their deficit](#an-answer-marks-only-what-it-covered), each named in one Warning and counted once in `repairs_unhealable`. Adopting
 origins and moving digests stay with the maintainer's deferred reconcile; an event stored without its
 origin is left for that reconcile to adopt, not marked.
 
@@ -1509,59 +2273,97 @@ uses it instead of its own reading. A reconcile recorded by a version without th
 judges by presence as before. If recording the answer fails, a Warning says so, the buckets wait out
 their answer timeout, and the reconcile judges the bundle without the commit's view.
 
-#### Per-bundle work keeps its working table for the connection {#per-bundle-work-table}
+#### Recording an answer creates no temporary table {#per-bundle-work-table}
 
-{verified: RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_ASecondCallOnTheConnection_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBundle_ASecondCallOnTheConnection_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_TwiceInOneTransaction_AnswersEachBundleForItsOwnEventsAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBundle_TwiceInOneTransaction_StartsFromAnEmptyWorkingTableAsync}
+{verified: RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_AfterTheSessionIsReset_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_ASecondCallOnTheConnection_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_TwiceInOneTransaction_AnswersEachBundleForItsOwnEventsAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBundle_ASecondCallOnTheConnection_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBundle_TwiceInOneTransaction_StartsFromAnEmptyWorkingTableAsync}
 
-The commit-time answer and the deferred reconcile each gather a bundle's rows in a temporary working
-table. The table is created once per database connection and emptied at commit, not created and dropped
-by every call. A consumer can receive hundreds of small bundles a minute, and a table created per call
-cost far more than the bundle's own work: system catalog rows written and deleted on every bundle, cache
-invalidations sent to every other connection to the database, and every statement in the function planned
-again because each call's table was a new one. Each call empties the table before it starts, so a second
-bundle in the same transaction sees only its own rows.
+The commit-time answer runs once for every redelivery bundle a consumer absorbs, and answers to repair
+requests can arrive in bulk long after the requests left, since [repair waits for its
+answer](#repair-waits-for-its-answer). So the receive side, not the request rate, is where repair spends the
+database, and a cost paid per call that bears no relation to the bundle's size multiplies by every bundle.
+
+Since migration 369 the answer gathers the bundle's children into arrays with one statement, and writes
+nothing to the system catalog. Its logic and its results are unchanged; the array form was checked against
+the table form on 1,500 recorded bundles with identical answers.
+
+Before, the answer gathered the children in a temporary working table. Migration 321 kept that table for
+the life of the database connection instead of creating and dropping it per call, but a pooled connection
+is reset each time the pool hands it out (`DISCARD ALL`), and the reset drops every temporary table the
+session made. In practice the table was created again on almost every bundle, and each creation:
+
+- wrote and later deleted about 70 system catalog rows;
+- sent a cache invalidation to every other session of the database;
+- planned every statement that read the table again, because each call's table was a new one;
+- added a new statement-statistics entry for each of those statements, since the table's identity changed
+  every time, which keeps an extension that tracks statements evicting entries for the whole server.
+
+Measured on one call, recording an answer went from 1.443 ms to 0.705 ms, and from about 70 catalog rows
+written to none.
+
+**The rule (design choice): a function the framework calls per message, per bundle or per commit does not
+create a temporary table.** It holds its working set in arrays, a CTE or a single statement. Why: the
+framework does not own the session. Behind a connection pool or a transaction pooler, any session state
+(temporary tables, prepared plans tied to them) can be discarded between two calls, so a temporary table
+"kept for the connection" is a temporary table created per call, with catalog writes and invalidations that
+reach every other session. The test that holds the rule resets the session between two calls, as the pool
+does, and fails if the second call writes a single catalog row.
+
+The deferred reconcile still keeps its working table for the connection. It runs on the maintainer [as a
+batch](#redelivery-reconciles-run-as-a-batch), many bundles per call, so a table created once per batch is
+not a cost paid per bundle. Each call empties the table before it starts, so a second batch in the same
+transaction sees only its own rows.
 
 ---
 
 ## Directed integrity traffic {#directed-integrity-traffic}
-{verified: RepairTopicResolverTests.Unset_OwnCommandInbox_IsPreferredOverASharedFirstDestinationAsync, RepairTopicResolverTests.Unset_NoOwnCommandInbox_KeepsTheFirstDestination_AndSaysOnceThatItIsSharedAsync, RepairTopicResolverTests.Configured_WinsAsync, IntegrityControlDestinationTests.ADirectedMessage_ToTheAddresseesAdvertisedTopic_ReachesOnlyTheAddresseeAsync}
+{verified: RepairTopicResolverTests.Unset_ServiceControlInbox_IsPreferredOverCommandInboxesAndSharedTopicsAsync, RepairTopicResolverTests.Unset_NoControlInbox_ACommandInboxIsNotChosenOverASharedTopicAsync, RepairTopicResolverTests.Unset_NoOwnCommandInbox_KeepsTheFirstDestination_AndSaysOnceThatItIsSharedAsync, RepairTopicResolverTests.Configured_WinsAsync, IntegrityControlDestinationTests.ADirectedMessage_ToTheAddresseesAdvertisedTopic_ReachesOnlyTheAddresseeAsync}
 
 Most integrity traffic is addressed to one service: a manifest request and its answer, a drill-down, a page follow, a
 redelivery request and the bundle that answers it. Each service advertises the address it wants that traffic on in
-its [checkpoint](#ownership-is-exchanged-on-the-checkpoint), and every peer sends to that address.
+its [checkpoint](#ownership-is-exchanged-on-the-checkpoint) and in the reply address of every request it sends, and
+every peer sends to that address.
 
 The address is resolved in this order:
 
 | Order | Address | When |
 |---|---|---|
 | 1 | `StreamIntegrityOptions.RepairTopic` | Configured explicitly |
-| 2 | This service's own command inbox | The [namespace inbox strategy](../fundamentals/dispatcher/routing) provisioned a command inbox for a command namespace this service handles. Only this service subscribes to it |
-| 3 | The first destination this service consumes | No command inbox of its own. Usually a topic other services read too, so the service logs once that its integrity traffic is on a shared topic |
+| 2 | This service's own [control inbox](../fundamentals/dispatcher/routing#service-control-inbox), `inbox.whizbang.service.<service>` | The namespace inbox strategy provisions it for every service. Only this service subscribes to it |
+| 3 | The first shared destination this service consumes | No control inbox (a strategy that does not provision one). A command inbox is never chosen. Usually a topic other services read too, so the service logs once that its integrity traffic is on a shared topic |
 
-```mermaid{caption="A directed integrity request reaches only its addressee's own command inbox; a broadcast backfill still rides the shared topic." tests=["IntegrityControlDestinationTests.ADirectedMessage_ToTheAddresseesAdvertisedTopic_ReachesOnlyTheAddresseeAsync","RepairTopicResolverTests.Broadcast_IsTheSharedTopic_NeverTheOwnCommandInboxAsync"]}
+```mermaid{caption="A directed integrity request reaches only its addressee's own control inbox, even when another service reads the addressee's command inbox; a broadcast backfill still rides the shared topic." tests=["IntegrityControlDestinationTests.ADirectedMessage_ToTheAddresseesAdvertisedTopic_ReachesOnlyTheAddresseeAsync","RepairTopicResolverTests.Broadcast_IsNeverTheServicesOwnControlInboxAsync"]}
 flowchart LR
-  C[Consumer] -->|manifest request, TTL| OI[(Origin's own command inbox)]
+  C[Consumer] -->|manifest request, TTL| OI[(Origin's control inbox)]
   OI --> O[Origin]
-  O -->|answer, TTL| CI[(Consumer's own command inbox)]
+  O -->|answer, TTL| CI[(Consumer's control inbox)]
   CI --> C
-  C -->|broadcast backfill| S[(Shared inbox topic)]
+  C -->|broadcast backfill| S[(Shared broadcast inbox)]
   S --> O
   S --> P[Every other service]
+  X[Service handling one of the origin's commands] -.->|type-filtered: commands only| N[(Origin's command inbox)]
 ```
 
-**Why the own inbox.** The default used to be the first destination a service consumes, which in practice is the
-shared inbox every service reads. Every directed integrity message was then copied to every service, which read it
-only to discard it, and a stopped service's subscription kept growing until the shared topic reached its size cap.
-The own command inbox is subscribed by exactly one service, so a directed message reaches exactly one. A
+**Why the control inbox.** The default used to be the first destination a service consumes, usually the shared
+broadcast inbox every service reads, so every directed integrity message was copied to every service. The next default
+was the service's own command inbox, but a command inbox is read by every service that handles a command of its
+namespace, so directed traffic still reached services it was not addressed to; and command inbox subscriptions are now
+[filtered to command types](../fundamentals/dispatcher/routing#command-inbox-type-filter), which would drop control
+traffic. The control inbox is subscribed by exactly one service, so a directed message reaches exactly one. A
 [subscription-expansion backfill](#phase-s-subscription-expansion-backfill) for a type with no known owner is a
-broadcast by design, so it still goes on the shared topic.
+broadcast by design, so it still goes on the shared broadcast inbox, never on a control inbox.
+{verified: RepairTopicResolverTests.Broadcast_IsNeverTheServicesOwnControlInboxAsync, SubscriptionBackfillWorkerTests.Tick_ABackfillWithNoKnownOwner_BroadcastsItsWindow_OnTheSharedTopicAsync, NamespaceInboxStrategyTests.SecondServiceHandlingACommandInTheAddresseesNamespace_NeverReceivesItsIntegrityTrafficAsync}
+
+**Services on an earlier version.** Senders answer on whatever address a receiver advertised, so a service that still
+advertises a command inbox or the shared broadcast inbox keeps receiving where it did. When it upgrades, its next
+checkpoint advertises its control inbox. Messages a peer sends to the old address before it sees that checkpoint expire
+(see below) and are regenerated on the next cycle.
 
 ### Integrity control messages expire {#integrity-control-message-ttl}
 {verified: IntegrityControlDestinationTests.For_StampsTheIntegrityTimeToLive_ByDefaultAnHourAsync, IntegrityControlDestinationTests.For_StampsTheConfiguredTimeToLiveAsync, IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_TheManifestRequest_ExpiresWithTheIntegrityTimeToLiveAsync, StreamIntegrityOptionsValidatorTests.Validate_AControlMessageTimeToLiveBelowOneMinute_FailsNamingTheKeyAsync}
 
 Every directed integrity message carries a time to live, `Whizbang:StreamIntegrity:ControlMessageTimeToLiveMinutes`
 (default 60). The transports lift it to the broker's own expiry (see the
-[control-plane rail](../fundamentals/dispatcher/routing#control-class)), so a message nobody reads in time is dropped
+[control-plane rail](../fundamentals/dispatcher/routing#service-control-inbox)), so a message nobody reads in time is dropped
 by the broker instead of piling up. Integrity requests are regenerated every cycle, so an expired one costs nothing:
 the next checkpoint, audit or repair pass asks again. The value must be at least 1; a smaller one fails at host start
 naming the key.
@@ -1600,6 +2402,9 @@ slot, are deferred while the service is busy or cooling down, and are forced thr
 | Draining integrity deliveries (received checkpoints, manifest requests, manifest chunks, redelivery requests, bundle reconciles) | The maintainer, in the `IntegrityDeliveryWorker` | Yes |
 | The deep and local audit (`IntegrityAuditWorker`) | The maintainer | Yes |
 | The paced repair drain (`RepairDrainWorker`) | The maintainer | Yes |
+| Asking for subscription backfill windows (`SubscriptionBackfillWorker`) | The maintainer | Yes, see [paced backfill](#paced-backfill) |
+| Re-checking stale ledger rows (`IntegrityLedgerRecheckWorker`) | The maintainer | Yes, see [idle ledger re-check](#idle-ledger-recheck) |
+| Correcting events stored under an origin that does not own their type (`MisattributedOriginCorrectionStep`) | The maintainer, in the maintenance cycle | Yes, see [an origin that does not own the type](#misattributed-origin-correction) |
 | Publishing continuity checkpoints (`IntegrityCheckpointWorker`) | The maintainer | **No**, see [checkpoints are not gated](#checkpoints-are-not-idle-gated) |
 | Storing a redelivery bundle's events | Whichever instance receives the bundle | No: that is ordinary event storage |
 
@@ -1649,7 +2454,9 @@ integrity work. Once admitted, or forced through after `MaxDeferral`, it:
    locked and pushing each leased row out of view for `IntegrityDeliveryLeaseSeconds`, so a drain that overlaps this
    one during a maintainer-duty failover does not take the same rows;
 2. handles them one at a time, each in its own scope and inside the drain context, so the wrapped receptor does the
-   work instead of recording it again;
+   work instead of recording it again; when a lease holds more than one delivery of a type with a batch handler (the
+   redelivery reconcile), those are handled together instead, at the position of the first of them (see
+   [redelivery reconciles run as a batch](#redelivery-reconciles-run-as-a-batch));
 3. deletes each delivery it handled;
 4. stops at `MaxIntegrityDeliveriesPerPass` deliveries, or as soon as a lease comes back short, and leaves the rest for
    the next pass.
@@ -1662,11 +2469,49 @@ registered for, such as one recorded by a different library version. Integrity t
 is dropped at its bound rather than dead-lettered: the next checkpoint, audit or repair cycle asks again. A pass that
 fails as a whole is logged and leaves every delivery queued for the next pass.
 
-Because the drain handles deliveries one at a time on one instance, redelivery reconciles no longer run in parallel.
+Because the drain handles deliveries on one instance, redelivery reconciles no longer run in parallel.
 Bundles for the same streams used to queue on the per-stream advisory locks inside the database, each waiting
 session holding a pooled connection that ordinary message work needed.
 
 The table needs no retention in maintenance: the drain deletes every delivery it handles and every delivery it drops.
+
+### Redelivery reconciles run as a batch {#redelivery-reconciles-run-as-a-batch}
+
+{verified: RedeliveryBatchReconcileSqlTests.Batch_RefoldsEachSealedEpochOnce_NotOncePerBundleAsync, RedeliveryBatchReconcileSqlTests.Batch_DrainingASeededBacklog_FoldsEachEpochOnce_WhereTheSingleBundleCallsFoldEveryBundleAsync, RedeliveryBatchReconcileSqlTests.Batch_FillsEverySequence_AsTheSingleBundleCallsWouldAsync, RedeliveryBatchReconcileSqlTests.Batch_AnEventTwoBundlesName_AdoptsOnce_ForTheFirstBundleAsync, RedeliveryBatchReconcileSqlTests.Batch_AFirstHopNamingAnotherService_IsRefused_AndALaterBundleOfThatServiceAdoptsAsync, RedeliveryBatchReconcileSqlTests.Batch_EventsThatAlreadyCarryTheirOrigin_AdoptNothing_AndRefoldNothingAsync, RedeliveryBatchReconcileSqlTests.Batch_UnderAGenericPlan_FindsStoredEventsByKey_NotAStoreScanAsync, RedeliveryReconcileBatchTests.Batch_WithABatchCapableStore_ReconcilesEveryBundleInOneCall_AndConcludesEachAsync, RedeliveryReconcileBatchTests.Batch_WithoutTheBatchCall_ReconcilesEachBundleOnItsOwnAsync, RedeliveryReconcileBatchTests.Batch_ABundleWhoseConclusionFails_IsLogged_AndTheOthersStillConcludeAsync, IntegrityDeliveryWorkerTests.DeliveriesOfABatchedType_AreHandledTogether_AndEachIsCompletedAsync, IntegrityDeliveryWorkerTests.AFailedBatch_HandlesEachDeliveryOnItsOwn_WithAWarningAsync, IntegrityDeliveryWorkerTests.RecordedReconciles_DrainAsOneBatchCall_AndEachIsCompletedAsync, IntegrityDeliveryDeferralTests.TheRedeliveryReconcile_HasABatchHandler_AndTheFirstBatchRegistrationWinsAsync}
+
+A reconciled bundle refolds the sealed [epochs](#epoch-seals-the-substrate) that hold the events it moved. Reconciled
+one bundle at a time, every bundle paid for its own refold, even when the bundle before it had refolded the same
+epoch. That cost dominates a backlog of small bundles. The usual source of such a backlog is history
+[re-attributed to its owner](#the-local-lane-follows-ownership): re-attribution records an event's origin but not its
+origin sequence, which only the origin knows, so every redelivered bundle from the owner fills one sequence and
+refolds the epoch that sequence falls in. A hundred thousand one-event bundles were a hundred thousand epoch folds,
+most of them of the same few epochs.
+
+The drain hands every redelivery reconcile in a lease to one store call, `wh_reconcile_redelivered_bundles`
+(migration 335, behind `IWorkCoordinator.ReconcileRedeliveredBundlesAsync`):
+
+- each bundle gets what reconciling it alone would give it: the same origin and sequence fills, the same
+  [first-hop check](#pre-stamp-history-first-hop), the same counts per bucket;
+- every bundle's streams are locked once, in the emit chain's order, before anything is read, so a batch and a
+  concurrent append or reconcile queue rather than deadlock;
+- an event that two bundles of the batch name adopts once, for the first bundle that can fill it; the other bundle
+  counts it present and not adopted, as it would have found it had it run second;
+- the fills are one update, keyed by event id, and the digests move lanes in one pass;
+- only the sealed epochs that hold a moved event are refolded, each once for the batch, in the origins' lanes by
+  origin sequence and in the local lane by local sequence. A local refold advances the
+  [origin generation](#origin-generation) once.
+
+Each bundle is then concluded as before: its report, its counters and its [ledger](#unhealable-buckets) marks. A
+failure while concluding one bundle is logged for that bundle and the others still conclude.
+
+The batch is as large as the lease, `IntegrityDeliveryBatchSize` (50 by default). A lease holding a single reconcile
+runs it alone. A store without the batch call (the interface's default, which the Dapper driver keeps) reconciles each
+bundle on its own, as before. If the batch faults, for example because one recorded payload cannot be read, the drain
+handles each delivery of that batch on its own, so attempts, backoff and dropping apply to each one and a bad delivery
+fails alone.
+
+On a seeded backlog of 1,000 one-event bundles spread over five sealed epochs, reconciling one bundle per call ran
+1,000 epoch folds; the batch ran 5.
 
 ### When the store cannot queue {#integrity-inline-fallback}
 
@@ -2112,8 +2957,52 @@ heals and its ledger row is deleted. Each piece of pre-087 history costs one red
 an Information line per bundle names the origin and how many of its events adopted it.
 
 The reconcile is integrity work, so it runs on the maintainer's
-[integrity delivery drain](#integrity-deliveries-are-queued), one bundle at a time, rather than on the inbox worker
-that committed the bundle.
+[integrity delivery drain](#integrity-deliveries-are-queued) rather than on the inbox worker that committed the
+bundle, and the drain reconciles the bundles of a lease [as a batch](#redelivery-reconciles-run-as-a-batch).
+
+#### Origin fills and sequence fills {#pre-stamp-history-fills}
+
+{verified: RedeliveredOriginAdoptionSqlTests.Adopt_AnEventWithTheOriginButNoSequence_TakesOnlyTheSequenceAsync, RedeliveredOriginAdoptionSqlTests.Adopt_IsSafeToRepeat_ASecondBundleAdoptsNothingAsync, RedeliveredOriginAdoptionSqlTests.Adopt_AnEventAlreadyCarryingTheOrigin_IsPresentButUnchangedAsync, RedeliveryBatchReconcileSqlTests.Batch_ReportsOriginsFilled_ApartFromSequencesFilledAsync, RedeliveryBatchReconcileCoordinatorTests.Reconcile_ReturnsEachBundlesBuckets_AtItsOwnPositionAsync, RedeliveryReconcilerTests.Reconcile_SequenceFills_AreReportedApartFromOriginFillsAsync}
+
+A stored event can be missing either column. History received before origins were recorded is missing both.
+History [re-attributed to its owner](#the-local-lane-follows-ownership) already carries its origin, because ownership
+names the author, but not its origin sequence: that sequence is the position in the origin's own store, it reached
+this service only on the wire, and the inbox row that carried it is long gone. Only a redelivery from the origin can
+supply it.
+
+A reconcile therefore fills one of two things. An **origin fill** gives an event with no origin the bundle's origin
+(and its sequence, when the bundle has one); the event's digest moves from the local lane to the origin's, so the
+count of events stored under that origin grows. A **sequence fill** gives an event that already carries the origin
+the sequence it lacked; nothing moves between lanes and the count under that origin does not change, but the event
+now falls inside the origin's sealed epochs, which are refolded. Both are one-time changes: a second redelivery of
+the same event finds both columns filled and adopts nothing, logs nothing and refolds nothing.
+
+The two are reported apart. A bundle that only filled origins logs, once, that it filled the origin identity of
+N of its events; a bundle that filled any sequences logs how many origins and how many sequences alone it filled
+(`RedeliveredBucketPresence.OriginsFilled` carries the split). Both count toward `origins_adopted`. A steady run of
+sequence fills after re-attribution is the drain working through the reconciles recorded for that history, not the
+same events being filled again.
+
+To watch such a catch-up on a receiver, count the events still waiting for their sequence, and the reconciles still
+queued:
+
+```sql{title="Origin sequences still to fill" description="Events that carry an origin but not its sequence, per origin" category="Operations" difficulty="INTERMEDIATE" tags=["Stream Integrity", "Sql", "Diagnostics"]}
+SELECT origin_service_id, count(*) AS waiting_for_sequence
+FROM wh_event_store
+WHERE origin_service_id IS NOT NULL AND origin_commit_sequence IS NULL
+GROUP BY origin_service_id
+ORDER BY 2 DESC;
+```
+
+```sql{title="Integrity deliveries still queued" description="The maintainer's drain backlog by delivery type" category="Operations" difficulty="INTERMEDIATE" tags=["Stream Integrity", "Sql", "Diagnostics"]}
+SELECT delivery_type, count(*) AS queued, min(queued_at) AS oldest
+FROM wh_integrity_deliveries
+GROUP BY delivery_type
+ORDER BY 2 DESC;
+```
+
+The first count falls as the reconciles drain; `whizbang:redelivery-reconcile` in the second is the queue that feeds
+it. Both read with the service's own schema on the search path, or qualified by it.
 
 :::updated
 **Reconciling a bundle reads only the digests it changes ([#2000](https://github.com/whizbang-lib/whizbang/issues/2000)).**
@@ -2131,6 +3020,59 @@ after insert, so the per-event digest updates stay heap-only and pay nothing for
 the streams the bundle moved when it subtracts from and deletes emptied local buckets, so the delete matches the full
 key and touches only the buckets the bundle changed.
 :::
+
+#### Events held without an origin sequence {#events-held-without-an-origin-sequence}
+
+{verified: HeldWithoutOriginSequenceTests.PlacedFoldEqualToTheOrigin_MatchesAsync, HeldWithoutOriginSequenceTests.EventsHeldWithoutASequence_ThatCompleteTheWindow_MatchAsync, HeldWithoutOriginSequenceTests.OnlySequencelessEventsHeld_ThatAreTheWindow_MatchAsync, HeldWithoutOriginSequenceTests.MoreMissingThanTheSequencelessEventsCanCover_IsADeficit_WithTheHeldDigestAsync, HeldWithoutOriginSequenceTests.CountsThatFitButDigestsThatDiffer_AreUndecidedAsync, HeldWithoutOriginSequenceTests.NothingHeldWithoutASequence_ShortPlacedFold_IsADeficitAsBeforeAsync, HeldWithoutOriginSequenceTests.NothingHeldWithoutASequence_EqualOrLargerPlacedFold_DiffersAsBeforeAsync, IntegrityManifestReceptorTests.WindowedStream_EventsHeldWithoutAnOriginSequence_AreNoDeficit_AndTheFalseRowClearsAsync, IntegrityManifestReceptorTests.WindowedStream_AMissingEventBeyondTheHeldOnes_IsStillADeficit_WithTheHeldDigestAsync, IntegrityManifestReceptorTests.WindowedStream_UndecidedBucket_IsNeitherReportedNorRepaired_AndItsRowIsDroppedAsync, IntegrityManifestReceptorTests.WindowedStream_UndecidedBuckets_AreCountedOnTheUnplacedCounterAsync, IntegrityManifestReceptorTests.WindowedStream_MatchingBuckets_NeverAskForHeldEventsAsync, IntegrityManifestReceptorTests.UnwindowedStream_NeverAsksForHeldEventsAsync, IntegrityManifestReceptorTests.WindowedType_HeldEventsCompletingTheWindow_AdvanceTheSealAsync, IntegrityManifestReceptorTests.WindowedType_ADeficitTheHeldEventsMayFill_IsNotBulkBackfilledAsync, IntegrityManifestReceptorTests.WindowedType_ADeficitBeyondTheHeldEvents_IsBulkBackfilledByWhatIsMissingAsync, IntegrityCheckpointReceptorTests.AShortWindow_TheEventsHeldWithoutASequenceCanFill_IsNoGapAsync, IntegrityCheckpointReceptorTests.AFullWindow_NeverAsksForTheEventsHeldWithoutASequenceAsync, IntegrityCheckpointReceptorTests.AWindowShortByMoreThanTheEventsHeldWithoutASequence_IsStillAGapAsync, IntegrityCheckpointReceptorTests.APendingGap_TheEventsHeldWithoutASequenceFillOnTheRecount_HealsAndForgetsTheLaneAsync, UnsequencedReceivedDigestSqlTests.ByStream_FoldsOnlyTheOriginsSequencelessEventsOfTheNamedStreams_AsTheDigestFoldsDoAsync, UnsequencedReceivedDigestSqlTests.ByType_FoldsPerTenantAndType_AcrossStreamsAsync, UnsequencedReceivedDigestSqlTests.ByStream_UnderAGenericPlan_ReadsTheNamedStreamsRows_NotTheOriginsLaneAsync, UnsequencedReceivedDigestSqlTests.ByType_UnderAGenericPlan_ReadsTheOriginsSequencelessRows_NotItsSequencedLaneAsync}
+
+Until a redelivery fills it, an event that carries its origin but not the origin's commit sequence (the re-attributed
+history above) sits in no window. Windowed comparisons count a consumer's events by that sequence: the checkpoint
+counts the window's range, and the windowed stream and type folds take the window's slice of the origin's lane. So
+the consumer held every event of the window, and its bucket still read short on every audit. Before #2102 that was
+recorded as a deficit, and with repair on it asked the origin for events the consumer already had.
+
+A windowed comparison now also folds the events the consumer holds from that origin **without** a sequence
+(`IWorkCoordinator.ComputeUnsequencedReceivedDigestsAsync`, under the same predicates as every digest fold) and places
+them by identity with `IntegrityDigestMath.PlaceHeld`:
+
+| Verdict | When | What happens |
+| --- | --- | --- |
+| `Matches` | The placed fold equals the origin's, or the placed fold XOR the sequence-less fold does: the sequence-less events are the rest of the window | Healed. A false deficit row left by an earlier comparison is cleared. |
+| `Deficit` | The origin counts more events than the consumer holds placed and sequence-less together | A deficit, recorded and repaired. Its local digest includes the sequence-less events, so the ledger records what the consumer actually holds. |
+| `Undecided` | Sequence-less events are held, the counts fit, and the folds still differ | No ledger row and no repair; counted on `unplaced_buckets` and logged at Information per comparison. |
+| `Differs` | Nothing is held without a sequence, and the folds differ with no shortfall | The [taxonomy](#the-divergence-taxonomy) applies as before: identity mismatch or local surplus. |
+
+Where it applies:
+
+- **Windowed stream comparisons** fold the sequence-less events of the streams that disagree, one row per stream. The
+  read is paid only when a bucket disagrees, and it is bounded by the chunk's streams.
+- **Windowed type comparisons** fold the sequence-less events of the disagreeing types, one row per (tenant, type),
+  read through the origin lane index as that origin's sequence-less range, never its sequenced lane. A bulk backfill
+  the type deficit triggers is sized by what is missing beyond the held events, and a deficit the held events may
+  fill triggers none.
+- **Checkpoint counts**, and the recount that confirms a pending gap, add the held sequence-less events of a type to
+  the window's count, read only when a bucket reads short.
+- **Full-history comparisons** read nothing more: their folds already include every held event.
+
+Why each choice:
+
+- **Undecided is not a deficit.** When the counts fit but the folds differ, the window cannot tell whether a
+  sequence-less event is the one the window lacks or belongs to another window of the same stream. Recording a deficit
+  would repeat the false alarm this fixes, and recording a match would hide a real loss. The full-history comparison,
+  whose folds include every held event with no window, decides the stream, so nothing is left unverified; the
+  `unplaced_buckets` counter shows how much is waiting on it.
+- **A deficit only when the count proves it.** If the origin counts more events than the consumer holds in any form,
+  at least that many are missing whatever the sequence-less events turn out to be, so the deficit is certain.
+- **The checkpoint becomes less sensitive, by the held count.** A checkpoint compares counts, not identities, so it
+  cannot place an event. A window short by N events of a type is no gap when the consumer holds at least N events of
+  that type from the origin without a sequence. A real loss of up to that many events in that window is therefore
+  missed by the checkpoint. It is still caught by the digest audit, which compares identities, and the margin shrinks
+  to zero as redeliveries fill the sequences. The alternative, a gap on every window while that history waits for its
+  sequences, is the false alarm this removes.
+- **Paid only on disagreement.** A bucket that matches, or a checkpoint bucket that is not short, never reads the
+  sequence-less events, so a healthy comparison costs what it did.
+
+Existing false deficit rows clear on the next comparison of their bucket.
 
 #### Events this service authored {#pre-stamp-history-first-hop}
 
@@ -2303,9 +3245,11 @@ The map is used for three things:
 
 1. **Re-attribution** of the store's own pre-origin history to its author (see [re-attribution](#re-attribution)).
 2. **Directing repair and backfill at the owner.** A consumer neither verifies a checkpoint bucket nor
-   compares a manifest digest against an origin when another service owns the type: an older origin still
-   advertising a type it received is not authoritative for it, and asking it for repair would only ship
-   events every receiver refuses. A pending gap recorded before the owner was known is dropped once it is.
+   compares a manifest digest against an origin that does not own the type (another service owns it, or this
+   service does): an older origin still advertising a type it received is not authoritative for it, and asking
+   it for repair would only ship events every receiver refuses. A pending gap recorded before the owner was known
+   is dropped once it is. Every one of these paths asks the same rule,
+   [`IsNotAuthoritative`](#one-ownership-judgment).
 3. **Answering redelivery only for owned domains**, on the answering side, from the service's own
    declaration.
 
@@ -2327,7 +3271,7 @@ the beat is never dropped. With no owned domains registered, the topic set is un
 
 ### Redelivery ships only what the origin wrote {#redelivery-ships-only-what-the-origin-wrote}
 
-{verified: SelectRedeliveryEventsTests.Select_AuthoredBy_ShipsOnlyEventsTheAnsweringServiceWroteAsync, SelectRedeliveryEventsTests.Select_WithoutAuthoredBy_KeepsTheEarlierSelectionAsync, RedeliveryRequestReceptorTests.Receptor_AsksTheSelectionForEventsThisServiceAuthoredAsync, RedeliveryRequestReceptorTests.Receptor_ARequestThisServiceMadeItself_IsIgnoredAsync, RedeliveryRequestReceptorTests.Receptor_ShipsOnlyEventsOfOwnedTypes_AndPagesPastTheRestAsync, SubscriptionExpansionTargetingTests.Backfill_TypesWithAKnownOwner_AreAskedOfThatOwnerOnlyAsync, SubscriptionExpansionTargetingTests.Backfill_TypesWithNoUsableOwner_FallBackToOneBroadcastAsync, SubscriptionExpansionTargetingTests.Backfill_MixedOwnership_DirectsTheOwnedTypesAndBroadcastsTheRestAsync, SubscriptionExpansionTargetingTests.Backfill_AnOwnerThatIsThisService_IsNotAskedAsync}
+{verified: SelectRedeliveryEventsTests.Select_AuthoredBy_ShipsOnlyEventsTheAnsweringServiceWroteAsync, SelectRedeliveryEventsTests.Select_WithoutAuthoredBy_KeepsTheEarlierSelectionAsync, RedeliveryRequestReceptorTests.Receptor_AsksTheSelectionForEventsThisServiceAuthoredAsync, RedeliveryRequestReceptorTests.Receptor_ARequestThisServiceMadeItself_IsIgnoredAsync, RedeliveryRequestReceptorTests.Receptor_ShipsOnlyEventsOfOwnedTypes_AndPagesPastTheRestAsync, SubscriptionExpansionTargetingTests.Backfill_TypesWithAKnownOwner_AreQueuedForThatOwner_AndNothingIsSentAtOnceAsync, SubscriptionExpansionTargetingTests.Backfill_TypesWithNoUsableOwner_AreQueuedAsBroadcastsAsync, SubscriptionExpansionTargetingTests.Backfill_MixedOwnership_QueuesTheOwnedTypeForItsOwnerAndTheRestAsBroadcastAsync, SubscriptionExpansionTargetingTests.Backfill_AnOwnerThatIsThisService_IsNotAskedAsync}
 
 A redelivery bundle names the answering service as its origin, so it may carry only events that service
 wrote. Three rules make that hold:
@@ -2346,10 +3290,10 @@ wrote. Three rules make that hold:
 
 **The backfill asks the owner.** When the consumed-type set grows, the backfill no longer broadcasts one
 request every holder answers. Each new type whose owner is known from the domain claims, with a request
-address, is asked of that owner alone: one directed state-only request per owner, on the owner's request
-topic. Only the types with no usable owner (none known, an owner that announced no request address, or this
-service itself) fall back to the single broadcast, which the rules above keep cheap: in practice only the
-author answers.
+address, is queued for that owner alone, and each of its [paced windows](#paced-backfill) is a directed
+state-only request on the owner's request topic. Only the types with no usable owner (none known, an owner that
+announced no request address, or this service itself) are queued for a broadcast, which the rules above keep
+cheap: in practice only the author answers.
 
 ### Re-attribution {#re-attribution}
 
@@ -2397,6 +3341,263 @@ without touching any digest, because it folds into none.
 All bound from `Whizbang:StreamIntegrity`; a bound below 1 fails at host start naming the key
 {verified: StreamIntegrityOptionsValidatorTests.Validate_AReattributionBoundBelowOne_FailsNamingTheKeyAsync}.
 
+### An origin that does not own the type {#an-origin-that-does-not-own-the-type}
+
+Re-attribution fixes events stored with **no** origin. This section is about events stored under the **wrong** one.
+
+**The failure mode.** A redelivery bundle names the service that answered it as every child's origin. Before
+[redelivery shipped only what the origin wrote](#redelivery-ships-only-what-the-origin-wrote), a service could answer
+a redelivery with events it had only received, and bundles like that can still sit in a consumer's inbox after the
+answering side upgrades. The consumer stored those events with the relay recorded as their origin. From then on the
+owner's lane on that consumer counted short and the relay's counted long. Repair could never heal the owner's bucket:
+the owner's redelivery carries events the consumer already holds, so each one is skipped as a duplicate, and the
+bucket stays exactly as divergent as before. The relay's surplus is never repaired either, because surplus is
+alarm-only.
+
+```mermaid {caption="A relay answered with events the owner wrote: before, the consumer files them under the relay; after, they are stored under the owner with no origin sequence, and history already misfiled is moved by the correction step" tests=["InboxDispatchWorkerCompositeCommitTests.Redelivery_AChildOfATypeAnotherServiceOwns_IsStoredUnderTheOwner_NotTheAnsweringServiceAsync","MisattributedOriginCorrectionSqlTests.Correct_ARowUnderAnOriginThatDoesNotOwnItsType_TakesTheOwner_AndItsDigestMovesLanesAsync","MisattributedOriginCorrectionSqlTests.Correct_RefoldsTheWrongOriginsSealedEpoch_AndReArmsBothLanesAsync"]}
+graph LR
+    subgraph Before["Before: the bundle's origin is trusted"]
+        O1["Owner<br/>wrote Orders.OrderPlaced"]
+        R1["Relay<br/>only received it"]
+        C1["Consumer"]
+        L1["Owner's lane: short<br/>Relay's lane: long<br/>repair skipped as duplicate"]
+        O1 -->|"event"| R1
+        R1 -->|"bundle names Relay"| C1
+        C1 --> L1
+    end
+    subgraph After["After: ownership decides"]
+        O2["Owner<br/>owns the Orders domain"]
+        R2["Relay"]
+        C2["Consumer<br/>ownership map from checkpoints"]
+        L2["Stored under Owner,<br/>no origin sequence;<br/>Owner's next redelivery fills it"]
+        O2 -->|"checkpoint announces Orders"| C2
+        R2 -->|"bundle names Relay"| C2
+        C2 --> L2
+    end
+    class O1,O2 layer-core
+    class R1,R2 layer-command
+    class C1,C2 layer-read
+    class L1 layer-event
+    class L2 layer-core
+```
+
+#### The receive rule {#misattributed-origin-receive-rule}
+{verified: InboxDispatchWorkerCompositeCommitTests.Redelivery_AChildOfATypeAnotherServiceOwns_IsStoredUnderTheOwner_NotTheAnsweringServiceAsync, InboxDispatchWorkerCompositeCommitTests.Redelivery_WithoutTheIntegrityMeter_StillStoresTheChildUnderTheOwnerAsync, InboxDispatchWorkerCompositeCommitTests.Redelivery_AChildOfATypeThisServiceOwns_KeepsTheBundlesOriginAsync, InboxDispatchWorkerCompositeCommitTests.Redelivery_WhenTheOwnershipMapCannotBeRead_KeepsTheBundlesOrigin_AndIsReconciledAsync, CompositeInboxFanoutIdentityAndSubscriptionTests.TryExpand_RedeliveryBundle_AChildTheOwnerLookupNames_IsStoredUnderTheOwnerWithNoSequenceAsync, CompositeInboxFanoutIdentityAndSubscriptionTests.TryExpand_RedeliveryBundle_WithoutAnOwnerLookup_KeepsTheBundlesOriginAsync, MisattributedOriginTests.TrueOwner_ATypeAnotherServiceOwns_IsThatOwnerAsync, MisattributedOriginTests.TrueOwner_ATypeTheNamedOriginOwns_StandsAsync, MisattributedOriginTests.TrueOwner_ATypeWithNoKnownOwner_StandsAsync, MisattributedOriginTests.TrueOwner_AContestedDomain_StandsAsync, MisattributedOriginTests.TrueOwner_ATypeThisServiceOwns_StandsAsync, MisattributedOriginTests.ForBundle_WithNoKnownOwner_IsNullAsync, MisattributedOriginTests.ForBundle_AnswersEachChildTypeAgainstTheBundlesOriginAsync}
+
+When a redelivery bundle is expanded, each child's type is checked against this consumer's ownership map (the
+[domain claims](#ownership-is-exchanged-on-the-checkpoint) other services announce on their checkpoints), through
+`MisattributedOrigin`. A child whose type another known service owns is stored **under that owner**, with **no origin
+sequence**: the carried sequence is a position in the relay's lane, not the owner's, so storing it would place the
+event wrongly in the owner's lane. The event then counts as
+[held without an origin sequence](#events-held-without-an-origin-sequence), and the owner's next redelivery fills the
+sequence. Such a child is also left out of the reconcile run under the bundle's origin, so a copy this consumer already
+holds never adopts the relay as its origin.
+
+The child keeps the bundle's origin when:
+
+- **its type has no known owner**: there is nothing better to record, and the correction below moves it once an owner
+  announces the domain;
+- **its domain is contested** by two services: the map uses neither claimant, as everywhere else;
+- **this service owns the type**: its own events are not this check's to change;
+- or the bundle's origin is the owner.
+
+The map is read once per bundle, which is repair traffic and not the ordinary receive path. If it cannot be read, every
+child keeps the bundle's origin, as before, and a Warning says the correction will pick it up later; the bundle is
+still stored and reconciled. Each bundle with re-attributed children is logged at Warning with the count and the
+bundle's origin, and counted on `redelivered_children_reattributed`.
+
+**Why ownership and not the bundle.** The bundle only says who answered. Ownership is what the
+[local lane](#the-local-lane-follows-ownership), checkpoints, manifests and repair targeting already follow, and it is
+announced by the owner itself, so one rule decides who vouches for a type everywhere. The same helper answers for the
+receive path and the correction, so they can never disagree.
+
+#### Correcting history already stored {#misattributed-origin-correction}
+{verified: MisattributedOriginCorrectionSqlTests.Window_IsTheNextBatchByCommitSequence_WithTheTypesRecordedUnderAnOriginAsync, MisattributedOriginCorrectionSqlTests.Window_WithAChangedFingerprint_RewalksFromTheStartAsync, MisattributedOriginCorrectionSqlTests.Correct_ARowUnderAnOriginThatDoesNotOwnItsType_TakesTheOwner_AndItsDigestMovesLanesAsync, MisattributedOriginCorrectionSqlTests.Correct_LeavesTheOwnersRows_AndTypesNotListedAsync, MisattributedOriginCorrectionSqlTests.Correct_AnOwnerThatIsThisService_IsLeftAsync, MisattributedOriginCorrectionSqlTests.Correct_RefoldsTheWrongOriginsSealedEpoch_AndReArmsBothLanesAsync, MisattributedOriginCorrectionSqlTests.Correct_FromAStaleCursor_ChangesNothingAndReportsNotAdvancedAsync, MisattributedOriginCorrectionSqlTests.WindowAndCorrection_UnderAGenericPlan_RangeScanTheCommitSequenceIndexAsync, MisattributedOriginCorrectionSqlTests.Step_CorrectsInBoundedBatches_AndResumesFromItsCursorAsync, MisattributedOriginCorrectionSqlTests.Step_ATypeThisServiceOwns_IsLeft_AndTheWalkStillAdvancesAsync, MisattributedOriginCorrectionSqlTests.Step_WithNoKnownOwner_OrSwitchedOff_TouchesNothingAsync, MisattributedOriginCorrectionSqlTests.ThePostgresDriver_RegistersTheStepAsync, DapperMisattributedOriginCorrectionTests.AnEventUnderAnOriginThatDoesNotOwnItsType_IsReattributedByTheRegisteredStepAsync}
+
+The receive rule stops new misfiling. Events stored under the wrong origin before it are moved by the
+`misattributed-origin-correction` [maintenance step](../fundamentals/workers/maintenance-steps#misattributed-origin-correction)
+(`MisattributedOriginCorrectionStep`, registered by both Postgres drivers; migration 346).
+
+- **Idle-gated and on the maintainer.** It runs in the maintenance cycle, so it runs only on a settled service, on the
+  maintainer turn, and at most `MaxReattributionBatchesPerPass` batches per cycle.
+- **Bounded batches.** Each batch is the next `ReattributionBatchSize` rows after a durable cursor by commit sequence
+  (`wh_integrity_origin_correction_window`, a range scan on `idx_event_store_commit_sequence`), with the distinct types
+  among them recorded under an origin. The step asks the ownership map for each type's owner and passes the ones with
+  a different owner to `wh_integrity_correct_origins`. Each batch is its own transaction; the window holds the cursor
+  row for it, so a second instance waits instead of repeating the batch, and the cursor moves by compare-and-swap.
+- **What a corrected row gets.** It takes its owner as origin with its origin sequence cleared. Its digest leaves the
+  wrong origin's bucket for the owner's through [the shared fold](#one-digest-fold). The wrong origin's sealed epochs
+  over its old sequences are refolded, each once; the owner's epochs do not change, because the row holds no sequence
+  there yet. The ledger buckets it touched in both lanes, per stream and the type lane, are re-armed: their unhealable
+  and exhausted marks, pending answer and attempts are cleared, so the owner's bucket that could never heal is asked
+  for again.
+- **Never deletes.** The event, its content and its place in this store are untouched; only the origin columns and the
+  digests that follow from them change.
+- **A changed ownership map rewalks.** The walk records the ownership fingerprint it ran under, and a new one restarts
+  it from the beginning, so history misfiled under a type whose owner was learned later is still reached.
+- **Visible.** Each correction is logged at Warning per type, wrong origin, owner and commit-sequence range, and counted
+  on `misattributed_origins_corrected`.
+
+It shares re-attribution's settings, because it is the same kind of walk over the same store:
+`ReattributionEnabled` (off turns off both), `ReattributionBatchSize` and `MaxReattributionBatchesPerPass`. A store
+where no service has announced an owned domain costs one read of the claims table per cycle.
+
+:::warning
+**A consumer that has never received checkpoints learns no owners.** The ownership map is built only from checkpoints,
+so a consumer that has received none (checkpoints off at the origins, or a consumer not subscribed to any topic a
+checkpoint rides) neither applies the receive rule nor corrects anything. Nothing is wrong there until it does: the
+first checkpoint from each owner adds its domains, the fingerprint changes, and the correction walks the store again.
+:::
+
+#### Ledger rows filed under an origin that does not own the type {#non-owner-ledger-rows}
+{verified: IntegrityLedgerForgetNonOwnerSqlTests.Forget_RemovesEveryRowOfAJudgedPair_AndKeepsTheRestAsync, IntegrityLedgerForgetNonOwnerSqlTests.Forget_WhenNothingIsJudged_RemovesNothingAsync, IntegrityLedgerForgetNonOwnerSqlTests.Forget_AnEmptyPairList_RemovesNothingAsync, IntegrityLedgerForgetNonOwnerSqlTests.Forget_ANullJudge_ThrowsAsync, IntegrityLedgerForgetNonOwnerSqlTests.Forget_ACanceledCall_IsCanceled_NotSwallowedAsync, IntegrityLedgerForgetNonOwnerSqlTests.Forget_ThroughAThroughputGatedCoordinator_ForgetsAsync, IntegrityLedgerForgetNonOwnerSqlTests.Forget_WithTheFunctionsUnavailable_ForgetsNothing_AndDoesNotThrowAsync, IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_LedgerRowsOfAnOriginThatDoesNotOwnTheType_AreForgottenAsync, IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_WithNoNonOwnerRows_LogsNothingAboutThemAsync, IntegrityDomainOwnershipTests.IsNotAuthoritative_ATypeAnotherServiceOwns_IsNotTheAdvertisingOriginsAsync, IntegrityDomainOwnershipTests.IsNotAuthoritative_ATypeThisServiceOwns_IsNoOtherOriginsAsync, IntegrityDomainOwnershipTests.IsNotAuthoritative_AnOriginTheMapNamesAsOwner_StandsEvenInADomainThisServiceAlsoOwnsAsync, IntegrityDomainOwnershipTests.IsNotAuthoritative_WithoutTheLocalDomains_ThrowsAsync, IntegrityManifestReceptorTests.ManifestReceptor_DigestsOfATypeThisServiceOwns_AreNotComparedAsync}
+
+The receive rule and the correction fix **events**. A second leftover is in the **repair ledger**. Before comparisons
+ignored a non-owner's digests (see [ownership is exchanged on the checkpoint](#ownership-is-exchanged-on-the-checkpoint)),
+a service that held events it had only received still reported them as its own, and consumers recorded deficit rows
+under that service: for types another service owns, and for types the consumer owns itself. The consumer holds exactly
+the events the owner reports; only the row is wrong.
+
+**Why those rows never cleared.** Nothing compares them again:
+
+- An origin's answer now leaves out every type it does not own, so a re-check or a repair answer from the non-owner
+  carries nothing for the row's type.
+- A comparison only touches the buckets an answer names, and the owner's answers land under the owner's id, not the
+  non-owner's.
+- The [idle re-check](#idle-ledger-recheck) asks only origins that still send checkpoints, and gets the same answer.
+
+With automatic repair on, the repair stores nothing new, so the row is [marked unhealable](#unhealable-buckets) and
+holds `whizbang.stream_integrity.unhealed_buckets` up for good.
+
+**Why a re-arm would not help.** Re-arming clears a row's marks and attempts so it is claimed again, which is right
+for a bucket whose events were moved (the correction above does that). For these rows nothing was misfiled: re-armed,
+the row is claimed, the non-owner is asked, its answer leaves the type out, and the row is marked unhealable again.
+The row itself is the error, so it is forgotten.
+
+**The rule: `IntegrityDomainOwnership.IsNotAuthoritative`.** An origin's count of a type does not stand when:
+
+- the ownership map names **a different owner** for the type; or
+- the map names **no owner** and the type is in one of **this service's own owned domains**
+  (`RoutingOptions.OwnedDomains`).
+
+The second case closes a self-announcement gap. The map is built from the checkpoints **other** services send; a
+service never announces its own domains to itself, so for its own types the map is silent, and without the local
+check any older origin reporting them would stand. An origin the map does name as owner **stands even in a domain this
+service also owns**: two services claiming one domain is a contest the checkpoint reports
+(`ownership_conflicts`), not a verdict either way.
+
+**The sweep.** Each audit cycle, after [rows outside the surface are forgotten](#rows-outside-the-surface-are-forgotten),
+the integrity audit:
+
+1. lists the distinct (origin, type) pairs the ledger holds, each with its origin's last report
+   (`wh_integrity_ledger_origin_types`, migration 370, given the last report by 372);
+2. judges each pair once with `IsNotAuthoritative`, using the domain claims and this service's own owned domains,
+   and ages out the pairs of [a type no service owns](#a-type-no-service-owns) whose origin has fallen silent;
+3. forgets every row of the judged pairs, in every tenant and stream (`wh_integrity_forget_origin_types`), and logs
+   the count at Information.
+
+Ownership is decided in application code, so the SQL never restates the nested-domain rule and the sweep can never
+disagree with the comparison. The second statement is skipped when nothing is judged. The sweep is best-effort: if it
+cannot reach the ledger it logs a Warning, forgets nothing, and the next cycle tries again. A store with no ledger
+forgets nothing.
+
+**The comparisons follow the same rule.** A manifest's digests that are not authoritative under `IsNotAuthoritative`
+are not compared, and neither are the checkpoint buckets the gap tracker would count, so an origin that has not
+upgraded cannot re-create a row the sweep forgot. See [one ownership judgment](#one-ownership-judgment).
+
+**After upgrading.** Migration 370 adds the two functions and changes no data. The rows already on a ledger are
+forgotten on the first audit cycle after the upgrade, so no one-time data step is needed, and nothing is configured.
+Expect `whizbang.stream_integrity.unhealed_buckets` (and possibly `oldest_unhealed_age_seconds`) to drop by those rows
+on that cycle; the drop is the false backlog leaving, not a heal.
+
+##### Design choices {#non-owner-ledger-rows-design-choices}
+
+Each choice below is locked by the test beside it, which fails if the behavior flips.
+
+| Choice | Why | Verified |
+|---|---|---|
+| A non-owner's ledger rows are forgotten, not re-armed | Its answers leave the type out, so a re-armed row is asked again, answered with nothing and marked unhealable again | {verified: IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_LedgerRowsOfAnOriginThatDoesNotOwnTheType_AreForgottenAsync, IntegrityLedgerForgetNonOwnerSqlTests.Forget_RemovesEveryRowOfAJudgedPair_AndKeepsTheRestAsync} |
+| A type in this service's own owned domains is no other origin's to report | A service never announces its own domains to itself, so the map alone is silent for its own types | {verified: IntegrityDomainOwnershipTests.IsNotAuthoritative_ATypeThisServiceOwns_IsNoOtherOriginsAsync, IntegrityManifestReceptorTests.ManifestReceptor_DigestsOfATypeThisServiceOwns_AreNotComparedAsync} |
+| An origin the map names as owner stands, even in a domain this service also owns | A double claim is a contest to fix in configuration, not a verdict against either claimant | {verified: IntegrityDomainOwnershipTests.IsNotAuthoritative_AnOriginTheMapNamesAsOwner_StandsEvenInADomainThisServiceAlsoOwnsAsync} |
+| Ownership is judged in application code; the SQL only lists pairs and deletes the judged ones | One helper decides for the sweep and the comparison, so they cannot disagree and the SQL does not restate the nested-domain rule | {verified: IntegrityLedgerForgetNonOwnerSqlTests.Forget_WhenNothingIsJudged_RemovesNothingAsync, IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_LedgerRowsOfAnOriginThatDoesNotOwnTheType_AreForgottenAsync} |
+| A sweep every audit cycle, no one-time data step | Existing rows go on the first cycle after upgrade, and any row an older origin leaves later goes on the next | {verified: IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_LedgerRowsOfAnOriginThatDoesNotOwnTheType_AreForgottenAsync} |
+| A failed sweep forgets nothing and does not throw | The audit cycle keeps running; the next cycle sweeps | {verified: IntegrityLedgerForgetNonOwnerSqlTests.Forget_WithTheFunctionsUnavailable_ForgetsNothing_AndDoesNotThrowAsync, IntegrityLedgerForgetNonOwnerSqlTests.Forget_ACanceledCall_IsCanceled_NotSwallowedAsync} |
+
+#### A type no service owns {#a-type-no-service-owns}
+{verified: IntegrityDomainOwnershipTests.HasNoOwner_ATypeNoClaimAndNoOwnDomainContains_HasNoOwnerAsync, IntegrityDomainOwnershipTests.HasNoOwner_WithoutTheLocalDomains_ThrowsAsync, IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_UnownedTypeRowsOfAnOriginSilentPastTheThreshold_AreForgottenAsync, IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_UnownedTypeRowsOfThisServicesOwnDomain_AreForgottenWhateverTheOriginsSilenceAsync, IntegrityLedgerUnownedAgeOutSqlTests.Read_ReportsEachPairsOriginLastReport_TheLaterOfItsCheckpointAndItsRowsAsync, IntegrityLedgerUnownedAgeOutSqlTests.Forget_ThePairsTheJudgeAgesOut_GoesWithTheOthersInOneSweepAsync, StreamIntegrityOptionsValidatorTests.UnownedTypeOriginSilence_DefaultsToSevenDaysAsync, StreamIntegrityOptionsValidatorTests.Validate_AnUnownedTypeSilenceBelowOneDay_FailsNamingTheKeyAsync}
+
+The sweep above forgets rows whose origin is **not** the owner. A third case is a type with **no** owner: no claim in
+the ownership map contains it (or the most specific one is contested), and it is outside this service's own owned
+domains (`IntegrityDomainOwnership.HasNoOwner`). Such a type is compared against the origin that reports it, taking
+that origin at its word, so while the origin keeps reporting, its next comparison heals or refreshes the row.
+
+**Why those rows could stay for good.** Once that origin stops reporting (it was retired, renamed, or moved its events
+to another service), nothing compares the row again, and there is no owner to repair it. The row holds
+`whizbang.stream_integrity.unhealed_buckets` up exactly like a non-owner's row.
+
+**The rule.** In the same sweep, the audit also forgets every row of an (origin, type) pair when the type has no owner
+**and** the origin's last report is older than `Whizbang:StreamIntegrity:UnownedTypeOriginSilenceDays` (default
+**7**). The origin's last report is the later of:
+
+- its last checkpoint (`wh_integrity_known_origins.last_checkpoint_at`), the origin's liveness clock; and
+- the pair's own last report on the ledger (`last_reported_at`, or `first_seen_at` for a row never reported again),
+  which covers an origin whose last checkpoint was never recorded.
+
+`last_touched` is deliberately not used: the drain's claims and pending marks move it while the origin says nothing.
+
+Migration 372 re-creates `wh_integrity_ledger_origin_types` with this third column, so the audit still reads the
+ledger's pairs once and judges each once, in application code, and hands every judged pair, non-owner or silent, to
+the same `wh_integrity_forget_origin_types` call. The Information line the sweep logs names the silence threshold.
+
+**Why seven days.** A week outlasts a weekend outage or a paused deployment, so an origin that is only down for a while
+keeps its rows. An origin that comes back after the rows are forgotten loses nothing: its next audit finds the
+divergence again and records it afresh. The threshold must be at least one day; host start fails otherwise, naming the
+key, because below a day an origin between two checkpoints could read as silent.
+
+Rows filed under an origin that does not own the type are forgotten at once, whatever the threshold says. A type in
+this service's own owned domains is never "no one's": a row for it under another origin goes at once, as above.
+
+##### Design choices {#a-type-no-service-owns-design-choices}
+
+| Choice | Why | Verified |
+|---|---|---|
+| A type no service owns is forgotten only after its origin is silent | While the origin reports, its comparison heals or refreshes the row, and no owner exists to judge it otherwise | {verified: IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_UnownedTypeRowsOfAnOriginSilentPastTheThreshold_AreForgottenAsync} |
+| "No owner" means no claim **and** outside this service's own domains | A service's own types are judged by `IsNotAuthoritative` and go at once, whatever the silence | {verified: IntegrityDomainOwnershipTests.HasNoOwner_ATypeNoClaimAndNoOwnDomainContains_HasNoOwnerAsync, IntegrityAuditWorkerBranchCoverageTests.RunAuditOnce_UnownedTypeRowsOfThisServicesOwnDomain_AreForgottenWhateverTheOriginsSilenceAsync} |
+| Silence is the later of the last checkpoint and the row's last report | The checkpoint is the liveness clock; the row's report covers an origin whose checkpoint was never kept; `last_touched` moves without the origin | {verified: IntegrityLedgerUnownedAgeOutSqlTests.Read_ReportsEachPairsOriginLastReport_TheLaterOfItsCheckpointAndItsRowsAsync} |
+| Folded into the non-owner sweep, one read and one delete | Ownership stays judged in one place in application code, and the ledger is read once per cycle | {verified: IntegrityLedgerUnownedAgeOutSqlTests.Forget_ThePairsTheJudgeAgesOut_GoesWithTheOthersInOneSweepAsync} |
+| Default 7 days, at least 1 | Outlasts a weekend outage; below a day an origin between checkpoints would read as silent | {verified: StreamIntegrityOptionsValidatorTests.UnownedTypeOriginSilence_DefaultsToSevenDaysAsync, StreamIntegrityOptionsValidatorTests.Validate_AnUnownedTypeSilenceBelowOneDay_FailsNamingTheKeyAsync} |
+
+#### One ownership judgment {#one-ownership-judgment}
+{verified: IntegrityOwnershipRuleSourceGuardTests.ComparisonPaths_JudgeOwnershipOnlyThroughTheSharedRuleAsync, IntegrityOwnershipRuleSourceGuardTests.TheMapOnlyCheck_IsUsedNowhereAsync, IntegrityOwnershipRuleSourceGuardTests.EverySiteThatBuildsTheMap_IsClassifiedAsync, IntegrityOwnershipRuleSourceGuardTests.OnlyAttributionSites_ReadTheOwnerDirectlyAsync, IntegrityCheckpointReceptorTests.Checkpoint_ABucketOfATypeThisServiceOwns_IsNotVerifiedAgainstAnotherOriginAsync, IntegrityCheckpointReceptorTests.Checkpoint_APendingGapOfATypeThisServiceOwns_IsDroppedAsync, IntegrityManifestReceptorTests.ManifestReceptor_DigestsOfATypeThisServiceOwns_AreNotComparedAsync}
+
+Whether an origin's count of a type stands is decided in exactly one place, `IntegrityDomainOwnership.IsNotAuthoritative`.
+Three paths ask it, and none judges ownership any other way:
+
+| Path | What a non-authoritative origin means there |
+| --- | --- |
+| The checkpoint gap tracker | Its checkpoint buckets for the type are not verified, and a pending gap of the type recorded under it is dropped |
+| The manifest comparison | Its digests for the type are not compared, so no ledger row is written for them |
+| The ledger sweep | Its ledger rows for the type are forgotten |
+
+Before this, the gap tracker used an older, map-only check that knew nothing of this service's own owned domains. A
+checkpoint from an older origin that still counted a type this service owns was verified against that origin, so the
+gap tracker could report and request repair for a gap the manifest comparison already ignored. Now all three paths
+agree for every type.
+
+A source guard reads the integrity engine's source and fails when a comparison path judges ownership another way: when
+it does not call the shared rule, when it reads the map's owner by hand, or when any code still calls the map-only
+check. Every file that builds the ownership map must be listed either as a comparison path or with the attribution
+question it answers instead (who wrote an event, whom to ask for it), so a new comparison path cannot be added
+unclassified. Each scan is checked against a fact it must find, so a scan looking in the wrong place fails instead of
+passing on nothing.
+
+:::updated
+**`IntegrityDomainOwnership.IsOwnedByAnother` is removed ([#2186](https://github.com/whizbang-lib/whizbang/issues/2186)).**
+It answered from the ownership map alone. A caller of `IsOwnedByAnother(type, origin)` calls
+`IsNotAuthoritative(type, origin, ownedDomains)`, passing this service's own owned domains
+(`RoutingOptions.OwnedDomains`). An empty list gives the old answer.
+:::
+
 ## Observability
 
 Everything the reconcile system does is visible on one meter: **`Whizbang.StreamIntegrity`**
@@ -2421,20 +3622,36 @@ patterns worth understanding before building a dashboard:
 
 ### Integrity gauges {#integrity-gauges}
 
-{verified: MaintenanceWorkerIntegrityGaugeTests.AnInstanceThatIsNotTheMaintainer_StillPublishesTheLedgerReadingAsync, MaintenanceWorkerIntegrityGaugeTests.ATickTheIdleGateDefers_StillPublishesTheLedgerReadingAsync, IntegrityRepairAnswerSqlTests.Summary_CountsBucketsAwaitingAnAnswer_AnsweredBuckets_AndTheIntegrityDeliveriesWaitingAsync, IntegrityRepairAnswerSqlTests.Summary_WithNoIntegrityDeliveries_ReportsNoneWaitingAsync, StreamIntegrityMetricsCoverageTests.AnswerAndDeliveryGauges_ReportLiveSnapshotValuesAsync}
+{verified: MaintenanceWorkerIntegrityGaugeTests.AnInstanceThatIsNotTheMaintainer_StillPublishesTheLedgerReadingAsync, MaintenanceWorkerIntegrityGaugeTests.ATickTheIdleGateDefers_StillPublishesTheLedgerReadingAsync, IntegrityRepairAnswerSqlTests.Summary_CountsBucketsAwaitingAnAnswer_AnsweredBuckets_AndTheIntegrityDeliveriesWaitingAsync, IntegrityRepairAnswerSqlTests.Summary_WithNoIntegrityDeliveries_ReportsNoneWaitingAsync, StreamIntegrityMetricsCoverageTests.AnswerAndDeliveryGauges_ReportLiveSnapshotValuesAsync, IntegrityLedgerHealRemainingGaugesSqlTests.Summary_SumsTheDeficitOfRepairableBuckets_AndCountsTheUnhealableOnesAsync, IntegrityLedgerHealRemainingGaugesSqlTests.Summary_ABucketWhoseDeficitIsUnknown_AddsNothing_AndAnEmptyLedgerReadsZeroAsync, StreamIntegrityMetricsCoverageTests.HealRemainingGauges_ReportLiveSnapshotValuesAsync}
 
-Every gauge on the `Whizbang.StreamIntegrity` meter is read in one round trip at the start of every maintenance tick,
+Every gauge on the `Whizbang.StreamIntegrity` meter except the two [backfill gauges](#watching-a-backfill), which the
+backfill worker publishes on the maintainer, is read in one round trip at the start of every maintenance tick,
 on every instance, ahead of the maintainer-duty check and the idle gate (see the collector, above). Every instance of a
 service therefore reports the same ledger and the same delivery queue, so read these as one value per service (the
 maximum across its instances), never a sum.
+
+**Which number to watch.** `unhealed_buckets` is the headline but a coarse one: it counts ledger rows in every state
+(repairable, waiting for an answer, answered and waiting for the next comparison, unhealable, exhausted), and it counts
+buckets, not events. `unhealed_deficit_events` is the data left to heal, the number to read when the question is how
+much is still missing. Split the headline with `unhealable_buckets` (repair cannot change them),
+`repair_answer_pending_buckets` (a request is out), `repair_answered_buckets` (answered, waiting for the next
+comparison) and `repair_exhausted_buckets` (out of budget, needs an operator). Read heal throughput from the rate of
+the `bucket_heal_seconds` count (buckets proven healed) and from `ledger_rows_recheck_cleared` (rows the
+[idle re-check](#idle-ledger-recheck) removed because their bucket now matches). Both gauges come from the same single
+read of the ledger as the others, with no extra query and the same plan. A row written under an older comparison rule
+keeps the deficit that rule recorded until a comparison or a re-check visits its bucket again, so after an upgrade
+that changes the compare rule `unhealed_deficit_events` can read high for rows whose events are already held; it falls
+as those rows are re-checked and cleared.
 
 | Instrument | Meaning |
 | --- | --- |
 | `unhealed_buckets` | Divergent `(origin, tenant, type, stream)` buckets currently tracked by the ledger — **the reconciliation backlog**. Falls as buckets heal (the heal deletes the row). |
 | `repair_exhausted_buckets` | Unhealed buckets that spent their repair budget (`MaxRepairAttemptsPerBucket`) and are no longer asked for until a local change or a grown deficit [resets them](#what-resets-the-repair-ladder). These need an operator, not patience: the one number worth an alert. Raising the budget does not lower it. |
 | `oldest_unhealed_age_seconds` | Age of the longest-standing unhealed divergence. Distinguishes a transient blip from a stuck bucket. |
-| `repair_answer_pending_buckets` | Buckets whose repair request is out and whose answer has not landed. They are not asked for again until the answer lands or `RepairAnswerTimeoutMinutes` passes ([repair waits for its answer](#repair-waits-for-its-answer)). A value that stays high for longer than the timeout means answers are not arriving: the origin is not serving requests (`ReportOnly`, or its own integrity queue is behind) or its bundles are not reaching this service. |
+| `repair_answer_pending_buckets` | Buckets whose repair request is out and whose answer has not landed. They are not asked for again until the answer lands or `RepairAnswerTimeoutMinutes` passes ([repair waits for its answer](#repair-waits-for-its-answer)). The paced drain claims nothing while this is at `MaxOutstandingRepairAnswers` ([outstanding repair answers are capped](#outstanding-repair-answers-are-capped)). A value that stays high for longer than the timeout means answers are not arriving: the origin is not serving requests (`ReportOnly`, or its own integrity queue is behind) or its bundles are not reaching this service. |
 | `repair_answered_buckets` | Buckets a redelivery bundle answered that wait for the next comparison to decide healed or still divergent. Rises after a repair burst and falls at the next audit; a value that never falls means comparisons are not running for those buckets. |
+| `unhealed_deficit_events` | **The data left to heal**: the missing events, summed, of the deficit buckets repair can still act on (neither [unhealable](#unhealable-buckets) nor exhausted). Each ledger row records its bucket's deficit, so a bucket missing a hundred thousand events weighs a hundred thousand here and one missing a single event weighs one. A bucket whose deficit is unknown adds nothing; 0 when none. |
+| `unhealable_buckets` | Ledger rows marked [unhealable](#unhealable-buckets), exhausted or not: buckets a redelivery could not change, which repair no longer asks for. Splits `unhealed_buckets` into repairable and unhealable; each was named once in a Warning when it was marked. |
 | `deliveries_pending` | [Integrity deliveries](#integrity-deliveries-are-queued) recorded and waiting for the maintainer's drain: received checkpoints, manifest requests and chunks, redelivery requests and bundle reconciles. Near zero on a healthy service. |
 | `oldest_delivery_age_seconds` | How long the oldest waiting integrity delivery has waited (0 when none). Under load the drain is deferred by the idle gate for up to `Whizbang:Housekeeping:MaxDeferral`, so an age above that, or one that keeps climbing, means the drain is not running: check which instance holds the maintainer duty. |
 | `sealed_through` (tag `origin_service_id`) | The per-origin **verified watermark** — the exclusive end of the highest window that audited clean and complete. This is the top-level convergence needle: a lane is provably in sync exactly as far as its seal. Each origin is its own series; one aggregated number would hide a stuck lane. |
@@ -2455,16 +3672,22 @@ maximum across its instances), never a sum.
 | `divergences_detected` (tags `origin`, `event_type`, `reason`) | Divergent buckets per comparison. `reason` carries the taxonomy: `deficit` (repairable), `identity_mismatch` / `local_extra` (alarm-only — see [the divergence taxonomy](#the-divergence-taxonomy)). |
 | `repairs_requested` (tags `source`, `origin`) | Directed repair asks. `source=audit` is the per-stream path; `source=bulk` is the threshold-triggered whole-window state-only backfill. |
 | `repairs_deferred` (tags `origin`, `reason`) | Deficit buckets a comparison deferred instead of adding to the paced repair drain's ledger: `per_audit_cap` (the comparison already added `MaxAutoRepairRequestsPerAudit`) or `backlog_cap` (the ledger holds `MaxRepairDrainBacklog` rows). Sustained growth means discovery outpaces the drain; raise `RepairDrainRatePerSecond` or accept the pace. See [repair caps](#repair-caps). |
+| `repair_drain_holds` | Times the paced repair drain stopped claiming because `MaxOutstandingRepairAnswers` buckets awaited their answer, counted once per hold (each hold is also one Warning when it starts and one Information line when it ends). A rising count means answers lag their requests and the drain is pacing itself to the rate they land at. See [outstanding repair answers are capped](#outstanding-repair-answers-are-capped). |
 | `compares_declined` (tag `origin`) | Manifest chunks declined at the non-queueing compare gate. Sustained growth = comparisons losing to arrivals; read alongside `manifest_compare_duration`. |
 | `manifest_pages_followed` / `manifest_pages_capped` (tag `origin`) | Windowed stream pages walked via the resume cursor, and follow chains stopped at `MaxManifestPagesPerAudit`. Persistent capping means lanes are wider than the per-audit page budget — raise the cap or accept the pace. |
 | `redelivery_events_shipped` | Events selected and shipped in redelivery bundles, as an origin. |
 | `origins_adopted` | Stored events whose empty origin columns a redelivery filled: [history received before origins were recorded](#pre-stamp-history), now verifiable. Rises while that history is redelivered once, then stops. |
 | `origins_refused` | Stored events with an empty origin that a redelivery did not adopt, because the event's first hop names another service than the bundle's origin: [events this service authored](#pre-stamp-history-first-hop) that the origin's store had filed as its own. Non-zero means an origin is redelivering events it did not author; the Warning logged once per bundle names it. |
 | `ownership_conflicts` (tag `domain`) | Domains two services claim on their checkpoints, once per contesting pair and domain; neither claimant is used. Non-zero means two services' `OwnDomains` declarations overlap. See [ownership is exchanged on the checkpoint](#ownership-is-exchanged-on-the-checkpoint). |
+| `backfill_windows_requested` / `backfill_events_received` (tag `event_type`), `backfills_ended` (tag `outcome`) | The [paced backfill](#watching-a-backfill): windows asked for, events the answers selected, and backfills that ended `complete` or `unanswered`. |
+| `redelivery_answers_capped` (tag `kind`) | Answers an origin stopped at `MaxEventsPerRequest` with more selected: `window` (the next window continues) or `ordinary` (nothing continues; [the request was wider than the cap](#answers-say-where-they-stopped)). |
 | `redelivery_requests_ignored` (tag `reason`) | Redelivery requests an origin declined to answer: `own_request` (its own backfill broadcast came back to it). |
 | `origins_reattributed` | Stored events received before origins were recorded that [re-attribution](#re-attribution) gave their owner as origin. Rises while the walk covers that history, then stops. |
 | `origins_unattributed` | Stored events of a type this service does not own whose owner is not known. They move once an owner announces the domain. |
 | `reattribution_hop_disagreements` | Stored events re-attribution left because their first hop names a service other than the owner of their type. |
+| `redelivered_children_reattributed` | Redelivery bundle children stored under their type's owner because the bundle's origin does not own the type; each such bundle is also a Warning. Non-zero means some service still answers redelivery with events it only received, or such bundles were still queued. See [an origin that does not own the type](#misattributed-origin-receive-rule). |
+| `misattributed_origins_corrected` | Stored events recorded under an origin that does not own their type, moved to the owner by the [correction step](#misattributed-origin-correction); each batch is also a Warning per type, origin and owner. Rises while the walk covers misfiled history, then stops. |
+| `ledger_rows_rechecked` / `ledger_rows_recheck_cleared` (tag `origin`) | Ledger rows the [idle re-check](#idle-ledger-recheck) asked their owner to answer again, and rows a re-check answer removed because their bucket now matches or is undecided. Both rise together after an upgrade that changes the compare rule, then fall to near zero. |
 | `deliveries_queued` (tag `type`) | Integrity deliveries recorded for the maintainer's drain. A copy already recorded is not counted again. See [integrity work runs on the maintainer](#integrity-work-runs-on-the-maintainer). |
 | `deliveries_processed` (tag `type`) | Integrity deliveries the drain handled. Falling behind `deliveries_queued` for long means the drain is deferred by the idle gate or bounded by `MaxIntegrityDeliveriesPerPass`. |
 | `deliveries_failed` (tag `type`) | Failed attempts at an integrity delivery, each retried after a backoff. |
@@ -2473,11 +3696,13 @@ maximum across its instances), never a sum.
 | `manifests_requested`, `manifest_chunks_sent`, `drill_downs_requested`, `backfills_requested`, `redelivery_requests_received` | The exchange itself, hop by hop. |
 | `checkpoints_published` / `checkpoints_received`, `gaps_detected`, `coverage_gaps_detected`, `rebuilds_requested` | The continuity-checkpoint and coverage halves of the system. |
 | `digest_buckets_verified`, `digest_drift_healed` (tag `kind`) | The trust-but-verify sweep: buckets checked, and drift it healed (an unaccounted write path — investigate `kind`). |
+| `unplaced_buckets` (tag `origin`) | Windowed stream buckets a comparison left undecided because this service holds some of their events without the origin's commit sequence. None is recorded or repaired; the full-history comparison decides those streams. Falls to zero as redeliveries fill the sequences. See [events held without an origin sequence](#events-held-without-an-origin-sequence). |
+| `stream_digest_drift_corrected` (tag `kind`) | Stream digest buckets the [id-lane backfill](#id-lane-backfill) found disagreeing with their events and corrected (`drift_updated`, `drift_removed`, `drift_added`), each also a Warning with both values. Non-zero means a write path changed digests without [the shared fold](#one-digest-fold). |
 
 ### Reading a recovery
 
 A deficient service converging looks like: `repairs_requested` active → `redelivery_events_shipped`
-climbing at the origin → `unhealed_buckets` falling (heals deleting rows) with `bucket_heal_seconds`
+climbing at the origin → `unhealed_buckets` and `unhealed_deficit_events` falling (heals deleting rows) with `bucket_heal_seconds`
 recording each one → `sealed_through` stepping upward as whole windows certify → everything quiet
 except the checkpoint heartbeat. After an upgrade from a schema older than 087, `origins_adopted` rises first while
 pre-087 history is redelivered once. While repair works, `repair_answer_pending_buckets` rises with each paced batch and
@@ -2492,11 +3717,11 @@ and non-zero (a stuck lane).
 
 ## Future work
 
-- **Persist the origin set?** The checkpoint origin tracker is deliberately in-memory (a restart
-  re-baselines), so after a fleet-wide deploy the FIRST audit usually runs only its local half —
-  the cross-service exchange starts on the next cycle, once checkpoints have re-announced the
-  origins. Persisting the origin set (a small table) would let the first audit exchange
-  immediately, trading a startup-freshness guarantee for it.
+- ~~**Persist the origin set?**~~ **Done (#2104).** The known origins and the pending gaps are kept in two small
+  tables and loaded once by a new process; see [the gap tracker survives a restart](#the-gap-tracker-survives-a-restart).
+- **Name more than one missing event.** The id lanes name a missing event only when exactly one is missing. A
+  set-reconciliation encoding (an IBLT over the bucket's ids) would name a small set; see
+  [one missing event is named](#one-missing-event-is-named).
 
 ### Original review questions
 

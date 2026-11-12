@@ -33,8 +33,10 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/274_DeletedArchiveIsRecordedInTheLedger.sql
   - src/Whizbang.Data.EFCore.Postgres/EFCorePostgresPerspectiveCheckpointCompleter.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperPostgresPerspectiveCheckpointCompleter.cs
-  - src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs
+  - src/Whizbang.Data.Postgres/RebuildPerspectiveCommandReceptor.cs
+  - src/Whizbang.Data.Postgres/RebuildCommandReceptorRegistrar.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/RebuildCreatedAtIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveSnapshotFloorTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/RebuildProvenanceTests.cs
@@ -51,6 +53,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRebuildSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchivedStreamRebuildTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RebuildPerspectiveCommandReceptorCoverageTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperRebuildCommandTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveReplayOrderingTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindWriteCheckTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CollectiveReplayRebuildIntegrationTests.cs
@@ -143,6 +147,12 @@ var result = await rebuilder.RebuildInPlaceAsync("OrderPerspective");
 ```
 
 **Best for**: Development, staging, or maintenance windows.
+
+A rebuild keeps a row's `CreatedAt`: in place it updates rows that exist and never moves it; a row it inserts (every row,
+blue-green) is dated at its first folded event, or at the stream's recorded start once the stream's first event was
+removed. See [What a rebuild keeps](../events/superseding-events#what-a-rebuild-keeps).
+
+{verified: RebuildCreatedAtIntegrationTests.RebuildInPlace_AnExistingRow_KeepsItsCreatedAtAsync, RebuildCreatedAtIntegrationTests.RebuildBlueGreen_AFullHistoryStream_DatesTheRowAtItsFirstEvent_AndUpdatedAtAtItsLastAsync}
 
 ### Selected Streams
 
@@ -402,6 +412,21 @@ await dispatcher.SendAsync(new CancelPerspectiveRebuildCommand("OrderPerspective
 `ArchivedData` (default `Skip`) says what the rebuild may read of archived streams; see
 [archived data](#archived-data).
 
+### On every data layer {#on-every-data-layer}
+
+Both Postgres data layers handle `RebuildPerspectiveCommand` the same way. `AddWhizbangPostgres` (Dapper) and the
+EF Core driver both register the command's receptor at the same three lifecycle stages (local dispatch, the sender's
+outbox copy, and a copy arriving from another service). Both also register the background rebuild worker that a
+whole-perspective blue-green rebuild is queued to. The receptor lives in `Whizbang.Data.Postgres`, which both drivers
+reference.
+
+| Choice | Why | |
+|---|---|---|
+| One shared registration, called by both drivers, rather than a copy in each. | The handler only needs Core abstractions. Before #1959 it lived in the EF Core driver, so a Dapper host that sent the command rebuilt nothing and could rebuild only by calling `IPerspectiveRebuilder` itself. A parity test fails if either driver stops registering it. | {verified: StartupParityTests.EachDriver_HandlesTheRebuildCommand_AndRunsItsBackgroundRebuildsAsync, DapperRebuildCommandTests.ABlueGreenRebuildCommand_OnADapperHost_IsHandedToTheBackgroundWorkerAsync} |
+
+Code that constructs the receptor directly imports `Whizbang.Data.Postgres` (it was in
+`Whizbang.Data.EFCore.Postgres` before #1959). Hosts that only send the command change nothing.
+
 ### Large stream selections {#large-stream-selections}
 
 `IncludeStreamIds` travels with the command, whole, to every hop: the outbox row, the broadcast transport
@@ -515,6 +540,43 @@ compare equal to another empty one and read as "changed nothing".
 
 A digest is evidence about a rebuild, not part of it: if it cannot be computed the rebuild still succeeds
 and the fields are simply absent, which reads as "not known".
+
+## Recursive models after an upgrade {#recursive-models-after-upgrade}
+
+Releases before [#2112](https://github.com/whizbang-lib/whizbang/issues/2112) stored a perspective model that holds a
+[recursive type](perspectives.md#recursive-models) (a tree node holding its children, or two types holding each other)
+on Entity Framework's mapped path, which kept only the first level of the recursion and dropped every level below it
+on write, with no error. This release stores such a model whole, so new writes keep every level. A row an earlier
+release wrote still reads, but holds only the first level: the rest was never written, and nothing in the database
+can restore it. **Rebuilding the perspective (re-projecting it from its events) writes the whole tree.**
+
+**Nothing is rebuilt automatically.** Instead, on the first start against a database an earlier release migrated, the
+instance doing the schema work logs one Warning per recursive perspective whose table holds rows, with a stable event
+id for alerting:
+
+```text{title="The upgrade rebuild notice" description="One Warning per recursive perspective with rows, on the first start after upgrading from a release before the fix" category="Operations" difficulty="BEGINNER" tags=["Perspectives","Rebuild","Upgrade","Logging"] tests=["RecursivePerspectiveRebuildNoticeTests.AnUpgradeFromAReleaseBeforeTheFix_NamesEachRecursivePerspectiveOnceAsync"]}
+Perspective 'CatalogPerspective' (table wh_per_catalog) must be rebuilt from its events: its model is recursive, and
+rows written before the #2112 fix may have kept only the first level of its recursive members. Nothing is rebuilt
+automatically; until it is, those rows read back without the levels that were dropped
+```
+
+EventId **2112**, name `RecursivePerspectiveNeedsRebuild`. The perspective is named the way a rebuild takes it, so
+pass that name to [`IPerspectiveRebuilder`](#iperspectiverebuilder) or a
+[`RebuildPerspectiveCommand`](#system-commands).
+
+**How it knows.** It reads the migration ledger before the start's migrations apply. Migration
+`361_RecursiveDocumentsStoredWhole` changes nothing; its ledger row marks a database migrated by this release. A
+ledger without that row was last migrated by a release before the fix. A fresh database (no ledger) and every start
+after the upgrade (the row is there) are silent, and so is a perspective whose table is empty, since nothing in it was
+truncated. The generator lists each perspective whose model is recursive, with its table, so a host with none opens no
+connection for the check.
+
+| Behavior | Why | Verified by |
+|---|---|---|
+| An upgrade from a release before the fix names each recursive perspective with rows, once. | Rows written before the fix may be truncated; an operator must know which perspectives to rebuild, and the reason (owner decision: document it, do not rebuild automatically). | {verified: RecursivePerspectiveRebuildNoticeTests.AnUpgradeFromAReleaseBeforeTheFix_NamesEachRecursivePerspectiveOnceAsync, RecursivePerspectiveRebuildNoticeTests.APreFixLedger_ReportsPerspectivesWithRowsOnlyAsync} |
+| The start after the upgrade, a fresh database, a database already at the fix, and an upgrade over empty tables are silent. | A notice repeated on every start would be ignored; one on a database with nothing truncated would send someone to rebuild for nothing. | {verified: RecursivePerspectiveRebuildNoticeTests.TheStartAfterTheUpgrade_IsSilentAsync, RecursivePerspectiveRebuildNoticeTests.AFreshDatabase_IsSilentAsync, RecursivePerspectiveRebuildNoticeTests.ADatabaseAlreadyAtTheFix_IsSilentAsync, RecursivePerspectiveRebuildNoticeTests.AnUpgradeOverEmptyTables_IsSilentAsync, RecursivePerspectiveRebuildNoticeTests.NoLedger_ReportsNothingAsync} |
+| No recursive perspective, no database read. | The check costs nothing on a host it cannot concern. | {verified: RecursivePerspectiveRebuildNoticeTests.NoRecursivePerspective_DoesNotOpenTheDatabaseAsync, RecursivePerspectiveRebuildNoticeGenerationTests.AContextWithNoRecursiveModel_ListsNothingAsync, RecursivePerspectiveRebuildNoticeGenerationTests.EveryPerspectiveOverARecursiveModel_IsListedWithItsTableAsync} |
+| Nothing is rebuilt automatically. | A rebuild of a large perspective is an operational decision (when, which mode); starting one unasked on upgrade could hold a service for hours. | {verified: RecursivePerspectiveRebuildNoticeTests.AnUpgradeFromAReleaseBeforeTheFix_NamesEachRecursivePerspectiveOnceAsync} |
 
 ## Migration-Triggered Rebuilds
 

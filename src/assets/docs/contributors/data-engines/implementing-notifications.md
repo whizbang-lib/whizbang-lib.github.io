@@ -82,6 +82,12 @@ Application pub/sub needs no separate implementation: `IAppSignalChannel` is the
 to every transport that implements `ISignalTopicTransport`. Postgres reference: `PostgresSignalTransport.cs`
 (`PublishTopicAsync`, `SubscribeTopic`). `PgAppSignalChannel` is deleted.
 
+`PublishTopicAsync(topic, payload, DbTransaction? transaction, ...)` receives the caller's open transaction when the
+publish was made inside one. Send the notification inside it, on its connection, so it is delivered only on commit and
+never on rollback; treat a transaction of another provider as none; inside a `TransactionScope`, send on a connection of
+your own once the scope commits (never on an enlisted one, which makes the commit two-phase). See
+[Publish inside a transaction](../../v1.0.0/fundamentals/work-coordinator/app-signals.md#transactional-publish).
+
 App channels share the listener connection but use distinct postgres channel names (`wh_app_<topic>`). The validator in `Whizbang.Core/Notifications/AppSignals/AppSignalTopicValidator.cs` enforces the `wh_` prefix is reserved for internal use.
 
 ## NOTIFY emission contract

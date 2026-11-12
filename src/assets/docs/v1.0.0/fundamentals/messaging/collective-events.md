@@ -28,6 +28,10 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/CollectiveApplyForAttribute.cs
   - src/Whizbang.Core/Perspectives/CollectiveWhereComposer.cs
   - src/Whizbang.Core/Perspectives/CollectiveApplyOptions.cs
+  - src/Whizbang.Core/Perspectives/CollectiveRoutingAssociations.cs
+  - src/Whizbang.Core/Messaging/IConsumerRegistry.cs
+  - src/Whizbang.Data.EFCore.Postgres/SchemaCollectiveHandlers.cs
+  - src/Whizbang.Data.Postgres/Migrations/391_CollectiveRowsOnlyForHandledTypes.sql
   - src/Whizbang.Core/Perspectives/CollectiveDispatcher.cs
   - src/Whizbang.Core/Perspectives/CollectiveRouting.cs
   - src/Whizbang.Core/Perspectives/TenantCollectiveScopeResolver.cs
@@ -64,6 +68,7 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/Collective/DapperCollectiveEventApplier.cs
   - src/Whizbang.Data.Postgres/Migrations/279_CollectiveApplyProgress.sql
 testReferences:
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.UnreadableRows.cs
   - tests/Whizbang.Core.Tests/Messaging/CollectiveEventContractTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EventFlagsWireFormTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StringEventFlagsStoreTests.cs
@@ -633,12 +638,22 @@ per-model `Where` you supply (see below).
 
 Handlers are discovered at **compile time** by the
 `CollectiveApplyDiscoveryGenerator`, which emits a reflection-free
-`CollectiveApplyRegistry.Entries` dispatch table **per assembly** —
+`CollectiveApplyRegistry.Entries` dispatch table **per assembly**:
 one typed `Invoker` lambda per `(ModelType, EventType)`. At runtime the
 dispatcher indexes by `(ModelType, EventType)` and invokes the lambda;
 no reflection, AOT-clean by construction. The attribute is read on the
 **method**, not the type, so one perspective class can declare several
 `[CollectiveApplyFor]` handlers for different events.
+
+Each assembly's table registers itself: you never pass it in. The
+dispatcher reads the union of every registered assembly's handlers, so
+handlers spread across several assemblies all receive their events, and
+a handler registered twice still runs once. In a process that loads
+several services' code (a test host, a gateway), a host anchored to its
+service gets only its own service's handlers and those of the libraries
+it uses, the same [service scoping](../../extending/extensibility/replaceable-services.md#service-scope)
+every generated registration follows.
+{verified: MultiAssemblyCollectiveDispatchTests.TwoAssemblies_TheDispatcher_AppliesEachAssemblysCollectiveEventsAsync, MultiAssemblyCollectiveDispatchTests.AddWhizbang_GivesTheDispatcherThisAssemblysHandlers_WithNothingPassedByHandAsync, MultiAssemblyCollectiveDispatchTests.AHandPassedTableTheHostAlsoContributes_DispatchesEachHandlerOnceAsync, DapperMultiAssemblyCollectiveDispatchTests.TwoAssemblies_TheDispatcher_AppliesEachAssemblysCollectiveEventsAsync}
 
 ### Handler shapes {#handler-shapes}
 
@@ -1162,7 +1177,7 @@ receive collective events pay no schema tax.
 > queries already use — **never in the apply path**. It is a general
 > tenant-scope index, not a collective-specific one.
 
-## Persistence, routing, and dispatch
+## Persistence, routing, and dispatch {#persistence-routing-and-dispatch}
 
 A collective event is a **first-class persisted `IEvent`**
 (`ICollectiveEvent : IEvent`), so it flows through the normal
@@ -1205,8 +1220,10 @@ sequenceDiagram
    061 creates **exactly one** `wh_perspective_events` row with
    `perspective_name = '__collective__'` (the
    `CollectiveRouting.SINK_PERSPECTIVE_NAME` sink) — driven purely by
-   the flag, **no association lookup**. One sink row per event regardless
-   of how many model handlers subscribe.
+   the flag. One sink row per event regardless of how many model handlers
+   subscribe. Since migration **391**, a row is created only for a type a
+   handler on the service applies, once the service has said which types
+   those are; see [only handled types are queued](#only-handled-types-are-queued).
 3. **Dispatch.** `PerspectiveWorker` special-cases the `__collective__`
    sink (both channel and drain paths): it loads the collective event(s)
    on the sink stream, resolves `ICollectiveDispatcher` + the projection
@@ -1222,6 +1239,63 @@ sequenceDiagram
    sink rows with `processed_at = NULL`, so they were re-leased and the
    whole-cohort `UPDATE` re-dispatched every tick — a self-sustaining
    re-dispatch loop. That is fixed and regression-locked.)
+
+### Only handled types are queued {#only-handled-types-are-queued}
+{verified: CollectiveRowGateSqlTests.Outbox_OnceTheMarkerExists_AHandledTypeGetsItsRow_AndAnUnhandledTypeGetsNoneAsync}
+
+The store creates a `__collective__` row for a stored collective event only on a service whose
+`[CollectiveApplyFor]` handlers apply its type. A service stores the collective events of every namespace it
+subscribes to, and without this each event of a type nothing there applies became a row that was claimed and then
+completed for nothing.
+
+- **Which types.** The consumer registry (`IConsumerRegistry.GetHandledCollectiveEventTypes`) lists the collective
+  event types a handler on this service applies. It counts every assembly: each assembly's generated registration
+  lists its own handlers, and the registry is the union. A collective type the service only declares, or only
+  receives, is not in the list. The startup step and the perspective drain both read this one answer, so they cannot
+  disagree.
+- **Written at startup.** The schema initialization's associations step writes one `collective` association per
+  handled type and one `collective_gate` marker for the service into `wh_message_associations`, in the same call as
+  the perspective associations. The step's hash covers the handled set, so a start whose handlers changed writes them
+  again even when no table or perspective changed.
+- **Gated in the store.** The emit chains (outbox and inbox) skip a collective event of an unassociated type only
+  when a marker exists and every service with associations in the schema has written its own.
+
+Every gap in what the gate knows creates rows; none drops them:
+
+| Situation | Result |
+|---|---|
+| Rolling deploy: the migration is applied before an instance of the new version registers, or an older instance registers after it (its registration removes the marker) | No marker, every row is created, as before |
+| The service cannot tell what it handles (no consumer registry, or an assembly built by an older generator) | No marker is written; every row is created |
+| Another service shares the schema and has not written a marker | Every row is created for the schema |
+| A handler is added | The next start writes its type; past events of the type are applied by a [rebuild](#surviving-a-rebuild) |
+
+A row created before the gate was on, or while it was off, is still concluded by the drain as below.
+
+### A service subscribed to a namespace receives its collective events {#unhandled-collective-events}
+{verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_CollectiveRowsNoHandlerHereApplies_AreCompletedWithoutApplying_WarnedOncePerTypeAndCountedAsync}
+
+A service subscribes to the namespace of every event it consumes (see
+[event flow](../dispatcher/routing#outbox-routing)), and a namespace subscription carries every event published
+to that namespace, collective events included. So a service that consumes some of a namespace's events also stores
+each of that namespace's collective events, whether or not it has a `[CollectiveApplyFor]` handler for the type.
+
+- **If the service should apply the event,** add a `[CollectiveApplyFor]` handler for it.
+- **If it has no handler,** the store creates no row once the service gates
+  ([only handled types are queued](#only-handled-types-are-queued)). A row that exists anyway (created before the
+  gate, or while it is off) is completed by the worker without applying it. Whether a handler applies the type is
+  the consumer registry's answer, the one the gate reads; a type the registry lists that this instance cannot read
+  is left for one that can. The worker counts the row on
+  `whizbang.collectives.unhandled` and logs one Warning per event type per batch (`PerspectiveWorker`
+  EventId 80) naming the service, the type, the count and a stream. The event stays in the event store, and a
+  [rebuild](#surviving-a-rebuild) applies it once a handler is added.
+- **If the service has no perspectives at all,** the same applies: the perspective worker
+  [waits idle on its drain channel](../../operations/workers/perspective-worker#no-perspective-registry) instead of
+  ending, and concludes the sink rows the claim hands it.
+
+Completing the row matches what happens to an event no perspective consumes. Before, the row could not be read and
+was never concluded, so the claim offered the oldest such rows again on every poll and the rest of the service's
+perspective backlog waited behind them. The details are under
+[unhandled collective events](../../operations/workers/perspective-worker#unhandled-collective-events).
 
 ### Failure semantics
 
@@ -1517,7 +1591,7 @@ event is investigable by type/namespace, not just an aggregate metric:
 
 ```csharp{
 title: "Register collective events on the EF Core Postgres driver"
-description: "AddCollectiveEventsEFCore takes the generated CollectiveApplyRegistry.Entries and wires the dispatcher, tenant resolver, session accessor, and replay applier; one AddCollectiveExecutorEFCore per perspective model that has a [CollectiveApplyFor] handler."
+description: "AddCollectiveEventsEFCore reads every registered assembly's collective handlers and wires the dispatcher, tenant resolver, session accessor, and replay applier; one AddCollectiveExecutorEFCore per perspective model that has a [CollectiveApplyFor] handler."
 framework: "NET10"
 category: "Messaging"
 difficulty: "INTERMEDIATE"
@@ -1525,10 +1599,8 @@ tags: ["collective-events", "dependency-injection", "ef-core", "postgres", "regi
 unverified: "Consumer DI-wiring illustration; the AddCollectiveEventsEFCore and AddCollectiveExecutorEFCore extension methods are not exercised by a candidate test (EFCoreServiceRegistrationGeneratorTests covers generator-emitted registration and schema, not these calls)."
 }
 services
-  // entries = your assembly's generated Whizbang.Core.Generated.CollectiveApplyRegistry.Entries
-  // (the framework assembly's own copy is empty). Required — no parameterless overload.
-  .AddCollectiveEventsEFCore<MyPerspectiveDbContext>(CollectiveApplyRegistry.Entries) // dispatcher + resolver + session + replay applier
-  .AddCollectiveExecutorEFCore<OrderModel>();                                         // one per model with a [CollectiveApplyFor]
+  .AddCollectiveEventsEFCore<MyPerspectiveDbContext>() // dispatcher + resolver + session + replay applier
+  .AddCollectiveExecutorEFCore<OrderModel>();// one per model with a [CollectiveApplyFor]
 // Custom scope kinds: also register your ICollectiveScopeResolver.
 ```
 
@@ -1539,12 +1611,21 @@ for the rebuild path.
 
 ### Dapper (Postgres)
 
-Dapper DI mirrors EF Core: `AddCollectiveEventsDapper(entries)` +
+Dapper DI mirrors EF Core: `AddCollectiveEventsDapper()` +
 `AddCollectiveExecutorDapper<TModel>(tableName)` (Dapper supplies the
 `wh_per_*` table name since it has no entity model to derive it from),
 plus `AddCollectiveTableDapper<TOther>(tableName)` for any **query-only
-sibling** a handler reaches via `q.Of<TOther>()`. `entries` is the same
-generated `CollectiveApplyRegistry.Entries`.
+sibling** a handler reaches via `q.Of<TOther>()`.
+
+:::updated
+**Upgrading: the handler table is no longer passed in (#2238).** `AddCollectiveEventsEFCore<TDbContext>()` and
+`AddCollectiveEventsDapper()` take no argument and read every registered assembly's handlers. The overloads that take
+`CollectiveApplyRegistry.Entries` still work but are obsolete: drop the argument. A table still passed in is added to the
+registered handlers, so no handler runs twice. Any `CS0436` suppression added to pick one assembly's
+`CollectiveApplyRegistry` can go too. A build that treats warnings as errors fails on the obsolete overload until the
+argument is dropped.
+{verified: MultiAssemblyCollectiveDispatchTests.TheObsoleteHandPassedTable_StillApplies_AlongsideTheContributedOnesAsync, DapperMultiAssemblyCollectiveDispatchTests.TheObsoleteHandPassedTable_StillApplies_AlongsideTheContributedOnesAsync}
+:::
 
 ## Driver support
 

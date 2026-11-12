@@ -46,6 +46,10 @@ codeReferences:
   - src/Whizbang.Sagas/Observability/SagaMetrics.cs
   - src/Whizbang.Core/Observability/InstanceLivenessMetrics.cs
   - src/Whizbang.Core/Observability/ProbeCadenceMetrics.cs
+  - src/Whizbang.Core/Observability/BacklogAgeMetrics.cs
+  - src/Whizbang.Core/Observability/BacklogAgeWorker.cs
+  - src/Whizbang.Core/Transports/ITrafficClassOpsRateSource.cs
+  - src/Whizbang.Transports.AzureServiceBus/AsbTrafficClassOpsRateSource.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/CollectiveReplayRunnerTests.cs
   - tests/Whizbang.Core.Tests/Observability/InstanceLivenessMetricsTests.cs
@@ -62,6 +66,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/PerspectiveRewindMetricsTests.cs
   - tests/Whizbang.Core.Tests/Workers/PendingEventsStatisticsRefreshTests.cs
   - >-
+  - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsBackfillGaugeTests.cs
+  - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsCoverageTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerHealRemainingGaugesSqlTests.cs
     tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerStartupAndMaintenanceTests.cs
   - tests/Whizbang.Core.Tests/Observability/WorkCoordinatorMetricsTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowOutboxFlushFailureTests.cs
@@ -93,6 +100,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
   - tests/Whizbang.Core.Tests/Workers/InboxHandlerWorkerQueueDepthTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.UnreadableRows.cs
 lastMaintainedCommit: '62abd3a45'
 ---
 
@@ -122,6 +130,7 @@ Additional subsystem meters:
 | `Whizbang.Workers.PinnedPool` | `PinnedPoolMetrics` | Pinned connection pool borrows, timeouts, recycles |
 | `Whizbang.TableStatistics` | `TableStatisticsMetrics` | Queue depths, and every table's size, size split, rows and bloat |
 | `Whizbang.TypeRegistry` | `TypeRegistryMetrics` | Message type registry renames and drift |
+| `Whizbang.Ephemeral` | `EphemeralBlockerMetrics` | Events of ephemeral types kept Sourced by durable types in the same streams |
 | `Whizbang.StreamIntegrity` | `StreamIntegrityMetrics` | Continuity checkpoints, gap/divergence detection, repair and manifest flows |
 | `Whizbang.Housekeeping` | `HousekeepingCoordinator` | Arbitration verdicts, the running activity, per-activity volume rollup, and idle seconds-since-activity |
 | `Whizbang.Core.Routing.MessageDiscard` | `MessageDiscardPolicy` | Unsubscribed-message skips at the inbox and outbox gates |
@@ -698,9 +707,10 @@ A composite disappears once it is expanded (its row is completed and only its ch
 | `whizbang.collectives.received` | Counter\<long\> | Collective events the collective sink took up from a leased sink row |
 | `whizbang.collectives.applied` | Counter\<long\> | Collective events the sink applied through the collective dispatcher |
 | `whizbang.collectives.skipped` | Counter\<long\> | Leased sink rows completed without an apply because no collective event was behind them (the cursor had already passed, or a stale re-lease); a rising count is the re-lease loop showing itself |
+| `whizbang.collectives.unhandled` | Counter\<long\> | Leased sink rows completed without an apply because no `[CollectiveApplyFor]` handler on this service applies their collective event type; the event is kept, and a perspective rebuild applies it once a handler is added. Each batch also logs one Warning per type, `PerspectiveWorker` EventId 80 (see [unhandled collective events](../workers/perspective-worker#unhandled-collective-events)); a steady count means this service receives a namespace's collective events it does not handle |
 | `whizbang.collectives.predecessor_timed_out` | Counter\<long\> | Collective events applied without their predecessor on the ordering key after waiting `CollectivePredecessorWaitSeconds` for it ([ordering across services](../../fundamentals/messaging/collective-events#ordering-across-services)); a rising count means links name collectives this receiver handles but never gets |
 
-The collective counters are recorded at the sink, the one place an applied collective leaves no row behind to count. {verified: PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Meters_CountAReceivedAndAppliedCollective_Async, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Meters_CountALeasedSinkRowWithNoEventAsSkipped_Async, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Predecessor_NeverArrives_AppliesWhenTheWaitRunsOutAsync}
+The collective counters are recorded at the sink, the one place an applied collective leaves no row behind to count. {verified: PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Meters_CountAReceivedAndAppliedCollective_Async, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Meters_CountALeasedSinkRowWithNoEventAsSkipped_Async, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Predecessor_NeverArrives_AppliesWhenTheWaitRunsOutAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_CollectiveRowsNoHandlerHereApplies_AreCompletedWithoutApplying_WarnedOncePerTypeAndCountedAsync}
 
 ## Whizbang.TransportDeadLetterDrain {#transport-dlq}
 
@@ -916,7 +926,19 @@ Meter name: `Whizbang.TypeRegistry` (`TypeRegistryMetrics`)
 | `whizbang.type_registry.renamed` | Counter\<long\> | Registry rows reconciled old→new for an acknowledged rename; tagged by `service` |
 | `whizbang.type_registry.drift_detected` | Counter\<long\> | Un-acknowledged registry drift left untouched; tagged by `service` |
 
+## Whizbang.Ephemeral {#ephemeral}
+
+{verified: EphemeralBlockerMetricsTests.BlockedEvents_ReportsEachPair_TaggedByEphemeralAndBlockingTypeAsync, EphemeralBlockerMetricsTests.BlockedEvents_APairThatLeftTheReport_ReadsZero_NotItsLastCountAsync}
+
+Meter name: `Whizbang.Ephemeral` (`EphemeralBlockerMetrics`)
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.ephemeral.blocked_events` | ObservableGauge\<long\> | Events of an ephemeral type kept Sourced because their streams hold a durable event type; tagged by `ephemeral_type` and `blocking_type`. A pair that is released or cleared reads zero. See [What holds ephemeral history back](../../fundamentals/events/ephemeral-events#what-holds-ephemeral-history-back) |
+
 ## Whizbang.StreamIntegrity {#stream-integrity}
+
+{verified: StreamIntegrityMetricsTests.Counters_AreCreatedWithExpectedNamesAsync, StreamIntegrityMetricsTests.Counters_AreNotNullAsync}
 
 Meter name: `Whizbang.StreamIntegrity` (`StreamIntegrityMetrics`)
 
@@ -932,10 +954,39 @@ Meter name: `Whizbang.StreamIntegrity` (`StreamIntegrityMetrics`)
 | `whizbang.stream_integrity.manifests_requested` | Counter\<long\> | Manifest requests sent to origins; tagged by `origin` + `sweep` |
 | `whizbang.stream_integrity.manifest_chunks_sent` | Counter\<long\> | Manifest chunks answered as an origin; tagged by `level` |
 | `whizbang.stream_integrity.drill_downs_requested` | Counter\<long\> | Type-level mismatches escalated to stream-level requests; tagged by `origin` |
-| `whizbang.stream_integrity.backfills_requested` | Counter\<long\> | State-only backfill requests broadcast for consumed-set growth (value = new type count) |
+| `whizbang.stream_integrity.unplaced_buckets` | Counter\<long\> | Windowed stream buckets left undecided because events are held without the origin's commit sequence; not recorded or repaired, the full-history comparison decides them ([events held without an origin sequence](../../resilience/stream-integrity#events-held-without-an-origin-sequence)); tagged by `origin` |
+| `whizbang.stream_integrity.stream_digest_drift_corrected` | Counter\<long\> | Stream digest buckets the id-lane backfill found drifted from their events and corrected, each also logged at Warning ([one digest fold](../../resilience/stream-integrity#id-lane-backfill)); tagged by `kind` (drift_updated \| drift_removed \| drift_added) |
+| `whizbang.stream_integrity.ledger_rows_rechecked` | Counter\<long\> | Ledger rows the [idle ledger re-check](../../resilience/stream-integrity#idle-ledger-recheck) claimed and asked their owner to answer again; tagged by `origin` |
+| `whizbang.stream_integrity.ledger_rows_recheck_cleared` | Counter\<long\> | Ledger rows a re-check answer removed because their bucket now matches or is undecided ([idle ledger re-check](../../resilience/stream-integrity#idle-ledger-recheck)); tagged by `origin` |
+| `whizbang.stream_integrity.redelivered_children_reattributed` | Counter\<long\> | Redelivery bundle children stored under their type's owner because the bundle's origin does not own the type; each such bundle is also logged at Warning ([an origin that does not own the type](../../resilience/stream-integrity#an-origin-that-does-not-own-the-type)) |
+| `whizbang.stream_integrity.misattributed_origins_corrected` | Counter\<long\> | Stored events recorded under an origin that does not own their type, re-attributed to the owner by the correction maintenance step; each batch is also logged at Warning per type, origin and owner ([an origin that does not own the type](../../resilience/stream-integrity#misattributed-origin-correction)) |
+| `whizbang.stream_integrity.backfills_requested` | Counter\<long\> | Types queued for the [paced backfill](../../resilience/stream-integrity#paced-backfill) on consumed-set growth (value = new type count) |
+| `whizbang.stream_integrity.backfill_windows_requested` | Counter\<long\> | Paced backfill windows asked of owners, retries included; tagged by `event_type` |
+| `whizbang.stream_integrity.backfill_events_received` | Counter\<long\> | Events the answered paced backfill windows selected; tagged by `event_type` |
+| `whizbang.stream_integrity.backfills_ended` | Counter\<long\> | Paced backfills that ended; tagged by `outcome` (complete \| unanswered) |
+| `whizbang.stream_integrity.backfill_windows_in_flight` | ObservableGauge\<int\> | Paced backfill windows asked for and awaiting their answer |
+| `whizbang.stream_integrity.backfill_remaining_events` | ObservableGauge\<long\> | Events each running paced backfill is estimated to have left; tagged by `event_type`; falls to zero as it finishes |
+| `whizbang.stream_integrity.redelivery_answers_capped` | Counter\<long\> | Redelivery answers an origin stopped at its event bound with more selected; tagged by `kind` (window \| ordinary) |
 | `whizbang.stream_integrity.digest_buckets_verified` | Counter\<long\> | Settled digest buckets checked by the trust-but-verify sweep |
 | `whizbang.stream_integrity.digest_drift_healed` | Counter\<long\> | Digest buckets the sweep healed; tagged by `kind` (updated \| removed \| added) |
+| `whizbang.stream_integrity.repair_drain_holds` | Counter\<long\> | Times the paced repair drain stopped claiming because `MaxOutstandingRepairAnswers` buckets awaited their answer; counted once per hold, not per tick ([outstanding repair answers are capped](../../resilience/stream-integrity#outstanding-repair-answers-are-capped)) |
 | `whizbang.stream_integrity.redelivery_requests_received` | Counter\<long\> | Re-delivery requests served as an origin (repair + backfill flows) |
+| `whizbang.stream_integrity.sealed_through` | ObservableGauge\<long\> | Per-origin verified watermark: the exclusive end of the highest window that audited clean and complete; tagged by `origin_service_id` ([integrity gauges](../../resilience/stream-integrity#integrity-gauges)) |
+| `whizbang.stream_integrity.unhealed_buckets` | ObservableGauge\<long\> | Divergent buckets currently tracked by the ledger, in every state (repairable, awaiting an answer, answered, unhealable, exhausted); counts buckets, not events ([integrity gauges](../../resilience/stream-integrity#integrity-gauges)) |
+| `whizbang.stream_integrity.unhealed_deficit_events` | ObservableGauge\<long\> | The data left to heal: missing events, summed, in the deficit buckets repair can still act on (neither unhealable nor exhausted); a bucket whose deficit is unknown adds nothing ([integrity gauges](../../resilience/stream-integrity#integrity-gauges)) |
+| `whizbang.stream_integrity.unhealable_buckets` | ObservableGauge\<long\> | Ledger rows marked unhealable (a redelivery could not change them), exhausted or not; splits `unhealed_buckets` into repairable and unhealable ([integrity gauges](../../resilience/stream-integrity#integrity-gauges)) |
+| `whizbang.stream_integrity.repair_exhausted_buckets` | ObservableGauge\<long\> | Unhealed buckets that spent their repair budget and stopped asking; these need an operator, the one number worth an alert ([integrity gauges](../../resilience/stream-integrity#integrity-gauges)) |
+| `whizbang.stream_integrity.oldest_unhealed_age_seconds` | ObservableGauge\<double\> | Age of the longest-standing unhealed divergence; tells a transient blip from a stuck bucket ([integrity gauges](../../resilience/stream-integrity#integrity-gauges)) |
+| `whizbang.stream_integrity.repair_answer_pending_buckets` | ObservableGauge\<long\> | Buckets whose repair request is out and whose answer has not landed; not requested again meanwhile ([integrity gauges](../../resilience/stream-integrity#integrity-gauges)) |
+| `whizbang.stream_integrity.repair_answered_buckets` | ObservableGauge\<long\> | Buckets a redelivery answered that wait for the next comparison to decide healed or still divergent ([integrity gauges](../../resilience/stream-integrity#integrity-gauges)) |
+| `whizbang.stream_integrity.deliveries_pending` | ObservableGauge\<long\> | Integrity deliveries waiting for the maintainer's drain ([integrity gauges](../../resilience/stream-integrity#integrity-gauges)) |
+| `whizbang.stream_integrity.oldest_delivery_age_seconds` | ObservableGauge\<double\> | How long the oldest waiting integrity delivery has waited (0 when none) ([integrity gauges](../../resilience/stream-integrity#integrity-gauges)) |
+
+The ledger gauges above, from `sealed_through` to `oldest_delivery_age_seconds`, are read together in one round trip
+at the start of every maintenance tick on every instance, so every instance of a service reports the same values:
+read each as one value per service (the maximum across instances), never a sum. `unhealed_deficit_events` is the
+amount of data left to heal; `unhealed_buckets` counts buckets in every state. See
+[which number to watch](../../resilience/stream-integrity#integrity-gauges).
 
 ## Whizbang.Capabilities {#capabilities}
 {verified: CapabilityMetricsTests.Gauge_ReportsOneSeriesPerCapabilityAndScope_WithEveryTagAsync, CapabilityMetricsTests.Gauge_TagsEachSeriesWithHowTheVerdictRequiresItAsync, CapabilityMetricsTests.Gauge_ReadsTheLatestAnswerAtEachCollectionAsync, CapabilityMetricsTests.Gauge_IsNamedOnTheWhizbangCapabilitiesMeter_InTheTurnkeyListAsync}
@@ -951,6 +1002,32 @@ Value 1 on a state tag lets a dashboard count or alert by state without decoding
 "any capability `NotPermitted` anywhere". What each state means is on
 [Capabilities](../infrastructure/capabilities.md#states); the Postgres provider's states are on
 [Postgres Extensions](../infrastructure/postgres-extensions.md#states).
+
+## Whizbang.TrafficClasses {#traffic-classes}
+
+Meter name: `Whizbang.TrafficClasses` (`BacklogAgeMetrics`)
+
+Per-entity broker backlog and per-namespace broker load, broken out by traffic class. Every series carries
+`transport_namespace` and `traffic_class` because the question is comparative: one class starving another, or one
+namespace's request quota spent while its neighbor idles. A single number for the whole host hides exactly that.
+
+All three are observable gauges, read from a cache the backlog-age duty (`BacklogAgeWorker`) refreshes once per tick
+(`Whizbang:BacklogAge:Interval`, default 1 minute, stretching while nothing is waiting; see
+[backlog age](../../resilience/managed-resource-health#backlog-age)). A tick replaces the whole cache, so an entity or
+namespace that stops reporting drops out of the next collection instead of holding its last value. With no transport
+that supplies a peek or an ops-rate source, or with `Whizbang:BacklogAge:Enabled` set to `false`, the meter reports
+nothing.
+{verified: BacklogAgeDutyTests.PeekOnce_PerClassAndPerNamespace_AreCarriedThroughToTheGaugesAsync, BacklogAgeDutyTests.PeekOnce_PublishesTheOpsRateGaugePerNamespaceAsync}
+
+| Metric Name | Unit / Type | Tags | Description |
+|-------------|-------------|------|-------------|
+| `whizbang.traffic_class.backlog_depth` | `messages`, ObservableGauge\<long\> | `entity`, `transport`, `transport_namespace`, `traffic_class` | Messages waiting in each subscription or queue this instance consumes from |
+| `whizbang.traffic_class.backlog_age_seconds` | `s`, ObservableGauge\<double\> | `entity`, `transport`, `transport_namespace`, `traffic_class` | Age of the oldest waiting message per entity. A deep but young backlog is a burst draining normally; a shallow but old one is a consumer that stopped. Reported only where the transport can read the age without consuming: Azure Service Bus reports it, RabbitMQ reports depth only |
+| `whizbang.traffic_class.ops_rate` | `{operation}/s`, ObservableGauge\<double\> | `transport`, `transport_namespace`, `traffic_class` | Projected broker operations per second per namespace, idle receive polling included. One series per namespace, never summed: each namespace has its own request quota. Supplied by a transport's `ITrafficClassOpsRateSource`; Azure Service Bus supplies one |
+
+To watch for a stopped consumer, alert on `backlog_age_seconds` rather than on depth; the `backlog` health component
+degrades on the same reading once it passes `Whizbang:BacklogAge:AgeThreshold` (default 15 minutes). To find the
+namespace whose quota is exhausted, compare `ops_rate` across `transport_namespace` values.
 
 ## Other Meters {#other-meters}
 

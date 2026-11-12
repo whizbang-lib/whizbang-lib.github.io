@@ -15,19 +15,23 @@ codeReferences:
   - src/Whizbang.Core/ReceptorNotFoundException.cs
   - src/Whizbang.Core/Messaging/StreamSealedException.cs
   - src/Whizbang.Core/Archival/StreamArchivedException.cs
+  - src/Whizbang.Core/Archival/ArchiveLocationMismatchException.cs
+  - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveStore.cs
   - src/Whizbang.Core/Dispatcher.cs
   - src/Whizbang.Core/Workers/TransportPublishStrategy.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs
   - src/Whizbang.Core/Transports/JsonMessageSerializer.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs
-  - src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs
+  - src/Whizbang.Data.Postgres/RebuildPerspectiveCommandReceptor.cs
   - src/Whizbang.Offloads.AzureBlob/AzureBlobMessageBodyStore.cs
   - src/Whizbang.Data.Postgres/SchemaBootstrapException.cs
   - src/Whizbang.Data.Postgres/SchemaBootstrapPhase.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamSealingSqlTests.cs
+  - tests/Whizbang.Core.Tests/Archival/ArchiveLocationMismatchExceptionTests.cs
+  - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs
   - tests/Whizbang.Offloads.AzureBlob.Tests/AzureBlobMessageBodyStoreValidationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaBootstrapPhaseTests.cs
   - tests/Whizbang.Core.Tests/Schema/SchemaBootstrapRetryTests.cs
@@ -150,6 +154,28 @@ Stream {streamId} is archived through version {lastVersion}; the append waits fo
 **Trigger**: An event was appended to a stream archived whole. Under `Refuse` (the default) a direct append or an awaited outbox write throws and stores nothing, and a background write is dead-lettered alone. Under `AutoRestore` the framework restores the stream and retries an awaited write once, so the exception reaches a caller only when that restore did not put the stream back; a background write is dead-lettered awaiting the restore it queues.
 
 **Fix**: Restore the stream (`IArchiveStore.RestoreAsync`) and recover the dead letters, or declare `AppendToArchived: AutoRestore` for the stream's type. See [Archive Store](../../fundamentals/events/archive-store.md#appending-to-an-archived-stream).
+
+### The archive of a stream was refused: its location is not the configured one {#archive-location-mismatch}
+
+{verified: ArchiveLocationMismatchExceptionTests.TheLocationsConstructor_NamesTheStreamTheOperationBothLocationsAndTheRowAsync, ArchiveLocationMismatchExceptionTests.ARecordWithNoLocation_SaysSo_RatherThanNamingOneAsync, AzureBlobArchiveStoreTests.Read_Restore_Delete_InAnotherContainer_ThrowTheMismatch_AndTouchNoObjectAsync}
+
+```text
+The {operation} of the archive of stream {streamId} was refused: its objects are recorded at location {locationId} ({recorded}), and this service is configured for {configured}. Nothing was read, restored, written or deleted. If the objects are expected in the configured location (the database was copied or restored, or the storage moved), repoint the record's location row in wh_archive_locations (or call the store's repoint operation); otherwise correct the configuration.
+The {operation} of the archive of stream {streamId} was refused: an archive record of it records no location, and this service is configured for {configured}. ...
+```
+
+Each location reads `{provider}, endpoint {endpoint}, connection '{name}', container '{container}'`; a location written before migration 353 shows its endpoint and connection as `(not recorded)`.
+
+**Source**: `ArchiveLocationMismatchException` (namespace `Whizbang.Core.Archival`), thrown by `AzureBlobArchiveStore` from `ReadAsync`, `RestoreAsync`, `DeleteAsync` and `WriteAsync`. Its properties carry `StreamId`, `Operation`, `RecordedLocationId`, `Recorded` and `Configured`.
+
+**Trigger**: A record of the stream names an [archive location](../../fundamentals/events/archive-store.md#archive-locations) other than the one the store is configured for (another account endpoint, logical connection name or container), or no location at all. The usual cause is a database that moved without its configuration: a copy to another environment, a restore from a backup, or disaster recovery to another storage account; or a configuration pointed at another account or container. `Operation` is `read`, `restore`, `delete` or `write`; a `write` is refused when the stream's earlier objects are recorded elsewhere, so a stream never spans two locations.
+
+**What happens next**: Nothing. The store throws before any request reaches storage: no object is read, written or deleted, the manifest is unchanged and the stream stays as it was. The deletion queue likewise leaves rows of other locations queued, untouched.
+
+**Fix**:
+- If the objects are (or should be) in the configured location, copy them there first if needed, then repoint the location: update its row in `wh_archive_locations`, or call `AzureBlobArchiveStore.RepointLocationAsync(ex.RecordedLocationId)`. See [Repointing an environment](../../fundamentals/events/archive-store.md#repointing-an-environment).
+- If the configuration is wrong, correct `Whizbang:Archive:AzureBlob` (`ServiceUri` or `ConnectionString`, `ContainerName`, `ConnectionName`).
+- Or turn the check off with `Whizbang:Archive:AzureBlob:VerifyLocation = false`, accepting what that gives up. See [Turning the location check off](../../fundamentals/events/archive-store.md#verify-location).
 
 ## Dispatch & Receptors
 
@@ -393,7 +419,7 @@ The schema version record could not be read and the failure is not temporary; st
 
 **Trigger**: The migration ledger exists but reading it failed for a reason that would fail the same way on every attempt: a missing permission, a ledger or version table altered by hand, a column that is not where the reader expects it. A brand-new database (no ledger) and a ledger with no version table never end up here; both are read as `Migrate`. A temporary failure never ends up here either: Assess retries it within Preflight, 1 second doubling to a 30 second cap, and says `the schema version record could not be read for a moment (<reason>); retrying` on each retry.
 
-**What happens next**: The initialization attempt fails in Preflight, before any runner starts, so nothing is bootstrapped, elected or migrated, and the schema-ready gate stays closed. The failure is never cached: in the default background mode the initializer's next attempt, after `InitRetryDelay`, reads the record again; in blocking mode the host's start fails. **Why not migrate anyway**: an instance that cannot tell whether the schema is newer than its binary cannot tell whether migrating it is a downgrade.
+**What happens next**: The initialization attempt fails in Preflight, before any runner starts, so nothing is bootstrapped, elected or migrated, and the schema-ready gate stays closed. The failure is never cached: in the default background mode the initializer's next attempt, after `InitRetryDelay`, reads the record again; in blocking mode the instance [exits](../startup/instance-exits) as a `StartupFailure`, exit code 4. **Why not migrate anyway**: an instance that cannot tell whether the schema is newer than its binary cannot tell whether migrating it is a downgrade.
 
 **Fix**: Read the inner exception. Check that the application's database role can read `wh_schema_migrations` and `wh_schema_versions`, and that neither was altered by hand. Once the record can be read, the next attempt proceeds on its own.
 
@@ -406,13 +432,13 @@ The schema version record could not be read and the failure is not temporary; st
 This instance stood down, so no schema initialization runs on it and nothing is applied: {reason}
 ```
 
-**Source**: `SchemaStandDownException` (namespace `Whizbang.Data.Postgres`, an `InvalidOperationException`), thrown by `StartupVerdictBinding` when a schema pass reads a `StandDown` verdict. `{reason}` is the [Assess](../startup/rolling-upgrades#standing-down) reason: normally the version the ledger records and this binary's own, or a missing or unreadable library version.
+**Source**: `SchemaStandDownException` (namespace `Whizbang.Data.Postgres`, an `InvalidOperationException`), thrown by `StartupVerdictBinding` when a schema pass reads a `StandDown` verdict. `{reason}` is the [Assess](../startup/rolling-upgrades#standing-down) reason: a newer version online and the instance it runs on ([cluster-wide stand-down](../startup/rolling-upgrades#cluster-wide-stand-down)), the changes applied since this version and who applied them ([the rollback gate](../startup/rolling-upgrades#the-rollback-gate)), or a missing or unreadable library version.
 
 **Trigger**: A direct `EnsureWhizbangInitializedAsync()`, or a DbContext's `EnsureWhizbangDatabaseInitializedAsync()`, on a host whose binary is older than the schema. The hosted start never throws it: there, a stand-down runs no runner at all, and the instance stays visible in Preflight with the `StandingBy` phase instead (see [A stood-down instance stays in Preflight](../startup/startup-status#stood-down)).
 
 **What happens next**: Nothing was applied: no bootstrap closure, no election, no stored-form rewrite, no pass. The verdict is the same one the hosted start acts on, so calling again gives the same answer until the binary is upgraded. **Why it throws rather than return**: code that called it expects the schema to be ready afterwards, and it is not, so it must not carry on as if it were.
 
-**Fix**: Deploy a binary at or above the version the ledger records. During a rolling deployment this is expected on the older instances: the orchestrator replaces them once the newer ones are ready. If no newer release should exist, `wh_schema_versions` lists every library version recorded against this database; find the deployment that ran the newer one.
+**Fix**: Deploy a binary at or above the version that applied the changes the reason names. During a rolling deployment this is expected on the older instances: the orchestrator replaces them once the newer ones are ready. If no newer release should exist, `wh_schema_versions` lists every version recorded against this database and `wh_schema_migrations.applied_version_id` says [who applied each change](../infrastructure/migrations#applied-version-id); find the deployment that ran the newer one. To keep an older build serving a schema it did not create, see [the incompatibility override](../startup/rolling-upgrades#the-incompatibility-override). In blocking initialization (`NonBlockingSchemaInit = false`) this refusal [exits](../startup/instance-exits) as `SchemaIncompatible`, exit code 5.
 
 ---
 
@@ -452,6 +478,7 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ026 | Info | [No Topic Filters Found](whiz026.md) |
 | WHIZ027 | Info | [Perspective Runner Generated](whiz027.md) |
 | WHIZ028 | Info | [Perspective Runner Registry Generated](whiz028.md) |
+| WHIZ029 | Warning | [WhizbangId AcceptAnyVersion Disagrees](whiz029.md) |
 | WHIZ030 | Error | [Perspective Event Missing StreamId](whiz030.md) |
 | WHIZ031 | Error | [Multiple StreamId Attributes](whiz031.md) |
 | WHIZ032 | Error | [Perspective Name Collision](whiz032.md) |
@@ -510,6 +537,8 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ135 | Error | [Event type is both ephemeral and superseding](whiz135.md) |
 | WHIZ136 | Error | [Superseding event type has more than one key](whiz136.md) |
 | WHIZ137 | Error | [Destruction value has not shipped](whiz137.md) |
+| WHIZ138 | Error | [Superseding group's types disagree on their key](whiz138.md) |
+| WHIZ139 | Warning | [Read model keeps an allowed mixed-stream pair refused](whiz139.md) |
 | WHIZ140 | Warning | [Perspective shares stream event types with a group but joins none](whiz140.md) |
 | WHIZ141 | Warning | [Stream group has no announcing member with a row evictor](whiz141.md) |
 | WHIZ142 | Warning | [Bridge on a sole stream-group membership](whiz142.md) |
@@ -522,6 +551,8 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ170 | Warning | [[InheritScope] on a Perspective Class Has No Effect](whiz170.md) |
 | WHIZ171 | Info | [[InheritScope] With All-None Flags Gives Rows No Scope](whiz171.md) |
 | WHIZ200 | Warning | [An array of records stores the perspective model as one opaque document](whiz200.md) |
+| WHIZ201 | Error | [A perspective model holds a circular reference and cannot be saved](whiz201.md) |
+| WHIZ202 | Info | [A recursive type stores the perspective model as one opaque document](whiz202.md) |
 | WHIZ300 | Error | [Inconsistent Perspective Model Types](whiz300.md) |
 | WHIZ302 | Warning | [Filtered Perspective Field Has No Index](whiz302.md) |
 | WHIZ303 | Warning | [Declared Index Cannot Be Built For This Field''s Type](whiz303.md) |

@@ -110,8 +110,14 @@ This is AOT-compatible with no reflection - all registration happens via source-
 In addition, `.WithDriver.Postgres` registers the `WhizbangDatabaseInitializerService` hosted service, which runs the same initialization and then signals `ISchemaReadyGate`. The Dapper driver registers the same service (see [Both drivers](#both-drivers)). Whizbang workers are [registered with their start point](../operations/startup/startup-status#add-whizbang-worker), and the host starts none of them before this gate opens (the data plane starts later still, once the instance's row records Accept commands), so even if you forget the explicit `EnsureWhizbangInitializedAsync()` call, workers cannot race an uninitialized schema. A worker of your own gets the same guarantee when it is registered with `AddWhizbangWorker`; one added with `AddHostedService` starts with the host, before the migration. {verified: StartupHostedServiceAuditTests.EveryHostedService_HasAPlaceInTheStageTable_AndTheStagedOnesStartAtTheirStageAsync, StartupStageHostTests.TheDataPlane_StartsOnlyOnceTheRowRecordsAcceptCommandsAsync} The explicit call remains useful when your own startup code (seeding, health probes) needs the schema ready before `app.RunAsync()`.
 
 :::updated
-Non-blocking initialization is now the **turnkey default** (`SchemaInitializationOptions.NonBlockingSchemaInit = true`): the hosted service's `StartAsync` returns immediately and initialization runs in the **background**, so the host binds and answers liveness probes while migrations run. `ISchemaReadyGate` stays closed until initialization succeeds (fail-closed on failure), and the availability layer keeps the instance out of traffic in the meantime — `SchemaReadyHealthCheck` reports not-ready and `DatabaseAvailabilityMiddleware` returns 503 with a `Retry-After` header until the gate opens. Set `NonBlockingSchemaInit = false` to opt back into blocking inline initialization (host startup does not complete — no HTTP port, no workers — until migrations finish, and a migration failure aborts startup). An optional `MigrationTimeout` (default: none) caps a single background attempt so a hung migration fails the rollout instead of wedging forever.
+Non-blocking initialization is now the **turnkey default** (`SchemaInitializationOptions.NonBlockingSchemaInit = true`): the hosted service's `StartAsync` returns immediately and initialization runs in the **background**, so the host binds and answers liveness probes while migrations run. `ISchemaReadyGate` stays closed until initialization succeeds (fail-closed on failure), and the availability layer keeps the instance out of traffic in the meantime: `SchemaReadyHealthCheck` reports not-ready and `DatabaseAvailabilityMiddleware` returns 503 with a `Retry-After` header until the gate opens. Set `NonBlockingSchemaInit = false` to opt back into blocking inline initialization (host startup does not complete (no HTTP port, no workers) until migrations finish, and a failure ends the process through the [one exit path](../operations/startup/instance-exits): `StartupFailure`, exit code 4, or `SchemaIncompatible`, exit code 5, for a schema newer than the binary). An optional `MigrationTimeout` (default: none) caps a single background attempt so a hung migration fails the rollout instead of wedging forever.
 :::
+
+**A blocking failure is an exit, not a throw.** Earlier releases threw the failure out of host start, which ended the
+process as an unhandled crash with no account of why. Now the initializer requests the exit with its cause and a reason
+that names the failure, with the schema-ready gate still closed; the exit writes its entry and row and sets the code.
+A cancellation of the host's own start is not an exit; any other cancellation is.
+{verified: SchemaInitializationRunnersTests.Blocking_AnUnreadableVersionRecord_ExitsAsAStartupFailure_WithTheGateClosedAsync, SchemaInitializationRunnersTests.Blocking_ASchemaNewerThanThisBinary_ExitsAsSchemaIncompatibleAsync, SchemaInitializationRunnersTests.Blocking_ACanceledHostStart_IsNotAnExit_ButACancellationThatIsNotTheHosts_IsAsync}
 
 ## Multiple DbContexts
 
@@ -416,6 +422,30 @@ The call comes after the step's commit and before the next step takes the schema
 runs. It fires for every step that took the lock and committed, including one whose ledger row turned out to be
 current already; it does not fire for a step the pass did not owe, or once another instance has finished the schema.
 The [step lines](../operations/infrastructure/migrations#step-log-lines) in the log say which steps actually applied.
+
+### The phases before the schema lock {#pre-lock-phases-starting}
+
+{verified: SchemaInitializationObserversTests.PreLockPhasesStarting_TellsEveryRegisteredObserverAsync, SchemaInitializationObserversTests.PreLockPhasesStarting_WithNoProvider_TellsNobodyAsync, SchemaInitializationObserversTests.PreLockPhasesStarting_IsANoOpForAnObserverThatDoesNotWatchItAsync, MigratorKeepaliveStartupTests.TwoReplicas_OnlyAnInstanceHoldingTheRoleRunsThePreLockPhasesAsync}
+
+On the EF Core driver, `OnPreLockPhasesStartingAsync` is called with the schema when the phases before the schema lock
+(the declared-key scan, the stored-form rewrites, the index rebuild and the settle scan) are about to run on this
+instance, which holds the migrator role or could not be staged ([which instance runs them](../operations/infrastructure/migrations#pre-lock-phases)).
+Like the other methods it defaults to doing nothing.
+
+```csharp{title="Watching the pre-lock phases" description="An observer that notes when this instance starts the phases before the schema lock" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Startup", "Observability", "Migrations"] tests=["SchemaInitializationObserversTests.PreLockPhasesStarting_TellsEveryRegisteredObserverAsync"]}
+public sealed class PreLockPhases(ILogger<PreLockPhases> logger) : ISchemaInitializationObserver {
+  public ValueTask OnPreLockPhasesStartingAsync(string schema, CancellationToken cancellationToken) {
+    logger.LogInformation("This instance is bringing the stored documents of {Schema} to their current form", schema);
+    return ValueTask.CompletedTask;
+  }
+}
+
+builder.Services.AddSingleton<ISchemaInitializationObserver, PreLockPhases>();
+```
+
+**Why it is not a stage.** These phases run on a restart too, against tables they find settled in one lookup each, and
+the Migrate stage stays the pass's. Their progress is said in the log at Information
+([progress of long startup work](../operations/infrastructure/migrations#progress-of-long-startup-work)).
 
 ## See Also
 
