@@ -31,10 +31,14 @@ codeReferences:
   - src/Whizbang.Core/Configuration/SupersedingOptions.cs
   - src/Whizbang.Data.Postgres/SupersedingHistoryReconcileStep.cs
   - src/Whizbang.Data.Postgres/Migrations/345_SupersedingHistoryReconcile.sql
+  - src/Whizbang.Data.Postgres/TypeHistoryWalker.cs
+  - src/Whizbang.Data.Postgres/Migrations/380_HistoryWalksReadTheirOwnType.sql
   - src/Whizbang.Data.Postgres/Migrations/358_StreamsRememberWhenTheyStarted.sql
   - src/Whizbang.Core/Perspectives/PerspectiveRowStart.cs
   - src/Whizbang.Data.Postgres/StreamStartSql.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/TypeHistoryWalkSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/TypeHistoryWalkGuardTests.cs
   - tests/Whizbang.Core.Tests/Lifecycle/SupersedingEventsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EventFlagsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EventFlagsDeriverTests.cs
@@ -294,24 +298,46 @@ tests: ["ProcessWideOptionsBindingTests.Superseding_Unconfigured_ReconcilesHisto
 }
 ```
 
+### What it costs {#history-reconcile-cost}
+
+The walk reads the type's own events and nothing else. Each batch takes the type's next 5,000 stamped events in commit
+order, read in the index on `(event_type, commit_sequence)`, so a type with N events is reconciled in about
+N / 5,000 batches whatever the size of the event store, and a store with many other types costs the walk nothing extra.
+A cycle runs at most 20 batches across all superseding types; a type whose walk is complete, or that another instance
+is walking, spends none of them. A complete walk costs one row read per type per cycle.
+
+{verified: TypeHistoryWalkSqlTests.Reconcile_CostTracksTheTypesOwnEvents_NotTheStoreAsync, TypeHistoryWalkSqlTests.TheWalk_ReadsTheTypeThroughItsIndex_NeverTheStoreAsync, TypeHistoryWalkSqlTests.Reconcile_SeveralTypesInOneCycle_ShareTheBatchBudget_AndACompleteTypeSpendsNoneOfItAsync}
+
+The index is built concurrently after the migrations, by the maintenance cycle
+([indexes built after the migrations](../../operations/infrastructure/migrations#indexes-built-after-the-migrations)).
+Until it is valid the walk gives the same answer through the index on the event type alone, reading the type's events to
+put them in order: still the type's own cost, never the store's.
+
+{verified: TypeHistoryWalkSqlTests.Reconcile_BeforeTheTypeIndexIsBuilt_AnswersTheSameAsync}
+
 | Choice | Reason | Verified |
 |---|---|---|
 | On by default: a type that becomes superseding has its earlier history reconciled with no setting. | The reconcile only stamps and queues; the reaper's gates (consumed, no cursor or snapshot on it, no destruction hold, stamped, not debug mode) stay the only path to deletion, so nothing goes that the reaper would not remove for an event stored after the declaration. Declaring the type superseding is the promise that its older events are redundant, and leaving them would keep the storage the declaration was meant to recover. | {verified: ProcessWideOptionsBindingTests.Superseding_Unconfigured_ReconcilesHistory_AndTheKeyTurnsItOffAsync, SupersedingHistoryReconcileSqlTests.Reconcile_OldEventsTheGatesProtect_StayAsync} |
 | The key is read from the stored payload by the same generated accessor and invariant-text rules as on the write paths; a null key is stamped without a key, and a payload whose key cannot be read is kept and logged. | A historical event must be keyed exactly as the same event stored today, or it would supersede, or be superseded by, the wrong events. Keeping an event whose key is unknown is the recoverable direction. | {verified: SupersedingHistoryReconcileSqlTests.Reconcile_ANullKey_IsStampedUnkeyed_AndNeverQueued_AKeylessTypeKeepsOnePerStreamAsync, SupersedingHistoryReconcileSqlTests.Reconcile_AnUnreadablePayload_IsStampedUnkeyed_AndLoggedAsync} |
 | An old event is queued whether it is stamped before or after the newer event of its key. | A newer event stored after the declaration was already keyed when the old one had no key, so it queued nothing; the old event queues itself when it is stamped. | {verified: SupersedingHistoryReconcileSqlTests.Reconcile_AnOldEventStampedAfterTheNewerOneOfItsKey_IsQueuedAsync} |
 | A maintenance step, not startup work. | It runs only once the service has settled (or the deferral limit forces the cycle), only after the maintainer turn, and in bounded batches, like every other step that rewrites stored rows. | {verified: SupersedingHistoryReconcileSqlTests.ThePostgresDriver_RegistersTheStepAsync, DapperSupersedingKeyTests.HistoryStoredBeforeTheDeclaration_IsReconciledByTheRegisteredStep_AndReapedToTheNewestAsync} |
-| The walk reads the event store by event id, 5,000 events per batch, each batch one transaction, at most 20 batches a cycle; a cursor per type (`wh_superseding_history`) lets the next cycle, or a restart after a crash, continue where the last committed batch stopped. | No index serves "the events of this type without the flag" without revisiting the stamped ones on every batch, and an index that did would be written by every append for the life of the store. The primary key reads each event once per walk, and a finished walk costs one row read per type per cycle. | {verified: SupersedingHistoryReconcileSqlTests.Reconcile_RunsInBoundedBatches_AndResumesFromItsCursor_AfterACrashAsync} |
-| One instance per type: the type's cursor row is taken with `SKIP LOCKED`, and an event row another transaction holds is left for the next batch, which stops the cursor just before it. | Two instances never do the same work, and the walk never waits on a writer or the reaper. | {verified: SupersedingHistoryReconcileSqlTests.Reconcile_WhileAnotherInstanceHoldsTheType_SkipsWithoutWaiting_AndDoesNoWorkAsync, SupersedingHistoryReconcileSqlTests.Reconcile_ARowAnotherTransactionHolds_IsLeftForTheNextBatch_WithoutWaitingAsync} |
+| The walk reads the type's own events, in commit order, through the index on `(event_type, commit_sequence)`: 5,000 per batch, each batch one transaction, at most 20 batches a cycle. A cursor per type (`wh_type_history_walks`) lets the next cycle, or a restart after a crash, continue where the last committed batch stopped. | The walk used to read the whole store by event id for every type, so it cost the store's size times the number of types: on a store of a few million events, a type with a few hundred events took most of a day. The index already exists for the paced backfill, so reading the type through it adds nothing to the write path; the primary key was chosen only to avoid a new index. | {verified: TypeHistoryWalkSqlTests.Reconcile_CostTracksTheTypesOwnEvents_NotTheStoreAsync, TypeHistoryWalkSqlTests.TheWalk_ReadsTheTypeThroughItsIndex_NeverTheStoreAsync, SupersedingHistoryReconcileSqlTests.Reconcile_RunsInBoundedBatches_AndResumesFromItsCursor_AfterACrashAsync} |
+| One mechanism: every change to a type's stored history (this reconcile, and [reclassifying the history of a type made ephemeral](./ephemeral-events#making-an-existing-type-ephemeral)) goes through the same per-type walker, and no type-scoped history function may walk the store by event id. | A second walk would be a second place to get the cost model, the cursor and the completion rule wrong. A guard reads every such function's latest definition and fails on an event-id range, and a plan test fails if the walk stops using the type's index. | {verified: TypeHistoryWalkGuardTests.NoTypeScopedHistoryFunction_WalksTheStoreByEventIdAsync, TypeHistoryWalkSqlTests.TheWalk_ReadsTheTypeThroughItsIndex_NeverTheStoreAsync} |
+| A walk completes only once it has read past the type's newest event and none of the type's events is still waiting for the commit-order stamper. An event not yet stamped is reconciled once it is stamped. | The reaper only acts on stamped events, and the one stamper numbers an event after every sequence the walk has passed, so walking in commit order sees it on a later batch; a walk that completed early would never read it. | {verified: TypeHistoryWalkSqlTests.Reconcile_EventsUnstampedAtTheStart_AreReconciledOnceStamped_AndHoldTheWalkOpenAsync, TypeHistoryWalkSqlTests.Begin_AWalkPastTheEnd_WaitsForUnstampedEvents_ThenFinishesAsync} |
+| One instance per type: the type's walk is taken with `SKIP LOCKED`, and an event row another transaction holds is left for the next batch, which stops the cursor just before it. | Two instances never do the same work, and the walk never waits on a writer or the reaper. | {verified: SupersedingHistoryReconcileSqlTests.Reconcile_WhileAnotherInstanceHoldsTheType_SkipsWithoutWaiting_AndDoesNoWorkAsync, SupersedingHistoryReconcileSqlTests.Reconcile_ARowAnotherTransactionHolds_IsLeftForTheNextBatch_WithoutWaitingAsync} |
 | Stamping takes the per-stream locks the write paths take, in stream id order. | A newer event of the same key stored at the same moment is either seen by the stamp or sees it, so no old event is left unqueued. | {verified: SupersedingHistoryReconcileSqlTests.Reconcile_AnOldEventStampedAfterTheNewerOneOfItsKey_IsQueuedAsync} |
 | A second run changes nothing. | A stamped event is never read again and a queued event is never queued twice. | {verified: SupersedingHistoryReconcileSqlTests.Reconcile_ASecondRun_ChangesNothingAsync} |
 | Only the types registered as superseding are walked, and only their Sourced events. | A type that is not, or is no longer, superseding keeps every event; an ephemeral event belongs to the ephemeral reaper. | {verified: SupersedingHistoryReconcileSqlTests.Reconcile_ATypeThatIsNotSuperseding_IsNotTouchedAsync, SupersedingHistoryReconcileSqlTests.Reconcile_AnEphemeralEventOfTheType_IsLeftToTheEphemeralReaperAsync} |
-| `[Superseding]` is part of a type's settings hash, and a walk starts again from the first event when the type-definition registry holds a newer definition of the type than the walk started under. | Becoming superseding is then recorded in the registry as a definition change, and a type that was briefly something else, and stored unflagged events meanwhile, is walked again. Every type that is not superseding keeps the hash it had. | {verified: MessageTypeCatalogFingerprintTests.SettingsHash_ChangesWhenATypeBecomesSuperseding_AndASourcedTypeKeepsItsHashAsync, SupersedingHistoryReconcileSqlTests.Reconcile_ANewerDefinitionOfTheType_WalksItAgainFromTheStartAsync} |
+| `[Superseding]` is part of a type's settings hash, and a walk starts again from the first event when the type-definition registry holds a newer definition of the type than the walk started under, or when its group changes. | Becoming superseding is then recorded in the registry as a definition change, and a type that was briefly something else, and stored unflagged events meanwhile, is walked again. Every type that is not superseding keeps the hash it had. | {verified: MessageTypeCatalogFingerprintTests.SettingsHash_ChangesWhenATypeBecomesSuperseding_AndASourcedTypeKeepsItsHashAsync, SupersedingHistoryReconcileSqlTests.Reconcile_ANewerDefinitionOfTheType_WalksItAgainFromTheStartAsync, SupersedingGroupSqlTests.Ensure_AChangedGroup_RestartsTheWalk_TheSameGroupDoesNotAsync} |
+| Upgrading clears the cursors of the earlier walk by event id, so each superseding type is walked once more from its first event. | Those cursors mean nothing in commit order. Walking a type again re-reads only its own events and changes nothing already stamped. | {verified: TypeHistoryWalkSqlTests.CursorRowsThe345WalkLeft_AreCleared_AndEveryTypeIsWalkedAgainFromItsFirstEventAsync} |
 | Each service reconciles its own store. | A received copy is reaped by the receiver's own gates, as on the live path. | {verified: SupersedingHistoryReconcileSqlTests.Reconcile_ReceivedCopies_AreReconciledInTheReceivingStoreAsync} |
 
 The step logs, per type and cycle, the events it stamped and queued and how many of the type's events are left to
-read, and one line when a type's walk reaches the end of the store.
+read, and one line when a type's walk completes.
 
 {verified: SupersedingHistoryReconcileSqlTests.Step_ReportsProgress_AndOneLineWhenATypeFinishesAsync}
+
+---
 
 ## Build rules {#build-rules}
 

@@ -27,6 +27,9 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/PhysicalColumnFillMaintenanceStep.cs
   - src/Whizbang.Core/Perspectives/PhysicalFieldAttribute.cs
   - src/Whizbang.Core/Perspectives/IndexedAttribute.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveIndexAttribute.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveRowColumns.cs
+  - src/Whizbang.Generators.Shared/Models/PerspectiveRowColumnNames.cs
   - src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs
   - src/Whizbang.Generators.Shared/Models/JsonIndexDiscovery.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonIndexRegistry.cs
@@ -379,6 +382,69 @@ text order, its `uuid` byte order and its creation order all agree, which makes 
 document-held identifier answerable from an index.
 
 {verified: ContainmentTypeEligibilityProbeTests.ATimeOrderedIdentifier_SortsTheSameAsTextAndAsBytesAsync}
+
+## Composite and partial indexes: `[PerspectiveIndex]` {#perspective-index}
+
+`[Indexed]` declares an index over one field. `[PerspectiveIndex]` on the model declares the two shapes
+it cannot: an index over several fields in a stated order, for a query that filters them together, and
+a partial index, for a query that only ever reads a subset of rows. Name the fields with `nameof`; each
+is indexed wherever it is stored, as its column when it is promoted and as its extraction from the
+document when it is not.
+
+```csharp{title="A composite and a partial index" description="Two fields filtered together get one index; rows only ever read when active get a partial one." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "indexing", "composite", "partial"] tests=["CompositeIndexDiscoveryTests.ADeclaredNameAndUniqueness_AreReadFromTheDeclarationAsync", "UpdatedAtIndexGenerationTests.Dapper_CompositeAndPartialDeclarations_AreBuiltAsync"]}
+[PerspectiveIndex(nameof(TenantId), nameof(EntityType))]
+[PerspectiveIndex(nameof(TenantId), Where = "(data ->> 'Status') = 'active'")]
+public record DocumentModel {
+  public Guid TenantId { get; init; }
+  public string EntityType { get; init; } = "";
+  public string Status { get; init; } = "";
+}
+```
+
+- **Order is the order given.** A composite answers a filter on a leading subset of its fields, so put
+  the one filtered alone first.
+- **`Where` is verbatim SQL** against the stored form: a document field is `(data ->> 'Name')`, a
+  promoted one its column. PostgreSQL uses a partial index only for a query written with the same
+  predicate.
+- **`Method`, `OperatorClass`, `Expressions`, `Unique` and `Name`** choose the index method, an operator
+  class for every element, expressions after the named fields, uniqueness, and an explicit name.
+- A name that matches no field, or a field whose type cannot carry an index, means no index at all,
+  never a partial one.
+
+### The row's own columns: `PerspectiveRowColumns` {#perspective-row-columns}
+
+A perspective row has columns of its own besides the document. Name them with a constant from
+`PerspectiveRowColumns` where you would name a field with `nameof`:
+
+| Constant | Column |
+|---|---|
+| `PerspectiveRowColumns.UpdatedAt` | `updated_at`, when the row was last written |
+| `PerspectiveRowColumns.CreatedAt` | `created_at`, when the row was first written |
+
+```csharp{title="Indexing the row's updated_at" description="Alone, after a field, or restricted to open rows." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "indexing", "updated_at"] tests=["UpdatedAtIndexGenerationTests.EFCore_DeclaredOnItsOwn_BuildsTheIndexUnderItsFormerNameAsync", "UpdatedAtIndexGenerationTests.EFCore_DeclaredInAComposite_FollowsTheModelPropertyAsync", "UpdatedAtIndexGenerationTests.EFCore_DeclaredWithAPredicate_IsAPartialIndexAsync"]}
+[PerspectiveIndex(PerspectiveRowColumns.UpdatedAt)]
+[PerspectiveIndex(nameof(TenantId), PerspectiveRowColumns.UpdatedAt)]
+[PerspectiveIndex(PerspectiveRowColumns.UpdatedAt, Where = "(data ->> 'Status') = 'open'")]
+public record TicketModel {
+  public Guid TenantId { get; init; }
+  public string Status { get; init; } = "";
+}
+```
+
+Each constant begins with `$`, which no C# identifier can, so a model's own property called
+`UpdatedAt` stays a document field: `nameof(UpdatedAt)` indexes it, and only the constant reaches the
+row's column. `updated_at` is not indexed unless the table declares row retention or the model
+declares it here; see [The `updated_at` index](perspective-indexes.md#the-updated_at-index), including
+what an upgrade retires.
+
+### Both drivers
+
+The EF Core schema pass and the Dapper schema generator build the same statement from each
+declaration. Before this release the Dapper generator ignored `[PerspectiveIndex]`: a model on that
+driver now gets every index it declares, under the same name the EF Core driver gives it, and the
+managed-object reconcile keeps them.
+
+{verified: UpdatedAtIndexGenerationTests.Dapper_DeclaredOnItsOwn_BuildsTheIndexAsync, UpdatedAtIndexGenerationTests.Dapper_CompositeAndPartialDeclarations_AreBuiltAsync, UpdatedAtIndexGenerationTests.Dapper_ADeclaredIndex_IsAManagedObjectAsync, UpdatedAtIndexGenerationTests.EFCore_AModelPropertyNamedUpdatedAt_IsIndexedInTheDocumentAsync, PerspectiveRowColumnsTests.NoName_CanBeAPropertyNameAsync, UpdatedAtIndexGenerationTests.TheWellKnownNames_AreTheOnesTheGeneratorsResolveAsync}
 
 ## PhysicalFieldInfo {#PhysicalFieldInfo}
 
@@ -895,8 +961,10 @@ also queues a rewrite request for the table, which the maintenance worker perfor
 rewrite policy (see [Storage Maintenance](../../operations/infrastructure/storage-maintenance#fillfactor)).
 A table created empty queues nothing, and neither does a restart that finds the value already in place.
 
-Fillfactor cannot help an update that changes an indexed column, which is never HOT, and a large
-document stored out of line in TOAST is written to new TOAST chunks whenever it changes. A lower
+Fillfactor cannot help an update that changes an indexed column, which is never HOT. That is why
+perspective tables no longer index `updated_at` by default: every apply rewrites it, so an index on it
+made no update HOT whatever the fillfactor (see [The `updated_at` index](perspective-indexes.md#the-updated_at-index)).
+A large document stored out of line in TOAST is also written to new TOAST chunks whenever it changes. A lower
 fillfactor also means fewer rows per page, so a scan reads more pages; keep it at 100 for a table whose
 rows are inserted and never updated.
 

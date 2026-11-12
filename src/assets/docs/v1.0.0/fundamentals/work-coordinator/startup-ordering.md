@@ -39,12 +39,12 @@ row says it may not claim.
 
 | Point in startup | What becomes true | What starts |
 |---|---|---|
-| Preflight to Coordinate | The schema is migrated; the instance is registered and elected | Schema initialization, the notification connection and signal bus (Elect), the duty holder and partition assigner (Coordinate) |
-| The schema-ready gate opens (end of Coordinate) | Every Whizbang table and function exists | The heartbeat, the lifecycle monitor, the standby watcher, the statistics collectors, the reconcilers, shutdown deregistration |
+| Preflight to Coordinate | The schema is migrated; the instance is registered and elected | Schema initialization, the notification connection, the signal bus and the heartbeat (Elect, with [startup beats](../../operations/startup/startup-status.md#the-startup-beat) until the schema is ready), the duty holder and partition assigner (Coordinate) |
+| The schema-ready gate opens (end of Coordinate) | Every Whizbang table and function exists | The heartbeat's first full beat, the lifecycle monitor, the standby watcher, the statistics collectors, the reconcilers, shutdown deregistration |
 | The row records Accept commands | The instance is eligible for work, and its row says so | The data plane (claim, drain, flush, perspective, inbox and outbox workers, and the rest) and the transport consumer |
 | Running | The read models have caught up | Lens reads are served |
 
-{verified: StartupStageHostTests.TheDataPlane_StartsOnlyOnceTheRowRecordsAcceptCommandsAsync, StartupHostedServiceAuditTests.EveryHostedService_HasAPlaceInTheStageTable_AndTheStagedOnesStartAtTheirStageAsync}
+{verified: StartupStageHostTests.TheDataPlane_StartsOnlyOnceTheRowRecordsAcceptCommandsAsync, StartupHostedServiceAuditTests.EveryHostedService_HasAPlaceInTheStageTable_AndTheStagedOnesStartAtTheirStageAsync, HeartbeatStartPointTests.TheHeartbeat_StartsAtElect_TheFirstStageAfterRegistrationAsync}
 
 The full list of workers and the reason each starts where it does is in
 [What runs in each stage](../../operations/startup/startup-status.md#what-runs-in-each-stage).

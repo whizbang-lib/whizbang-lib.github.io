@@ -60,6 +60,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/DeadLetterLoggingOptions.cs
   - src/Whizbang.Core/Workers/DatabaseFailureEscalationOptions.cs
   - src/Whizbang.Core/Startup/RoleAssignmentOptions.cs
+  - src/Whizbang.Data.Postgres/MigratorDuty.cs
+  - src/Whizbang.Core/Versioning/UpgradeOrder.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
 testReferences:
   - tests/Whizbang.Archive.AzureBlob.Tests/AzureBlobArchiveLocationTests.cs
@@ -199,6 +201,16 @@ Removed keys the library declares:
 | `Whizbang:Database:Stamper:AdvisoryLockKey` | Nothing. The commit-order stamper takes no lock of its own; it leads through the `commit-stamper` role. See [Commit sequence](../../fundamentals/work-coordinator/commit-sequence#leadership) |
 | `Whizbang:StandbyWatcher:RequesterLivenessWindow` | `Whizbang:Workers:Heartbeat:IntervalSeconds`: the standby watcher keeps no window of its own; [the liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule) judges the requester by the window it declares from its heartbeat cadence. See [Rolling Upgrades](../startup/rolling-upgrades#the-standby-handshake) |
 
+## Registrations two assemblies share are reported at startup {#registration-collisions}
+
+When two different assemblies register the same item (a perspective, a lifecycle receptor, a model for the same
+DbContext), the latest registration is used and startup logs a warning naming the item and both assemblies. See
+[registration collisions](../../extending/extensibility/replaceable-services#registration-collisions).
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `Whizbang:Startup:RegistrationCollisions` | `Warn` \| `Fail` | `Warn` | `Whizbang__Startup__RegistrationCollisions` | `Warn` logs one warning per collision and starts with the latest registration of each. `Fail` logs the same warnings, then fails host start naming every collision |
+
 ## Quick Map
 
 | Configuration section | Options class | Binding |
@@ -212,6 +224,8 @@ Removed keys the library declares:
 | `Whizbang:ServiceName` (falls back to `ServiceName`) | — (string) | Automatic |
 | `Whizbang:ShowBanner` | — (bool) | Automatic |
 | `Whizbang:Application:Version`, `Whizbang:Application:DeployNumber` | none (read once, when the application version is first resolved) | Automatic (worker pipeline); see [Application version](#application-version) |
+| `Whizbang:Startup:OverrideIncompatibility` | none (read once, by the Assess verdict) | Automatic (both Postgres drivers); see [Incompatibility override](#incompatibility-override) |
+| `Whizbang:Startup:AllowLossyRollback` | none (read once, by the Assess verdict) | Automatic (both Postgres drivers); see [Lossy rollback](#lossy-rollback) |
 | `ConnectionStrings:*` | — (strings, naming conventions below) | Automatic |
 | `ConnectionPool:*` | — (generated DbContext registration) | Automatic |
 | `Whizbang:BodyOffload` | `MessageBodyOffloadOptions` (every key) | Automatic (`AddWhizbangBodyOffload()`, which every provider helper calls) |
@@ -332,6 +346,7 @@ Bound by the Postgres driver, which holds every duty (`maintainer`, `migrator`, 
 | `ProgressWindow` | `TimeSpan` | `00:02:00` | `Whizbang__Database__RoleAssignment__ProgressWindow` | How long a holder past its lease, that the one liveness rule calls live, may go without renewing before it loses the duty. Bounds how long a connected but stuck holder keeps it, while a holder busy with startup or one long unit of work keeps it; never shorter than the duty's lease. `00:00:00` turns it off, and the lease alone decides. [Details](../../../proposals/duty-role-assignment#progress-window) {verified: RoleAssignmentOptionsTests.ProgressWindow_DefaultsToTwoMinutesAsync, RoleAssignmentOptionsTests.ProgressWindowFor_IsNeverShorterThanTheRolesLease_AndZeroTurnsItOffAsync, RoleAssignmentOptionsTests.Validate_RefusesANegativeProgressWindowAsync} |
 | `CooldownAfterLapse` | `TimeSpan` | `00:00:15` | `Whizbang__Database__RoleAssignment__CooldownAfterLapse` | How long an instance whose own assignment lapsed must wait before it can win it back. A fleet-wide lapse (a database outage) carries none |
 | `OwedWorkRetryBase` | `TimeSpan` | `00:00:30` | `Whizbang__Database__RoleAssignment__OwedWorkRetryBase` | Backoff after owed duty work fails, doubled per failure, capped at one hour |
+| `MigratorStallLimit` | `TimeSpan` | `00:00:00` | `Whizbang__Database__RoleAssignment__MigratorStallLimit` | How long the migrator's startup work may report no progress before its keepalive stops renewing its role, so the lease lapses and another instance takes the schema work over. `00:00:00` derives it: the `db-init` [command timeout](#command-timeouts) plus the migrator's progress window, 12 minutes by default. Negative is refused. EF Core driver only. See [a stuck migrator loses its role](../infrastructure/migrations#a-stuck-migrator-loses-its-role) {verified: MigratorStallLimitTests.MigratorStallLimit_DefaultsToZero_AndANegativeOneIsRefusedAsync, MigratorStallLimitTests.TheStallLimit_IsTheSchemaCommandBudgetPlusTheMigratorsProgressWindow_ByDefaultAsync, MigratorStallLimitTests.AConfiguredStallLimit_IsUsedAsItIsAsync} |
 
 Code-only (through `AddWhizbangRoleAssignment(o => ...)`): `Roles` (the duties the holder loop holds and the `roles` health component reports; a duty not listed is still held by assignment when asked for) and `RoleLeases` (a lease per duty; the migrator's default is 30 seconds).
 
@@ -383,6 +398,27 @@ being recorded as unknown. A blank `Version` is no override.
   }
 }
 ```
+
+### Incompatibility override {#incompatibility-override}
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `Whizbang:Startup:OverrideIncompatibility` | `bool` | `false` | `Whizbang__Startup__OverrideIncompatibility` | Lets an instance start when Assess would stand it down for an incompatibility (the schema newer than its build, or a change it cannot reverse applied since its version). It starts as `Current`, applies nothing and runs no migration; it logs at Error on every start and records the override on its instance row. It never lifts the stand-down for a newer version online. See [the incompatibility override](../startup/rolling-upgrades#the-incompatibility-override) |
+
+Only `true` turns it on. A value that is not a boolean fails startup naming the key, rather than being read as off.
+It is an emergency setting: turn it off once the incompatible build is gone.
+{verified: UpgradeOrderTests.TheOverride_IsOffUnlessTheHostTurnsItOnAsync, UpgradeOrderTests.AnOverrideThatIsNotABoolean_IsRefusedLoudly_NeverReadAsOffAsync, RollbackGateTests.TheOverride_LetsAnIncompatibleInstanceServe_WithoutAMigration_AndCarriesTheFullReasonAsync, RollbackGateTests.TheOverride_NeverOverridesANewerVersionOnlineAsync}
+
+### Lossy rollback {#lossy-rollback}
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `Whizbang:Startup:AllowLossyRollback` | `bool` | `false` | `Whizbang__Startup__AllowLossyRollback` | Lets an older version roll back changes a newer version applied whose reversal discards data the newer version wrote (dropping a perspective table it created, rows included). Off, such a rollback stands down with an error naming each change. It never lets an irreversible change be rolled back. See [rolling back](../startup/rolling-upgrades#rolling-back) |
+
+Only `true` turns it on. A value that is not a boolean fails startup naming the key, rather than being read as off.
+Set it for the rollback that needs it, then turn it off: left on, every later rollback across such a change discards
+data without asking.
+{verified: UpgradeOrderTests.TheLossyRollbackKey_IsOffUnlessItSaysTrue_AndRefusedLoudlyWhenItIsNotABooleanAsync, UpgradeOrderTests.ALossyChange_RefusesTheRollback_UnlessTheOperatorAllowsItAsync, RollbackGateTests.ALossyChange_StandsDown_UnlessTheOperatorAllowsItAsync, SchemaRollbackTests.ALossyChange_IsReversedOnlyWhenAllowedAsync}
 
 ### ConnectionStrings Conventions
 
@@ -771,6 +807,8 @@ Startup reconciliation of ephemeral-event settings drift. **Configure:** bound a
 | `PointerPrune.Enabled` | `bool?` | unset (database: `false`) | `Whizbang__Ephemeral__PointerPrune__Enabled` | Turn on the prune of ancient ephemeral pointers. Publishes `ephemeral_deep_maintenance_enabled` |
 | `PointerPrune.RetentionDays` | `int?` | unset (database: `90`) | `Whizbang__Ephemeral__PointerPrune__RetentionDays` | Days a reaped pointer is kept before it may be pruned; never shorter than the deduplication window. Publishes `ephemeral_pointer_retention_days` |
 | `PointerPrune.IntervalDays` | `int?` | unset (database: `30`) | `Whizbang__Ephemeral__PointerPrune__IntervalDays` | Days between prunes. Publishes `ephemeral_pointer_prune_interval_days` |
+| `BlockerReport.Enabled` | `bool` | `true` | `Whizbang__Ephemeral__BlockerReport__Enabled` | Record, log and gauge which durable event types keep each ephemeral type's history Sourced. Off: nothing recorded, logged or gauged. See [What holds ephemeral history back](../../fundamentals/events/ephemeral-events#what-holds-ephemeral-history-back) {verified: EphemeralBlockerOptionsTests.BlockerReport_AndReleaseBlockers_BindFromConfigurationAsync, EphemeralBlockerReportSqlTests.Report_Off_RecordsNothing_LogsNothing_AndTheReclassifyIsUnchangedAsync} |
+| `ReleaseBlockers` | `Dictionary<string, List<string>>` | empty | `Whizbang__Ephemeral__ReleaseBlockers__<EphemeralType>__0` | Per ephemeral type, the durable types to reclassify with it in its own streams only. Empty: no durable event changes. See [Releasing a blocking type](../../fundamentals/events/ephemeral-events#releasing-a-blocking-type) {verified: EphemeralBlockerOptionsTests.BlockerReport_AndReleaseBlockers_BindFromConfigurationAsync, EphemeralBlockerReportSqlTests.NoRelease_NoDurableEventChangesAsync} |
 
 ### SupersedingOptions {#superseding-options}
 
@@ -1397,6 +1435,7 @@ Operator rung of the row-retention override ladder. **Configure:** bound automat
 | `Retention.RecoveredDeadLetterDays` | `int?` | unset (database: `7`) | `Whizbang__Workers__Maintenance__Retention__RecoveredDeadLetterDays` | Days a recovered dead letter is kept after recovery. Publishes `dead_letter_retention_days` |
 | `Retention.AbandonedStreamHours` | `int?` | unset (database: `1`) | `Whizbang__Workers__Maintenance__Retention__AbandonedStreamHours` | Hours an owner-less active-stream row sits idle before it is purged. Publishes `abandoned_stream_hours` |
 | `Retention.InstanceEvictionTombstoneHours` | `int?` | unset (database: `24`) | `Whizbang__Workers__Maintenance__Retention__InstanceEvictionTombstoneHours` | Hours an instance-eviction tombstone is kept. Publishes `instance_eviction_retention_hours` |
+| `Retention.InstanceExitDays` | `int?` | unset (database: `30`) | `Whizbang__Workers__Maintenance__Retention__InstanceExitDays` | Days the record of an instance's exits (`wh_instance_exits`) is kept. Publishes `instance_exit_retention_days`; the next exit's write removes older rows, not the sweep. See [the exit record](../startup/instance-exits#the-exit-record) |
 | `Retention.OrphanPerspectiveEventGraceHours` | `int?` | unset (database: `1`) | `Whizbang__Workers__Maintenance__Retention__OrphanPerspectiveEventGraceHours` | Hours an unprocessed perspective event whose source event is missing is kept. Publishes `orphan_perspective_grace_hours` |
 | `Retention.CollectiveOrderingHeadDays` | `int?` | unset (database: `7`) | `Whizbang__Workers__Maintenance__Retention__CollectiveOrderingHeadDays` | Days an idle collective-ordering head is kept. Publishes `collective_ordering_head_retention_days` |
 | `Retention.LogDays` | `int?` | unset (database: `14`) | `Whizbang__Workers__Maintenance__Retention__LogDays` | Days a framework log entry (`wh_log`) is kept. Publishes `log_retention_days` |
@@ -1460,10 +1499,12 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `RepairDrainRatePerSecond` | `double` | `5` | `Whizbang__StreamIntegrity__RepairDrainRatePerSecond` | Steady-state repair dispatch rate (token bucket, 2× burst) |
 | `RepairDrainBatchSize` | `int` | `50` | `Whizbang__StreamIntegrity__RepairDrainBatchSize` | Max ledger rows claimed per drain pass |
 | `MaxRepairDrainBacklog` | `int` | `10000` | `Whizbang__StreamIntegrity__MaxRepairDrainBacklog` | Total bound on the paced repair drain's backlog (per-stream ledger rows, every origin). At the bound, comparisons add no new deficit buckets and defer them to a later audit; tracked buckets keep draining. Must be at least 1 (checked at host start). See [repair caps](/v1.0.0/resilience/stream-integrity#repair-caps) |
+| `MaxOutstandingRepairAnswers` | `int` | `500` | `Whizbang__StreamIntegrity__MaxOutstandingRepairAnswers` | The most repair-ledger buckets that may await their answer at once, every origin counted. At the cap the paced repair drain claims nothing, and under it no more than the room left; it resumes as answers land or time out. Answers can land up to `RepairAnswerTimeoutMinutes` after their requests, so the request rate alone does not bound the load they put on this store. 500 is 100 seconds of requests at the default rate. 0 turns the cap off. Must not be negative (checked at host start). See [outstanding repair answers are capped](/v1.0.0/resilience/stream-integrity#outstanding-repair-answers-are-capped) |
 | `LedgerRecheckEnabled` | `bool` | `true` | `Whizbang__StreamIntegrity__LedgerRecheckEnabled` | When the service is idle, re-check ledger rows whose report has gone stale instead of waiting for the daily audit; a re-check compares and never repairs. Runs on the maintainer under the housekeeping idle gate. See [idle ledger re-check](/v1.0.0/resilience/stream-integrity#idle-ledger-recheck) |
 | `LedgerRecheckIntervalSeconds` | `int` | `60` | `Whizbang__StreamIntegrity__LedgerRecheckIntervalSeconds` | Seconds between idle ledger re-check ticks; each tick asks the idle gate first. Must be at least 1 (checked at host start) |
 | `LedgerRecheckRowsPerTick` | `int` | `500` | `Whizbang__StreamIntegrity__LedgerRecheckRowsPerTick` | The most ledger rows one re-check tick claims, oldest report first; rows of one origin, type and window share one request. Must be at least 1 (checked at host start) |
 | `LedgerRecheckAfterMinutes` | `int` | `120` | `Whizbang__StreamIntegrity__LedgerRecheckAfterMinutes` | A row is re-checked once its last report, and its last re-check, are older than this (twice the default `AuditSettleWindowMinutes`). Must be at least 1 (checked at host start) |
+| `UnownedTypeOriginSilenceDays` | `int` | `7` | `Whizbang__StreamIntegrity__UnownedTypeOriginSilenceDays` | How long the origin that reported a ledger row for a type no service owns may be silent (the later of its last checkpoint and the row's last report) before the integrity audit forgets the row. Rows filed under an origin that does not own the type go at once, whatever this says. Must be at least 1 (checked at host start). See [a type no service owns](/v1.0.0/resilience/stream-integrity#a-type-no-service-owns) |
 | `IntegrityDeliveryIntervalSeconds` | `int` | `15` | `Whizbang__StreamIntegrity__IntegrityDeliveryIntervalSeconds` | How often the maintainer's integrity delivery drain runs. Integrity deliveries (received checkpoints, manifest requests and chunks, redelivery requests, bundle reconciles) are recorded where they arrive and handled on the maintainer duty's holder, under the housekeeping idle gate. See [integrity work runs on the maintainer](/v1.0.0/resilience/stream-integrity#integrity-work-runs-on-the-maintainer) |
 | `IntegrityDeliveryBatchSize` | `int` | `50` | `Whizbang__StreamIntegrity__IntegrityDeliveryBatchSize` | Integrity deliveries leased per round trip of the drain |
 | `MaxIntegrityDeliveriesPerPass` | `int` | `500` | `Whizbang__StreamIntegrity__MaxIntegrityDeliveriesPerPass` | The most integrity deliveries one drain pass handles, so a pass admitted by the idle gate (or forced through after `MaxDeferral`) is bounded; the rest waits for the next pass |
@@ -1482,13 +1523,14 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 
 ### RoutingOptions
 
-Command and event routing. **Configure:** in code through `.WithRouting(options => …)`; when it is called, three keys under `Whizbang:Routing` are read on top of the code values, so the command-inbox migration can be moved or rolled back without a redeploy. **Details:** [Routing](../../fundamentals/dispatcher/routing).
+Command and event routing. **Configure:** in code through `.WithRouting(options => …)`; when it is called, four keys under `Whizbang:Routing` are read on top of the code values, so the command-inbox migration can be moved or rolled back, and event types excluded, without a redeploy. **Details:** [Routing](../../fundamentals/dispatcher/routing).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
 | `RouteAllCommandNamespacesToInbox` | `bool` | flipped (all namespaces) | `Whizbang__Routing__RouteAllCommandNamespacesToInbox` | Publish every command namespace to its own inbox entity. `false` rolls the whole flip back |
 | `CommandNamespacesToInbox` | `string[]` | empty | `Whizbang__Routing__CommandNamespacesToInbox__0`, `__1`, … | Flip namespaces one at a time; a `*` entry flips all. Naming any namespace replaces the all-namespaces default with exactly this list |
 | `RetireSharedInbox` | `bool` | retired | `Whizbang__Routing__RetireSharedInbox` | `false` keeps the legacy shared inbox subscribed (and provisioned) while publishers stay flipped: the dual-delivery rollback step |
+| `ExcludedEventTypes` | `IReadOnlySet<string>` | empty | `Whizbang__Routing__ExcludedEventTypes__0`, `__1`, … | Opt-out list of event types excluded at the broker on the subscription of the topic each one is published to; merged with `ExcludeEventType<T>()` in code. Empty keeps every event subscription delivering everything. Excluding a type this service consumes fails startup (see [excluded event types](../../fundamentals/dispatcher/routing#excluded-event-types)) |
 | `OwnedDomains` | `IReadOnlySet<string>` | empty | — *code-only* (`OwnDomains(…)`) | Command namespaces this service handles |
 | `SubscribedNamespaces` | `IReadOnlySet<string>` | empty | — *code-only* (`SubscribeTo(…)`) | Event namespaces subscribed in addition to the ones discovered from perspectives and receptors |
 | `AbsorbedNamespaces` | `IReadOnlySet<string>` | empty | — *code-only* (`AbsorbNamespaces(…)`) | Event namespaces stored locally even with no current consumer, so a later perspective can rebuild from them (see [absorbed namespaces](../../fundamentals/dispatcher/routing#absorbed-namespaces)) |
@@ -2031,6 +2073,7 @@ each service database, rather than from the host's options. Each setting below i
 | `MaintenanceWorkerOptions.Retention.RecoveredDeadLetterDays` | `Whizbang__Workers__Maintenance__Retention__RecoveredDeadLetterDays` | `7` | `dead_letter_retention_days` |
 | `MaintenanceWorkerOptions.Retention.AbandonedStreamHours` | `Whizbang__Workers__Maintenance__Retention__AbandonedStreamHours` | `1` | `abandoned_stream_hours` |
 | `MaintenanceWorkerOptions.Retention.InstanceEvictionTombstoneHours` | `Whizbang__Workers__Maintenance__Retention__InstanceEvictionTombstoneHours` | `24` | `instance_eviction_retention_hours` |
+| `MaintenanceWorkerOptions.Retention.InstanceExitDays` | `Whizbang__Workers__Maintenance__Retention__InstanceExitDays` | `30` | `instance_exit_retention_days` |
 | `MaintenanceWorkerOptions.Retention.OrphanPerspectiveEventGraceHours` | `Whizbang__Workers__Maintenance__Retention__OrphanPerspectiveEventGraceHours` | `1` | `orphan_perspective_grace_hours` |
 | `MaintenanceWorkerOptions.Retention.CollectiveOrderingHeadDays` | `Whizbang__Workers__Maintenance__Retention__CollectiveOrderingHeadDays` | `7` | `collective_ordering_head_retention_days` |
 | `MaintenanceWorkerOptions.Retention.LogDays` | `Whizbang__Workers__Maintenance__Retention__LogDays` | `14` | `log_retention_days` |

@@ -197,8 +197,8 @@ finish what is in hand, give back what is held, and say where the instance stand
 ```csharp{title="The run-control path" description="One path halts the instance for a reason and resumes it after a pause or a stand-down" category="Implementation" difficulty="INTERMEDIATE" tags=["Resilience","RunControl"] tests=["WhizbangRunControllerTests.Halt_ClosesThePermit_ReleasesWorkThenRoles_ThenWritesTheSettledPhaseAsync","WhizbangRunControllerTests.Resume_AfterAPauseOrAStandDown_ReopensThePermitAsync","WhizbangRunControllerTests.Resume_AfterAStop_IsRefusedAsync","WhizbangRunControllerTests.APauseThenAStandDown_TheStandDownsRevival_LeavesTheInstancePausedAsync"]}
 public enum RunHaltReason {
   Pause,      // an operator paused the instance; resumable; settles in Paused
-  StandDown,  // a newer version needs the schema; resumable on rollback; settles in StandingBy
-  Stop,       // host shutdown or the killswitch's stop; final; settles in Stopped
+  StandDown,  // a newer version is online or needs the schema; resumable; settles in StandingBy
+  Stop,       // every exit (host shutdown, the killswitch's stop, ...); final; settles in Stopped
 }
 
 public interface IWhizbangRunController {
@@ -283,7 +283,8 @@ and a newer version can ask a paused instance to stand by. `HaltedReasons` lists
 strongest: a stop, then a stand-down, then a pause.
 
 - **A resume lifts only its own reason.** `ResumeAsync` takes the reason being lifted: the killswitch's resume lifts
-  the pause, and the standby watcher's revival lifts the stand-down.
+  the pause, and the standby watcher's revival lifts the stand-down, as does its resume once nothing newer is serving
+  ([resuming after a stand-down](../operations/startup/rolling-upgrades#resuming)).
 - **The permit reopens only when no reason remains.** A resume that lifts the last reason writes `Resuming`, reopens the
   permit and writes `Running`. A resume that leaves another reason in place keeps the permit closed and writes the
   settled phase of the strongest reason left: a revival during an operator's pause leaves the instance `Paused`, and an
@@ -306,9 +307,10 @@ waits on it. Each owner lifts only what it imposed.
 
 {verified: WhizbangRunControllerTests.Resume_AfterAStop_IsRefusedAsync, WhizbangRunControllerTests.Halt_AfterAStop_IsNotAPauseAsync, WhizbangRunControllerTests.Halt_AStopAfterAPause_StopsAsync, WhizbangRunControllerTests.AStopWithAPauseAndAStandDownHeld_IsFinal_AndReportsStoppedAsync, WhizbangRunPermitTests.Stopped_NeverReopensAsync, WhizbangRunPermitTests.Enter_WhenStopped_IsCanceledAsync}
 
-**Why a stop is final.** A stop is host shutdown or an operator saying the process is done. Workers whose waits the stop
-canceled have ended their loops, so reopening the permit would bring back an instance with half its workers gone. A
-stopped instance is restarted, not resumed.
+**Why a stop is final.** A stop is the halt of the [one exit path](../operations/startup/instance-exits): the process
+is done, whether the host was asked to stop, an operator stopped it, or it was evicted or crashed. Workers whose waits
+the stop canceled have ended their loops, so reopening the permit would bring back an instance with half its workers
+gone. A stopped instance is restarted, not resumed, and the exit path ends the process so its host can restart it.
 
 ### The lifecycle guard {#lifecycle-guard}
 
@@ -329,13 +331,13 @@ instance serves while its permit is closed.
 
 | Caller | Reason | When |
 |---|---|---|
-| The killswitch: `PauseAsync`, `ResumeAsync`, `StopAsync` | `Pause`, lifts `Pause`, `Stop` | An operator asks |
-| `StandbyWatcher` | `StandDown`, then lifts `StandDown` on revival | A newer live peer requests standby, or the running instance finds itself obsolete; revival after a rollback or a dead migrator |
-| The Assess stand-down (`StartupStandDown`) | `StandDown` | The schema is newer than this binary at startup ([standing down](../operations/startup/rolling-upgrades#standing-down)) |
-| Host shutdown (`StartupStageHostLifecycle.StoppingAsync`), with the host's stop token | `Stop` | The host starts to stop, before any hosted service stops ([shutdown stages](../operations/startup/startup-status#shutdown-takes-the-run-control-path)) |
+| The killswitch: `PauseAsync`, `ResumeAsync` | `Pause`, lifts `Pause` | An operator asks |
+| `StandbyWatcher` | `StandDown`, then lifts `StandDown` on revival or resume | A newer live peer requests standby, a [newer version comes online](../operations/startup/rolling-upgrades#cluster-wide-stand-down), or the running instance finds itself obsolete; revival after a rollback or a dead migrator, and [resume](../operations/startup/rolling-upgrades#resuming) once nothing newer is serving |
+| The Assess stand-down (`StartupStandDown`) | `StandDown` | The Assess verdict is `StandDown` at startup ([standing down](../operations/startup/rolling-upgrades#standing-down)) |
+| The [one exit path](../operations/startup/instance-exits) (`WhizbangInstanceExit`), with the host's stop token | `Stop` | Every exit: host shutdown (`StartupStageHostLifecycle.StoppingAsync` completes the exit before any hosted service stops; [shutdown stages](../operations/startup/startup-status#shutdown-takes-the-run-control-path)), the killswitch's `StopAsync`, a committed upgrade, an eviction, a crash, a startup failure |
 | `ServiceBusConsumerWorker.PauseAllSubscriptionsAsync` and `ResumeAllSubscriptionsAsync` | `Pause`, lifts `Pause` | Only when the registered path closes this consumer's permit ([the transport consumer](../messaging/transports/transport-consumer#run-permit)) |
 
-{verified: WhizbangKillswitchTests.PauseAsync_TakesTheRunControlPath_ClosingThePermitUntilResumedAsync, WhizbangKillswitchTests.StopAsync_ClosesThePermitForGood_AndAResumeIsRefusedAsync, StandbyWatcherTests.ANewerLivePeersRequest_StandsDownThroughTheRunControlPathAsync, StandbyWatcherTests.AWithdrawnRequestAndARollback_RevivesUsAsync, StartupStandDownTests.Record_WithTheRunControlPath_StandsDownThroughItAsync, StartupStandDownTests.FromServices_TakesTheRegisteredRunControlPathAsync, StartupStageHostLifecycleTests.Stopping_TakesTheRunControlPathToStop_BoundedByTheHostsStopTokenAsync, ServiceBusConsumerWorkerRunPermitTests.PauseAll_WithTheRunControlPathRegistered_TakesThePath_AndResumeAllReopensItAsync}
+{verified: WhizbangKillswitchTests.PauseAsync_TakesTheRunControlPath_ClosingThePermitUntilResumedAsync, WhizbangKillswitchTests.StopAsync_ClosesThePermitForGood_AndAResumeIsRefusedAsync, StandbyWatcherTests.ANewerLivePeersRequest_StandsDownThroughTheRunControlPathAsync, StandbyWatcherTests.AWithdrawnRequestAndARollback_RevivesUsAsync, StartupStandDownTests.Record_WithTheRunControlPath_StandsDownThroughItAsync, StartupStandDownTests.FromServices_TakesTheRegisteredRunControlPathAsync, StartupStageHostLifecycleTests.Stopping_CompletesTheExitPath_OnTheHostsStopTokenAsync, WhizbangInstanceExitTests.EachCause_SetsItsExitCode_WritesOneEntryAtItsLevel_HaltsAndStopsTheHostOnceAsync, WhizbangInstanceExitTests.TheKillswitchStop_ExitsAsAnOperatorStop_WithExitCodeZeroAsync, StandbyWatcherUpgradeStandDownTests.TheNewerInstanceDies_TheStoodDownInstanceResumes_BecauseAFreshStartWouldServeAsync, ServiceBusConsumerWorkerRunPermitTests.PauseAll_WithTheRunControlPathRegistered_TakesThePath_AndResumeAllReopensItAsync}
 
 A host without the worker pipeline has no permit, no held work and no roles, so its Assess stand-down only records
 `StandingBy`.
@@ -403,11 +405,12 @@ or a stop by accident:
 
 ## Operator killswitch
 
-```csharp{title="Operator control" description="Pause or stop everything through the run-control path, or pin one component" category="Configuration" difficulty="INTERMEDIATE" tags=["Resilience","RunControl"] tests=["WhizbangKillswitchTests.PauseAsync_TakesTheRunControlPath_ClosingThePermitUntilResumedAsync","WhizbangKillswitchTests.StopAsync_ClosesThePermitForGood_AndAResumeIsRefusedAsync","WhizbangKillswitchTests.PauseAsync_DrivesPausingThenPausedAsync","WhizbangKillswitchTests.OverrideComponent_PinsOneResource_IndependentOfSystemPhaseAsync"]}
+```csharp{title="Operator control" description="Pause or stop everything through the run-control path, or pin one component" category="Configuration" difficulty="INTERMEDIATE" tags=["Resilience","RunControl"] tests=["WhizbangKillswitchTests.PauseAsync_TakesTheRunControlPath_ClosingThePermitUntilResumedAsync","WhizbangKillswitchTests.StopAsync_ClosesThePermitForGood_AndAResumeIsRefusedAsync","WhizbangKillswitchTests.PauseAsync_DrivesPausingThenPausedAsync","WhizbangKillswitchTests.OverrideComponent_PinsOneResource_IndependentOfSystemPhaseAsync","WhizbangInstanceExitTests.TheKillswitchStop_ExitsAsAnOperatorStop_WithExitCodeZeroAsync"]}
 // Coarse: the one run-control path, the same one a stand-down and host shutdown take.
 await killswitch.PauseAsync();   // permit closes, Pausing, held work and roles released, Paused
 await killswitch.ResumeAsync();  // lifts the pause: Resuming, permit reopens, Running (unless a stand-down still holds)
-await killswitch.StopAsync();    // permit closes for good, Stopping, held work and roles released, Stopped
+await killswitch.StopAsync();    // exits: permit closes for good, Stopping, held work and roles released, Stopped,
+                                 // the exit is recorded, and the process ends with exit code 0
 
 // Fine: pin ONE component independent of the system phase (e.g. drain a transport for maintenance).
 await killswitch.OverrideComponentAsync("transport", LifecyclePhase.Stopping);
@@ -416,10 +419,20 @@ await killswitch.ClearComponentOverrideAsync("transport"); // back to the curren
 
 The coarse controls are the [run-control path](#one-run-control-path): a pause stops every claiming worker and every
 transport consumer in the process and hands this instance's roles to its peers. A resume lifts only the operator's
-pause, so an instance that is also standing by stays standing by until its revival. A stop is final; the process keeps
-running in `Stopped` until it is restarted. A pinned component ignores system transitions until cleared, and every
+pause, so an instance that is also standing by stays standing by until its revival. A stop is final, and it **ends the
+process**: `StopAsync` takes the [one exit path](../operations/startup/instance-exits) as an `OperatorStop`, which halts
+through the run-control path, writes the exit's entry and row, and stops the host with exit code 0; it returns once the
+exit has completed. A pinned component ignores system transitions until cleared, and every
 change, coarse or fine, still goes through the ack barrier. Tune the ack timeout, the fault window and the held-work
 bound via `services.AddWhizbangRunControl(o => …)` or `Whizbang:Lifecycle`.
+
+:::updated{version="1.0.0" type="breaking"}
+**Changed** ([#2126](https://github.com/whizbang-lib/whizbang/issues/2126)): the killswitch's `StopAsync` ends the
+process (exit code 0) once held work and roles are released. Earlier releases left the process running in `Stopped`
+until something restarted it. **Why:** a stop is final, so a stopped process could only ever be restarted; ending it
+lets the host do that, and the exit is recorded like every other.
+{verified: WhizbangInstanceExitTests.TheKillswitchStop_ExitsAsAnOperatorStop_WithExitCodeZeroAsync}
+:::
 
 See [Managed-Resource Health](managed-resource-health) for the observe face (the same phase decides what
 each resource's health *means*) and the [availability gate](database-availability-middleware).
