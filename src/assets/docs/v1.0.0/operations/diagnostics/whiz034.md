@@ -1,5 +1,5 @@
 ---
-title: 'WHIZ034: InheritFrom Lists The Stream ID's Own Type'
+title: "WHIZ034: InheritFrom Lists The Stream ID's Own Type"
 pageType: troubleshooting
 verifiedAgainstCommit: '45ab3188'
 verifiedDate: 2026-11-10
