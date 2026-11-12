@@ -182,6 +182,15 @@ strategy.OnBatchFlushed += args => {
 var result = await flushed.Task;
 ```
 
+## Deferred Messages {#deferred-messages}
+
+Whatever the strategy, each flush first writes what was queued on the deferred outbox channel: events published
+outside an active transaction (for example from a PostPerspective handler) and the audit records of direct event-store
+appends. They are written ahead of the flush's own work. See
+[Deferred Event Channel](../fundamentals/dispatcher/message-cascade#deferred-event-channel).
+
+{verified: DeferredChannelDrainEveryStrategyTests.Flush_WithOnlyDeferredMessages_StoresThemAndEmptiesTheChannelAsync}
+
 ## Decision Matrix
 
 | Scenario | Recommended Strategy |

@@ -1036,6 +1036,15 @@ services.AddSystemEventAuditing(options => {
 ---
 
 <a id="command-auditing"></a>
+The record reaches the outbox on the next flush of whatever work coordinator strategy the service runs: every
+strategy drains the deferred channel first (see
+[Deferred Event Channel](../dispatcher/message-cascade#deferred-event-channel)).
+
+:::updated
+Under every strategy except Immediate, including the default Scoped strategy, the audit record of a direct append used
+to be queued and never stored, so it was lost and held in memory with the audited event's body.
+:::
+
 ## Command Auditing Pipeline Behavior
 
 The `CommandAuditPipelineBehavior<TCommand, TResponse>` automatically emits `CommandAudited` system events for commands processed by receptors:

@@ -42,7 +42,7 @@ lastMaintainedCommit: '01f07906'
 
 # Database Readiness
 
-Whizbang coordinates workers with database availability through the **`ISchemaReadyGate`**, a signal-based gate the schema initializer opens exactly once, after migrations succeed. Workers do not wait on it themselves: each is [registered with its start point](../startup/startup-status#add-whizbang-worker), and the host starts it there. The heartbeat and a few others start when the gate opens; the data plane and the transport consumer start later, once the instance's row records Accept commands.
+Whizbang coordinates workers with database availability through the **`ISchemaReadyGate`**, a signal-based gate the schema initializer opens exactly once, after migrations succeed. Workers do not wait on it themselves: each is [registered with its start point](../startup/startup-status#add-whizbang-worker), and the host starts it there. The heartbeat starts at Elect, right after the instance registers; a few others start when the gate opens; the data plane and the transport consumer start later, once the instance's row records Accept commands.
 
 :::updated
 Earlier designs used a polling `IDatabaseReadinessCheck` interface that each worker invoked on every cycle. That interface has been removed. The shipped mechanism is the signal-based `ISchemaReadyGate` described on this page: workers wait once at startup instead of re-checking readiness per poll, and readiness is driven by the migration runner rather than by table-existence probes.
@@ -154,7 +154,10 @@ services.AddWhizbangWorkerAtSchemaReady<InstanceMetricsWorker>();
 
 Where each framework worker starts:
 
-- **When the gate opens (schema ready)**: `HeartbeatWorker`, `PgInstanceLifecycleMonitor` (death detection reads
+- **At Elect, right after the instance registers**: `HeartbeatWorker`, whose beats are
+  [startup beats](../startup/startup-status#the-startup-beat) until the gate opens, so a peer's reap judges a starting
+  instance by beats it really sends. The first full beat is due at once when the gate opens.
+- **When the gate opens (schema ready)**: `PgInstanceLifecycleMonitor` (death detection reads
   `wh_service_instances`; a death announced against a half-migrated fleet table would trigger takeover from garbage
   data), `StandbyWatcher`, the statistics collectors, `TypeDefinitionReconcilerHostedService`, the Dapper driver's
   message-type registry reconciliation, and `WhizbangShutdownService` (deregistration). These keep an instance alive

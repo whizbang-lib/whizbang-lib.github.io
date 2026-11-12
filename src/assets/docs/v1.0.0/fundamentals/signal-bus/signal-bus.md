@@ -215,8 +215,10 @@ Built-in control-plane signals (developers can add their own — see below).
 | `MultiStreamWorkSignal` | `multi-stream-work` | broadcast | best-effort | the multi-stream worker's poll |
 | `WorkOrphanedSignal` | `orphan` | targeted | best-effort | the claim loop's poll |
 | `DeadLetterReadySignal` | `deadletter` | targeted | best-effort | the dead-letter recovery worker's poll |
+| `NewerVersionOnlineSignal` | `newer-version-online` | broadcast | **durable** | the standby watcher's slow re-assessment (`ObsolescenceInterval`) |
 
-The last six are the [coordination signals](#coordination-signals): the channels that used to be wired by hand.
+`RoleReleasedSignal` through `DeadLetterReadySignal` are the [coordination signals](#coordination-signals): the
+channels that used to be wired by hand. `NewerVersionOnlineSignal` is a coordination signal too, born on the bus.
 
 The three `Work…AvailableSignal` wire-names (`outbox` / `inbox` / `perspective`) are deliberately identical
 to the SQL payloads `notify_instance_owners` and the store procs already emit — so the existing work-wake
@@ -314,7 +316,15 @@ transport owns the wire. A coordination signal is one of two kinds:
 | `wh_work_i_<instance>` (`orphan`) | the reap, `cleanup_stale_instances` | the work listener | doorbell | `WorkOrphanedSignal`, best-effort |
 | `wh_work_i_<instance>` (`deadletter`) | the dead-letter insert trigger | the work listener | doorbell | `DeadLetterReadySignal`, best-effort |
 | `wh_work_i_<instance>` (`outbox`, `inbox`, `perspective`) | the doorbell queue | the work listener | doorbell | the `Work…AvailableSignal` types, best-effort |
+| `wh_signal_broadcast` (wire name `newer-version-online`) | a newer instance's `StandbyWatcher`, once it serves, when an older instance is online | every instance's `StandbyWatcher`, which asks its verdict again on the next tick ([cluster-wide stand-down](../../operations/startup/rolling-upgrades#cluster-wide-stand-down)) | decision | `NewerVersionOnlineSignal`, durable |
 | `wh_app_<topic>` (yours) | application code | application code | pub/sub | [`IAppSignalChannel`](../work-coordinator/app-signals), which is the bus |
+
+**`NewerVersionOnlineSignal`** carries no payload, and is a decision that works like a doorbell: the hearer does not
+take who is newer from the signal, it asks the one Assess verdict, which reads the instance rows through the one
+version rule (`UpgradeOrder`). It is durable, so an older instance that missed the notification is told by its tail;
+one that starts later learns from the instance rows Assess reads, not from the signal. It has no older channel of its
+own, so it travels on the bus's broadcast channel like any typed signal born on the bus.
+{verified: StandbyWatcherUpgradeStandDownTests.ANewerVersionOnlineSignal_IsAskedAboutOnTheNextTick_InsideTheSlowCadenceAsync, StandbyWatcherUpgradeStandDownTests.OnceServing_ANewerInstance_AnnouncesItselfOnce_WhenAnOlderOneIsOnlineAsync, UpgradeStandDownE2ETests.ANewerApplicationVersionOnline_StandsAnOlderInstanceDown_NamingTheNewerInstanceAsync}
 
 A signal that carries a payload implements `IPayloadSignal<TSelf>`: it names the one fact its subscriber needs (which
 role, which version) and rebuilds itself from that text through its own static factory, so the transport and the tail

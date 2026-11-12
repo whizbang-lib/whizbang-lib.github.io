@@ -76,10 +76,21 @@ Entity Framework driver is not reported there.
 - **Arrays of primitives**: `string[]`, `Guid[]`, `int[]`, `byte[]`, `float[]`, an enum array, or an array of a
   nullable primitive such as `int?[]`. The mapped path stores these as a value and reads them back, so the model stays
   mapped and indexable.
-- **`List<T>`, `IList<T>` and `ImmutableList<T>`** of records. These keep the model mapped.
+- **`List<T>`, `IList<T>` and `ImmutableList<T>`** of records. These keep the model mapped, unless the record type is
+  recursive.
 - **A type no perspective projects**, whatever its name or attributes.
+- **An array of a recursive type**, such as `Node[] Children` on a `Node`, or an array of a type that is recursive
+  further down. A `List<T>` of it would be opaque too, so the advice to switch would change nothing; it is reported as
+  [WHIZ202](whiz202.md) (Info) instead, which says why.
 
-{verified: PerspectiveModelArrayAnalyzerTests.AnArrayOfPrimitives_IsNotReportedAsync, PerspectiveModelArrayAnalyzerTests.ACollectionTheMappedPathFills_IsNotReportedAsync, PerspectiveModelArrayAnalyzerTests.ATypeNoPerspectiveProjects_IsNotReported_WhateverItsNameAsync}
+{verified: PerspectiveModelArrayAnalyzerTests.AnArrayOfPrimitives_IsNotReportedAsync, PerspectiveModelArrayAnalyzerTests.ACollectionTheMappedPathFills_IsNotReportedAsync, PerspectiveModelArrayAnalyzerTests.ATypeNoPerspectiveProjects_IsNotReported_WhateverItsNameAsync, PerspectiveModelArrayAnalyzerTests.AnArrayOfItself_IsReportedAsRecursive_WithoutTheListAdviceAsync, PerspectiveModelArrayAnalyzerTests.AnArrayOfARecursiveType_IsReportedAsRecursiveAsync}
+
+:::updated
+**WHIZ200 no longer tells an author with `TNode[] Children` to switch to `List<TNode>`.** Following that advice moved a
+recursive model onto the mapped path, where Entity Framework kept only the first level of the recursion and dropped the
+rest with no error ([#2112](https://github.com/whizbang-lib/whizbang/issues/2112)). A recursive model is now always
+stored opaquely, whatever its collection shape, and the array is reported as [WHIZ202](whiz202.md).
+:::
 
 :::updated
 WHIZ200 used to be titled "Perspective model should use List<T> instead of array". It reported every array,
@@ -116,7 +127,7 @@ Property '{0}' of perspective model '{1}' is an array of records ('{2}'), so the
 Choose one:
 
 - **Keep the model indexable**: declare the member as `List<T>`, `IList<T>` or `ImmutableList<T>`. The model stays on
-  the mapped path and its fields can be indexed.
+  the mapped path and its fields can be indexed, as long as nothing in it is recursive.
 - **Accept opaque storage**: if nothing in the model is filtered or indexed, the opaque document is fine. It reads and
   writes correctly on both drivers. [Suppress the warning](#suppressing) for that property.
 
@@ -166,7 +177,7 @@ models, turn it off with an MSBuild property in the project file or `Directory.B
 ```
 
 Only `false` turns it off, in any letter case and ignoring surrounding spaces. Any other value, or no value, leaves it
-on.
+on. The same switch turns off [WHIZ202](whiz202.md), which the same analyzer reports.
 
 {verified: PerspectiveModelArrayAnalyzerTests.TheBuildProperty_TurnsTheWarningOffAsync, PerspectiveModelArrayAnalyzerTests.AnyOtherValueOrNoValue_LeavesTheWarningOnAsync, PerspectiveModelArrayAnalyzerTests.ThePackage_DeclaresTheBuildPropertyAsync}
 
@@ -198,5 +209,6 @@ public Tag[] Tags { get; set; } = [];
 
 - [Collections in read models](../../fundamentals/perspectives/perspectives.md#model-collections)
 - [WHIZ304](whiz304.md): a declared index on an opaquely stored model
+- [WHIZ202](whiz202.md): a recursive type stores the model opaquely
 - [Physical Fields](../../fundamentals/perspectives/physical-fields)
 - [Perspectives](../../fundamentals/perspectives/perspectives)

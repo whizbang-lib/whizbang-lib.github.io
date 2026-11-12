@@ -218,6 +218,45 @@ The failure message says what to use instead (for a liveness check: *ask the one
 `wh_live_instance_ids`*), so an author who trips the guard falls toward the standard path, not toward a new allowlist
 entry.
 
+### One rule orders versions {#version-rule-guard}
+
+Before [#2022](https://github.com/whizbang-lib/whizbang/issues/2022) slice 2, each place that cared whether another
+instance was newer compared versions itself: Assess against the ledger, the standby watcher against a request, the
+migration guard against a recorded version. Each was a helper, and once the application version joined the library
+version, two helpers that ordered them differently would have stood the whole fleet down on crossed versions.
+
+With gravity there is **one rule**, `UpgradeOrder` (the application version first, like with like; the library version
+when the applications are equal, unknown or of different schemes; only a strictly newer version is found), and every
+reader asks it: Assess, the running re-assessment, the newer instance's announcement, the standby handshake and the
+migration guard. The coordination source guard fails on any version comparison outside it (a `SemanticVersion` parse
+or an `ApplicationVersion.CompareTo` anywhere else), with the message *ask `UpgradeOrder` (`FindNewer`, `OlderThan`,
+`CompareLibrary`) instead*. The same guard keeps the
+[incompatibility override](/v1.0.0/operations/startup/rolling-upgrades#the-incompatibility-override) honored in one
+place: only the one verdict, and the drivers that hand it the setting, may read the key; everything else learns of an
+override from `StartupAssessment.OverriddenReason`. As for every guard here, a scan check proves each one finds what
+it guards and that asking the rule is not flagged, and an allowlist entry that no longer matches fails.
+{verified: CoordinationSourceGuardTests.VersionOrdering_AppearsOnlyInTheOneRuleAsync, CoordinationSourceGuardTests.TheVersionScan_SeesWhatItGuardsAsync, CoordinationSourceGuardTests.TheIncompatibilityOverride_IsHonoredOnlyByTheOneVerdictAsync, CoordinationSourceGuardTests.TheOverrideScan_SeesWhatItGuardsAsync}
+
+## A worked example: one exit path {#exit-path-guard}
+
+Before [#2126](https://github.com/whizbang-lib/whizbang/issues/2126), each part of the library that could end the
+process did it its own way: the capability enforcer set the exit code to 1 and called `StopApplication`, a blocking
+schema initialization threw out of host start, the heartbeat stopped its loop on an eviction and left the process
+running, and a crash on another thread ended it with nothing said. Each was a call someone chose to write, and each
+forgot something: the entry, the release of roles and leases, or the exit code.
+
+With gravity there is **one exit path**, `IWhizbangInstanceExit`: a caller states a cause (`RequestExit` with an
+`ExitCause`), and the path does the rest (the run-control halt, one entry, one row, one exit code). See
+[Instance Exits](/v1.0.0/operations/startup/instance-exits). What keeps every other way closed is two checks:
+
+| Check | Fails on | Ask instead |
+|---|---|---|
+| `BannedSymbols.Exit.txt` (the banned-API analyzer, in every library project) | `IHostApplicationLifetime.StopApplication`, `Environment.Exit`, `Environment.ExitCode`, `Environment.FailFast` | `IWhizbangInstanceExit.RequestExit` with an `ExitCause` |
+| `InstanceExitSourceGuardTests` (a source scan, comments ignored) | Any of those calls the analyzer cannot see, outside the one file allowed to stop the host and set the exit code | The same |
+
+The ban covers library projects only: tools, samples and your application own their own process.
+{verified: InstanceExitSourceGuardTests.NoLibraryCode_StopsTheHostOrSetsTheExitCode_OutsideTheOneExitPathAsync, InstanceExitSourceGuardTests.TheScan_FindsAnExitWrittenAnywhereElseAsync, InstanceExitSourceGuardTests.TheScan_IgnoresAnExitNamedInACommentAsync, InstanceExitSourceGuardTests.TheBannedSymbols_BanEveryExitApi_InLibraryProjectsAsync}
+
 ## Applying it
 
 When you design or review a Whizbang change, ask:

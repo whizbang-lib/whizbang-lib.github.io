@@ -256,6 +256,13 @@ public async Task WaitForPerspectiveProcessingAsync(
 }
 ```
 
+A sum of `EventCount` can overshoot: a batch can name an event an earlier batch already reported, for example when a
+rewind replays the stream. When a test reads every stream's rows afterward, the sample fixtures wait on distinct
+applies instead: `PerspectiveProcessingWaiter.WaitForAppliedAsync` counts distinct `EventIds` per (perspective, stream)
+and completes only when every stream meets each perspective's expectation. A pair that is never applied fails the wait
+by name rather than letting the test read a short result (see the Service Bus fixture's
+`WaitForPerspectiveAppliesAsync`, used by the seed workflow test).
+
 Whizbang workers expose these hooks as first-class API (useful in production observability too, not just tests).
 
 ### Workflow Test
