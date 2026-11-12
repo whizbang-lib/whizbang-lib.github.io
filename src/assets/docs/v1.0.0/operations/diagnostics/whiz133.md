@@ -19,6 +19,7 @@ tags:
   - runtime-guard
 codeReferences:
   - src/Whizbang.Core/Messaging/MixedStreamEventException.cs
+  - src/Whizbang.Data.Postgres/Migrations/393_AllowedPairsMayShareAStream.sql
   - src/Whizbang.Core/Messaging/MessageFailureReason.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Core/Messaging/WorkCoordinatorFlushHelper.cs
@@ -31,6 +32,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/228_StreamsNeverMixEphemeralAndSourcedEvents.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MixedStreamGuardSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/MixedStreamAllowanceSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMixedStreamGuardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DirectAppendMixedStreamGuardTests.cs
   - tests/Whizbang.Core.Tests/Messaging/MixedStreamRefusalTests.cs
@@ -52,7 +54,11 @@ event-sourced) events.
 One ephemeral event marks its whole stream *state-based*: the stream's current state, not its log, is the source of
 truth. Every rebuild and rewind then skips the stream, so a Sourced event on it would be silently left out of every
 replay, and an ephemeral event on a Sourced stream would hide that stream's whole history from rebuilds. A stream
-therefore never mixes the two kinds. The rule holds in either order and there is no opt-in.
+therefore never mixes the two kinds. The rule holds in either order. The one exception is a pair every read model
+applying both of its types allows with `[DangerouslyAllowMixedEphemeralAndSourcedEvents(Streams = MixedStreams.Allow)]`:
+either kind of that pair may join a stream holding the other, and any other type is still refused there (see
+[Allowing mixed streams](../../fundamentals/events/ephemeral-events#allowing-mixed-streams)).
+{verified: MixedStreamAllowanceSqlTests.Append_AnAllowedPair_StoresEitherKindOnAStreamHoldingTheOtherAsync, MixedStreamAllowanceSqlTests.Append_AnUnpairedType_IsStillRefused_OnAStreamTheAllowanceMixedAsync, MixedStreamAllowanceSqlTests.Append_WithNoAllowance_IsRefusedAsBeforeAsync}
 
 Which events reach a stream is only known when they are stored, so this is checked at run time, not by the build, on
 every path that stores an event: the step that copies outbox and inbox events into the event store, and a direct
@@ -138,8 +144,9 @@ ORDER BY dead_lettered_at DESC;
 
 ## Suppressing
 
-WHIZ133 cannot be suppressed and has no opt-in. A stream that holds both kinds cannot be rebuilt correctly, so the
-refusal is the only safe outcome.
+WHIZ133 cannot be suppressed. A stream that holds both kinds cannot be rebuilt correctly by a read model that applies
+both, so the refusal is the safe outcome; the only way past it is the per-pair allowance above, which every read model
+applying both types must opt into.
 
 ## Related
 

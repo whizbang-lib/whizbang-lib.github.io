@@ -98,6 +98,29 @@ The merge is a **monotonic lockfile update**:
 
 The first build in a newly-adopting project **bootstraps** the file; commit it, and governance is active.
 
+Each entry also records the `assembly` its type is compiled in. An entry written before assemblies were recorded is
+taken to be in the assembly that builds it, and gains the field on the next build.
+
+### A type that moves to another assembly {#a-type-that-moves-to-another-assembly}
+
+The event store names an event's type with its assembly (`Ns.Type, Assembly`), so moving a pinned type to another
+assembly changes the name its new events are stored under, even when its namespace and name stay the same. To keep its
+history reachable, move the type's ledger entry with it: cut the entry from the old project's ledger (WHIZ121 points at
+it) and paste it into the new project's ledger. On the next build, the merge sees an entry recorded in another assembly
+and records every name the type was stored under there, with that assembly: its `clrTypeName` and each bare former name
+become `Ns.Type, OldAssembly` in `formerNames`, and `assembly` becomes the new one. A former name already recorded with
+an assembly keeps it.
+
+| Rule | Why | Verified by |
+|------|-----|-------------|
+| A former name recorded with an assembly (`Ns.Type, Assembly`) names the type's events in that assembly; a bare former name names them in the type's current assembly, as it always has. | A rename within one assembly leaves the assembly unchanged, so a bare name says everything. A move changes it, and the old events carry the old one. | {verified: PinnedTypeLedgerAssemblyMoveTests.AnEntryThatMovedHere_RecordsEveryNameItWasStoredUnder_WithTheAssemblyItWasStoredInAsync, PinnedTypeLedgerAssemblyMoveTests.ARenameWithinTheAssembly_KeepsItsFormerNamesBareAsync, PinnedTypeLedgerAssemblyMoveTests.AnEntryWrittenBeforeAssembliesWereRecorded_IsTakenToBeInThisAssembly_AndKeepsItsFormerNamesBareAsync} |
+| The ephemeral reclassify walks the moved type's history under its former stored name, and its rewind grace is keyed by that name. | Both read the type's events by the stored `event_type`, which still carries the old assembly. | {verified: FormerNameFromAnotherAssemblyWalkTests.TheReclassifyWalk_ReadsTheHistoryOfATypeThatMovedAssemblies_UnderItsFormerStoredNameAsync, FormerNameFromAnotherAssemblyWalkTests.TheRewindGrace_IsKeyedByTheFormerStoredName_TheOldAssemblysEventsCarryAsync, FormerNameFromAnotherAssemblyWalkTests.TheReclassifyWalk_TakesTheCurrentAssembly_ForABareFormerNameAsync} |
+| The alias for a former name recorded with an assembly is that name as recorded; the registry reconcile, the marker resolver and the declared-kind lookup read its name part. | Old envelopes carry the old assembly; the registry and those lookups are keyed by the bare CLR name. | {verified: MessageJsonContextRenameAliasTests.Generator_FormerNameRecordedWithAnotherAssembly_AliasesItAsRecordedAsync, FormerNameFromAnotherAssemblyTests.TheRegistryReconcile_IsGivenTheBareFormerName_ItsRowsAreKeyedByAsync, FormerNameFromAnotherAssemblyTests.TheMarkerResolver_ResolvesTheBareFormerNameAsync, FormerNameFromAnotherAssemblyTests.TheDeclaredKind_IsFoundForAnEnvelopeWrittenUnderTheOldAssemblyAsync} |
+
+A type moved without its ledger entry starts a new entry in its new project, with no former names, so its history in
+the old assembly is not reached. If the move also renamed the type, WHIZ120 still fires for the rename: set
+`clrTypeName` to the new name, and the old name is already recorded with its old assembly.
+
 ### 2. Governance gate (WHIZ120 / WHIZ121)
 
 `PinnedTypeRenameAnalyzer` diffs the compiled `[PinnedId]` types against the committed ledger:
@@ -148,7 +171,9 @@ means a type was renamed without recording it in the ledger. Every reconcile out
 Information, drift at Warning).
 
 > **Legacy note.** Before the ledger existed, `IEventTypeRenameTool.ExecuteAsync` reconciled drift by *rewriting*
-> stored type names across every data table — a destructive, manual step. That apply path is now `[Obsolete]`: the
+> stored type names across every data table, a destructive and manual step. It writes the event store's `event_type` in
+> the stored form the append path writes for the target type (`Ns.Type, Assembly`), and matches the old name under any
+> assembly {verified: DapperEventTypeRenameToolStoredNameTests.ManualRename_WritesTheEventTypeTheAppendPathWritesForTheTargetTypeAsync, DapperEventTypeRenameToolStoredNameTests.DetectedRename_WritesTheEventTypeTheAppendPathWritesForTheTargetTypeAsync}. That apply path is now `[Obsolete]`: the
 > ledger-aware reconcile heals the registry non-destructively and the former-name aliases keep old events readable, so
 > no data rewrite is needed. Its `DetectRenamesAsync` remains a handy non-destructive diagnostic.
 
