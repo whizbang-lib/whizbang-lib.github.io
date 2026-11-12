@@ -3,11 +3,11 @@ title: Perspective Write Modes
 pageType: concept
 category: Perspectives
 order: 16
-status: draft
+status: current
 version: 1.0.0
 description: >-
   How the perspective runner writes a batch of folded models: set-based across streams by default,
-  per-stream as an option, and the seams that later write modes plug into. Planned; not shipped yet.
+  per-stream as an option, and the seams that later write modes plug into.
 tags: >-
   perspectives, write-modes, set-based, batching, round-trips, fan-out, perspective-runner,
   perspective-worker, conformance-suite
@@ -33,16 +33,11 @@ codeReferences:
 
 A **write mode** decides how the perspective worker turns a batch of claimed work into durable rows. The default is
 **set-based**: every stream in the batch is folded in memory, and the results are written with a few statements per
-table instead of one save per stream. Today's path, one save per (stream, perspective) pair, stays available as the
+table instead of one save per stream. The earlier path, one save per (stream, perspective) pair, stays available as the
 **per-stream** mode.
 
-:::planned
-This page is the design for [#2246](https://github.com/whizbang-lib/whizbang/issues/2246) and is **not shipped yet**.
-Today every perspective is written one (stream, perspective) pair at a time, which is the per-stream mode described
-below. The names on this page are those the implementation uses; they are not in a released package yet. Write-behind
-([#2247](https://github.com/whizbang-lib/whizbang/issues/2247)) and staging-table rebuilds
-([#2248](https://github.com/whizbang-lib/whizbang/issues/2248)) are later, separate items.
-:::
+Write-behind ([#2247](https://github.com/whizbang-lib/whizbang/issues/2247)) and staging-table rebuilds
+([#2248](https://github.com/whizbang-lib/whizbang/issues/2248)) are later, separate modes.
 
 ## Why {#why}
 
@@ -105,10 +100,17 @@ fill: under light load a batch is one stream and is written at once, and under l
 the previous one is being written. This is group commit, and it is why the set-based mode adds no latency to a quiet
 service.
 
-Both of the worker's sources take this path: claimed work, whose pairs' events the runner reads with
-`ReadEventsAsync` (the read `RunAsync` makes before it applies), and the drain, whose pairs come with their events
-already fetched. On the drain, the first lap of every stream in the batch is applied together; a stream's later laps
-(events that arrived while it drained) run per pair.
+Both of the worker's sources take this path: claimed work and the drain. A claimed batch reads its pairs' cursors with
+one statement (`GetPerspectiveCursorsBatchAsync`) and their streams' events with one read
+(`IEventStore.ReadPolymorphicManyAsync`), and each runner selects the events it folds from its stream's share
+(`IPerspectiveRunner.SelectEvents`); the same events serve the lifecycle stages after the write, so nothing is read a
+second time. A store that does not read streams in batches, a decorator that cannot (a type-changing upcaster, a stream
+whose first events are archived), a coordinator whose batched cursor read is the interface default
+(`ReadsCursorsInBatches` false) or a batched read that fails (logged) sends each pair back to its own reads
+(`ReadEventsAsync`, the read `RunAsync` makes before it applies). The drain's pairs come with their events already
+fetched, and a pair whose stream the drain's batched cursor read found no cursor for does not read its own. On the
+drain, the first lap of every stream in the batch is applied together; a stream's later laps (events that arrived
+while it drained) run per pair.
 
 ### The batch {#the-batch}
 
@@ -306,12 +308,12 @@ combination of the three seams, so an invalid combination cannot be built.
 
 ```csharp{
 title: "Select the per-stream write mode for a service and set-based for one perspective"
-description: "Planned API: a service-wide write mode in the perspective options and a per-perspective override attribute."
+description: "A service-wide write mode in the perspective options and a per-perspective override attribute."
 framework: "NET10"
 category: "Perspectives"
 difficulty: "INTERMEDIATE"
 tags: ["perspectives", "write-modes", "configuration"]
-unverified: "API for #2246; not yet released"
+unverified: "illustrative; the option and attribute ship with #2246"
 }
 services.Configure<PerspectiveWorkerOptions>(options => {
   options.WriteMode = PerspectiveWriteMode.PerStream;
@@ -352,17 +354,53 @@ briefly exists twice.
 
 ## The conformance suite {#conformance-suite}
 
-A write mode is supported only when it passes the **same conformance suite**. The suite is one integration suite on
-PostgreSQL, parameterized by write mode, that runs real generated runners through the worker and covers:
+A write mode is supported only when it passes the **same conformance suite**: one integration suite on PostgreSQL,
+parameterized by write mode, that runs real generated runners through the real pipeline (the claim loop, the worker,
+the driver's state source and write sinks) and asserts what the read model must hold whatever the mode
+(`PerspectiveWriteModeConformanceTests`). Every case runs against the set-based and the per-stream mode.
 
-- the ordering guard and rewind, late events, and idempotency
-- row version conflicts and model actions (purge)
-- physical fields, split and inline
-- snapshots and rewind from a snapshot
-- collectives on the same rows
-- lifecycle stages and perspective sync
-- rebuild
-- failure isolation: a throwing apply and a failing row
+Concurrent writers are driven deterministically through the flush-policy seam: a test `IApplyBatchStrategy` runs
+between the batch's prepare and its write and changes the row in the database, as another writer acting in that window
+would. Under the per-stream mode no batch write happens, so nothing is injected, and each case expects exactly the
+writes that happened. Every wait is on the completion or failure of the work rows it asserts.
 
-It runs against the set-based and per-stream modes when #2246 ships, and write-behind and staging-table rebuilds must
-pass it before they ship. A feature added to perspectives later is added to the suite, so every mode is held to it.
+| Case | What must hold |
+|---|---|
+| New and existing streams in one batch | every event folded once into the document, an Extracted field in its column and the document, a Split field only in its column |
+| A stream's first event finds a row already | the batch's insert conflicts and the pair folds onto the row it finds |
+| Another writer changes the row after the read (row version conflict) | neither write is lost |
+| Another writer moves the row past the batch (ordering guard, rewind, late event) | the stream is re-folded with every event, and the later event's own delivery is not applied twice (idempotency) |
+| Purge | the row is removed, and an event after the purge does not recreate it |
+| An apply that throws, and a row the database rejects | the throwing event is logged and skipped and its stream completes, as on the per-stream path; the rejected row fails only its own stream, and the batch's other rows are written |
+| Perspective sync | a waiter is released only once the row is durable |
+
+Snapshots and rewind from a snapshot, collectives on the same rows, lifecycle receptors and rebuild are not in the
+suite yet; they are covered for the set-based path by focused tests of the runner's prepare and complete, and are the
+next cases to add. Write-behind and staging-table rebuilds must pass the suite before they ship, and a feature added to
+perspectives later is added to the suite, so every mode is held to it.
+
+## Measurements {#measurements}
+
+Measured with `Measure_FanOutOfNewStreamsAsync`: new streams with one event each, applied through the real pipeline,
+counting the statements issued against the perspective table and in total.
+
+100,000 new streams, one event each, on PostgreSQL, four consumer loops and a claim batch of 1,000, each mode on a
+fresh pipeline (2026-11-12):
+
+| | Per-stream | Set-based |
+|---|---|---|
+| Statements against the perspective table | 574,928 | 2,915 |
+| of which inserts | 100,000 | 709 |
+| of which row reads (versions and models) | 474,928 | 2,206 |
+| Commit-sequence reads | 100,000 | 709 |
+| Statements in total | 1,255,840 | 662,087 |
+| Wall time | 683.6 s | 764.0 s |
+| Rows per second | 146 | 131 |
+
+The write itself goes from about six statements per stream to a few per batch, and the statements a fan-out sends to
+the database in total halve. Rows per second do not move, because neither mode is bound by its writes here: in both,
+most of what remains is the completion of each pair (`complete_perspective_cursor_work` and its read, about three per
+stream in this harness, which reports completions one pair at a time), followed by the claim and drain round trips.
+Batching the completion reports is the next step for a fan-out's throughput; until then, set-based mode's gain is
+database load, not latency.
+
