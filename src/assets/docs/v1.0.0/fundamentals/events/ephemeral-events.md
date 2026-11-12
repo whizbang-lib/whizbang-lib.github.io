@@ -40,6 +40,8 @@ codeReferences:
   - src/Whizbang.Generators/Utilities/MixedStreamOptIn.cs
   - src/Whizbang.Data.Postgres/CoordinatorMixedStreamSql.cs
   - src/Whizbang.Data.Postgres/Migrations/393_AllowedPairsMayShareAStream.sql
+  - src/Whizbang.Data.Postgres/Migrations/397_TypesDeclaredEphemeralTogetherConvertTheirStreamsWhole.sql
+  - src/Whizbang.Data.Postgres/EphemeralStreamMates.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.RetentionSweeps.cs
   - src/Whizbang.Core/Attributes/DangerouslyAllowSourcedEventsFromEphemeralInputAttribute.cs
   - src/Whizbang.Core/Attributes/FullHistoryAttribute.cs
@@ -83,6 +85,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HistoryWalkTargetNamingTests.cs
   - tests/Whizbang.Core.Tests/TypeNameFormatterTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralBlockerReportSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralStreamByStreamSqlTests.cs
   - tests/Whizbang.Core.Tests/Configuration/EphemeralBlockerOptionsTests.cs
   - tests/Whizbang.Core.Tests/Observability/EphemeralBlockerMetricsTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveRegistryMixedOptInTests.cs
@@ -599,7 +602,7 @@ the size of the store, and a crash resumes from the last committed batch.
 | Choice | Reason | Verified |
 |---|---|---|
 | The reclassification runs in the maintenance cycle, in bounded batches, not as one statement at startup. | One statement over every stored event of a type held a lock on every touched row for its whole length, wrote one burst of WAL, made startup wait, and could run into the command timeout, after which nothing was reclassified and the next startup tried the same again. | {verified: TypeDefinitionReconcilerCoverageTests.Reconcile_FlagOn_LeavesTheReclassifyToTheMaintenanceCycle_StartupDoesNotWaitOnItAsync, EphemeralHistoryReclassifySqlTests.Reclassify_RunsInBoundedBatches_AndResumesFromItsCursor_AfterACrashAsync} |
-| A stream that also holds a Sourced event of another type is left as it is, and its events are counted as blocked and logged. Each batch takes the per-stream locks the write paths take before judging a stream. | Reclassifying it would mix the stream (see WHIZ133 above). Under the locks, no event lands in the stream between the check and the stamp. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_AMixedStream_IsReportedAndLeftUntouched_AndTheDigestsEqualARecountAsync, EphemeralHistoryReclassifySqlTests.Reclassify_OnlyMixedStreams_ReportsThemBlocked_AndStillFinishesAsync} |
+| A stream that also holds a Sourced event of a type that is not declared ephemeral (nor released or allowed for one) is left as it is, and its events are counted as blocked and logged. Each batch takes the per-stream locks the write paths take before judging a stream. | Reclassifying it would mix the stream (see WHIZ133 above). Under the locks, no event lands in the stream between the check and the stamp. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_AMixedStream_IsReportedAndLeftUntouched_AndTheDigestsEqualARecountAsync, EphemeralHistoryReclassifySqlTests.Reclassify_OnlyMixedStreams_ReportsThemBlocked_AndStillFinishesAsync} |
 | The reclassified events leave the integrity digests through the one digest fold, batch by batch. | The stored digests then equal a recount of the Sourced events at every commit, so an audit running alongside the walk sees no false difference. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_AMixedStream_IsReportedAndLeftUntouched_AndTheDigestsEqualARecountAsync, StreamDigestWritersTests.ReclassifyEphemeral_SubtractsEveryLaneOfTheReclassifiedEventsAsync} |
 | History stored under a former name is the same type: it is walked too, and a stream holding the type under two names is not mixed. | A rename does not change which events are the type's. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_FormerNames_AreWalked_AndAStreamHoldingBothIsNotMixedAsync} |
 | Each walk names the type by its stored form, `Ns.Type, Assembly`, the form the append path writes to `event_type`; a bare former name from the pinned-type ledger is read in the type's current assembly, and a former name the ledger records with an assembly (a type that [moved to another assembly](../identity/pinned-type-ledger#a-type-that-moves-to-another-assembly)) is read in that one. The bare CLR name is used only to find the type's definition. | The walk reads the type's events through the index on `event_type`. Named by the bare CLR name, as it was until #2254, it matched no stored event and completed at once with every count at 0, so the setting reclassified nothing. A walk left complete under the bare name is a row of its own and does not stop the stored-name walk. | {verified: EphemeralHistoryReclassifySqlTests.TheWalk_NamesTheTypeAsTheAppendPathStoredIt_AndItsDefinitionByTheBareNameAsync, EphemeralHistoryReclassifySqlTests.AWalkCompletedUnderTheBareName_DoesNotStopTheStoredNameWalkAsync, HistoryWalkTargetNamingTests.EveryHistoryWalkStep_NamesItsTargetsAsTheAppendPathStoresThem_AndReadsThemAsync, TypeNameFormatterTests.FormatFormerName_ABareFormerName_TakesTheTypesAssemblyAsync, FormerNameFromAnotherAssemblyWalkTests.TheReclassifyWalk_ReadsTheHistoryOfATypeThatMovedAssemblies_UnderItsFormerStoredNameAsync} |
@@ -616,6 +619,45 @@ and fails if any walk is keyed by a name the store does not hold. The per-type r
 
 The step logs, per type and cycle, the events it reclassified, the events it left Sourced in mixed streams and how many
 of the type's events are left to read, and one line when a type's walk completes.
+
+#### A stream becomes ephemeral whole {#a-stream-becomes-ephemeral-whole}
+
+The walk converts stream by stream. Several event types often share one stream: a session stream, say, whose created,
+updated and ended events are all declared ephemeral after their history was written durable. When a batch reaches such a
+stream, it judges the stream by every Sourced type in it, not only the type it is walking:
+
+- a type declared `[Ephemeral]` (the walked type or any other) converts;
+- a type released for one of the declared types the stream holds converts with it;
+- a type allowed to share a stream with **every** declared type the stream holds stays Sourced;
+- any other type blocks the stream.
+
+A stream with no blocking type is converted whole, in one statement: every declared type's events in it, and the
+released ones, become ephemeral together. A stream with a blocking type is left whole, and only the blocking types are
+reported, so the report stays the list of types a developer has to decide about. The other declared types' events go
+through the same digest and integrity accounting as the walked type's own. When the other type's walk comes to the
+stream later, it finds its events already ephemeral: they count as read, not as changed.
+
+```text{
+title: "A session stream converted by the first walk that reaches it"
+description: "Two declared-ephemeral types share a stream; one walk converts both, and a durable type refuses its stream whole."
+framework: "NET10"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["ephemeral", "maintenance", "streams"]
+}
+stream A: SessionCreated, SessionUpdated, SessionUpdated      -> the SessionUpdated walk converts all three
+stream B: SessionCreated, SessionUpdated, SessionOwnerChanged -> refused whole; reported: SessionOwnerChanged
+```
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A stream converts as a unit: when every Sourced event in it is of a declared-ephemeral type, or released or allowed for one, the walk converts every declared type's events in it in the same statement. | Converting one type at a time cannot work for types that share streams: each type's walk saw the others' events, still durable, and refused the stream, so none could go first and the history was never converted. A stream is the unit every other history operation changes, and a stream that is wholly durable or wholly ephemeral keeps the reasoning about durability simple. It is never left partly converted, even for a moment between batches. | {verified: EphemeralStreamByStreamSqlTests.OneWalk_ConvertsEveryDeclaredEphemeralTypeInTheStream_Together_AndTheDigestsEqualARecountAsync, DapperEphemeralHistoryReclassifyTests.TwoDeclaredTypesSharingAStream_AreConvertedTogether_ByTheRegisteredStepAsync} |
+| This was chosen over only treating the other declared types as non-blockers. | That alone would let each walk convert its own type and leave the stream mixed until the other walks reached it, and a crash or a batch limit in between would leave it so. Converting the stream whole keeps every stream one kind at every commit. | {verified: EphemeralStreamByStreamSqlTests.OneWalk_ConvertsEveryDeclaredEphemeralTypeInTheStream_Together_AndTheDigestsEqualARecountAsync} |
+| A stream holding a type meant to stay durable is refused whole, and only that type is reported, under each declared type whose events it holds back. | The report is the list a developer acts on (mark ephemeral, release, allow the pair or keep). A declared-ephemeral type in it would ask for a decision that has already been made. | {verified: EphemeralStreamByStreamSqlTests.AStreamHoldingAGenuinelyDurableType_IsRefusedWhole_AndTheReportNamesOnlyThatTypeAsync} |
+| A release applies in the streams of the declared type it is for, whichever declared type's walk reaches the stream. | The release says the blocking type's events may go in that type's streams; the stream is the same whichever walk arrives first. | {verified: EphemeralStreamByStreamSqlTests.AReleaseOfTheOtherDeclaredType_AppliesInTheStreamsItIsIn_ToTheFirstWalkAsync} |
+| A Sourced type stays beside the converted events only when it is allowed with every declared type the stream holds; otherwise it blocks the stream. | After the conversion each declared type sits beside it, and a pair that is not allowed must never share a stream. | {verified: EphemeralStreamByStreamSqlTests.AnAllowedDurableType_ThatOnlyOneDeclaredTypeIsPairedWith_RefusesTheStream_AndIsReportedAsync, EphemeralStreamByStreamSqlTests.AnAllowedDurableType_PairedWithEveryDeclaredTypeInTheStream_StaysDurable_AndTheRestConvertAsync} |
+| The other declared types and their release and allow lists are part of each walk's variant (as a short digest), so declaring another type walks every declared type again. A type declared alone adds nothing to it. | A completed walk's report could otherwise go on naming a type that has since been declared ephemeral, and its counts would no longer describe what the walk would do now. The set grows with the catalog, so the variant stores a digest of it, not every name; the digest does not depend on the order the catalog lists the types in. | {verified: EphemeralStreamByStreamSqlTests.DeclaringAnotherType_WalksTheTypeAgain_SoItsReportNoLongerNamesTheNewlyDeclaredTypeAsync, EphemeralStreamByStreamSqlTests.TheVariant_IsTheSame_WhicheverOrderTheCatalogListsTheDeclaredTypesInAsync} |
+| Each walk counts only its own type's events as changed; the other declared types' events it converts are counted apart (`EventsReclassifiedWithStream`), and their own walk later reads them without changing them. | The per-type counters then add up to the events each type had, with nothing counted twice. | {verified: EphemeralStreamByStreamSqlTests.TheOtherTypesLaterWalk_FindsItsEventsAlreadyEphemeral_AndTheCountersStayTruthfulAsync} |
 
 #### What holds ephemeral history back {#what-holds-ephemeral-history-back}
 
