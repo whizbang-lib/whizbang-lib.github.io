@@ -569,6 +569,7 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ603 | Error | [IsNotNull() on a Nullable Value Cannot Fail](whiz603.md) (repository check) |
 | WHIZ604 | Error | [JsonDocument Created and Dropped Without Being Disposed](whiz604.md) (repository check) |
 | WHIZ605 | Error | [Test Class Without Exactly One Shard Category](whiz605.md) (repository check) |
+| WHIZ606 | Error | [Credential-Named Settings Property Is a Plain String](whiz606.md) (repository check) |
 | WHIZ607 | Error | [Type Name Read Outside the Shared Naming Code](whiz607.md) (repository check) |
 | WHIZ608 | Error | [Type-Naming Exception Without a Reason](whiz608.md) (repository check) |
 | WHIZ701 | Info | [EF Core Perspective Discovery](whiz701.md) |
