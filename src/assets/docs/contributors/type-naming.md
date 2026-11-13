@@ -4,8 +4,8 @@ pageType: reference
 audience: [contributor]
 status: current
 order: 6
-description: Every type name the Whizbang library reads comes from the shared naming code. Which helper gives which form, how the naming authorities are marked, what the banned-symbol list forbids, and how WHIZ606 and WHIZ607 enforce it at build time.
-tags: contributing, analyzers, type-names, naming, banned-symbols, whiz606, whiz607
+description: Every type name the Whizbang library reads comes from the shared naming code. Which helper gives which form, how the naming authorities are marked, what the banned-symbol list forbids, and how WHIZ607 and WHIZ608 enforce it at build time.
+tags: contributing, analyzers, type-names, naming, banned-symbols, whiz607, whiz608
 codeReferences:
   - src/Whizbang.Core/TypeNameFormatter.cs
   - src/Whizbang.Core/Messaging/EventTypeMatchingHelper.cs
@@ -91,10 +91,10 @@ it is a renderer or a resolver in its own right; a class that merely needs a nam
 
 Two layers fail a library build that reads a name another way.
 
-**WHIZ606 and WHIZ607** come from `TypeNameSourceAnalyzer` in `Whizbang.RepoAnalyzers`.
-[WHIZ606](../v1.0.0/operations/diagnostics/whiz606.md) reports a type, namespace or assembly name read, or a type
-resolved from a string, outside an authority. [WHIZ607](../v1.0.0/operations/diagnostics/whiz607.md) reports a
-suppression of WHIZ606 that does not say why. Both apply to projects under `src/` only:
+**WHIZ607 and WHIZ608** come from `TypeNameSourceAnalyzer` in `Whizbang.RepoAnalyzers`.
+[WHIZ607](../v1.0.0/operations/diagnostics/whiz607.md) reports a type, namespace or assembly name read, or a type
+resolved from a string, outside an authority. [WHIZ608](../v1.0.0/operations/diagnostics/whiz608.md) reports a
+suppression of WHIZ607 that does not say why. Both apply to projects under `src/` only:
 `Directory.Build.props` gives every project outside `src/` the `TypeNaming.OutsideLibrary.globalconfig`, which turns
 them off, because tests, tools, samples and benchmarks name types to describe them.
 
@@ -117,11 +117,11 @@ them off, because tests, tools, samples and benchmarks name types to describe th
 ## Making an exception {#making-an-exception}
 
 An exception is made where it is used, with its reason, and only through `[SuppressMessage]` with a non-empty
-`Justification`. A `#pragma warning disable WHIZ606` cannot carry a reason, so WHIZ607 reports every one:
+`Justification`. A `#pragma warning disable WHIZ607` cannot carry a reason, so WHIZ608 reports every one:
 
-```csharp{title="A WHIZ606 exception that says why" description="The only accepted way out of WHIZ606: a SuppressMessage attribute whose Justification records the reason." framework="NET10" category="Diagnostics" difficulty="INTERMEDIATE" tags=["whiz606", "whiz607", "suppression", "type-names"] tests=["TypeNameSourceAnalyzerTests.Runtime_ASuppressionThatSaysWhy_IsHonoredAsync", "TypeNameSourceAnalyzerTests.Suppression_WithoutAJustification_IsReportedAsync", "TypeNameSourceAnalyzerTests.Pragma_ThatHidesTheRule_IsReportedAsync"]}
+```csharp{title="A WHIZ607 exception that says why" description="The only accepted way out of WHIZ607: a SuppressMessage attribute whose Justification records the reason." framework="NET10" category="Diagnostics" difficulty="INTERMEDIATE" tags=["whiz607", "whiz608", "suppression", "type-names"] tests=["TypeNameSourceAnalyzerTests.Runtime_ASuppressionThatSaysWhy_IsHonoredAsync", "TypeNameSourceAnalyzerTests.Suppression_WithoutAJustification_IsReportedAsync", "TypeNameSourceAnalyzerTests.Pragma_ThatHidesTheRule_IsReportedAsync"]}
 [System.Diagnostics.CodeAnalysis.SuppressMessage(
-  "Naming", "WHIZ606:A type name is read outside the shared naming code",
+  "Naming", "WHIZ607:A type name is read outside the shared naming code",
   Justification = "A test-code analyzer, which does not reference the generator naming helpers; the type is named only in the diagnostic message it reports (#2267)")]
 private static void _report(SymbolAnalysisContext context, INamedTypeSymbol type) {
   // ...
@@ -133,7 +133,7 @@ helpers, such as an analyzer assembly that does not reference the generators' sh
 
 ## Related
 
-- [WHIZ606](../v1.0.0/operations/diagnostics/whiz606.md) and [WHIZ607](../v1.0.0/operations/diagnostics/whiz607.md)
+- [WHIZ607](../v1.0.0/operations/diagnostics/whiz607.md) and [WHIZ608](../v1.0.0/operations/diagnostics/whiz608.md)
 - [Repository Checks and Diagnostic IDs](repository-checks.md)
 - [TypeFormatter and TypeNameFormatter](../v1.0.0/fundamentals/identity/type-formatting.md)
 - [Normalizing type names](../v1.0.0/operations/infrastructure/migrations.md#normalizing-type-names)

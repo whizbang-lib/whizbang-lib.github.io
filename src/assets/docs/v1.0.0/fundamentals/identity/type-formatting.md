@@ -520,7 +520,7 @@ earlier release stored with versions.
 `TypeFormatter`, `TypeNameFormatter`, `EventTypeMatchingHelper` and `MultiPassMessageTypeBinder` are the library's
 type-name authorities, each marked `[TypeNameAuthority]`. They are the only runtime code allowed to read a type's,
 namespace's or assembly's name, or to resolve a type from a name; the generators have `TypeNameUtilities`. Anywhere
-else in the library, the repository rule [WHIZ606](../../operations/diagnostics/whiz606.md) fails the build. The rule
+else in the library, the repository rule [WHIZ607](../../operations/diagnostics/whiz607.md) fails the build. The rule
 is about the Whizbang library's own code; your application calls these helpers or `System.Type` as it likes. Which
 helper produces which form is on the contributor page [Type names in library code](../../../contributors/type-naming.md).
 {verified: TypeNameSourceAnalyzerTests.Runtime_InsideANamingAuthority_IsNotReportedAsync, TypeNameSourceAnalyzerTests.Runtime_ANameReadOffATypeOrAssembly_IsReportedAsync}

@@ -1,70 +1,92 @@
 ---
-title: 'WHIZ607: Type-Naming Exception Without a Reason'
+title: 'WHIZ607: Type Name Read Outside the Shared Naming Code'
 pageType: troubleshooting
 version: 1.0.0
 description: >-
-  A repository check: a suppression of WHIZ606 carries no justification, or
-  WHIZ606 is hidden with a pragma that cannot carry one, so an exception to
-  the type-naming rule does not record why it was made
+  A repository check: Whizbang library code reads a type, namespace or
+  assembly name, or resolves a type from a string, outside the shared naming
+  code, so two services or two builds of one assembly could render one type
+  two ways
 category: Diagnostics
 severity: Error
 tags:
   - diagnostics
   - repository-check
   - type-names
-  - suppression
+  - naming
   - analyzer
 codeReferences:
   - tools/Whizbang.RepoAnalyzers/TypeNameSourceAnalyzer.cs
+  - src/Whizbang.Core/TypeNameAuthorityAttribute.cs
+  - src/Whizbang.Core/TypeNameFormatter.cs
+  - src/Whizbang.Generators.Shared/Utilities/TypeNameUtilities.cs
 testReferences:
   - tests/Whizbang.RepoAnalyzers.Tests/TypeNameSourceAnalyzerTests.cs
 ---
 
-# WHIZ607: Type-Naming Exception Without a Reason
+# WHIZ607: Type Name Read Outside the Shared Naming Code
 
 **Severity**: Error
 **Raised by**: `Whizbang.RepoAnalyzers` (Roslyn analyzer)
 
-This is a check on the Whizbang repository's own code. Like [WHIZ606](whiz606.md), it runs only on the library projects under `src/` and never ships in a package. See [Repository Checks and Diagnostic IDs](../../../contributors/repository-checks.md) for the whole block.
+This is a check on the Whizbang repository's own code. It runs only on the library projects under `src/` and never ships in a package, so an application that uses Whizbang never sees it. Tests, tools, samples and benchmarks have it turned off (`TypeNaming.OutsideLibrary.globalconfig`). See [Repository Checks and Diagnostic IDs](../../../contributors/repository-checks.md) for the whole block.
 
 ## What it means
 
-An exception to [WHIZ606](whiz606.md) does not say why it was made. The rule reports:
+Code outside a class marked `[TypeNameAuthority]` reads a name the shared naming code owns:
 
-- a `[SuppressMessage]` whose check id starts with `WHIZ606` and that has no `Justification`, or one that is empty or only whitespace;
-- any `#pragma warning disable WHIZ606`, which has no place for a reason. The matching `restore`, and pragmas for other rules, are not reported.
+- **Runtime code**: `Name`, `FullName`, `Namespace`, `AssemblyQualifiedName` or `ToString()` on a receiver typed `System.Type` (or `TypeInfo`); `Assembly.FullName`, `Assembly.GetName()`, `AssemblyName.Name` or `AssemblyName.FullName`; or a type resolved from a string with `Type.GetType(string, ...)` or `Assembly.GetType(string, ...)`.
+- **Generator code**: `Name`, `MetadataName`, `ContainingNamespace`, `ContainingAssembly`, `Identity`, `ToDisplayString()` or `ToDisplayParts()` on a type, namespace or assembly symbol.
 
-A suppression of another rule without a justification is not this rule's concern.
+A member's name read through a member receiver (`MethodInfo.Name`, `PropertyInfo.Name`, `IMethodSymbol.Name`) is not a type name and is not reported. Comparing two `Type` values is not reported either.
 
-```csharp{title="The exceptions WHIZ607 reports" description="A SuppressMessage with no justification and a pragma that hides WHIZ606 are both reported." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["whiz607", "whiz606", "repository-check", "suppression"] tests=["TypeNameSourceAnalyzerTests.Suppression_WithoutAJustification_IsReportedAsync", "TypeNameSourceAnalyzerTests.Pragma_ThatHidesTheRule_IsReportedAsync", "TypeNameSourceAnalyzerTests.Suppression_OfAnotherRule_WithoutAJustification_IsNotThisRulesConcernAsync"]}
-internal static class Diagnostics {
-  [SuppressMessage("Naming", "WHIZ606", Justification = "")]   // WHIZ607
-  public static string Describe(Type type) => type.Name;
+```csharp{title="The reads WHIZ607 reports" description="A type's name and an assembly's name read directly in library code, outside the shared naming code." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["whiz607", "repository-check", "type-names", "analyzer"] tests=["TypeNameSourceAnalyzerTests.Runtime_ANameReadOffATypeOrAssembly_IsReportedAsync", "TypeNameSourceAnalyzerTests.Runtime_TypeGetTypeAndAssemblyGetType_AreEachReportedAsync"]}
+internal static class OrderRouting {
+  public static string RouteKey(Type messageType) =>
+    messageType.FullName + ", " + messageType.Assembly.GetName().Name;   // WHIZ607 on each read
 
-#pragma warning disable WHIZ606                                  // WHIZ607
-  public static string Describe2(Type type) => type.Name;
-#pragma warning restore WHIZ606
+  public static Type? Resolve(string name) => Type.GetType(name);       // WHIZ607
+}
+```
+
+```csharp{title="Generator reads WHIZ607 reports" description="A type symbol's name and display string read in generator code outside TypeNameUtilities." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["whiz607", "repository-check", "generators", "analyzer"] tests=["TypeNameSourceAnalyzerTests.Generator_ANameReadOffATypeNamespaceOrAssemblySymbol_IsReportedAsync", "TypeNameSourceAnalyzerTests.Generator_AMemberSymbolsName_IsNotReportedAsync"]}
+internal static class HandlerModel {
+  public static string Key(INamedTypeSymbol type) =>
+    type.ContainingNamespace.Name + "." + type.Name;   // WHIZ607 on each read
+
+  public static string Signature(IMethodSymbol method) =>
+    method.Name;                                      // not reported: a member's name
 }
 ```
 
 ## Why it matters
 
-Every exception to the type-naming rule is a place a name is rendered outside the shared code. The reason recorded where it is made is what lets a reviewer, or a later contributor, tell a deliberate exception from a shortcut, and remove it when the reason no longer holds.
+A type name is a key: a perspective's table, a message's route, a composite child's id, a priority rule. Every place that renders one its own way is a place where two services, or two builds of one contract assembly, can disagree. A composite child once derived three different ids on three paths for exactly this reason, and its stream digests disagreed with nothing missing ([Deterministic child ids](../../fundamentals/messaging/composite-events.md#deterministic-child-ids)). With one source of names, a key cannot drift by accident.
 
 ## How to fix it
 
-Prefer moving the read into the shared naming code ([how to fix WHIZ606](whiz606.md#how-to-fix-it)). If the exception stands, use `[SuppressMessage]` with a `Justification` that says why:
+Call the helper for the form you need. [Type Names in Library Code](../../../contributors/type-naming.md#which-helper) lists which helper gives which form; the common ones:
 
-```csharp{title="Clearing WHIZ607" description="A WHIZ606 suppression whose Justification records why the type is named here." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["whiz607", "whiz606", "repository-check", "suppression"] tests=["TypeNameSourceAnalyzerTests.Runtime_ASuppressionThatSaysWhy_IsHonoredAsync"]}
-internal static class Diagnostics {
-  [SuppressMessage("Naming", "WHIZ606:A type name is read outside the shared naming code",
-    Justification = "the exception message names the type for a reader")]
-  public static string Describe(Type type) => type.Name;
+```csharp{title="Clearing WHIZ607" description="The same reads through the shared naming code: the version-free wire form for a key, the shared resolver for a type from a name." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["whiz607", "repository-check", "type-names", "type-name-formatter"] tests=["TypeNameWireFormTests.Format_CarriesNoVersionAtAnyDepthAsync", "TypeNameWireFormTests.SimpleNames_AreTheTypesOwnAsync"]}
+internal static class OrderRouting {
+  public static string RouteKey(Type messageType) =>
+    TypeNameFormatter.Format(messageType);         // Namespace.Type, Assembly; version-free
+
+  public static string Describe(Type messageType) =>
+    TypeNameFormatter.ForLog(messageType);         // text for a log line, never a key
+
+  public static Type? Resolve(IMessageTypeBinder binder, string name) =>
+    binder.Bind(name);                             // the shared resolver
 }
 ```
 
+In generators, use `TypeNameUtilities` (`SimpleName`, `MetadataNameOf`, `NamespaceOf`, `AssemblyOf`, `Display`, `FormatTypeNameForRuntime`, `BuildClrTypeName`).
+
+When the read genuinely cannot go through a helper (an analyzer assembly that does not reference the generators' shared project, for example), suppress it with `[SuppressMessage]` and a `Justification` that says why. A suppression without one, or any `#pragma warning disable WHIZ607`, is [WHIZ608](whiz608.md).
+{verified: TypeNameSourceAnalyzerTests.Runtime_ASuppressionThatSaysWhy_IsHonoredAsync, TypeNameSourceAnalyzerTests.Runtime_InsideANamingAuthority_IsNotReportedAsync}
+
 ## Related
 
-- [WHIZ606](whiz606.md), the rule these suppressions are exceptions to
-- [Type Names in Library Code](../../../contributors/type-naming.md#making-an-exception)
+- [Type Names in Library Code](../../../contributors/type-naming.md), which lists every helper, the authorities and the banned symbols
+- [WHIZ608](whiz608.md), a suppression of this rule that does not say why
 - [Repository Checks and Diagnostic IDs](../../../contributors/repository-checks.md)
