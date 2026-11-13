@@ -162,7 +162,21 @@ with none keeps none.
 - **Quoted by the server.** The `ALTER TABLE … SET (…)` statement is built by PostgreSQL itself with `format('%I = %L')`
   from the catalog, so no option name or value is spliced into SQL text by the library.
 
-Both PostgreSQL drivers use the same swapper, so both keep the settings.
+Both PostgreSQL drivers use the same swapper, so both keep the settings. After the swap the installed table is
+analyzed, outside the swap's transaction, so the planner reads its real size rather than that of a table never analyzed.
+
+#### One blue-green rebuild per table {#one-blue-green-rebuild-per-table}
+
+{verified: PerspectiveRebuilderBlueGreenTests.BlueGreen_WhileAnotherRebuildOfTheTableRuns_FailsWithoutTouchingTheShadowAsync, PerspectiveRebuilderBlueGreenTests.BlueGreen_HoldsTheTablesGuard_FromBeforeTheShadowUntilAfterTheSwapAsync, PostgresPerspectiveTableSwapperTests.TryLockRebuild_ExcludesASecondRebuildOfTheTable_UntilTheFirstReleasesAsync, BlueGreenRebuildIntegrationTests.TwoRebuildsOfOneTable_TheSecondFails_AndTheFirstCompletesAsync}
+
+Two blue-green rebuilds of the same table would share its shadow table, and creating the shadow drops one left behind,
+so a second rebuild started while the first replays would destroy the first one's work. Each blue-green rebuild
+therefore holds a guard on its table from before it creates the shadow until the swap is done: a PostgreSQL session
+advisory lock keyed on the schema and the table, so it holds across every instance of the service. A rebuild that finds
+the guard held fails at once, touching nothing, with `another blue-green rebuild of wh_per_order is in flight` in its
+`RebuildResult.Error`, as any rebuild that cannot start fails: run it again once the other has finished. The
+maintenance cycle's [blue-green rewrite](../../operations/infrastructure/storage-maintenance#blue-green-rewrite) checks
+the same guard and passes the table over.
 
 ### In-Place
 
@@ -538,7 +552,7 @@ await dispatcher.SendAsync(new RebuildPerspectiveCommand(
 ```
 
 `RebuildOrigin` also carries a `RebuildTrigger`, which separates an operator's repair from the framework's
-own background work (`Requested`, `Migration`, `StartupScan`). `Unknown` is the zero value, so an event
+own background work (`Requested`, `Migration`, `StartupScan`, or `TableRewrite` when the maintenance cycle rewrote the perspective's table by a [blue-green rebuild](../../operations/infrastructure/storage-maintenance#blue-green-rewrite)). `Unknown` is the zero value, so an event
 stored before provenance existed does not claim somebody asked for it.
 
 ### Did it change anything? {#rebuild-row-digest}

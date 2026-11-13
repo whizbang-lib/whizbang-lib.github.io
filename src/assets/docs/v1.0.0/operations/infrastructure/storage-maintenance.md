@@ -418,6 +418,7 @@ the operator's permission for a blocking rewrite at boot:
 | `PgSqueeze` | no | start fails with the capability verdict (it warns when the probe cannot tell) | start fails with the capability verdict (it warns when the probe cannot tell) |
 | `PgRepack`, `InProcess` | either | [online rewrite](#online-rewrite) through [pg_repack](#pg-repack) from the maintenance cycle | [online rewrite](#online-rewrite) through [pg_repack](#pg-repack) from the maintenance cycle |
 | `PgRepack`, `External` | either | nothing is started; [your job runs pg_repack](#pg-repack) | nothing is started; [your job runs pg_repack](#pg-repack) |
+| `Online` | either | from the maintenance cycle: pg_squeeze, else pg_repack in process, else a [blue-green rebuild](#blue-green-rewrite) of a perspective table | the same: `AllowTableRewrite` gates only `VACUUM FULL` |
 | `VacuumFull` | either | `VACUUM FULL` at boot | detect and report only |
 | `None` | either | nothing is rewritten | nothing is rewritten |
 
@@ -562,7 +563,8 @@ Candidates are re-measured whenever the queue is read, so a request whose table 
 {verified: OnlineTableRewriteStepTests.Rewrites_TheLargestBloatRatioFirstAsync, OnlineTableRewriteStepTests.Budget_SkipsATableThatWouldOverrunIt_AndTakesASmallerOneThatFitsAsync, OnlineTableRewriteStepTests.NotImproved_LeavesTheRequestQueuedAsync, OnlineTableRewriteStepTests.PgSqueezeNotReadyOnEveryDatabase_RewritesNothing_AndSaysWhereAsync, OnlineTableRewriteStepTests.PgRepack_RewritesTheLargestBloatRatioFirst_WithinTheBudgetAsync, OnlineTableRewriteStepTests.PgRepack_ClearsOnlyWhatImprovedAsync, OnlineTableRewriteStepTests.PgRepack_ClientNotReady_RewritesNothing_AndSaysWhyAsync}
 
 With `TableRewriteStrategy = PgSqueeze`, or `PgRepack` with its client [in process](#pg-repack), the maintenance cycle
-rewrites queued tables online. pg_squeeze (`squeeze.squeeze_table`) copies the table while it stays readable and
+rewrites queued tables online. `Online` does the same with whichever of the two is `Ready`, pg_squeeze first, and
+falls back to a [blue-green rebuild](#blue-green-rewrite) of a perspective table when neither is. pg_squeeze (`squeeze.squeeze_table`) copies the table while it stays readable and
 writable and holds an exclusive lock only for the final swap; pg_repack does the same from its client program, holding
 an ACCESS EXCLUSIVE lock only briefly at the start and the end. Both are bounded by the same budget. It runs as a [maintenance step](../../fundamentals/workers/maintenance-steps) named
 `online-table-rewrite`, so it runs where the rest of the cycle runs: on the holder of the maintainer duty, and only when
@@ -672,6 +674,78 @@ than SQL. This was worked out from the extension's source and the platform's gen
 managed service: check the role with `SELECT rolreplication FROM pg_roles WHERE rolname = current_user` before
 choosing `PgSqueeze`. Where the role cannot be given `REPLICATION`, the prerequisite check says so for each table and
 the queue is kept; `VacuumFull` in a maintenance window remains the alternative.
+
+## Blue-green rewrite of a perspective table {#blue-green-rewrite}
+
+{verified: OnlineTableRewriteStepTests.Online_WithPgSqueezeReady_RewritesThroughIt_AndRebuildsNothingAsync, OnlineTableRewriteStepTests.Online_WithPgSqueezeNotReady_AndPgRepackReady_RepacksAsync, OnlineTableRewriteStepTests.Online_WithNoExtensionUsable_RebuildsThePerspectiveTable_AndAFrameworkTableWaitsAsync, OnlineTableRewriteStepTests.Online_RebuildsAtMostTheCycleLimit_LargestBloatFirstAsync, OnlineTableRewriteStepTests.Online_ATableAnotherRebuildHolds_IsNotRebuiltAgain_AndStaysQueuedAsync, OnlineTableRewriteStepTests.Online_APerspectiveAlreadyRebuildingHere_IsNotRebuiltAgainAsync, OnlineTableRewriteStepTests.OnlyOnline_EverRebuildsAsync, TableRewriteStrategyTests.Auto_NeverResolvesToAnOnlineRewrite_ABlueGreenRebuildIncludedAsync, BlueGreenRebuildIntegrationTests.Online_WithNoExtension_RebuildsALoweredFillFactorTable_AtTheNewFillFactorAsync, BlueGreenRebuildIntegrationTests.Online_WithNoExtension_AFrameworkTableWaitsAsync, BlueGreenRebuildIntegrationTests.Online_SkipsATableAnotherRebuildHolds_AndLeavesItQueuedAsync}
+
+On a server that allowlists neither pg_squeeze nor pg_repack, a rewrite request waits indefinitely, and `VACUUM FULL` is
+never run on its own. That is the right default for the framework's own tables, but a perspective table can be rewritten
+without any extension: Whizbang can rebuild it from its events, [blue-green](../../fundamentals/perspectives/rebuild#blue-green),
+into a shadow table that took the live table's storage settings first, swapped in under a lock bounded by
+`SwapLockTimeout`. With `TableRewriteStrategy = Online` the maintenance cycle uses the cheapest strategy the server allows:
+
+| Order | Strategy | Tables | Needs |
+|---|---|---|---|
+| 1 | pg_squeeze | any | the extension `Ready` |
+| 2 | pg_repack | any | the extension and its client `Ready`, the client run in process |
+| 3 | blue-green rebuild | perspective tables | nothing beyond Whizbang |
+| - | `VACUUM FULL` | never under `Online` | an operator, by hand, or `VacuumFull` with `AllowTableRewrite` |
+
+The rules, and why:
+
+- **Last, because a replay costs more.** A rebuild reads every event of the perspective and writes every row again,
+  which is more I/O than copying the rows, so it is used only where nothing cheaper is available. It still gives the
+  outcome a rewrite exists for: the table rewritten at its declared fillfactor, with no extension and no long lock.
+- **Explicit, never `Auto`.** `Online` is chosen on purpose, like `PgSqueeze`: `Auto` keeps decision #1671 and never
+  starts an online rewrite of any kind. `Online` requires no extension, so it never stops a start.
+- **Perspective tables only.** Only a table the perspective registry records exactly one perspective as writing
+  (`wh_perspective_registry.perspective_names`) can be rebuilt. A framework table, or one several perspectives share,
+  cannot be recreated from one perspective's events: it waits, and the cycle logs which tables wait and why.
+- **The same gate and budget.** It runs as the online rewrite does: on the maintainer duty's holder, when the
+  housekeeping gate admits the cycle, largest bloat first, within `OnlineRewriteMaxBytesPerCycle`. A request is one
+  rebuild, cleared as any other rewrite is (when the table improved, or once for a
+  [lowered fillfactor](#fillfactor-decrease)), and re-measured afterwards.
+- **One rebuild per cycle by default.** `BlueGreenRewriteMaxPerCycle` (default `1`) bounds how many perspectives one
+  cycle rebuilds, so several large ones are not replayed at once. A table left for the next cycle is logged with the
+  setting.
+- **Never two rebuilds of one table.** Two blue-green rebuilds of a table share its shadow, and creating the shadow drops
+  one left behind, so a second rebuild would destroy the first one's replay. A fleet-wide guard
+  ([one blue-green rebuild per table](../../fundamentals/perspectives/rebuild#one-blue-green-rebuild-per-table)) is held
+  for every blue-green rebuild, an operator's or the cycle's. A table whose guard is held, or whose perspective this
+  instance is already rebuilding, is passed over this cycle, without spending the limit or the budget, and its request
+  stays queued: the rebuild in flight satisfies it for now.
+
+```json{title="Rewrite with whatever the server allows" description="Selects Online: pg_squeeze, else pg_repack, else a blue-green rebuild of a perspective table, one per cycle." category="Configuration" difficulty="INTERMEDIATE" tags=["storage", "table-rewrite", "blue-green", "maintenance", "configuration"] tests=["OnlineTableRewriteStepTests.BlueGreenRewriteMaxPerCycle_DefaultsToOne_AndBindsFromConfigurationAsync", "OnlineTableRewriteStepTests.Online_WithNoExtensionUsable_RebuildsThePerspectiveTable_AndAFrameworkTableWaitsAsync"]}
+{
+  "Whizbang": {
+    "Workers": {
+      "Maintenance": {
+        "TableRewriteStrategy": "Online",
+        "BlueGreenRewriteMaxPerCycle": 1
+      }
+    }
+  }
+}
+```
+
+The rebuild is recorded on its `PerspectiveRebuild*` events with the trigger `TableRewrite`.
+
+### Rewrite history {#rewrite-history}
+
+{verified: FillFactorDecreaseRewriteTests.TheRewriteHistory_RecordsEachRewrite_AndStaysBoundedAsync, DapperTableMaintenanceTests.CompleteTableRewrite_ClearsTheRequest_AndRecordsTheStrategyAsync, OnlineTableRewriteStepTests.TheStrategyThatCarriedOutTheRequest_IsRecordedAsync, TableRewriteStartupStepTests.ARewriteAtBoot_RecordsItsStrategyAsync}
+
+A request is deleted once it is carried out, so `wh_table_rewrite_history` records each completed rewrite: the table,
+the strategy (`VacuumFull`, `PgSqueeze`, `PgRepack` or `BlueGreenRebuild`), the reason (`Bloat` or
+`FillFactorDecrease`) and the bloat ratio before and after. Every strategy writes it the same way, through
+`wh_complete_table_rewrite`, which records the rewrite and clears the request in one call. The history keeps itself
+bounded: the write that adds a row deletes rows older than 90 days and all but the newest 1,000, so it needs no sweep of
+its own.
+
+```sql{title="Read what rewrote each table" category="Operations" difficulty="BEGINNER" tests=["FillFactorDecreaseRewriteTests.TheRewriteHistory_RecordsEachRewrite_AndStaysBoundedAsync"]}
+SELECT table_name, strategy, reason, bloat_before, bloat_after, completed_at
+FROM wh_table_rewrite_history ORDER BY completed_at DESC;
+```
 
 ## Rebuilding queue-table indexes {#queue-index-rebuild}
 {verified: QueueIndexReindexStepTests.Run_RebuildsOneIndexPerCycleAsync, QueueIndexReindexStepTests.Run_DropsEveryInvalidLeftoverFirst_ThenRebuildsAsync, QueueIndexReindexStepTests.Run_ARebuild_IsLoggedWithTheSizesAndTheEstimateAsync, QueueIndexReindexStepTests.Run_ARebuildThatDidNotRunOrFailed_IsLoggedAsync, QueueIndexReindexStepTests.Run_NothingOverTheLine_RebuildsNothingAsync, QueueIndexReindexSqlTests.TheStep_ShrinksABloatedQueueIndexAsync, QueueIndexReindexSqlTests.TheStep_DropsAnInvalidLeftover_AndStillRebuildsAsync}
