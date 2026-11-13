@@ -45,11 +45,14 @@ WHIZ150 is reported on any object creation (`new T { ... }` or target-typed `new
 1. inside a lambda assigned to `CompositeMintRequest<T>.BuildComposite` (the request you pass to the composite factory
    reached through `IEventMint.Composites`),
 2. inside a lambda assigned to `CoalescePolicyOptions.CompositeFactory` (a coalesce binding's factory),
-3. in code whose namespace is `Whizbang.Core.Minting` or below it, or
-4. in the `Whizbang.Core` assembly itself.
+3. inside the lambda passed as the `factory` of `ToCompositeBatches` or `PublishCompositeBatchesAsync`, which enforce
+   the count cap and the byte budget ([streaming events into composites](../../fundamentals/messaging/composite-events.md#streaming-events-into-composites)),
+4. in code whose namespace is `Whizbang.Core.Minting` or below it, or
+5. in the `Whizbang.Core` assembly itself.
 
 The lambda exemption covers both object-initializer assignment and plain assignment, and a helper lambda nested inside
-one of those builders. A lambda passed some other way, for example as a method argument, is not exempt.
+one of those builders. A lambda passed some other way, for example as an argument to any other method, is not exempt.
+{verified: MintedCompositeConstructionAnalyzerTests.Construction_InsideACompositeBatchesFactory_IsSilentAsync, MintedCompositeConstructionAnalyzerTests.Construction_PassedToSomeOtherMethodsFactory_StillReportsAsync}
 
 ## Diagnostic Message
 

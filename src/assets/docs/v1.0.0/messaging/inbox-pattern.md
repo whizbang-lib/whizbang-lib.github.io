@@ -141,6 +141,10 @@ CREATE TABLE IF NOT EXISTS wh_message_deduplication (
 
 ---
 
+## The Bounded Buffer {#bounded-buffer}
+
+Received messages wait in memory in the inbox batch strategy before they are stored. That buffer shares one per-process bound with the outbox's: every registered inbox batch strategy is wrapped in `BoundedInboxBatchStrategy`, and an append waits while the buffer is full, so the receive loop stops pulling from the broker until flushes make room. The settings, metrics and rules are on the [outbox page](outbox-pattern.md#bounded-buffer).
+
 ## Detecting Duplicates
 
 Deduplication is **automatic** — you never write this code yourself. Two boundaries filter incoming messages:
