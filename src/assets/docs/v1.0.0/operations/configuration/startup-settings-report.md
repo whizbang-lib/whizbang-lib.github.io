@@ -68,10 +68,10 @@ The values reported as derived today:
 | Setting | Derived from |
 |---------|--------------|
 | `Whizbang:BatchBuffer:MaxBufferedBytes` | a share of the process memory limit (when no number is set) |
-| `Whizbang:BatchBuffer:InteractiveReserveFraction` | the work coordinator gate's reserve over its permits |
+| `InteractiveReserveFraction`, reported in the `Whizbang:BatchBuffer` entry (computed, not a configuration key) | the work coordinator gate's reserve over its permits |
 | `Whizbang:WorkCoordinatorGate:InteractiveReserve` | the gate's permits (one tenth, or the configured value), leaving one shared |
 | `Whizbang:WorkCoordinatorGate:MaxConcurrent` | the connection pool size less a reserve, for a gate built with `FromPoolSize` |
-| `Whizbang:Workers:ThreadPoolFloor` | the processor count (or the configured floor), never below the current minimum |
+| `ThreadPoolFloor`, reported in the `Whizbang:Workers` entry (computed, not a configuration key) | the processor count (or the configured floor), never below the current minimum |
 | `Whizbang:Workers:Perspective:MaxConcurrentPerspectives` | the configured width, at most half the gate split across the drain consumers |
 | `Whizbang:Workers:InboxDispatch:MaxConcurrentDispatch` | the configured fan-out, at most the gate's permits |
 
