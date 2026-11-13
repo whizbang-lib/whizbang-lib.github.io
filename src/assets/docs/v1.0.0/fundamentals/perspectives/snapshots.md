@@ -473,6 +473,8 @@ The rule, and the reason for each row, are on the ephemeral events page: [snapsh
 When a perspective purges its row (`ApplyResult.Purge()`), the maintenance cycle removes that perspective's cursor and **every** snapshot for the stream, once the stream has no work pending for the perspective and the perspective's table holds no row for it. They describe state that no longer exists. Other perspectives' cursors and snapshots on the same stream are untouched, and the purge marker stays, so the row stays purged.
 {verified: PurgedRowEphemeralHistorySqlTests.Maintenance_APurgedRowsCursorAndSnapshots_AreRemoved_AndOtherPerspectivesKeepTheirsAsync, PurgedRowEphemeralHistorySqlTests.Maintenance_ALiveRowWithAStaleMarker_KeepsItsCursorAndSnapshotsAsync}
 
+The purge also covers the row's ephemeral bodies at or before the purge event, so the reaper does not wait for a snapshot of them; bodies after it stay gated.
+
 This differs from an eviction (next section), which keeps the latest snapshot: an evicted row is rebuilt from it on the next event, while a purged row is not rebuilt at all. See [a purged row covers its history](../events/ephemeral-events#a-purged-row-covers-its-history).
 
 ### Snapshots of an evicted row

@@ -290,17 +290,24 @@ snapshot only when one was written (see [Bootstrap](../perspectives/snapshots#bo
 ### A purged row covers its history {#a-purged-row-covers-its-history}
 
 When a perspective purges its row (`ApplyResult.Purge()`, for example when a session ends), the
-perspective's purge marker counts as covering every ephemeral body of the stream for that perspective.
-The bodies are reaped once the other gates allow, without a snapshot, and the maintenance cycle then
-removes the perspective's cursor and every snapshot for the stream (see
-[snapshots of a purged row](../perspectives/snapshots#purged-row)).
+perspective's purge marker counts as covering the stream's ephemeral bodies **at or before the purge
+event** (by stream version) for that perspective. Those bodies are reaped once the other gates allow,
+without a snapshot, and the maintenance cycle then removes the perspective's cursor and every snapshot
+for the stream (see [snapshots of a purged row](../perspectives/snapshots#purged-row)).
 {verified: PurgedRowEphemeralHistorySqlTests.Reap_TheBodiesOfAPurgedRow_AreReapedWithoutASnapshotAsync, PurgedRowEphemeralHistorySqlTests.Reap_AnotherPerspectivesPurge_DoesNotCoverTheBodyAsync, PurgedRowEphemeralHistorySqlTests.Maintenance_APurgedRowsCursorAndSnapshots_AreRemoved_AndOtherPerspectivesKeepTheirsAsync, PurgedRowEphemeralHistorySqlTests.Maintenance_ReportsHowManyCompanionsItRemovedAsync}
 
 **Why.** A purged row has nothing to snapshot, so the gate that waits for a snapshot waited forever: every
 body of the stream was kept, with the row's cursor and snapshots, and the cycle tried the same snapshot
-again each time. While the marker stands the row is gone: the events before the purge built state the
-purge removed, and the events after it were skipped, so nothing a snapshot would record exists. The
-cursor and snapshots describe that removed state; a later event that resurrects the row starts a new one.
+again each time. The events at and before the purge built state the purge removed, so nothing a snapshot
+would record exists for them, and no rewind of a later, resurrected row can need them. The cursor and
+snapshots describe that removed state; a later event that resurrects the row starts a new one.
+
+**Why only up to the purge.** The marker can outlive the purge. The runner clears it only after it writes a
+resurrected row, so a crash between the two leaves the marker on a live row. The bodies after the purge are
+what that row was built from, and a read model that also applies durable events replays them from the
+start, so they keep the coverage gate and are reaped only once a snapshot covers them. A marker that names
+no purge event, or one the stream does not hold, has no position to compare against, and covers nothing.
+{verified: PurgedRowEphemeralHistorySqlTests.Reap_AStaleMarkerOnAResurrectedRow_CoversOnlyTheBodiesAtOrBeforeThePurgeAsync, PurgedRowEphemeralHistorySqlTests.Reap_AMarkerThatNamesNoPurgeEvent_CoversNothingAsync, PurgedRowEphemeralHistorySqlTests.Reap_AMarkerWhosePurgeEventIsNotInTheStream_CoversNothingAsync, PurgedRowEphemeralHistorySqlTests.Mirrors_AStaleMarker_LeaveThePostPurgePairATarget_AndOfferOnlyThePrePurgeBodiesAsync}
 
 The rules at the edges:
 
