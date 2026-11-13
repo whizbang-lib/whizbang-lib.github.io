@@ -46,6 +46,10 @@ codeReferences:
   - src/Whizbang.Core/Attributes/DangerouslyAllowSourcedEventsFromEphemeralInputAttribute.cs
   - src/Whizbang.Core/Attributes/FullHistoryAttribute.cs
   - src/Whizbang.Core/IEphemeralEvent.cs
+  - src/Whizbang.Core/Attributes/KeepEphemeralRewindFloorAttribute.cs
+  - src/Whizbang.Core/Perspectives/EphemeralRewindFloor.cs
+  - src/Whizbang.Generators.Shared/Utilities/EphemeralConsumption.cs
+  - src/Whizbang.Data.Postgres/Migrations/403_EphemeralHistoryFollowsWhatAReadModelConsumes.sql
   - src/Whizbang.Core/ICompactedEvent.cs
   - src/Whizbang.Core/EphemeralModeResolver.cs
   - src/Whizbang.Core/Messaging/EphemeralFlagDeriver.cs
@@ -140,6 +144,11 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Cursors/PerspectiveCursorAdvanceSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperWorkCoordinatorDeepPathTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEphemeralDestructionHookTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PurgedRowEphemeralHistorySqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralOnlyReadModelReapSqlTests.cs
+  - tests/Whizbang.Generators.Tests/EphemeralRewindFloorGeneratorTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/EphemeralRewindFloorRunnerTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/EphemeralRewindFloorTests.cs
 lastMaintainedCommit: '62abd3a45'
 ---
 
@@ -262,7 +271,7 @@ The delete runs in SQL, inside each maintenance cycle. A body is deleted only wh
 |---|---|---|
 | Consumption | No perspective work item for the event is still unprocessed. An event no perspective consumes passes at once. | {verified: EphemeralBodyReaperSqlTests.Reap_EphemeralBody_GatedWhilePending_ReapedAfterConsumedAsync, EphemeralBodyReaperSqlTests.Reap_NoConsumingPerspective_EphemeralBodyReapedAsync} |
 | Rewind grace | The consumed body is older than the grace window: the type's `RewindGraceSeconds`, or the global `ephemeral_rewind_grace_seconds` (300 seconds unless configured). | {verified: EphemeralBodyReaperSqlTests.Reap_ConsumedEphemeralBody_HeldByGraceWindow_ReapedOnlyWhenAgedAsync, EphemeralBodyReaperSqlTests.Reap_PerTypeGraceOverride_ReapsAtItsOwnWindowAsync} |
-| Snapshot coverage | Each consuming perspective has a snapshot at or past the event in its stream, so a rewind always has a floor to restore from. | {verified: EphemeralBodyReaperSqlTests.Reap_ConsumedBody_HeldUntilSnapshotCoversAsync, EphemeralBodyReaperSqlTests.Reap_SnapshotEarlierInTheStream_DoesNotCoverTheBodyAsync} |
+| Snapshot coverage | Each consuming perspective that [keeps a rewind floor](#snapshots-follow-what-a-read-model-consumes) has a snapshot at or past the event in its stream, so a rewind always has a floor to restore from, or has [purged its row](#a-purged-row-covers-its-history). A perspective that applies only ephemeral events keeps no floor, and does not hold the body. | {verified: EphemeralBodyReaperSqlTests.Reap_ConsumedBody_HeldUntilSnapshotCoversAsync, EphemeralBodyReaperSqlTests.Reap_SnapshotEarlierInTheStream_DoesNotCoverTheBodyAsync, EphemeralOnlyReadModelReapSqlTests.Reap_TheBodyOfAReadModelThatKeepsNoFloor_IsReapedWithoutASnapshotAsync, EphemeralOnlyReadModelReapSqlTests.Reap_ABodyAnotherConsumerStillNeedsCoveredFor_IsHeldAsync, PurgedRowEphemeralHistorySqlTests.Reap_TheBodiesOfAPurgedRow_AreReapedWithoutASnapshotAsync} |
 | TTL (`AfterTtl` only) | The event's stamped expiry has passed. | {verified: EphemeralBodyReaperSqlTests.Reap_AfterTtl_StampedExpiry_HeldUntilPast_ThenReapedAsync, EphemeralBodyReaperSqlTests.Reap_AfterTtl_PastExpiry_StillHeldUntilSnapshotCoversAsync} |
 | Holds | No destruction hold covers it (see [Destruction hooks](#destruction-hooks)). | {verified: EphemeralDestructionHoldSqlTests.Hold_KeepsBodyFromReap_ThenReapableWhenHoldLapses_AndHoldCleanedAsync} |
 | Debug mode | `debug_mode` is off. Under debug mode nothing is reaped, so bodies stay for forensics. | {verified: EphemeralBodyReaperSqlTests.Reap_DebugMode_RetainsConsumedEphemeralBodyAsync} |
@@ -273,8 +282,47 @@ table is never touched, however old or consumed it is.
 
 So that the coverage gate does not hold bodies indefinitely, each maintenance cycle first takes a
 snapshot for every (stream, perspective) pair whose consumed, aged bodies are not yet covered, and
-only then runs the delete.
-{verified: MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_ReapDrivenSnapshot_BootstrapsEachTargetPairAsync, EphemeralSnapshotTargetSqlTests.GetEphemeralPairsNeedingSnapshot_ReturnsConsumedAgedUncovered_ThenDropsAfterSnapshotAsync}
+only then runs the delete. A perspective that keeps no rewind floor and a row its perspective purged
+are never picked: neither has a snapshot to take, and neither holds the body. The cycle logs a
+snapshot only when one was written (see [Bootstrap](../perspectives/snapshots#bootstrap)).
+{verified: MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_ReapDrivenSnapshot_BootstrapsEachTargetPairAsync, EphemeralSnapshotTargetSqlTests.GetEphemeralPairsNeedingSnapshot_ReturnsConsumedAgedUncovered_ThenDropsAfterSnapshotAsync, EphemeralOnlyReadModelReapSqlTests.PairsNeedingSnapshot_AReadModelThatKeepsNoFloor_IsNotATarget_AndItsBodyIsOfferedForDestructionAsync, PurgedRowEphemeralHistorySqlTests.PairsNeedingSnapshot_APurgedPair_IsNotATarget_AndItsBodyIsOfferedForDestructionAsync, MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_AStreamWithNoRow_IsNotLoggedAsASnapshot_ButAsAMissingRowAsync}
+
+### A purged row covers its history {#a-purged-row-covers-its-history}
+
+When a perspective purges its row (`ApplyResult.Purge()`, for example when a session ends), the
+perspective's purge marker counts as covering every ephemeral body of the stream for that perspective.
+The bodies are reaped once the other gates allow, without a snapshot, and the maintenance cycle then
+removes the perspective's cursor and every snapshot for the stream (see
+[snapshots of a purged row](../perspectives/snapshots#purged-row)).
+{verified: PurgedRowEphemeralHistorySqlTests.Reap_TheBodiesOfAPurgedRow_AreReapedWithoutASnapshotAsync, PurgedRowEphemeralHistorySqlTests.Reap_AnotherPerspectivesPurge_DoesNotCoverTheBodyAsync, PurgedRowEphemeralHistorySqlTests.Maintenance_APurgedRowsCursorAndSnapshots_AreRemoved_AndOtherPerspectivesKeepTheirsAsync, PurgedRowEphemeralHistorySqlTests.Maintenance_ReportsHowManyCompanionsItRemovedAsync}
+
+**Why.** A purged row has nothing to snapshot, so the gate that waits for a snapshot waited forever: every
+body of the stream was kept, with the row's cursor and snapshots, and the cycle tried the same snapshot
+again each time. While the marker stands the row is gone: the events before the purge built state the
+purge removed, and the events after it were skipped, so nothing a snapshot would record exists. The
+cursor and snapshots describe that removed state; a later event that resurrects the row starts a new one.
+
+The rules at the edges:
+
+- Only the perspective's **own** marker counts. An operator purge marks a stream for every perspective
+  (`'*'`), and an Apply that resurrects a row clears only that perspective's marker, so a `'*'` marker can
+  stand beside a live row. It neither covers bodies nor removes cursors.
+  {verified: PurgedRowEphemeralHistorySqlTests.Reap_AnOperatorPurgeOfEveryPerspective_DoesNotCoverTheBodyAsync, PurgedRowEphemeralHistorySqlTests.Maintenance_AnOperatorPurgeMarker_RemovesNothingAsync}
+- The cursor and snapshots go only when the stream has no work pending for the perspective (an event
+  still to apply may resurrect the row) and the perspective's table holds no row for the stream. The
+  table check keeps a live row whole when a crash between writing a resurrected row and clearing its
+  marker left the marker behind. A perspective that no registry row names is left alone: the cycle cannot
+  see its table, so it removes nothing on a guess.
+  {verified: PurgedRowEphemeralHistorySqlTests.Maintenance_ALiveRowWithAStaleMarker_KeepsItsCursorAndSnapshotsAsync, PurgedRowEphemeralHistorySqlTests.Maintenance_APurgedRowWithWorkStillPending_KeepsItsCursorAsync, PurgedRowEphemeralHistorySqlTests.Maintenance_APerspectiveNoRegistryRowNames_IsLeftAloneAsync}
+- Under `debug_mode` nothing is removed, as nothing is reaped.
+  {verified: PurgedRowEphemeralHistorySqlTests.Maintenance_UnderDebugMode_RemovesNothingAsync}
+- This is not an eviction. A row TTL or cap evicts a row the next event rebuilds, so an eviction keeps
+  the latest snapshot as the floor of that rebuild (see
+  [what an eviction removes](../perspectives/row-retention#what-an-eviction-removes)); a purge keeps none.
+
+The step reports as `remove_purged_row_companions` in the maintenance results, with the number of
+cursors and snapshots it removed. It handles at most 5,000 purged streams per cycle; a backlog drains
+over later cycles.
 
 ```mermaid{caption="An ephemeral event body is deleted only after it is consumed, older than the rewind grace window, covered by a snapshot, past its TTL when it has one, and not held; the pointer row remains." tests=["EphemeralBodyReaperSqlTests.Reap_EphemeralBody_GatedWhilePending_ReapedAfterConsumedAsync", "EphemeralBodyReaperSqlTests.Reap_ConsumedEphemeralBody_HeldByGraceWindow_ReapedOnlyWhenAgedAsync", "EphemeralBodyReaperSqlTests.Reap_ConsumedBody_HeldUntilSnapshotCoversAsync", "EphemeralBodyReaperSqlTests.Reap_AfterTtl_PastExpiry_StillHeldUntilSnapshotCoversAsync", "EphemeralDestructionHoldSqlTests.Hold_KeepsBodyFromReap_ThenReapableWhenHoldLapses_AndHoldCleanedAsync"]}
 flowchart LR
@@ -359,14 +407,81 @@ public class ThreadPerspective : IPerspectiveFor<ThreadModel, ChatMessage> {
 }
 ```
 
-### Snapshots
+### Snapshots {#snapshots}
 
-Because the reaper waits for a snapshot floor, ephemeral perspectives snapshot on their own, more
-frequent cadence: every `EphemeralSnapshotEveryNEvents` events (default 10), keeping
-`EphemeralMaxSnapshotsPerStream` snapshots per stream (default 1, since a rewind can never go below the
-reaped history anyway). Sourced perspectives keep the standard cadence. See
-[Perspective Snapshots](../perspectives/snapshots#perspectivesnapshotoptions).
-{verified: PerspectiveRunnerGeneratorTests.PerspectiveRunnerGenerator_EphemeralPerspective_UsesAggressiveSnapshotSettingsAsync}
+#### Snapshots follow what a read model consumes {#snapshots-follow-what-a-read-model-consumes}
+
+Whether a perspective snapshots, and whether its ephemeral bodies wait for a snapshot, is decided by
+what the perspective **consumes**, at build time:
+
+| The perspective applies | Snapshots | Its ephemeral bodies are reaped |
+|---|---|---|
+| Only durable events | `SnapshotEveryNEvents`, keeping `MaxSnapshotsPerStream`, as for any perspective. | Not applicable: durable bodies are never reaped. |
+| Durable and ephemeral events (an [allowed pair](#allowing-mixed-streams)) | `EphemeralSnapshotEveryNEvents` (default 10), keeping `EphemeralMaxSnapshotsPerStream` (default 1). | Once a snapshot covers them, as well as the other gates. |
+| Only ephemeral events | **None** by default. | Once consumed and past their grace and TTL, with **no** snapshot coverage gate. |
+| Only ephemeral events, marked `[KeepEphemeralRewindFloor]` | As the mixed row. | As the mixed row. |
+
+{verified: EphemeralRewindFloorGeneratorTests.Runner_OfAnEphemeralOnlyPerspective_KeepsNoRewindFloorAsync, EphemeralRewindFloorGeneratorTests.Runner_OfAPerspectiveThatNeedsAFloor_KeepsItAsync, EphemeralRewindFloorRunnerTests.ALiveRun_OfAPerspectiveThatKeepsNoFloor_WritesNoSnapshotAsync, EphemeralRewindFloorRunnerTests.ALiveRun_OfAPerspectiveThatOptsIn_WritesItsSnapshotAsync, PerspectiveRunnerGeneratorTests.PerspectiveRunnerGenerator_EphemeralPerspective_UsesAggressiveSnapshotSettingsAsync}
+
+**Why the line falls where it does.**
+
+- A snapshot of a perspective that applies only ephemeral events exists only to be the floor of a rewind
+  for a late event. The rewind grace window is 300 seconds by default, while retention is typically days
+  or weeks, so after the window the floor guards a case that cannot arise, and the gate that waits for it
+  holds every body of the stream back from the reaper. Such a perspective therefore keeps no floor: a
+  late event that would need a rewind below its reaped bodies is dropped and logged, as any ephemeral
+  perspective already does instead of replaying from zero (see [runtime guards](#runtime-guards)).
+- A perspective that also applies durable events keeps the full durable history, and its snapshot is the
+  only record of what its reaped ephemeral events contributed: a replay from the start would miss them.
+  Removing the snapshot there would trade correctness for space, so it keeps the gate.
+- A perspective that applies only durable events loses nothing to the reaper; its snapshots bound a
+  rewind's replay and nothing more.
+
+**Opting in.** Mark a perspective that applies only ephemeral events with `[KeepEphemeralRewindFloor]`
+when it does need rewinds after the grace window. It then snapshots on the ephemeral cadence and its
+bodies wait for coverage. On a perspective that applies any durable event the attribute changes nothing.
+{verified: EphemeralRewindFloorRunnerTests.ABootstrap_OfAPerspectiveThatOptsIn_WritesTheSnapshotAsync, EphemeralRewindFloorGeneratorTests.Associations_OfAPerspectiveThatKeepsAFloor_RegisterNoMarkerAsync}
+
+```csharp{title="An ephemeral-only read model that keeps a rewind floor" description="Opt a perspective that applies only ephemeral events back in to snapshots and the snapshot coverage gate." framework="NET10" category="Core Concepts" difficulty="INTERMEDIATE" tags=["ephemeral", "snapshots", "rewind", "perspectives"] tests=["EphemeralRewindFloorRunnerTests.ALiveRun_OfAPerspectiveThatOptsIn_WritesItsSnapshotAsync"]}
+using Whizbang.Core;
+using Whizbang.Core.Attributes;
+using Whizbang.Core.Perspectives;
+
+[Ephemeral]
+public record CursorMoved : IEvent {
+  [StreamId]
+  public Guid DocumentId { get; init; }
+}
+
+public class CursorModel {
+  [StreamId]
+  public Guid Id { get; set; }
+  public int Moves { get; set; }
+}
+
+[KeepEphemeralRewindFloor]
+public class CursorPerspective : IPerspectiveFor<CursorModel, CursorMoved> {
+  public CursorModel Apply(CursorModel currentData, CursorMoved @event) {
+    currentData.Moves++;
+    return currentData;
+  }
+}
+```
+
+**How the reaper knows.** The generators decide the classification once, at build time, and the EF Core
+driver's startup associations step registers a `no_rewind_floor` marker beside the perspective's
+associations for each perspective that keeps no floor. The reaper, the snapshot pass and the batch the
+destruction hook is offered all read the marker. Its absence is the safe default: a database no startup
+of this release has registered, a service on another driver, and an older instance in a rolling deploy
+(whose registration removes the marker) all keep the coverage gate, which holds bodies rather than losing
+them.
+{verified: EphemeralRewindFloorGeneratorTests.Associations_OfAnEphemeralOnlyPerspective_RegisterTheNoFloorMarkerAsync, EphemeralRewindFloorGeneratorTests.Associations_TheMarker_ChangesTheAssociationsHash_SoAStartupWithItReRegistersAsync, EphemeralOnlyReadModelReapSqlTests.Reap_TheSameReadModelWithoutTheMarker_HoldsTheBodyAsync, EphemeralOnlyReadModelReapSqlTests.Reap_TheMarkerDoesNotSkipTheOtherGates_ABodyInItsGraceIsKeptAsync}
+
+**Which late events a snapshot serves.** A rewind restores from the latest snapshot placed before its late
+event, and the snapshot the maintenance cycle takes is the row as it is now, at the cursor's last event.
+It serves a late event placed after it and not one placed before it, which a perspective with a floor
+then drops the same way. See [where a bootstrap snapshot sits](../perspectives/snapshots#bootstrap-floor).
+{verified: SnapshotSelectionFollowsStreamOrderTests.AReapDrivenSnapshotAtTheTip_IsAFloorOnlyForALateEventAfterItAsync}
 
 ### Audit {#audit}
 
@@ -522,7 +637,8 @@ event, a replay from the start would read reaped bodies and corrupt the model, s
 rewind, logs a warning, keeps the current model and leaves the cursor where it was. The late event's
 effect on earlier state is the accepted loss of arriving outside the grace window. A snapshot that cannot
 be read (one written under an older serialization version) is no floor either, and the event is dropped the
-same way.
+same way. A perspective that [keeps no rewind floor](#snapshots-follow-what-a-read-model-consumes) has no
+snapshot at all, so every late event it receives is dropped this way.
 {verified: PerspectiveRunnerGeneratorTests.PerspectiveRunnerGenerator_EphemeralPerspective_GuardsRewindFallbackAgainstReapedBodiesAsync, PerspectiveRunnerTemplateInvariantTests.EphemeralRewind_GuardsFullReplayFallbackAgainstReapedBodiesAsync, EvictedRowRebuildTests.EphemeralPerspective_RewindWithNoReadableFloor_NamesTheDroppedStragglerAndLeavesRowAndCursorAsync}
 
 **A dropped straggler is dropped once.** The runner names the event it dropped, and the worker retires that
@@ -548,7 +664,8 @@ straggler line above.
 [deleted archive](../perspectives/rewind#deleted-archive)). The skipped rewind still counts in `whizbang.perspective.rewinds` (and
 `whizbang.perspective.rewinds_triggered`), so a rewind count alone cannot tell a replay from a drop; this
 counter does. A count that keeps rising means late events are arriving later than the perspective's reorder
-window covers: snapshot more often (see [Snapshots](#snapshots)) or widen the rewind grace window (see
+window covers: snapshot more often (see [Snapshots](#snapshots); a perspective that applies only ephemeral
+events first needs `[KeepEphemeralRewindFloor]`) or widen the rewind grace window (see
 [When the body is deleted](#reap-gates)) so those events find a floor and rewind instead of being dropped. A
 drop refused for a deleted archive is told apart by its warning; neither setting changes it. A rewind that
 completes counts no drop.
@@ -557,7 +674,7 @@ completes counts no drop.
 **Evicted rows rebuild only from a snapshot.** When retention evicts an ephemeral perspective's row
 and a later event arrives, the row is restored from its snapshot and the events after it. With no
 snapshot to restore, the row starts fresh from the new event and a warning is logged, because the
-earlier history is gone.
+earlier history is gone. A perspective that keeps no rewind floor always starts fresh this way.
 {verified: EvictedRowRebuildTests.EphemeralPerspective_EvictedRowWithSnapshot_RestoresTheSnapshotAndReplaysTheTailAsync, EvictedRowRebuildTests.EphemeralPerspective_EvictedRowWithoutSnapshot_StartsFreshAndWarnsAsync}
 
 ### Making an existing type ephemeral {#making-an-existing-type-ephemeral}

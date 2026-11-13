@@ -27,6 +27,10 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/275_SnapshotsRecordTheirCollectives.sql
   - src/Whizbang.Data.Postgres/Migrations/276_CollectiveSnapshotFence.sql
   - src/Whizbang.Data.Postgres/Migrations/279_CollectiveApplyProgress.sql
+  - src/Whizbang.Core/Perspectives/SnapshotBootstrapOutcome.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveRunner.cs
+  - src/Whizbang.Core/Attributes/KeepEphemeralRewindFloorAttribute.cs
+  - src/Whizbang.Data.Postgres/Migrations/403_EphemeralHistoryFollowsWhatAReadModelConsumes.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EvictionCompanionCleanupSqlTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/EvictedRowRebuildTests.cs
@@ -43,6 +47,10 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/SnapshotSelectionFollowsStreamOrderTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRebuildSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchivedStreamRebuildTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/SnapshotBootstrapOutcomeTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/EphemeralRewindFloorRunnerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerReapDrivenSnapshotTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PurgedRowEphemeralHistorySqlTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -191,9 +199,10 @@ public class PerspectiveSnapshotOptions {
   // Maximum snapshots to keep per (stream, perspective) pair (default: 5)
   public int MaxSnapshotsPerStream { get; set; } = 5;
 
-  // Snapshot cadence for EPHEMERAL perspectives (those applying at least one
-  // ephemeral event) -- more aggressive to keep a fresh rewind floor within the
-  // grace window before consumed bodies are reaped (default: 10)
+  // Snapshot cadence for EPHEMERAL perspectives that keep a rewind floor: those
+  // applying a durable event beside an ephemeral one, and ephemeral-only ones marked
+  // [KeepEphemeralRewindFloor]. An ephemeral-only perspective takes no snapshots by
+  // default (see "Ephemeral perspectives" below). (default: 10)
   public int EphemeralSnapshotEveryNEvents { get; set; } = 10;
 
   // Maximum snapshots kept per (stream, perspective) for EPHEMERAL perspectives.
@@ -420,9 +429,51 @@ The fence is unchanged, and the two agree:
   A collective dead-lettered after every handler had already finished also holds the fence open until recovery or
   purge; that defers snapshots needlessly but never records a wrong one.
 
-### Bootstrap
+### Bootstrap {#bootstrap}
 
-When the `PerspectiveWorker` encounters an existing stream that has processed events but has no snapshots (e.g., after enabling snapshots on an existing deployment), it performs a one-time **bootstrap**. The runner serializes the current model state into an initial snapshot, which subsequent rewinds can restore from.
+When the `PerspectiveWorker` encounters an existing stream that has processed events but has no snapshots (e.g., after enabling snapshots on an existing deployment), it performs a one-time **bootstrap**. The runner serializes the current model state into an initial snapshot, which subsequent rewinds can restore from. The maintenance cycle bootstraps the same way before it reaps [ephemeral bodies](../events/ephemeral-events#reap-gates) that no snapshot covers yet.
+
+A bootstrap says what it did. `IPerspectiveRunner.TryBootstrapSnapshotAsync` returns a `SnapshotBootstrapOutcome`, and `BootstrapSnapshotAsync` is the same call with the outcome discarded:
+
+| Outcome | Meaning |
+|---|---|
+| `Written` | A snapshot of the row was written at the requested event. |
+| `RowMissing` | The stream has no row: the perspective purged it, an eviction removed it, or no event ever produced one. Nothing is written, and the runner logs it at Information, naming the stream. |
+| `Deferred` | The row's collectives moved while it was read (see [a deferred snapshot](#collectives-deferred)). Nothing is written; a later bootstrap takes it. |
+| `SnapshotsOff` | The runner takes no snapshots: snapshots are disabled, there is no snapshot store, or the perspective [keeps no rewind floor](#ephemeral-perspectives). |
+| `NotReported` | A hand-written runner implemented only `BootstrapSnapshotAsync`, which says nothing about what it did. |
+
+{verified: SnapshotBootstrapOutcomeTests.Bootstrap_OfALiveRow_WritesTheSnapshot_AndReportsWrittenAsync, SnapshotBootstrapOutcomeTests.Bootstrap_OfAMissingRow_WritesNothing_ReportsRowMissing_AndLogsItAsync, SnapshotBootstrapOutcomeTests.Bootstrap_WithSnapshotsDisabled_WritesNothing_AndReportsSnapshotsOffAsync, SnapshotBootstrapOutcomeTests.TryBootstrap_OnARunnerThatImplementsOnlyBootstrap_RunsIt_AndReportsNotReportedAsync}
+
+**Why the outcome exists.** A bootstrap that found no row used to return exactly as one that wrote a snapshot. The maintenance cycle then logged a snapshot for a stream that had none, and selected the same stream again on every cycle, while the ephemeral bodies the snapshot was meant to cover were held indefinitely. The cycle now logs a written snapshot only when one was written, and a missing row as a missing row.
+{verified: MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_ASnapshotWritten_IsLoggedAsWrittenAsync, MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_AStreamWithNoRow_IsNotLoggedAsASnapshot_ButAsAMissingRowAsync, MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_ABootstrapThatWroteNothing_IsNotLoggedAsASnapshotAsync}
+
+### Where a bootstrap snapshot sits, and which late events it serves {#bootstrap-floor}
+
+A bootstrap snapshots the row as it is now, at the cursor's last event. A rewind restores from the latest snapshot placed *before* its late event in the stream (by stream version), so a snapshot at the cursor's last event is a floor only for a late event placed after it. A late event placed before it finds no floor in it. For an ephemeral perspective, whose earlier bodies are reaped once that snapshot covers them, such a late event is dropped and logged rather than replayed (see [runtime guards](../events/ephemeral-events#runtime-guards)).
+{verified: SnapshotSelectionFollowsStreamOrderTests.AReapDrivenSnapshotAtTheTip_IsAFloorOnlyForALateEventAfterItAsync}
+
+**Why it is taken at the tip.** A snapshot is a copy of the row, and the row exists only as it is now. A snapshot at an earlier position (the boundary of the bodies about to be reaped) would give more late events a floor, but the model as of that position exists only by replaying the stream up to it. That is not done today.
+
+### Ephemeral perspectives {#ephemeral-perspectives}
+
+Whether a perspective snapshots is decided by what it **consumes**:
+
+| The perspective applies | Snapshots |
+|---|---|
+| Only durable events | `SnapshotEveryNEvents`, keeping `MaxSnapshotsPerStream`. |
+| Durable and ephemeral events | `EphemeralSnapshotEveryNEvents`, keeping `EphemeralMaxSnapshotsPerStream`. |
+| Only ephemeral events | **None**, unless the perspective is marked `[KeepEphemeralRewindFloor]`, which takes the ephemeral cadence. |
+
+The rule, and the reason for each row, are on the ephemeral events page: [snapshots follow what a read model consumes](../events/ephemeral-events#snapshots-follow-what-a-read-model-consumes).
+{verified: EphemeralRewindFloorRunnerTests.ALiveRun_OfAPerspectiveThatKeepsNoFloor_WritesNoSnapshotAsync, EphemeralRewindFloorRunnerTests.ALiveRun_OfAPerspectiveThatOptsIn_WritesItsSnapshotAsync, EphemeralRewindFloorRunnerTests.ABootstrap_OfAPerspectiveThatKeepsNoFloor_WritesNothing_AndReportsSnapshotsOffAsync}
+
+### Snapshots of a purged row {#purged-row}
+
+When a perspective purges its row (`ApplyResult.Purge()`), the maintenance cycle removes that perspective's cursor and **every** snapshot for the stream, once the stream has no work pending for the perspective and the perspective's table holds no row for it. They describe state that no longer exists. Other perspectives' cursors and snapshots on the same stream are untouched, and the purge marker stays, so the row stays purged.
+{verified: PurgedRowEphemeralHistorySqlTests.Maintenance_APurgedRowsCursorAndSnapshots_AreRemoved_AndOtherPerspectivesKeepTheirsAsync, PurgedRowEphemeralHistorySqlTests.Maintenance_ALiveRowWithAStaleMarker_KeepsItsCursorAndSnapshotsAsync}
+
+This differs from an eviction (next section), which keeps the latest snapshot: an evicted row is rebuilt from it on the next event, while a purged row is not rebuilt at all. See [a purged row covers its history](../events/ephemeral-events#a-purged-row-covers-its-history).
 
 ### Snapshots of an evicted row
 
