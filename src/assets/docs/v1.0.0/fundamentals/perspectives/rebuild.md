@@ -102,7 +102,8 @@ var result = await rebuilder.RebuildBlueGreenAsync("OrderPerspective");
 How it runs:
 
 1. **Shadow table.** `wh_per_order_bg` is created with the live table's columns, defaults, constraints and
-   indexes (a shadow left by a failed rebuild is replaced).
+   indexes (a shadow left by a failed rebuild is replaced), and is then given the live table's
+   [storage settings](#blue-green-storage-settings) before anything is written to it.
 2. **Replay.** Every stream is replayed into the shadow table. The perspective store of the rebuild's own flow
    is redirected there (`PerspectiveTableRedirect`); every other flow, including the live perspective worker,
    keeps reading and writing the live table.
@@ -137,6 +138,31 @@ processed out of the phase's total while the rebuild runs.
 blue-green in place, as every driver did before, and logs a warning that it did.
 
 **Best for**: Production re-projections where reads must stay consistent.
+
+#### The rebuilt table keeps the live table's storage settings {#blue-green-storage-settings}
+
+{verified: PostgresPerspectiveTableSwapperTests.CreateShadow_CopiesTheLiveTablesStorageSettings_AndItsToastTablesAsync, PostgresPerspectiveTableSwapperTests.CreateShadow_OfATableWithNoStorageSettings_GivesTheShadowNoneAsync, PostgresPerspectiveTableSwapperTests.Swap_OfATableRebuiltAtItsFillFactor_LeavesRoomForAHotUpdateAsync, BlueGreenRebuildIntegrationTests.BlueGreen_TheSwappedTable_KeepsTheLiveTablesStorageSettingsAsync, JsonbColumnStorageIntegrationTests.ABlueGreenSwap_KeepsTheDeclaredStorageSettingsAsync, JsonbColumnStorageIntegrationTests.ABlueGreenSwap_OfAManuallyManagedTable_KeepsItsLiveSettingsAsync}
+
+PostgreSQL's `CREATE TABLE … (LIKE live INCLUDING ALL)` copies columns, defaults, constraints and indexes, but not
+the table's storage parameters. So after creating the shadow table, and before the replay writes a single page, the
+swapper copies the live table's `reloptions` onto it, and its TOAST relation's (`toast.*`) onto the shadow's TOAST
+relation. The swapped-in table therefore has the same `fillfactor` and autovacuum settings the live one had, and a table
+with none keeps none.
+
+- **Before the replay, not after.** A fillfactor applies only to the pages written while it is set. Copied after the
+  replay, it would arrive on a table whose every page the replay had already packed full, so updates to the rebuilt
+  rows could not be HOT until each row moved to a new page (see
+  [Free space for updates](physical-fields#perspective-fillfactor)). Copied first, the replay fills each page to the
+  declared fillfactor, which is the free space `[PerspectiveTableStorage(FillFactor = …)]` exists to reserve. Before
+  this, the next start's schema pass set the values again, but only after the rebuild had packed the pages.
+- **What is live, not what the model declares.** The swapper copies the values the live table holds rather than
+  recomputing them from the attribute. A table listed as [managed by hand](physical-fields#manually-managed-tables)
+  therefore keeps the values its operator set, and a table that follows its model already holds the model's values,
+  because every start brings it in line.
+- **Quoted by the server.** The `ALTER TABLE … SET (…)` statement is built by PostgreSQL itself with `format('%I = %L')`
+  from the catalog, so no option name or value is spliced into SQL text by the library.
+
+Both PostgreSQL drivers use the same swapper, so both keep the settings.
 
 ### In-Place
 

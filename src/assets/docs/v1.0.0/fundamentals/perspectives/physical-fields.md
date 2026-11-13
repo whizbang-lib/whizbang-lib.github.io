@@ -959,7 +959,11 @@ A changed fillfactor applies only to the pages written from then on: the rows al
 pages packed to the old value. So when a start changes it on a table that already holds rows, it
 also queues a rewrite request for the table, which the maintenance worker performs under the operator's
 rewrite policy (see [Storage Maintenance](../../operations/infrastructure/storage-maintenance#fillfactor)).
-A table created empty queues nothing, and neither does a restart that finds the value already in place.
+A **lowered** fillfactor is rewritten once by the online rewrite, whatever the table's bloat, so the rows already
+stored get the free space too; a raised one waits for bloat as before (see
+[A lowered fillfactor is rewritten once](../../operations/infrastructure/storage-maintenance#fillfactor-decrease)).
+A table created empty queues nothing, and neither does a restart that finds the value already in place. A
+[blue-green rebuild](rebuild#blue-green-storage-settings) keeps the table's fillfactor and fills its pages to it.
 
 Fillfactor cannot help an update that changes an indexed column, which is never HOT. That is why
 perspective tables no longer index `updated_at` by default: every apply rewrites it, so an index on it
@@ -1001,7 +1005,8 @@ How it runs, and why:
   again at the next start, so a busy table never holds a start.
 - **A rewrite for a changed fillfactor.** When the fillfactor is set or reset on a table that holds
   rows, a rewrite request is queued, because the rows already stored sit on pages packed to the old
-  value (see [Free space for updates](#perspective-fillfactor)). An autovacuum change alone, or a table
+  value (see [Free space for updates](#perspective-fillfactor)). The request records whether the fillfactor went
+  down, which decides whether it is rewritten once regardless of bloat. An autovacuum change alone, or a table
   with no pages, queues nothing.
 - **Never fatal.** A start that cannot read the catalog or the setting logs a warning and goes on.
 
