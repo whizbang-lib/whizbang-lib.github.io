@@ -167,16 +167,29 @@ analyzed, outside the swap's transaction, so the planner reads its real size rat
 
 #### One blue-green rebuild per table {#one-blue-green-rebuild-per-table}
 
-{verified: PerspectiveRebuilderBlueGreenTests.BlueGreen_WhileAnotherRebuildOfTheTableRuns_FailsWithoutTouchingTheShadowAsync, PerspectiveRebuilderBlueGreenTests.BlueGreen_HoldsTheTablesGuard_FromBeforeTheShadowUntilAfterTheSwapAsync, PostgresPerspectiveTableSwapperTests.TryLockRebuild_ExcludesASecondRebuildOfTheTable_UntilTheFirstReleasesAsync, BlueGreenRebuildIntegrationTests.TwoRebuildsOfOneTable_TheSecondFails_AndTheFirstCompletesAsync}
+{verified: PerspectiveRebuilderBlueGreenTests.BlueGreen_HoldsTheTablesDuty_FromBeforeTheShadowUntilAfterTheSwapAsync, PerspectiveRebuilderBlueGreenTests.BlueGreen_WhenAnotherInstanceHoldsTheTablesDuty_FailsWithoutTouchingTheShadowAsync, PerspectiveRebuilderBlueGreenTests.BlueGreen_WhenTheDutyCannotBeVotedFor_FailsClosedAsync, PerspectiveRebuilderBlueGreenTests.BlueGreen_WithNoElector_Rebuilds_AndSaysOnceThatOnlyThisInstanceIsGuardedAsync, PerspectiveRebuilderBlueGreenTests.BlueGreen_ASecondRebuildOfTheTableOnThisInstance_IsRefusedBeforeItVotesAsync, PerspectiveRebuilderBlueGreenTests.BlueGreen_KeepsTheTablesDutyAliveWhileItRunsAsync, BlueGreenRebuildIntegrationTests.ARebuild_WhileAnotherInstanceHoldsTheTablesDuty_Fails_AndRunsOnceItIsReleasedAsync, BlueGreenRebuildIntegrationTests.TwoRebuildsOfOneTable_TheSecondFails_AndTheFirstCompletesAsync}
 
 Two blue-green rebuilds of the same table would share its shadow table, and creating the shadow drops one left behind,
 so a second rebuild started while the first replays would destroy the first one's work. Each blue-green rebuild
-therefore holds a guard on its table from before it creates the shadow until the swap is done: a PostgreSQL session
-advisory lock keyed on the schema and the table, so it holds across every instance of the service. A rebuild that finds
-the guard held fails at once, touching nothing, with `another blue-green rebuild of wh_per_order is in flight` in its
-`RebuildResult.Error`, as any rebuild that cannot start fails: run it again once the other has finished. The
-maintenance cycle's [blue-green rewrite](../../operations/infrastructure/storage-maintenance#blue-green-rewrite) checks
-the same guard and passes the table over.
+therefore holds its table's **duty**, `perspective-rebuild:<table>` (for example `perspective-rebuild:wh_per_order`),
+from before it creates the shadow until the swap is done. The duty is won through the service's duty elector, the same
+role assignment every exclusive duty uses (see [capabilities and duties](../../operations/startup/capabilities-and-duties)),
+so it holds across every instance of the service, and a keepalive renews its lease for as long as the rebuild runs.
+The bare table name is enough: the role assignments are kept in the service's own schema.
+
+| When the rebuild asks for the duty | What happens, and why |
+|---|---|
+| it is granted | the rebuild runs, and releases the duty when the swap is done, or when it fails |
+| another instance holds it | the rebuild fails at once, touching nothing, with `another blue-green rebuild of wh_per_order is in flight` in `RebuildResult.Error`, as any rebuild that cannot start fails: run it again once the other has finished |
+| this instance is already rebuilding the table | the same failure, before anything is voted for: an elector grants a duty this instance already holds again, so the duty alone cannot keep two rebuilds on one instance apart |
+| the elector cannot answer, this instance is evicted, or it is paused, standing down or stopping | the rebuild fails closed, naming the refusal and its detail: the elector cannot confirm that no other instance is rebuilding the table |
+| no elector is registered | the rebuild runs, guarded on this instance alone, and the host logs once that this is so: with no elector there is no fleet to coordinate with |
+
+It is a duty and not an advisory lock on purpose: a session lock held across the many transactions of a rebuild can,
+behind a transaction-mode connection pooler, be taken on one server backend and released on another, and the framework
+holds every exclusive duty as a role assignment (#2044). The maintenance cycle's
+[blue-green rewrite](../../operations/infrastructure/storage-maintenance#blue-green-rewrite) reads the same duty and
+passes the table over while another instance holds it.
 
 ### In-Place
 

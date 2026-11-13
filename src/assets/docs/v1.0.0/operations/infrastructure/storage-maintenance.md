@@ -677,7 +677,7 @@ the queue is kept; `VacuumFull` in a maintenance window remains the alternative.
 
 ## Blue-green rewrite of a perspective table {#blue-green-rewrite}
 
-{verified: OnlineTableRewriteStepTests.Online_WithPgSqueezeReady_RewritesThroughIt_AndRebuildsNothingAsync, OnlineTableRewriteStepTests.Online_WithPgSqueezeNotReady_AndPgRepackReady_RepacksAsync, OnlineTableRewriteStepTests.Online_WithNoExtensionUsable_RebuildsThePerspectiveTable_AndAFrameworkTableWaitsAsync, OnlineTableRewriteStepTests.Online_RebuildsAtMostTheCycleLimit_LargestBloatFirstAsync, OnlineTableRewriteStepTests.Online_ATableAnotherRebuildHolds_IsNotRebuiltAgain_AndStaysQueuedAsync, OnlineTableRewriteStepTests.Online_APerspectiveAlreadyRebuildingHere_IsNotRebuiltAgainAsync, OnlineTableRewriteStepTests.OnlyOnline_EverRebuildsAsync, TableRewriteStrategyTests.Auto_NeverResolvesToAnOnlineRewrite_ABlueGreenRebuildIncludedAsync, BlueGreenRebuildIntegrationTests.Online_WithNoExtension_RebuildsALoweredFillFactorTable_AtTheNewFillFactorAsync, BlueGreenRebuildIntegrationTests.Online_WithNoExtension_AFrameworkTableWaitsAsync, BlueGreenRebuildIntegrationTests.Online_SkipsATableAnotherRebuildHolds_AndLeavesItQueuedAsync}
+{verified: OnlineTableRewriteStepTests.Online_WithPgSqueezeReady_RewritesThroughIt_AndRebuildsNothingAsync, OnlineTableRewriteStepTests.Online_WithPgSqueezeNotReady_AndPgRepackReady_RepacksAsync, OnlineTableRewriteStepTests.Online_WithNoExtensionUsable_RebuildsThePerspectiveTable_AndAFrameworkTableWaitsAsync, OnlineTableRewriteStepTests.Online_RebuildsAtMostTheCycleLimit_LargestBloatFirstAsync, OnlineTableRewriteStepTests.Online_ATableWhoseDutyAnotherInstanceHolds_IsNotRebuiltAgain_AndStaysQueuedAsync, OnlineTableRewriteStepTests.Online_APerspectiveAlreadyRebuildingHere_IsNotRebuiltAgainAsync, OnlineTableRewriteStepTests.OnlyOnline_EverRebuildsAsync, TableRewriteStrategyTests.Auto_NeverResolvesToAnOnlineRewrite_ABlueGreenRebuildIncludedAsync, BlueGreenRebuildIntegrationTests.Online_WithNoExtension_RebuildsALoweredFillFactorTable_AtTheNewFillFactorAsync, BlueGreenRebuildIntegrationTests.Online_WithNoExtension_AFrameworkTableWaitsAsync, BlueGreenRebuildIntegrationTests.Online_SkipsATableWhoseDutyAnotherInstanceHolds_AndRebuildsItOnceReleasedAsync}
 
 On a server that allowlists neither pg_squeeze nor pg_repack, a rewrite request waits indefinitely, and `VACUUM FULL` is
 never run on its own. That is the right default for the framework's own tables, but a perspective table can be rewritten
@@ -710,11 +710,14 @@ The rules, and why:
   cycle rebuilds, so several large ones are not replayed at once. A table left for the next cycle is logged with the
   setting.
 - **Never two rebuilds of one table.** Two blue-green rebuilds of a table share its shadow, and creating the shadow drops
-  one left behind, so a second rebuild would destroy the first one's replay. A fleet-wide guard
-  ([one blue-green rebuild per table](../../fundamentals/perspectives/rebuild#one-blue-green-rebuild-per-table)) is held
-  for every blue-green rebuild, an operator's or the cycle's. A table whose guard is held, or whose perspective this
-  instance is already rebuilding, is passed over this cycle, without spending the limit or the budget, and its request
-  stays queued: the rebuild in flight satisfies it for now.
+  one left behind, so a second rebuild would destroy the first one's replay. Every blue-green rebuild, an operator's or
+  the cycle's, holds the table's duty `perspective-rebuild:<table>`
+  ([one blue-green rebuild per table](../../fundamentals/perspectives/rebuild#one-blue-green-rebuild-per-table)). The
+  cycle reads the role assignments (it never votes for the duty just to look) and passes over a table whose duty another
+  instance holds, or whose perspective this instance is already rebuilding, without spending the limit or the budget; its
+  request stays queued, since the rebuild in flight satisfies it for now. A rebuild that the cycle starts and that the
+  duty then refuses (another instance took it in between, or the elector cannot answer) fails, counts as that cycle's
+  rebuild, and stays queued.
 
 ```json{title="Rewrite with whatever the server allows" description="Selects Online: pg_squeeze, else pg_repack, else a blue-green rebuild of a perspective table, one per cycle." category="Configuration" difficulty="INTERMEDIATE" tags=["storage", "table-rewrite", "blue-green", "maintenance", "configuration"] tests=["OnlineTableRewriteStepTests.BlueGreenRewriteMaxPerCycle_DefaultsToOne_AndBindsFromConfigurationAsync", "OnlineTableRewriteStepTests.Online_WithNoExtensionUsable_RebuildsThePerspectiveTable_AndAFrameworkTableWaitsAsync"]}
 {
