@@ -13,9 +13,17 @@ description: >-
 tags: 'graphql, filtering, where, hotchocolate, operators, query'
 codeReferences:
   - src/Whizbang.Transports.HotChocolate/Conventions/WhizbangFilterConvention.cs
+  - src/Whizbang.Transports.HotChocolate/Types/WhizbangIdFilterTypeInterceptor.cs
+  - src/Whizbang.Transports.HotChocolate/Types/WhizbangIdOperationFilterInputType.cs
+  - src/Whizbang.Transports.HotChocolate/Types/WhizbangIdFilterHandler.cs
 testReferences:
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/FilterConventionTests.cs
   - tests/Whizbang.Transports.HotChocolate.Integration.Tests/QueryExecutionTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Ids.Tests/Unit/WhizbangIdFilteringTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Ids.Tests/Unit/WhizbangIdFilterTranslationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GraphQLWhizbangIdFilterIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GraphQLWhizbangIdFilterIndexTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Ids.Tests/Unit/WhizbangIdFilterHandlerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -131,6 +139,49 @@ where: { data: { deletedAt: { eq: null } } }
 # Is not null
 where: { data: { deletedAt: { neq: null } } }
 ```
+
+### Strong ID Operators {#strong-ids}
+
+A [`[WhizbangId]`](../../fundamentals/identity/whizbang-ids) field filters on the id itself, with `eq`, `neq`, `in`
+and `nin` {verified: WhizbangIdFilteringTests.Eq_KeepsTheRowWithThatIdAsync, WhizbangIdFilteringTests.Neq_DropsTheRowWithThatIdAsync, WhizbangIdFilteringTests.In_KeepsTheRowsWithThoseIdsAsync, WhizbangIdFilteringTests.Nin_DropsTheRowsWithThoseIdsAsync}:
+
+```graphql{title="Strong ID filters" description="Filtering a lens on a strong id in its document" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "WhizbangId"] tests=["WhizbangIdFilteringTests.LensRow_FiltersOnTheIdInItsDocumentAsync", "WhizbangIdFilteringTests.In_KeepsTheRowsWithThoseIdsAsync"]}
+# One id
+where: { data: { orderId: { eq: "019a5f2e-8c41-7b3a-9d2e-4f6a1b2c3d4e" } } }
+
+# Any of several
+where: { data: { orderId: { in: ["019a5f2e-8c41-7b3a-9d2e-4f6a1b2c3d4e", "019a5f2e-9d52-7c4b-8e3f-5a7b2c3d4e5f"] } } }
+
+# An optional id that is not set
+where: { data: { parentId: { eq: null } } }
+```
+
+Each id has its own filter input, named after it, whose operands are the id's scalar {verified: WhizbangIdFilteringTests.Schema_FiltersAnIdWithAnOperationInputOverItsScalarAsync}:
+
+```graphql{title="Strong ID filter input" description="The filter input of an OrderId" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "WhizbangId"] tests=["WhizbangIdFilteringTests.Schema_FiltersAnIdWithAnOperationInputOverItsScalarAsync"]}
+input OrderIdOperationFilterInput {
+  eq: OrderId
+  neq: OrderId
+  in: [OrderId!]
+  nin: [OrderId!]
+}
+```
+
+- A filter value is checked the way an argument is: a value that is not a UUID, or a Guid the id refuses, is a
+  GraphQL error with the code `WHIZBANG_INVALID_ID` and the reason {verified: WhizbangIdFilteringTests.Eq_WithAGuidTheIdRefuses_IsTheIdsErrorAsync, WhizbangIdFilteringTests.In_WithAValueThatIsNotAUuid_IsTheIdsErrorAsync}.
+- Entity Framework Core translates each operation to SQL both for an id in a perspective document and for an id
+  column with a value converter {verified: WhizbangIdFilterTranslationTests.LensRow_Eq_ComparesTheGuidInsideTheIdInTheDocumentInSqlAsync, WhizbangIdFilterTranslationTests.Column_EqAndIn_GoThroughTheValueConverterAsync, GraphQLWhizbangIdFilterIntegrationTests.Eq_FindsTheRowWithThatIdInSqlAsync}.
+  In a document the filter compares the Guid inside the id; on a column (and for an optional id, or one promoted to
+  a column of its own) it compares the id with an id, through the column's converter.
+- An id in a document cannot carry an index of its own (`[Indexed]` on one reports WHIZ303). To index lookups by
+  it, declare `[PerspectiveQueries(MatchOnAnyField = true)]` on the model: `eq` and `in` then compile to
+  `data @> ...`, which the whole-document index answers {verified: GraphQLWhizbangIdFilterIndexTests.Eq_IsAnsweredByTheDocumentIndexAsync, GraphQLWhizbangIdFilterIndexTests.In_IsAnsweredByTheDocumentIndexAsync}.
+  `neq` and `nin` read every row, as a negation does for any field.
+- `in` and `nin` become one comparison per id joined with `OR` (or `AND` for `nin`) as a balanced tree, so a list
+  of thousands of ids still translates {verified: GraphQLWhizbangIdFilterIntegrationTests.InAndNin_WithThousandsOfIds_AnswerTheRequestAsync, WhizbangIdFilterHandlerTests.AnyOf_NestsTheComparisonsAsABalancedTreeAsync}.
+  Each id is still one comparison for the database to evaluate, so keep the lists short.
+- `AddWhizbangLenses()` turns this on, and so does `AddWhizbangIds()` on an executor without lenses. Sorting orders
+  by the id itself, `order: { id: DESC }` {verified: WhizbangIdFilteringTests.Row_WithAnId_SortsByTheIdAsync}.
 
 ## Logical Operators
 
