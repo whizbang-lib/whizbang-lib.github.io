@@ -13,6 +13,9 @@ tags: 'receptors, message-handlers, business-logic, validation'
 codeReferences:
   - src/Whizbang.Core/IReceptor.cs
   - src/Whizbang.Core/ISyncReceptor.cs
+  - src/Whizbang.Core/SuppressReceptorRegistrationAttribute.cs
+  - src/Whizbang.Core/Messaging/SuppressedReceptorRoute.cs
+  - src/Whizbang.Generators/Templates/Snippets/DispatcherSnippets.cs
   - >-
     samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
   - >-
@@ -21,6 +24,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
   - tests/Whizbang.Core.Tests/Receptors/VoidReceptorTests.cs
   - tests/Whizbang.Core.Tests/Receptors/SyncReceptorTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/SuppressedReceptorRouteTests.cs
+  - tests/Whizbang.Generators.Tests/ReceptorRegistrationSuppressionTests.cs
   - tests/Whizbang.Core.Integration.Tests/DispatcherReceptorIntegrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
@@ -700,22 +705,89 @@ construction of the **entire** provider — every service in the assembly fails,
 receptor. The resulting error names the receptor without explaining why it was registered at all,
 which reads as an inexplicable DI misconfiguration.
 
-`[SuppressReceptorRegistration]` is the supported way to say "I own this one's lifetime":
+`[SuppressReceptorRegistration]` is the supported way to say "I own this receptor's lifetime". It does **not** mean
+"ignore this type": the receptor is still discovered and still routed at its stages, so opting out of the container does
+not cost it its dispatch. What it changes is who registers it. Discovery leaves it out of dependency injection, and you
+register it yourself, in one of the two ways below.
 
-```csharp{title="Declaring a hand-constructed receptor" description="Marks a receptor whose constructor takes a callback the container cannot supply, so discovery skips its DI registration while leaving dispatch intact." framework="NET10" category="Receptors" difficulty="INTERMEDIATE" tags=["receptors", "dependency-injection", "testing"]}
-// Built by hand so it can close over state the container knows nothing about.
+```csharp{title="Declaring a hand-constructed receptor" description="Marks a receptor whose constructor takes a callback the container cannot supply, so discovery leaves its registration to you while its routing stays in place." framework="NET10" category="Receptors" difficulty="INTERMEDIATE" tags=["receptors", "dependency-injection", "testing"] tests=["SuppressedReceptorRouteTests.GeneratedRoute_RegisteredByHand_RunsTheOwnersInstanceAsync"]}
+// Built by hand so it can close over a callback the container knows nothing about.
+// [FireAt] is optional: without it the receptor fires at the default stages.
+[FireAt(LifecycleStage.PostDistributeInline)]
 [SuppressReceptorRegistration]
-public sealed class CountingReceptor(Action<OrderPlaced> onReceived) : IReceptor<OrderPlaced> {
-  public ValueTask HandleAsync(OrderPlaced message, CancellationToken cancellationToken = default) {
+public sealed class SuppressedRouteProbeReceptor(Action<SuppressedRouteProbeEvent> onReceived)
+    : IReceptor<SuppressedRouteProbeEvent> {
+  public ValueTask HandleAsync(SuppressedRouteProbeEvent message, CancellationToken cancellationToken = default) {
     onReceived(message);
     return ValueTask.CompletedTask;
   }
 }
 ```
 
-**Only DI registration is skipped.** The receptor is still discovered and still routed — the
-attribute declares who owns *construction*, not that the type should be ignored. Opting out of the
-container does not cost the receptor its dispatch.
+### Registering a hand-built receptor {#registering-a-hand-built-receptor}
+
+**By hand, in dependency injection.** Register the instance you built, as its own class. The compiled route for the
+receptor finds it there and runs it at the receptor's stages:
+
+```csharp{title="Registering a hand-built receptor in dependency injection" description="The owner constructs the receptor and registers the instance as its class; the compiled route resolves that instance." framework="NET10" category="Receptors" difficulty="INTERMEDIATE" tags=["receptors", "dependency-injection"] tests=["SuppressedReceptorRouteTests.GeneratedRoute_RegisteredByHand_RunsTheOwnersInstanceAsync", "SuppressedReceptorRouteTests.Resolve_RegisteredAsItsClass_ReturnsItAsync"]}
+var received = new List<SuppressedRouteProbeEvent>();
+services.AddSingleton(new SuppressedRouteProbeReceptor(received.Add));
+```
+
+The route also accepts the instance registered under its class name as a key
+(`services.AddKeyedSingleton<IReceptor<SuppressedRouteProbeEvent>>("global::MyApp.SuppressedRouteProbeReceptor", instance)`),
+or registered as the message's receptor interface (`services.AddSingleton<IReceptor<SuppressedRouteProbeEvent>>(instance)`).
+In the last form it is used only when the instance the container returns **is** your class: the container returns the
+last receptor registered for the message, which can be a different receptor, and running that one under your
+receptor's route would run the wrong receptor.
+
+**At runtime, through `IReceptorRegistry`.** Register the instance at the stage it should run at. This is the usual
+choice for a test helper that closes over per-test state, and it works for any stage, including the one a `[FireAt]`
+names:
+
+```csharp{title="Registering a hand-built receptor at runtime" description="The owner registers the instance through the receptor registry at a lifecycle stage; it runs from that registration and the compiled route for the class skips." framework="NET10" category="Receptors" difficulty="INTERMEDIATE" tags=["receptors", "lifecycle", "testing"] tests=["SuppressedReceptorRouteTests.GeneratedRoute_RegisteredAtRuntime_RunsTheRuntimeEntryAndTheCompiledRouteSkipsAsync"]}
+var received = new List<SuppressedRouteProbeEvent>();
+var receptor = new SuppressedRouteProbeReceptor(received.Add);
+registry.Register<SuppressedRouteProbeEvent>(receptor, LifecycleStage.PostDistributeInline);
+try {
+  // dispatch and wait for the stage
+} finally {
+  registry.Unregister<SuppressedRouteProbeEvent>(receptor, LifecycleStage.PostDistributeInline);
+}
+```
+
+The receptor runs once, from the runtime registration. Its compiled route finds nothing in dependency injection and
+skips, as the next section describes.
+
+### When it is registered neither way {#unregistered-suppressed-receptor}
+
+A suppressed receptor that nothing registered in dependency injection is **skipped** at its stages. Nothing is thrown,
+and the other receptors of the message run as usual. The skip is logged once per receptor type, at `Debug`, under the
+logger category `Whizbang.Core.Messaging.SuppressedReceptorRoute`:
+
+```text
+Receptor {ReceptorType} is declared [SuppressReceptorRegistration] and no instance of it is registered in dependency injection as {Service}, as its class, or under its class name as a key, so its compiled route skips it. It runs only where its owner registers it at runtime through IReceptorRegistry. Logged once per receptor type.
+```
+
+This is not an error, because "registered only at runtime" is a supported setup: the compiled route cannot tell a
+receptor you register through `IReceptorRegistry` from one you forgot, and treating the first as a failure would make
+every message of the type fail at that stage in every host that loads the assembly.
+
+A receptor **without** the attribute is different. Discovery registers it, so if its route cannot resolve it, a
+registration really is missing, and the route still throws
+`No service for type 'IReceptor<...>' has been registered` so the mistake surfaces at once.
+
+### Troubleshooting: my suppressed receptor never runs {#suppressed-receptor-never-runs}
+
+1. Turn on `Debug` for `Whizbang.Core.Messaging.SuppressedReceptorRoute` and look for the line above. If it is there,
+   the receptor's compiled route found no instance in dependency injection.
+2. If you registered it by hand, check that you registered the instance as its own class (or under its class name as a
+   key). Registered only as `IReceptor<TMessage>`, it is used only when it is the last receptor registered for that
+   message.
+3. If you register it at runtime, check that the stage you pass to `Register` is the stage the message reaches, and that
+   the registration happens before the message is dispatched and is still in place when the stage runs.
+4. Check the stage itself: without `[FireAt]`, a receptor fires at the default stages, not at a Distribute or
+   Perspective stage.
 
 ### The WHIZ014 warning
 
