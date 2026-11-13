@@ -22,6 +22,7 @@ Every build diagnostic in this repository has one ID form, `WHIZ` and three digi
 | [WHIZ603](../v1.0.0/operations/diagnostics/whiz603.md) | `Whizbang.TestAnalyzers` | `IsNotNull()` on a `Nullable<T>` subject, an assertion that cannot fail under the pinned TUnit. |
 | [WHIZ604](../v1.0.0/operations/diagnostics/whiz604.md) | `Whizbang.RepoAnalyzers` | A `JsonDocument` created and dropped without being disposed. |
 | [WHIZ605](../v1.0.0/operations/diagnostics/whiz605.md) | `Whizbang.TestAnalyzers` | A test class in a sharded test project without exactly one `Shard*` category. |
+| [WHIZ606](../v1.0.0/operations/diagnostics/whiz606.md) | `Whizbang.RepoAnalyzers` | A settings property whose name says it holds a credential is a plain `string`. |
 | [WHIZ607](../v1.0.0/operations/diagnostics/whiz607.md) | `Whizbang.RepoAnalyzers` | Library code reads a type, namespace or assembly name, or resolves a type from a string, outside the shared naming code. |
 | [WHIZ608](../v1.0.0/operations/diagnostics/whiz608.md) | `Whizbang.RepoAnalyzers` | A suppression of WHIZ607 that does not say why. |
 

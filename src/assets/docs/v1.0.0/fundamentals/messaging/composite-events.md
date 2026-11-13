@@ -16,6 +16,8 @@ codeReferences:
   - src/Whizbang.Core/Minting/ICompositeFactory.cs
   - src/Whizbang.Core/Minting/CompositeFactory.cs
   - src/Whizbang.Core/Minting/CompositeMintRequest.cs
+  - src/Whizbang.Core/Minting/CompositeBatches.cs
+  - src/Whizbang.Core/Minting/CompositeBatchDefaults.cs
   - src/Whizbang.Core/Minting/IEventMint.cs
   - src/Whizbang.Core/Minting/EventMint.cs
   - src/Whizbang.Generators/Analyzers/MintedCompositeConstructionAnalyzer.cs
@@ -399,11 +401,71 @@ still applies when the composite arrives.
 `CoalescedEventsComposite` and `AuditEventsComposite`, or your own) unless it is
 inside a lambda assigned to `CompositeMintRequest<T>.BuildComposite`, inside a
 lambda assigned to a coalesce binding's `CoalescePolicyOptions.CompositeFactory`,
+inside the lambda passed as the `factory` of `ToCompositeBatches` or
+`PublishCompositeBatchesAsync` ([below](#streaming-events-into-composites)),
 in the `Whizbang.Core.Minting` namespace, or in the `Whizbang.Core` assembly. A
 composite built anywhere else skips the grouping, count cap and byte budget, so it
 can mix destinations or exceed the broker's size limit. Test projects that build
 composites directly on purpose can suppress the id.
 {verified: MintedCompositeConstructionAnalyzerTests.ConsumerCompositeSubclass_ConstructedDirectly_ReportsWhiz150Async, MintedCompositeConstructionAnalyzerTests.BuiltInComposite_ConstructedDirectly_ReportsWhiz150Async, MintedCompositeConstructionAnalyzerTests.Construction_InsideMintRequestBuilder_IsSilentAsync, MintedCompositeConstructionAnalyzerTests.Construction_InsideCoalesceBindingFactory_IsSilentAsync, MintedCompositeConstructionAnalyzerTests.Construction_InsideMintingNamespace_IsSilentAsync}
+
+## Streaming events into composites {#streaming-events-into-composites}
+
+Publishing a large set of events (an import of many rows) one message per event sends one outbox row, one broker
+message and one inbox row per event. Grouping them into composites of a few hundred each cuts that to one per group,
+and the receiving service still sees each inner event on its own stream. The composite batch helpers do the grouping as
+the events are produced, so nothing has to hold the whole set in memory, and they get the limits right
+([#2285](https://github.com/whizbang-lib/whizbang/issues/2285)):
+
+- `source.ToCompositeBatches(factory, options)` turns an `IAsyncEnumerable<TEvent>` into an
+  `IAsyncEnumerable<TComposite>`, for code that wants the batches.
+- `dispatcher.PublishCompositeBatchesAsync(source, factory, options, cancellationToken)` publishes each composite and
+  awaits it before building the next, so the bounded outbox buffer ([batch buffer](../../messaging/outbox-pattern.md#bounded-buffer))
+  holds the producer back when the store falls behind.
+
+The composite type is yours: `factory` builds one composite over one batch of events.
+
+### Where a batch is cut
+
+A batch is sent at whichever of these comes first:
+
+| Limit | Setting | Default |
+|-------|---------|---------|
+| Messages | `MaxBufferedMessages` | the composite's `MaxInnerEventsAllowed`; a larger value is lowered to it, so the helper never builds a composite the dispatcher refuses |
+| Bytes | `MaxBufferedBytes` | three quarters of the body-offload threshold (`Whizbang:BodyOffload:SizeThresholdBytes`, 64 KiB by default), so a composite is not offloaded for its size; the threshold is set below the transport's largest message, so it is not refused either; 0 or less means no byte limit |
+| Time | `DebounceInterval`, `MaxWait` | 100 ms, 1 s: the batch is sent once no new event has arrived for `DebounceInterval`, and never later than `MaxWait` after its **first** event, however busy the source |
+
+- An event's size is its serialized JSON, measured with the framework's own source-generated serializer, so it works
+  under native AOT.
+- An event larger than the byte limit is sent alone.
+- Batches keep the source's order, and each inner event keeps its own stream id.
+- The end of the source sends what remains.
+- **Nothing read is dropped.** When the source throws, or the enumeration is canceled, the events already read are
+  sent as one last batch, and then the exception surfaces. `PublishCompositeBatchesAsync` publishes a composite it has
+  built even after its token is canceled.
+- The composite's cap is read from a composite the factory builds over no events, so the factory is called once with
+  an empty list before the first batch.
+- Time is read from the injected `TimeProvider`.
+
+The service-wide defaults are bound from `Whizbang:CompositeBatches`, registered by `AddWhizbang()`; inject
+`IOptions<CompositeBatchOptions>` to use them. The derived byte limit appears in the
+[startup settings report](../../operations/configuration/startup-settings-report.md) with its inputs.
+
+```csharp{title="A bulk import published as composites" description="Rows are read as they arrive and published a few hundred at a time; the batch buffer slows the import to the store's pace." framework="NET10" category="Messaging" difficulty="INTERMEDIATE" tags=["composite-events", "bulk-import", "batching"] tests=["CompositeBatchesTests.ABatch_IsCutAtTheMessageCount_InSourceOrder_KeepingEachStreamAsync", "CompositeBatchesTests.Publishing_AwaitsEachComposite_BeforeBuildingTheNext_AndCountsThemAsync"]}
+public sealed class RowsImported : CompositeEventBase;
+
+public sealed class ImportRowsHandler(IDispatcher dispatcher, IOptions<CompositeBatchOptions> batches) {
+  public async Task<int> HandleAsync(IAsyncEnumerable<RowImported> rows, CancellationToken cancellationToken) {
+    return await dispatcher.PublishCompositeBatchesAsync(
+      rows,
+      batch => new RowsImported { Inner = [.. batch] },
+      batches.Value,
+      cancellationToken);
+  }
+}
+```
+
+{verified: CompositeBatchesTests.TheMessageCount_DefaultsToTheCompositesCap_AndIsNeverAboveItAsync, CompositeBatchesTests.ABatch_IsCutAtTheByteSize_AndAnEventLargerThanTheLimitGoesAloneAsync, CompositeBatchesTests.AnEventWithinTheDebounce_JoinsTheBatch_AndRestartsTheWindowAsync, CompositeBatchesTests.ABusySource_SendsTheBatch_NoLaterThanTheMaxWaitAfterItsFirstEventAsync, CompositeBatchesTests.AnEventArrivingAsTheWindowCloses_IsNeverLostAsync, CompositeBatchesTests.WhenTheSourceThrows_WhatWasReadIsSent_ThenTheExceptionSurfacesAsync, CompositeBatchesTests.WhenCanceled_WhatWasReadIsSent_ThenTheCancellationSurfacesAsync, CompositeBatchDefaultsTests.TheDerivation_IsThreeQuartersOfTheThreshold_WithItsInputAsync}
 
 ## Dispatch lifecycle
 
