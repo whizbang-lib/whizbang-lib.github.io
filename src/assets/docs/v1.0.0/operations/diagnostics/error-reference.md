@@ -467,6 +467,8 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ015 | Warning | [Generic Message Types Are Not Supported](whiz015.md) |
 | WHIZ016 | Warning | [Stream ID Override Has Nothing to Override](whiz016.md) |
 | WHIZ017 | Warning | [Stream ID Generation Opt-Out Cannot Hold Across Assemblies](whiz017.md) |
+| WHIZ018 | Error | [Stream ID Inherits From A Type That Is Not A Strong ID](whiz018.md) |
+| WHIZ019 | Error | [InheritFrom On A Stream ID That Is Not A Strong ID](whiz019.md) |
 | WHIZ020 | Retired | [WhizbangId Discovered](whiz020.md) (retired: never reported, ID never reused) |
 | WHIZ021 | Warning | [WhizbangId Must Be Partial](whiz021.md) |
 | WHIZ022 | Info | [Topic Filter Discovered](whiz022.md) |
@@ -481,6 +483,8 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ031 | Error | [Multiple StreamId Attributes](whiz031.md) |
 | WHIZ032 | Error | [Perspective Name Collision](whiz032.md) |
 | WHIZ033 | Warning | [Perspective Model Missing StreamId](whiz033.md) |
+| WHIZ034 | Warning | [InheritFrom Lists The Stream ID's Own Type](whiz034.md) |
+| WHIZ035 | Warning | [IHasStreamId Is Written Instead Of A Strong-ID Stream ID](whiz035.md) |
 | WHIZ040 | Info | [User Service Discovered](whiz040.md) |
 | WHIZ041 | Info | [Abstract Class Skipped](whiz041.md) |
 | WHIZ042 | Retired | [No User Services Found](whiz042.md) (retired: never reported, ID never reused) |
@@ -569,6 +573,9 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ603 | Error | [IsNotNull() on a Nullable Value Cannot Fail](whiz603.md) (repository check) |
 | WHIZ604 | Error | [JsonDocument Created and Dropped Without Being Disposed](whiz604.md) (repository check) |
 | WHIZ605 | Error | [Test Class Without Exactly One Shard Category](whiz605.md) (repository check) |
+| WHIZ606 | Error | [Credential-Named Settings Property Is a Plain String](whiz606.md) (repository check) |
+| WHIZ607 | Error | [Type Name Read Outside the Shared Naming Code](whiz607.md) (repository check) |
+| WHIZ608 | Error | [Type-Naming Exception Without a Reason](whiz608.md) (repository check) |
 | WHIZ701 | Info | [EF Core Perspective Discovery](whiz701.md) |
 | WHIZ702 | Info | [EF Core Migration Files Discovery](whiz702.md) |
 | WHIZ703 | Info | [No DbContext Found](whiz703.md) |

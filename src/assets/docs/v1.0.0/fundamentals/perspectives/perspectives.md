@@ -1168,6 +1168,12 @@ A rebuild folds every event onto the row of the stream it is stored on, the row 
 onto. The one exception is an event an [upcaster re-keyed](../events/event-upcasting.md#re-key-re-routes-on-rebuild-not-on-live-drain):
 it folds onto the row it now names, together with that row's own events, in commit order.
 
+A replay restores each origin's order: events received from another service are dealt back into that origin's commit
+order within the places they hold, also in a stream that mixes origins or holds local events, so an update the origin
+committed before a delete replays before it even when it arrived after it. See
+[replay ordering](rewind#replay-ordering). A rebuild of named streams whose fold equals the stored row counts it as
+rebuilt and verified; see [reading the result](rebuild#reading-the-result).
+
 #### RebuildPerspectiveCommand
 
 Trigger rebuilds across distributed services via system commands.

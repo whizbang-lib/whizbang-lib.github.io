@@ -14,6 +14,8 @@ tags: >-
   lifecycle, receptors, FireAt, attributes, ILifecycleContext, AOT,
   source-generators
 codeReferences:
+  - src/Whizbang.Core/Messaging/RunOnRepairAttribute.cs
+  - src/Whizbang.Core/Messaging/ILifecycleContext.cs
   - src/Whizbang.Core/Messaging/FireAtAttribute.cs
   - src/Whizbang.Core/Messaging/LifecycleStage.cs
   - src/Whizbang.Core/Messaging/ILifecycleContext.cs
@@ -24,6 +26,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/ReceptorInvoker.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerRepairTests.cs
   - tests/Whizbang.Core.Tests/Messaging/FireAtAttributeTests.cs
   - tests/Whizbang.Core.Tests/Messaging/LifecycleStageTests.cs
   - tests/Whizbang.Core.Tests/Messaging/LifecycleStageExtensionsTests.cs
@@ -298,6 +301,11 @@ public interface ILifecycleContext {
   /// before. Always true in live processing; false during Replay/Rebuild for events
   /// whose handlers already ran in a prior pass.</summary>
   bool IsNewEvent => true;
+
+  /// <summary>True when the invocation handles a repaired event (a stream-integrity
+  /// redelivery) this service can prove it never handled. Only receptors declared
+  /// [RunOnRepair] run for it. False for every other delivery.</summary>
+  bool IsRepair => false;
 }
 ```
 
@@ -315,6 +323,7 @@ public interface ILifecycleContext {
 | `ProcessingMode` | `ProcessingMode?` | Perspective stages | `Live` (normal), `Replay` (rewind), or `Rebuild` (full rebuild). Null for non-perspective stages. |
 | `IsReplay` | `bool` | All stages | Convenience: true when `ProcessingMode` is `Replay` or `Rebuild`. |
 | `IsNewEvent` | `bool` | Perspective stages | True when this event has never had its handlers fire for this perspective. Always true in live processing. |
+| `IsRepair` | `bool` | Inbox stages | True for a repaired event this service can prove it never handled; only `[RunOnRepair]` receptors see it. See [repaired events](#run-on-repair). |
 
 ### ProcessingMode Enum {#processing-mode}
 
@@ -344,6 +353,41 @@ public class DependentModelUpdater : IReceptor<OrderCreatedEvent> {
   }
 }
 ```
+
+### Repaired events: `[RunOnRepair]` {#run-on-repair}
+
+{verified: ReceptorInvokerRepairTests.ARepairedEvent_RunsOnlyTheReceptorsDeclaredToRunOnRepairAsync, ReceptorInvokerRepairTests.ARepairedEvent_WithNoReceptorDeclaredToRunOnRepair_RunsNothingAsync, ReceptorInvokerRepairTests.AnOrdinaryDelivery_RunsEveryReceptorAsync, ReceptorInvokerRepairTests.TheLifecycleContext_IsNotARepair_UnlessSaidAsync, InboxDispatchWorkerCoverageTests.RepairedDelivery_RunsItsStagesAsARepairAsync, InboxDispatchWorkerCoverageTests.OrdinaryDelivery_RunsNoStageAsARepairAsync, ReceptorDiscoveryGeneratorRunOnRepairTests.Generator_WithRunOnRepair_SetsRunOnRepair_OnEveryReceptorShapeAsync}
+
+[Stream-integrity repair](../../resilience/stream-integrity#repaired-events-and-receptors) delivers historical events a
+service is missing, with their original ids. A repaired event is stored and projected, and runs **no** receptor,
+lifecycle receptors included, unless the service can prove it never handled the event: the event is inside
+`Whizbang:StreamIntegrity:RepairReceptorLookback` (default seven days) and the handled ledger does not hold it. Such an
+event runs only the receptors declared `[RunOnRepair]`, at every stage they fire at, with `ILifecycleContext.IsRepair`
+true; tag hooks do not run for it either.
+
+```csharp{title="A lifecycle receptor that runs for proven-new repaired events" description="[RunOnRepair] beside [FireAt] opts an idempotent receptor into repaired events; IsRepair tells it the invocation is one" framework="NET10" category="Messaging" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "RunOnRepair", "IsRepair", "Stream Integrity"] tests=["ReceptorInvokerRepairTests.ARepairedEvent_RunsOnlyTheReceptorsDeclaredToRunOnRepairAsync", "ReceptorInvokerRepairTests.TheLifecycleContext_IsNotARepair_UnlessSaidAsync"]}
+[RunOnRepair]
+[FireAt(LifecycleStage.PostInboxInline)]
+public class OrderCountUpdater : IReceptor<OrderCreatedEvent> {
+  private readonly ILifecycleContext? _context;
+
+  public OrderCountUpdater(ILifecycleContext? context = null) {
+    _context = context;
+  }
+
+  public ValueTask HandleAsync(OrderCreatedEvent evt, CancellationToken ct) {
+    // Idempotent: keyed by the order id, so a second run changes nothing.
+    if (_context?.IsRepair == true) {
+      // A repaired event this service never handled: converge state, send nothing outward.
+    }
+    return ValueTask.CompletedTask;
+  }
+}
+```
+
+A receptor that opts in must be idempotent: the ledger proves the event was never handled by this service, but an
+effect outside it (an email, a webhook) may still have happened another way. `[RunOnRepair]` is read by the source
+generator into `ReceptorInfo.RunOnRepair`, so it costs nothing at runtime and needs no reflection.
 
 ### AttemptNumber Usage
 
