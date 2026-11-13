@@ -18,7 +18,7 @@ tags:
   - analyzer
 codeReferences:
   - src/Whizbang.Generators/EphemeralAnalyzer.cs
-  - src/Whizbang.Generators/Utilities/EphemeralResolver.cs
+  - src/Whizbang.Generators.Shared/Utilities/EphemeralResolver.cs
   - src/Whizbang.Core/Attributes/EphemeralAttribute.cs
   - src/Whizbang.Core/Commands/System/SystemCommands.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs

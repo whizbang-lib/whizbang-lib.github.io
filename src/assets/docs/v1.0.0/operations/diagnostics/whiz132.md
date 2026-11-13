@@ -17,7 +17,7 @@ tags:
   - analyzer
 codeReferences:
   - src/Whizbang.Generators/EphemeralAnalyzer.cs
-  - src/Whizbang.Generators/Utilities/EphemeralResolver.cs
+  - src/Whizbang.Generators.Shared/Utilities/EphemeralResolver.cs
   - src/Whizbang.Core/Attributes/EphemeralAttribute.cs
   - src/Whizbang.Core/Attributes/DangerouslyAllowSourcedEventsFromEphemeralInputAttribute.cs
 testReferences:
