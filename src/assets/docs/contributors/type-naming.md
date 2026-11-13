@@ -21,6 +21,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/TypeNameWireFormTests.cs
   - tests/Whizbang.Generators.Tests/Utilities/TypeNameUtilitiesNamingTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeChildIdentityCanonicalTests.cs
+  - tests/Whizbang.Core.Component.Tests/Messaging/CompositeChildIdentityBanListTests.cs
 ---
 
 # Type Names in Library Code
@@ -63,7 +64,7 @@ version decoration, which differs between builds of one assembly. They are banne
 envelope and message type names a receiver resolves a type from, each with a commented suppression at that line
 saying so:
 
-```csharp{title="A versioned name kept on purpose" description="The one legitimate use of the versioned form: the message type a receiver resolves the payload from, suppressed with its reason at the line." framework="NET10" category="Design" difficulty="ADVANCED" tags=["type-names", "banned-symbols", "envelope", "suppression"] unverified="excerpt of library source (Dispatcher.cs); the ban itself is verified by CompositeChildIdentityCanonicalTests.TheBanList_ForbidsTheRawDerivation_AndTheVersionedTypeNamesAsync"}
+```csharp{title="A versioned name kept on purpose" description="The one legitimate use of the versioned form: the message type a receiver resolves the payload from, suppressed with its reason at the line." framework="NET10" category="Design" difficulty="ADVANCED" tags=["type-names", "banned-symbols", "envelope", "suppression"] unverified="excerpt of library source (Dispatcher.cs); the ban itself is verified by CompositeChildIdentityBanListTests.TheBanList_ForbidsTheRawDerivation_AndTheVersionedTypeNamesAsync"}
 #pragma warning disable RS0030 // versioned on purpose: the message type a receiver resolves the payload from (#2267)
       MessageType = TypeNameFormatter.AssemblyQualifiedName(eventType),
 #pragma warning restore RS0030
@@ -111,7 +112,7 @@ them off, because tests, tools, samples and benchmarks name types to describe th
 | `AssemblyName.Name` | `TypeNameFormatter.AssemblySimpleName` |
 | `Type.GetType(string, ...)`, `Assembly.GetType(string, ...)` (each overload) | `IMessageTypeBinder` (`MultiPassMessageTypeBinder`) or `EventTypeMatchingHelper.TryResolveType` |
 
-{verified: CompositeChildIdentityCanonicalTests.TheBanList_ForbidsTheRawDerivation_AndTheVersionedTypeNamesAsync}
+{verified: CompositeChildIdentityBanListTests.TheBanList_ForbidsTheRawDerivation_AndTheVersionedTypeNamesAsync}
 
 ## Making an exception {#making-an-exception}
 

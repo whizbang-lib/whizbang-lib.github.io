@@ -45,6 +45,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutIdentityAndSubscriptionTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeChildIdentityTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeChildIdentityCanonicalTests.cs
+  - tests/Whizbang.Core.Component.Tests/Messaging/CompositeChildIdentityBanListTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
   - tests/Whizbang.Core.Tests/Observability/CompositeMetricsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/DispatchOutboxCollectorTests.cs
@@ -531,7 +532,7 @@ child, so its stream digests disagreed with the origin's while nothing was missi
 Leaving the version out gives every path one id. `CompositeChildIdentity.Derive` is banned for library code
 (`BannedSymbols.txt`), so a second derivation route does not compile; see
 [Type names in library code](../../../contributors/type-naming.md).
-{verified: CompositeChildIdentityCanonicalTests.ForChild_TheTypeAndEveryRenderingOfItsName_DeriveOneIdAsync, CompositeChildIdentityCanonicalTests.ForChild_GenericAndNestedTypes_DeriveOneIdFromTheTypeAndFromAnotherBuildsWireNameAsync, CompositeChildIdentityCanonicalTests.TryExpand_TheTypedAndTheRawPath_DeriveTheSameIds_WhenThePublisherRanAnotherBuildAsync, CompositeChildIdentityCanonicalTests.HashedTypeName_IsOneDefinition_ForTheTypeAndForEveryRenderingOfItsNameAsync, CompositeChildIdentityCanonicalTests.ForChild_DifferentTypes_StillDeriveDifferentIdsAsync, CompositeChildIdentityCanonicalTests.TheBanList_ForbidsTheRawDerivation_AndTheVersionedTypeNamesAsync}
+{verified: CompositeChildIdentityCanonicalTests.ForChild_TheTypeAndEveryRenderingOfItsName_DeriveOneIdAsync, CompositeChildIdentityCanonicalTests.ForChild_GenericAndNestedTypes_DeriveOneIdFromTheTypeAndFromAnotherBuildsWireNameAsync, CompositeChildIdentityCanonicalTests.TryExpand_TheTypedAndTheRawPath_DeriveTheSameIds_WhenThePublisherRanAnotherBuildAsync, CompositeChildIdentityCanonicalTests.HashedTypeName_IsOneDefinition_ForTheTypeAndForEveryRenderingOfItsNameAsync, CompositeChildIdentityCanonicalTests.ForChild_DifferentTypes_StillDeriveDifferentIdsAsync, CompositeChildIdentityBanListTests.TheBanList_ForbidsTheRawDerivation_AndTheVersionedTypeNamesAsync}
 
 **Upgrading.** A child whose type was named on the wire with a version, the common case, derives a new id once this
 release runs. Two effects follow:
