@@ -527,7 +527,7 @@ A filter on that property is answered by the primary key as well as the document
 `AND` part of the filter that compares a `Guid` stream id with a value, or tests it against a set, the
 same test on the row's `id` is added beside it.
 
-```csharp{title="A point read by stream id" description="Both forms read the row by its primary key." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "stream-id", "primary-key", "linq"] tests=["StreamIdPrimaryKeySqlTests.RowForm_StreamIdEquality_AddsPrimaryKeyAsync", "StreamIdPrimaryKeySqlTests.ProjectedForm_AfterOrderBy_AddsPrimaryKeyAsync", "StreamIdPrimaryKeySqlTests.ProjectedForm_StreamIdContains_AddsPrimaryKeyAsync"]}
+```csharp{title="A point read by stream id" description="Both forms read the row by its primary key." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "stream-id", "primary-key", "linq"] tests=["StreamIdPrimaryKeySqlTests.RowForm_StreamIdEquality_AddsPrimaryKeyAsync", "StreamIdPrimaryKeySqlTests.ProjectedForm_AfterOrderBy_AddsPrimaryKeyAsync", "StreamIdPrimaryKeySqlTests.ProjectedForm_StreamIdContains_AddsPrimaryKeyAsync", "StreamIdPrimaryKeySqlTests.ProjectedOrderBy_PhysicalField_OrdersByTheColumnAsync", "StreamIdPrimaryKeySqlTests.ProjectedSelect_PhysicalField_ReadsTheColumnAsync"]}
 public record OrderModel {
   [StreamId] public Guid OrderId { get; init; }
   public string Title { get; init; } = "";
@@ -546,11 +546,13 @@ rows.Select(r => r.Data).Where(x => ids.Contains(x.OrderId));
 // WHERE w.id = ANY (@ids) AND <the document test>
 ```
 
-- **Filters after `Select(r => r.Data)` reach the row.** A filter written against the projected model is
-  moved beneath the projection, past any `OrderBy`/`ThenBy`, as `rows.Where(r => P(r.Data))`. Filtering
-  commutes with ordering and with an identity projection, so the rows are the same; the filter can now
-  use the primary key and [promoted columns](#PhysicalFieldExpressionVisitor) too. A filter after `Skip`,
-  `Take`, `Distinct` or another projection stays where it was.
+- **Queries after `Select(r => r.Data)` reach the row.** A `Where`, `OrderBy`, `OrderByDescending`,
+  `ThenBy` or `ThenByDescending` written against the projected model moves beneath the projection, as
+  `rows.Where(r => P(r.Data)).Select(r => r.Data)`, and a following `Select(x => f(x))` folds into it as
+  `rows.Select(r => f(r.Data))`. An identity projection commutes with all of these, so the rows, their order
+  and their shape are the same; filters, sorts and projections can now use the primary key and
+  [promoted columns](#PhysicalFieldExpressionVisitor) too. Anything after `Skip`, `Take`, `Distinct` or a
+  grouping stays where it was.
 - **The document test is kept.** The query never returns a row it did not return before. For a model
   that keeps the `[StreamId]` contract the two ids are equal and the result is unchanged; a row whose
   property was set to something other than its stream id is no longer found by that property.
