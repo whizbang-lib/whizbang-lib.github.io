@@ -8,6 +8,8 @@ category: Perspectives
 codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/169_Fold.sql
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/SearchContainsRewriter.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/StreamIdPrimaryKeyRewriter.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/StreamIdRegistry.cs
   - src/Whizbang.Data.EFCore.Postgres/Functions/FoldedContainsTranslator.cs
   - src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangSearchDbFunctions.cs
   - src/Whizbang.Generators.Shared/Models/PhysicalColumnSql.cs
@@ -516,6 +518,50 @@ public class PhysicalFieldQueryInterceptor : IQueryExpressionInterceptor {
 **After transformation:**
 ```csharp{title="PhysicalFieldExpressionVisitor (2)" description="After transformation:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "PhysicalFieldExpressionVisitor"] unverified="illustrative post-rewrite LINQ fragment, not an isolated API call; the visitor is covered only by PhysicalFieldIntegrationTests, which is map-absent"}
 .Where(r => EF.Property<decimal>(r, "price") >= 50.00m)
+```
+
+## Filters on the stream id {#stream-id-filters}
+
+A row's `id` column is its stream id, and the model's `[StreamId]` property starts out as the same value.
+A filter on that property is answered by the primary key as well as the document: for each top-level
+`AND` part of the filter that compares a `Guid` stream id with a value, or tests it against a set, the
+same test on the row's `id` is added beside it.
+
+```csharp{title="A point read by stream id" description="Both forms read the row by its primary key." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "stream-id", "primary-key", "linq"] tests=["StreamIdPrimaryKeySqlTests.RowForm_StreamIdEquality_AddsPrimaryKeyAsync", "StreamIdPrimaryKeySqlTests.ProjectedForm_AfterOrderBy_AddsPrimaryKeyAsync", "StreamIdPrimaryKeySqlTests.ProjectedForm_StreamIdContains_AddsPrimaryKeyAsync"]}
+public record OrderModel {
+  [StreamId] public Guid OrderId { get; init; }
+  public string Title { get; init; } = "";
+}
+
+// Row form
+rows.Where(r => r.Data.OrderId == id);
+// WHERE w.id = @id AND <the document test>
+
+// Projected form, as a GraphQL filtering layer writes it
+rows.Select(r => r.Data).OrderBy(x => x.OrderId).Where(x => x.OrderId == id);
+// WHERE w.id = @id AND <the document test> ORDER BY ...
+
+// A set of ids
+rows.Select(r => r.Data).Where(x => ids.Contains(x.OrderId));
+// WHERE w.id = ANY (@ids) AND <the document test>
+```
+
+- **Filters after `Select(r => r.Data)` reach the row.** A filter written against the projected model is
+  moved beneath the projection, past any `OrderBy`/`ThenBy`, as `rows.Where(r => P(r.Data))`. Filtering
+  commutes with ordering and with an identity projection, so the rows are the same; the filter can now
+  use the primary key and [promoted columns](#PhysicalFieldExpressionVisitor) too. A filter after `Skip`,
+  `Take`, `Distinct` or another projection stays where it was.
+- **The document test is kept.** The query never returns a row it did not return before. For a model
+  that keeps the `[StreamId]` contract the two ids are equal and the result is unchanged; a row whose
+  property was set to something other than its stream id is no longer found by that property.
+- **Left alone:** a stream-id test under `OR` or `NOT`, an inequality, and a stream id that is a `string`
+  or strongly-typed key (the row's id is a `Guid`).
+
+The generator registers each model's `Guid` stream id in `StreamIdRegistry`, and
+`PhysicalFieldQueryInterceptor` runs the rewrite first, before every other pass.
+
+```csharp{title="Registered stream ids" description="Only a Guid or nullable Guid [StreamId] is registered." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "stream-id", "generator"] tests=["StreamIdRegistrationGenerationTests.GuidStreamId_IsRegisteredAsync", "StreamIdRegistrationGenerationTests.StringStreamId_IsNotRegisteredAsync"]}
+StreamIdRegistry.Register<OrderModel>("OrderId");
 ```
 
 ## UseWhizbangPhysicalFields {#UseWhizbangPhysicalFields}
