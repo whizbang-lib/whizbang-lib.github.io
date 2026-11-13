@@ -283,6 +283,18 @@ coordinator's schema, so the drivers cannot drift. On the Dapper driver that cov
 | Recovery and fleet | The stuck-row sentinels and the drop of exhausted control-plane inbox rows (`DropExhaustedInboxRowsAsync`, [exhausted rows are concluded](../operations/observability/stuck-row-sentinel.md#exhausted-rows-are-concluded)), the release of unprocessed inbox rows and unstarted leases, the service backlog the housekeeping gate reads, the broker dead-letter import, and the standby and eviction handshake |
 | Type registry, lifecycle and cursors | The type-definition catalog, its lineage and its reconcile claim, the lifecycle completion marker and the startup orphan reconciliation, the cursor batch and rewind reads, the ephemeral snapshot targets, and the local service id |
 | Coalescing | The pending groups, a group's singles, the fold and the deadline release |
+| Receptors on repair | The [handled ledger](../resilience/stream-integrity#handled-ledger) lookup and its sweep (`LookupHandledEventsAsync`, `SweepHandledLedgerAsync`): every driver records handled events in the inbox completion, so the ledger is kept, and swept to `RepairReceptorLookback`, on Dapper too |
+
+The stream-integrity operations added with the repair backlog and completion meters stay on the allow-list with the
+rest of [stream integrity](#what-dapper-refuses-at-startup), which runs on the EF Core driver only:
+`GetIntegrityLedgerBacklogAsync` (the [backlog gauges](../resilience/stream-integrity#repair-backlog-and-eta)),
+`IntegrityAddLedgerTallyAsync` and `GetIntegrityLedgerTallyAsync` (the shared tally behind
+[repair progress and the ETA](../resilience/stream-integrity#derived-completion-meters)), and
+`GetIntegrityHistoryRewriteAsync` and `GetIntegritySealGenerationAsync` (the
+[rewrite floor](../resilience/stream-integrity#rewrite-floor)). On Dapper they answer at their defaults: no backlog
+reading, a tally that is not written and not read, and no rewrite floor, so each gauge reports no series rather than a
+zero. Nothing reads them there, since every integrity switch is off on that driver.
+{verified: WorkCoordinatorDriverParityTests.TheAllowList_HoldsOnlyMembersDapperServesAtTheDefault_EachWithAReasonAsync, WorkCoordinatorDefaultsTests.GetIntegrityLedgerBacklogAsync_WithoutProviderSupport_ReportsNothingAsync, WorkCoordinatorDefaultsTests.IntegrityAddLedgerTallyAsync_WithoutProviderSupport_WritesNothingAsync, WorkCoordinatorDefaultsTests.GetIntegrityLedgerTallyAsync_WithoutProviderSupport_ReportsNothingAsync, WorkCoordinatorDefaultsTests.GetIntegrityHistoryRewriteAsync_WithoutProviderSupport_VouchesForNothingAsync, DapperHandledLedgerTests.Lookup_AndSweep_RunOnTheDapperDriverAsync}
 
 The Dapper driver creates its schema on the application connection, so the role that runs the coordinator normally owns
 the tables. There is no separate schema-initialization connection: a table maintenance statement on a table that role

@@ -14,6 +14,7 @@ tags: >-
   read-models, operational
 codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveRowUnchanged.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveRowDigest.cs
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/EFCorePostgresPerspectiveRowDigest.cs
   - src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs
@@ -39,6 +40,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/RebuildCreatedAtIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveSnapshotFloorTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderUnchangedReasonTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRowUnchangedTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/RebuildAlreadyCorrectRowTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/RebuildProvenanceTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRowDigestIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderBlueGreenTests.cs
@@ -335,6 +339,10 @@ public record RebuildResult(
   public int StreamsRefused { get; init; }
   public int StreamsPurged { get; init; }
   public int StreamsSkipped { get; init; }
+  public int StreamsAlreadyCorrect { get; init; }
+  public int StreamsWriteRefused { get; init; }
+  public int StreamsWithoutModel { get; init; }
+  public int StreamsWithoutEvents { get; init; }
 }
 ```
 
@@ -345,11 +353,43 @@ public record RebuildResult(
 | `StreamsProcessed` | Streams where events for this perspective were found and replayed. A named stream with no events does not count. |
 | `StreamsPurged` | Rebuilt rows that ended purged. See [terminal purges](#terminal-purges). |
 | `StreamsSkipped` | Streams left alone for their [archived data](#archived-data): under the default `Skip`, a stream archived whole or one archived through a prefix with no live snapshot; under `IncludeWhileLive`, a stream archived whole; under every choice, a stream whose whole archive was [deleted](#archived-data-deleted), and under `IncludeWhileLive` and `IncludeAll`, one whose prefix archive was deleted. Their rows are left as they are. |
+| `StreamsAlreadyCorrect` | Streams whose fold equals the row already stored, so the store wrote nothing: the read model was already right. Counted in `StreamsProcessed` as rebuilt and verified, so the rows the rebuild actually rewrote are `StreamsProcessed - StreamsAlreadyCorrect` |
+| `StreamsWriteRefused` | Streams whose fold differs from the stored row, and whose write the row's ordering guard refused. Their rows keep what they hold, and they are not rebuilt; each is logged at Warning |
+| `StreamsWithoutModel` | Streams whose events were folded but none produced a model, so there was nothing to write |
+| `StreamsWithoutEvents` | Streams with no events for this perspective |
 
 **Naming streams and rebuilding none of them is a failure.** A rebuild of selected streams that refuses every one,
 or finds no events for any, returns `Success = false` with an `Error` that says which. Read as a success, it hid 32
 unrepaired rows behind a run that looked clean (#1162). A stream skipped for its archived data is the exception: it is
 reported in `StreamsSkipped`, so a rebuild of named streams that skipped them all succeeds.
+
+### A fold equal to the stored row {#already-correct}
+
+{verified: RebuildAlreadyCorrectRowTests.RebuildStreamsAsync_AFoldEqualToTheStoredRowTheGuardRefused_IsRebuiltAndVerifiedAsync, RebuildAlreadyCorrectRowTests.RebuildStreamsAsync_AFoldThatDiffersFromTheStoredRowTheGuardRefused_FailsAsRefusedAsync, PerspectiveRebuilderUnchangedReasonTests.RebuildStreamsAsync_AFoldThatEqualsTheStoredRow_IsRebuiltAndVerified_NotFailedAsync, PerspectiveRebuilderUnchangedReasonTests.RebuildStreamOfRunAsync_AFoldThatEqualsTheStoredRow_SucceedsSoTheRunDoesNotRetryItAsync, PerspectiveRebuilderUnchangedReasonTests.RebuildStreamsAsync_AWriteTheOrderingGuardRefused_FailsAndSaysSoAsync, PerspectiveRebuilderUnchangedReasonTests.RebuildStreamsAsync_AFoldThatProducedNoModel_FailsAndIsToldApartFromARefusalAsync, PerspectiveRebuilderUnchangedReasonTests.RebuildStreamsAsync_AMixedRun_SeparatesRewrittenAlreadyCorrectRefusedNoModelAndNoEventsAsync, PerspectiveRowUnchangedTests.OfRefusedWrite_AFoldEqualToTheStoredRow_IsAlreadyCorrectAsync, PerspectiveRowUnchangedTests.OfRefusedWrite_AFoldThatDiffersFromTheStoredRow_IsAWriteRefusedAsync}
+
+A correction rebuild (re-deriving rows after duplicate events were removed, for example) often folds a stream to
+exactly the row it already has. The row's ordering guard then refuses the write, since nothing newer is being
+written, and the rebuild used to report the stream as "folded but left the row unchanged". A multi-stream run retried
+it three times and counted it failed (#2252).
+
+When the guard refuses a write, the generated runner now compares the fold with the stored row, both serialized by
+the same serializer and compared as JSON with property order aside (`PerspectiveRowUnchanged.OfRefusedWrite`), and
+says why the row was left untouched on the cursor completion (`PerspectiveCursorCompletion.UnchangedReason`):
+
+| `PerspectiveRowUnchangedReason` | When | Counted as |
+|---|---|---|
+| `AlreadyCorrect` | The fold equals the stored row | Rebuilt and verified (`StreamsProcessed` and `StreamsAlreadyCorrect`); a stream of a multi-stream run succeeds and is not retried |
+| `WriteRefused` | The fold differs from the stored row (or either is missing) | Not rebuilt (`StreamsWriteRefused`); the row keeps what it holds |
+| `NoModel` | Every event declined to produce a model | Not rebuilt (`StreamsWithoutModel`), told apart from a refusal |
+| `Unreported` | The run wrote the row, folded nothing, or does not say (a hand-written runner) | Folded but unchanged, as before |
+
+The completion log line splits the run the same way:
+
+```text{title="A rebuild's completion line" description="The completion log splits the streams into rewritten, already correct, write refused, without a model and without events" category="Perspectives" difficulty="BEGINNER" tags=["perspectives", "rebuild", "logging", "RebuildResult"] tests=["PerspectiveRebuilderUnchangedReasonTests.RebuildStreamsAsync_AMixedRun_SeparatesRewrittenAlreadyCorrectRefusedNoModelAndNoEventsAsync"]}
+Completed SelectedStreams rebuild of perspective OrderView: 40 streams in 812ms (25 rewritten, 15 already correct, 2 write refused, 1 without a model, 3 without events)
+```
+
+`Streams` there is `StreamsProcessed`: the rewritten and the already-correct streams together.
 
 ### Streams that end in a purge {#terminal-purges}
 

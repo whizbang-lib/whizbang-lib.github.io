@@ -12,6 +12,7 @@ tags: >-
   perspectives, rewind, late-arriving-events, out-of-order, replay, snapshots,
   startup-scan, observability, operational
 codeReferences:
+  - src/Whizbang.Core/Perspectives/ReplayEventOrder.cs
   - src/Whizbang.Core/Perspectives/PerspectiveRewindOptions.cs
   - src/Whizbang.Core/Perspectives/PerspectiveSnapshotOptions.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
@@ -30,6 +31,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Core/Workers/StartupRewindSet.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/ReplayEventOrderTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindOptionsTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveSnapshotAndRewindTests.cs
   - tests/Whizbang.Core.Component.Tests/Perspectives/PerspectiveRewindCompletionGapTests.cs
@@ -221,16 +223,26 @@ This is the fix for an earlier defect: the original implementation read the even
 
 ### Replay ordering: slotting reconciled events {#replay-ordering}
 
-Each apply pass sorts its batch with **one comparator, chosen by what the batch can prove**:
+Each apply pass orders its batch in two steps (`ReplayEventOrder`).
 
-1. **Origin order** — when every event in the batch carries the *same, non-empty* `SourceServiceId` and a positive `SourceCommitSequence` (a single-origin stream, the normal cross-service shape). A reconciled straggler keeps its original origin slot but lands with an arrival-fresh **local** sequence — a local-order replay would apply it *last*, which is exactly the arrival-order failure the rewind exists to correct. Origin order slots the backfilled event at its intended position, so the final model equals what a never-missed history would have produced.
-2. **Stream order** — otherwise, when every event carries the version its stream appended it at (`LocalStreamVersion`, set by the replay read). This is the order the stream was written in and the order the live apply folded it in. A local `commit_sequence` only records when the stamper reached a row: rows stamped after the fact can carry sequences that run backward against their versions, and a replay in that order applied a stream's last write first and left the row holding an older value.
-3. **Local commit order** — otherwise, when every event carries its local `commit_sequence` stamp (a store whose read does not carry the version). An id-ordered replay would silently undo newer writes, because same-millisecond UUIDv7 ids can disagree with the order events were stored in.
-4. **Event-id order** — the fallback when any event is unstamped (stamper lag); a partial mix of comparators would interleave two orderings.
+**First, the local order**, one comparator per batch, chosen by what the batch can prove:
 
-{verified: ReplayEventOrderTests.Order_WhenCommitSequencesRunBackwardAgainstVersions_FollowsTheStreamsVersionsAsync, ReplayEventOrderTests.Order_WhenOneOriginStampsEveryEvent_FollowsOriginOrderOverVersionOrderAsync, PerspectiveApplyIdempotencyTests.RewindAndRun_StampsRunBackwardAgainstTheStream_FoldsInStreamOrderAsync}
+1. **Stream order**, when every event carries the version its stream appended it at (`LocalStreamVersion`, set by the replay read). This is the order the stream was written in and the order the live apply folded it in. A local `commit_sequence` only records when the stamper reached a row: rows stamped after the fact can carry sequences that run backward against their versions, and a replay in that order applied a stream's last write first and left the row holding an older value.
+2. **Local commit order**, otherwise, when every event carries its local `commit_sequence` stamp (a store whose read does not carry the version). An id-ordered replay would silently undo newer writes, because same-millisecond UUIDv7 ids can disagree with the order events were stored in.
+3. **Event-id order**, the fallback when any event is unstamped (stamper lag); a partial mix of comparators would interleave two orderings.
 
-Cross-origin events on one stream have **no defined total order** (concurrent writers, per-origin sequence spaces — the numbers collide by design), so mixed-origin batches deliberately fall to rule 2/3 rather than invent one. Origin sequences are only ever compared *within* one origin.
+**Then, origin order within each origin's places (#2257).** An event received from another service carries its origin (`SourceServiceId`, non-empty) and its position there (`SourceCommitSequence`, positive). A receiver stores events in arrival order, which delivery across topics and partitions, and integrity redelivery, do not keep in the origin's order: an update the origin committed before a delete can arrive after it, and a reconciled straggler keeps its original origin slot but lands with an arrival-fresh **local** sequence. So the places each origin's events hold in the local order are kept, and that origin's events are dealt into those places in origin order (ties broken on the event id):
+
+| Events in the batch | Replay order |
+|---|---|
+| One origin throughout | Pure origin order: the backfilled event lands at its intended position, so the final model equals what a never-missed history would have produced |
+| One origin among local events | The origin's events take origin order in their own places; the local events keep theirs |
+| Several origins | Each origin's events follow that origin's order in its own places; the interleaving of different origins stays the arrival order, the only order the receiver knows between them |
+| No origins (local events only) | Pure local order |
+
+{verified: ReplayEventOrderTests.Order_WhenCommitSequencesRunBackwardAgainstVersions_FollowsTheStreamsVersionsAsync, ReplayEventOrderTests.Order_WhenOneOriginStampsEveryEvent_FollowsOriginOrderOverVersionOrderAsync, ReplayEventOrderTests.Order_WhenAnOriginsEventsArriveOutOfOrderAmongLocalEvents_PutsThemInOriginOrderInTheirSlotsAsync, ReplayEventOrderTests.Order_WhenTwoOriginsInterleave_EachFollowsItsOwnOriginOrder_AndTheInterleavingIsArrivalAsync, ReplayEventOrderTests.Order_WhenStreamVersionsDecideTheLocalOrder_OriginEventsStillTakeOriginOrderInTheirSlotsAsync, ReplayEventOrderTests.Order_AMixedStream_GivesTheSameResultForEveryArrangementOfTheBatchAsync, ReplayEventOrderTests.Order_WhenOneOriginsSequencesTieInAMixedStream_BreaksOnTheIdAsync, PerspectiveApplyIdempotencyTests.RewindAndRun_StampsRunBackwardAgainstTheStream_FoldsInStreamOrderAsync}
+
+Cross-origin events on one stream have **no defined total order** (concurrent writers, per-origin sequence spaces: the numbers collide by design), so origin sequences are only ever compared *within* one origin, and the places between origins are never reordered. Before #2257 a mixed stream fell back to local order entirely, so a single origin's reordered events in a stream that also held local events replayed in arrival order. The purge marker stays the backstop for what replay cannot reorder: see [purge stays purged](perspectives-with-actions#purge-stays-purged).
 
 ### Below the row's position: the runner rewinds too {#below-position}
 

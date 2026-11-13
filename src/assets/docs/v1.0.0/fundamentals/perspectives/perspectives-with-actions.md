@@ -13,6 +13,7 @@ tags: >-
   perspectives, delete, purge, soft-delete, ApplyResult, ModelAction,
   row-removal, resurrect, purge-marker
 codeReferences:
+  - src/Whizbang.Core/Perspectives/ReplayEventOrder.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveWithActionsFor.cs
   - src/Whizbang.Core/Perspectives/ApplyResult.cs
   - src/Whizbang.Core/Perspectives/ModelAction.cs
@@ -25,6 +26,7 @@ codeReferences:
   - src/Whizbang.Generators/Analyzers/PerspectiveContractAnalyzer.cs
   - src/Whizbang.Data.Postgres/Migrations/264_DrainSaysWhichEventIsFirstInItsStream.sql
 testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/ReplayEventOrderTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveWithActionsForTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/ApplyResultTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/ModelActionTests.cs
@@ -503,6 +505,7 @@ The runner now remembers the purge, and checks it **before** any `Apply` runs:
 - **Resurrect is the only way back.** To find out whether an event opts back in, the runner still calls its `Apply` on a fresh empty model, and throws the result away unless it is `ApplyResult<TModel>.Resurrect(model)`, which recreates the row and clears the marker; events after it apply normally. Nothing a create-or-update `Apply` returns can recreate the row.
 - **New streams are never affected.** The marker is consulted only when the row is missing, and a marker exists only after a purge, so a new stream, or any stream that was never purged, never pays for or meets it.
 - **Live, rewind and rebuild agree.** A rebuild or a full rewind of a purged stream starts purged when the stream carries a marker, so replaying "created, deleted, bumped" leaves no row, exactly as the live drain did. A straggler written before the delete but delivered after it stays out too: the live drain finds the marker, and a rewind replays it in order before the purge.
+- **Replay restores the origin's order before the purge applies (#2257).** A receiver stores events in arrival order, which delivery across topics and partitions, and integrity redelivery, do not keep: an update the origin committed before a delete can arrive after it. A rebuild or rewind deals each origin's received events back into [origin order](rewind#replay-ordering), also in a stream that holds events of several origins or local events too, so that update replays before the purge. The marker remains the backstop for what replay cannot reorder: once a row is purged, a later event whose `Apply` does not return `Resurrect` is skipped, logged and counted (#1027).
 - **An operator purge marks every perspective.** [Purging streams](../../operations/infrastructure/purging-streams.md) removes a stream entirely and marks it for every perspective at once, so a later event cannot recreate any of its rows.
 
 ```csharp{title="Opting back in with Resurrect" description="A follow-up written as create-or-update stays out of a purged stream; only the reopen recreates the row" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "ApplyResult", "Purge", "Resurrect"] tests=["PurgeStaysPurgedTests.LaterBatch_AfterPurge_IsSkipped_AndNoRowIsRecreatedAsync", "PurgeStaysPurgedTests.Resurrect_OnPurgedStream_RecreatesRow_AndClearsMarkerAsync", "PurgeStaysPurgedTests.Rebuild_OfDeletedThenBumpedStream_LeavesNoRowAsync"]}

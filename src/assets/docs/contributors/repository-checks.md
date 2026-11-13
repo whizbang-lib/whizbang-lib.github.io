@@ -4,7 +4,7 @@ pageType: reference
 audience: [contributor]
 status: current
 order: 5
-description: The build errors this repository raises on its own code and tests (WHIZ600 to WHIZ606), what each one protects, and how a new diagnostic gets its ID from the one registry of every WHIZ ID
+description: The build errors this repository raises on its own code and tests (WHIZ600 to WHIZ608), what each one protects, and how a new diagnostic gets its ID from the one registry of every WHIZ ID
 tags: contributing, analyzers, diagnostics, testing, sharding, ci
 ---
 
@@ -23,6 +23,8 @@ Every build diagnostic in this repository has one ID form, `WHIZ` and three digi
 | [WHIZ604](../v1.0.0/operations/diagnostics/whiz604.md) | `Whizbang.RepoAnalyzers` | A `JsonDocument` created and dropped without being disposed. |
 | [WHIZ605](../v1.0.0/operations/diagnostics/whiz605.md) | `Whizbang.TestAnalyzers` | A test class in a sharded test project without exactly one `Shard*` category. |
 | [WHIZ606](../v1.0.0/operations/diagnostics/whiz606.md) | `Whizbang.RepoAnalyzers` | A settings property whose name says it holds a credential is a plain `string`. |
+| [WHIZ607](../v1.0.0/operations/diagnostics/whiz607.md) | `Whizbang.RepoAnalyzers` | Library code reads a type, namespace or assembly name, or resolves a type from a string, outside the shared naming code. |
+| [WHIZ608](../v1.0.0/operations/diagnostics/whiz608.md) | `Whizbang.RepoAnalyzers` | A suppression of WHIZ607 that does not say why. |
 
 WHIZ600 to WHIZ604 were `WHZ0001` to `WHZ0005` until they moved into the single ID form. A suppression or severity setting that names an old ID no longer applies.
 
@@ -45,6 +47,16 @@ public class IntegrityDeliverySqlTests : EFCoreTestBase {
 The rule fails the build, so a new class without a shard is caught in the editor rather than after a CI run. `ShardCoverageGuardTests` checks the same rule at test time as a second line of defense.
 
 {verified: ShardCategoryAnalyzerTests.TestClass_WithTwoShardCategories_ReportsBothShardsAsync, ShardCategoryAnalyzerTests.TestClass_WithExactlyOneShard_ReportsNothingAsync, ShardCategoryAnalyzerTests.ShardOnABaseClass_IsCountedForTheDerivedClassAsync, ShardCoverageGuardTests.EveryTestClass_DeclaresExactlyOneShardCategoryAsync}
+
+## WHIZ607 and WHIZ608: type names come from one place
+
+Every type name the library reads comes from the shared naming code (`TypeNameFormatter`, `EventTypeMatchingHelper`,
+`TypeFormatter` and `MultiPassMessageTypeBinder` at runtime, `TypeNameUtilities` in the generators, each marked
+`[TypeNameAuthority]`). WHIZ607 fails a library build that reads a name anywhere else, and WHIZ608 fails an exception
+to it that does not say why. Both apply to projects under `src/` only. [Type Names in Library Code](type-naming.md)
+lists which helper gives which form and the banned-symbol backstop.
+
+{verified: TypeNameSourceAnalyzerTests.Descriptors_AreTheRepositoryRulesReportedAsErrorsAsync, TypeNameSourceAnalyzerTests.Runtime_ANameReadOffATypeOrAssembly_IsReportedAsync, TypeNameSourceAnalyzerTests.Suppression_WithoutAJustification_IsReportedAsync}
 
 ## Giving a new diagnostic its ID
 
