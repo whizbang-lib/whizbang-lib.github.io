@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "43449534973",
-    "sha": "8fc6ee0a4634d400ea4ec0008dff207e0b2fdaf6",
+    "runId": "43455527208",
+    "sha": "14b2fae1a6725f67e86c51bad5663879c6af28a8",
     "branch": "develop",
-    "libraryVersion": "0.2627.0-alpha.1309",
-    "completedAt": "2026-11-13T15:09:43.123Z"
+    "libraryVersion": "0.2627.0-alpha.1388",
+    "completedAt": "2026-11-13T16:01:28.514Z"
   },
   "total": {
-    "passed": 41595,
+    "passed": 41882,
     "failed": 0,
     "skipped": 12
   },
@@ -18,7 +18,7 @@
       "skipped": 0
     },
     "component": {
-      "passed": 6039,
+      "passed": 6051,
       "failed": 0,
       "skipped": 0
     },
@@ -33,12 +33,12 @@
       "skipped": 3
     },
     "postgres-dapper": {
-      "passed": 1574,
+      "passed": 1576,
       "failed": 0,
       "skipped": 0
     },
     "postgres-efcore-": {
-      "passed": 10066,
+      "passed": 10159,
       "failed": 0,
       "skipped": 0
     },
@@ -58,7 +58,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 22889,
+      "passed": 23069,
       "failed": 0,
       "skipped": 8
     }
@@ -168,7 +168,7 @@
     },
     "Whizbang.Core.Component.Tests": {
       "file": "Whizbang.Core.Component.Tests.json",
-      "passed": 4700,
+      "passed": 4712,
       "failed": 0,
       "skipped": 0
     },
@@ -180,19 +180,19 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 14669,
+      "passed": 14812,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.Dapper.Postgres.Tests": {
       "file": "Whizbang.Data.Dapper.Postgres.Tests.json",
-      "passed": 1574,
+      "passed": 1576,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.EFCore.Postgres.Tests": {
       "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
-      "passed": 10066,
+      "passed": 10159,
       "failed": 0,
       "skipped": 0
     },
@@ -240,7 +240,7 @@
     },
     "Whizbang.Generators.Tests": {
       "file": "Whizbang.Generators.Tests.json",
-      "passed": 4101,
+      "passed": 4106,
       "failed": 0,
       "skipped": 0
     },
@@ -348,7 +348,7 @@
     },
     "Whizbang.RepoAnalyzers.Tests": {
       "file": "Whizbang.RepoAnalyzers.Tests.json",
-      "passed": 32,
+      "passed": 64,
       "failed": 0,
       "skipped": 0
     },
