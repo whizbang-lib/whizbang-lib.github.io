@@ -16,5 +16,3 @@ Whizbang:StandbyWatcher:RequesterLivenessWindow  # configuration-reference#remov
 Whizbang:Database:RoleAssignment:Enabled                # configuration-reference#removed-keys lists it as a removed key (#2044): every duty is a role assignment
 Whizbang:Database:RoleAssignment:HoldLegacySessionLock  # configuration-reference#removed-keys lists it as a removed key (#2044): the legacy-lock bridge is gone
 Whizbang:Database:Stamper:AdvisoryLockKey               # configuration-reference#removed-keys lists it as a removed key (#2044): the stamper takes no lock of its own
-Whizbang:BatchBuffer:InteractiveReserveFraction  # startup-settings-report lists it as a derived value the report prints under that name; computed from the gate, never read from configuration
-Whizbang:Workers:ThreadPoolFloor                 # startup-settings-report lists it as a derived value the report prints under that name; computed from the processor count, never read from configuration
