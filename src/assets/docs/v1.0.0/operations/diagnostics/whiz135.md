@@ -16,7 +16,7 @@ tags:
 codeReferences:
   - src/Whizbang.Generators/SupersedingEventAnalyzer.cs
   - src/Whizbang.Generators/Utilities/SupersedingResolver.cs
-  - src/Whizbang.Generators/Utilities/EphemeralResolver.cs
+  - src/Whizbang.Generators.Shared/Utilities/EphemeralResolver.cs
   - src/Whizbang.Core/Attributes/SupersedingAttribute.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/SupersedingEventAnalyzerTests.cs

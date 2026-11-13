@@ -81,7 +81,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/ScheduledPrefixTruncateReceptor.cs
   - src/Whizbang.Data.EFCore.Postgres/ScheduledPrefixTruncateReceptorRegistrar.cs
   - src/Whizbang.Generators/EphemeralAnalyzer.cs
-  - src/Whizbang.Generators/Utilities/EphemeralResolver.cs
+  - src/Whizbang.Generators.Shared/Utilities/EphemeralResolver.cs
   - src/Whizbang.Generators/PerspectiveRunnerGenerator.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
 testReferences:

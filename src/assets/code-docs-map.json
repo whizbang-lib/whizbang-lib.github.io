@@ -13114,5 +13114,29 @@
     "line": 22,
     "symbol": "StreamCloseSchedule",
     "docs": "fundamentals/events/ephemeral-events"
+  },
+  "SnapshotBootstrapOutcome": {
+    "file": "src/Whizbang.Core/Perspectives/SnapshotBootstrapOutcome.cs",
+    "line": 9,
+    "symbol": "SnapshotBootstrapOutcome",
+    "docs": "fundamentals/perspectives/snapshots#bootstrap"
+  },
+  "KeepEphemeralRewindFloorAttribute": {
+    "file": "src/Whizbang.Core/Attributes/KeepEphemeralRewindFloorAttribute.cs",
+    "line": 26,
+    "symbol": "KeepEphemeralRewindFloorAttribute",
+    "docs": "fundamentals/events/ephemeral-events#snapshots-follow-what-a-read-model-consumes"
+  },
+  "EphemeralRewindFloor": {
+    "file": "src/Whizbang.Core/Perspectives/EphemeralRewindFloor.cs",
+    "line": 21,
+    "symbol": "EphemeralRewindFloor",
+    "docs": "fundamentals/events/ephemeral-events#snapshots-follow-what-a-read-model-consumes"
+  },
+  "EphemeralConsumption": {
+    "file": "src/Whizbang.Generators.Shared/Utilities/EphemeralConsumption.cs",
+    "line": 21,
+    "symbol": "EphemeralConsumption",
+    "docs": "fundamentals/events/ephemeral-events#snapshots-follow-what-a-read-model-consumes"
   }
 }
