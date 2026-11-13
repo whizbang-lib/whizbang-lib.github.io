@@ -306,7 +306,7 @@ Bound during Postgres driver registration with a hand-rolled binder. Controls th
 |-----|------|---------|----------------------|---------|
 | `SignalingMode` | `WorkSignalingMode` | `Auto` | `Whizbang__Database__SignalingMode` | Polling vs LISTEN/NOTIFY mode selection |
 | `ConnectionStringKey` | `string?` | `null` | `Whizbang__Database__ConnectionStringKey` | `ConnectionStrings` key for the listener connection; resolution prefers `{key}-direct`, then `{key}` |
-| `DirectConnectionString` | `string?` | `null` | `Whizbang__Database__DirectConnectionString` | Explicit direct connection string; overrides key-based lookup |
+| `DirectConnectionString` | [`SensitiveString?`](sensitive-settings.md) | `null` | `Whizbang__Database__DirectConnectionString` | Explicit direct connection string; overrides key-based lookup |
 | `DisableNotifications` | `bool` | `false` | `Whizbang__Database__DisableNotifications` | Kill switch forcing polling-only mode |
 | `PollingFallbackInterval` | `TimeSpan` | `00:00:30` | `Whizbang__Database__PollingFallbackInterval` | Safety-net polling cadence while the listener is healthy |
 | `SignalRetention` | `TimeSpan` | `7.00:00:00` | `Whizbang__Database__SignalRetention` | How long a durable signal is kept before the retention sweep may delete it; never past a signal an instance has not delivered. Zero or less is rejected at startup ([retention](../../fundamentals/signal-bus/signal-bus#retention)). Once `wh_signals` is partitioned, also the window past which a daily partition is dropped ([partitioned ledgers](../infrastructure/partitioned-ledgers#row-sweeps)) |
@@ -599,7 +599,7 @@ Every child of `Whizbang:Offloads:AzureBlob` registers one named provider. The p
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
-| `ConnectionString` | `string?` | `null` | `Whizbang__Offloads__AzureBlob__<name>__ConnectionString` | Azure Storage connection string (emulator or live) |
+| `ConnectionString` | [`SensitiveString?`](sensitive-settings.md) | `null` | `Whizbang__Offloads__AzureBlob__<name>__ConnectionString` | Azure Storage connection string (emulator or live) |
 | `ContainerName` | `string` | `whizbang-offload-bodies` | `Whizbang__Offloads__AzureBlob__<name>__ContainerName` | Container holding offloaded bodies; lazily created on first upload |
 | `DefaultAccessTier` | `AccessTier?` | `null` (account default) | `Whizbang__Offloads__AzureBlob__<name>__DefaultAccessTier` | Blob access tier for uploads (Hot/Cool/Cold/Archive) |
 | `MaxDownloadBytes` | `long?` | `null` (no cap) | `Whizbang__Offloads__AzureBlob__<name>__MaxDownloadBytes` | Defensive cap on download size; refuses claims reporting a larger body. The read itself always stops at the size the claim declares |
@@ -657,7 +657,7 @@ builder.Services.AddWhizbangAzureBlobArchive(builder.Configuration);
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
 | `ServiceUri` | `Uri?` | `null` | `Whizbang__Archive__AzureBlob__ServiceUri` | Blob service endpoint; authenticates with the registered `TokenCredential`. Set this or `ConnectionString` |
-| `ConnectionString` | `string?` | `null` | `Whizbang__Archive__AzureBlob__ConnectionString` | Storage connection string (Azurite, or an account key from the host's secret store) |
+| `ConnectionString` | [`SensitiveString?`](sensitive-settings.md) | `null` | `Whizbang__Archive__AzureBlob__ConnectionString` | Storage connection string (Azurite, or an account key from the host's secret store) |
 | `ContainerName` | `string` | `whizbang-archive` | `Whizbang__Archive__AzureBlob__ContainerName` | Container the archive objects are written to; created on the first write |
 | `ConnectionName` | `string` | `default` | `Whizbang__Archive__AzureBlob__ConnectionName` | Logical name of the storage connection, recorded in the [archive location](../../fundamentals/events/archive-store#archive-locations); refused if it looks like a connection string (contains `;` or `=`) |
 | `VerifyLocation` | `bool` | `true` | `Whizbang__Archive__AzureBlob__VerifyLocation` | Compare every archive record's location with the configured one before a read, restore, delete or write, and refuse a mismatch ([what turning it off gives up](../../fundamentals/events/archive-store#verify-location)) |
@@ -1222,20 +1222,20 @@ Shared batching shape (drain signals). **Configure:** bound as the owning worker
 | `SlidingWindow` | `TimeSpan` | `00:00:00.050` | `Whizbang__Workers__<Worker>__Batcher__SlidingWindow` | Quiet period after the last arrival |
 | `MaxWait` | `TimeSpan` | `00:00:01` | `Whizbang__Workers__<Worker>__Batcher__MaxWait` | Hard cap on wait from the first arrival |
 
-### SlidingWindowInboxOptions / SlidingWindowOutboxOptions / SlidingWindowApplyOptions {#sliding-window-options}
+### SlidingWindowInboxOptions / SlidingWindowOutboxOptions {#sliding-window-options}
 
-Per-stream debounce strategies for the inbox, outbox, and perspective-apply boundaries. **Configure:** the inbox and outbox shapes bind automatically from `Whizbang:Workers:InboxBatch` and `Whizbang:Workers:OutboxBatch` with no registration call needed, and `services.Configure<T>(…)` still applies and runs first. The apply shape (`SlidingWindowApplyOptions`) has no configuration section and is code-configured. **Details:** [outbox batch strategy](../../extending/internals/outbox-batch-strategy.md), [inbox batch strategy](../../extending/internals/inbox-batch-strategy.md).
+Per-stream debounce strategies for the inbox and outbox boundaries. **Configure:** both bind automatically from `Whizbang:Workers:InboxBatch` and `Whizbang:Workers:OutboxBatch` with no registration call needed, and `services.Configure<T>(…)` still applies and runs first. (The perspective drain's coalescing window is `PerspectiveWorkerOptions.DrainBatcher`.) **Details:** [outbox batch strategy](../../extending/internals/outbox-batch-strategy.md), [inbox batch strategy](../../extending/internals/inbox-batch-strategy.md).
 
-| Property | Type | Inbox default | Outbox default | Apply default | Environment variable (inbox / outbox) | Purpose |
-|----------|------|---------------|----------------|---------------|----------------------------------------|---------|
-| `SlidingWindow` | `TimeSpan` | 300ms | 50ms | 300ms | `Whizbang__Workers__InboxBatch__SlidingWindow` / `Whizbang__Workers__OutboxBatch__SlidingWindow` | Per-stream debounce after the last signal |
-| `MaxWait` | `TimeSpan` | 3s | 1s | 3s | `Whizbang__Workers__InboxBatch__MaxWait` / `Whizbang__Workers__OutboxBatch__MaxWait` | Hard cap from the first signal in a batch |
-| `MaxSize` | `int` | 1000 | 100 | 1000 | `Whizbang__Workers__InboxBatch__MaxSize` / `Whizbang__Workers__OutboxBatch__MaxSize` | Max signals per stream batch |
-| `IdleEvictionWindow` | `TimeSpan` | 30s | 30s | 30s | `Whizbang__Workers__InboxBatch__IdleEvictionWindow` / `Whizbang__Workers__OutboxBatch__IdleEvictionWindow` | Evict a stream's buffer after this idle duration |
-| `IdleSweepInterval` | `TimeSpan` | 10s | 10s | 10s | `Whizbang__Workers__InboxBatch__IdleSweepInterval` / `Whizbang__Workers__OutboxBatch__IdleSweepInterval` | How often the idle sweep runs |
-| `MaxFlushAttempts` | `int` | 5 | 5 | n/a | `Whizbang__Workers__InboxBatch__MaxFlushAttempts` / `Whizbang__Workers__OutboxBatch__MaxFlushAttempts` | Attempts to store a stream's batch, the first included, before it is dead-lettered; only a transient database failure is retried. At least 1 |
-| `FlushRetryBackoff` | `TimeSpan` | 100ms | 100ms | n/a | `Whizbang__Workers__InboxBatch__FlushRetryBackoff` / `Whizbang__Workers__OutboxBatch__FlushRetryBackoff` | Wait before the first retry of a batch store; doubles per retry |
-| `FlushRetryMaxBackoff` | `TimeSpan` | 5s | 5s | n/a | `Whizbang__Workers__InboxBatch__FlushRetryMaxBackoff` / `Whizbang__Workers__OutboxBatch__FlushRetryMaxBackoff` | Longest wait between two attempts to store a batch |
+| Property | Type | Inbox default | Outbox default | Environment variable (inbox / outbox) | Purpose |
+|----------|------|---------------|----------------|----------------------------------------|---------|
+| `SlidingWindow` | `TimeSpan` | 300ms | 50ms | `Whizbang__Workers__InboxBatch__SlidingWindow` / `Whizbang__Workers__OutboxBatch__SlidingWindow` | Per-stream debounce after the last signal |
+| `MaxWait` | `TimeSpan` | 3s | 1s | `Whizbang__Workers__InboxBatch__MaxWait` / `Whizbang__Workers__OutboxBatch__MaxWait` | Hard cap from the first signal in a batch |
+| `MaxSize` | `int` | 1000 | 100 | `Whizbang__Workers__InboxBatch__MaxSize` / `Whizbang__Workers__OutboxBatch__MaxSize` | Max signals per stream batch |
+| `IdleEvictionWindow` | `TimeSpan` | 30s | 30s | `Whizbang__Workers__InboxBatch__IdleEvictionWindow` / `Whizbang__Workers__OutboxBatch__IdleEvictionWindow` | Evict a stream's buffer after this idle duration |
+| `IdleSweepInterval` | `TimeSpan` | 10s | 10s | `Whizbang__Workers__InboxBatch__IdleSweepInterval` / `Whizbang__Workers__OutboxBatch__IdleSweepInterval` | How often the idle sweep runs |
+| `MaxFlushAttempts` | `int` | 5 | 5 | `Whizbang__Workers__InboxBatch__MaxFlushAttempts` / `Whizbang__Workers__OutboxBatch__MaxFlushAttempts` | Attempts to store a stream's batch, the first included, before it is dead-lettered; only a transient database failure is retried. At least 1 |
+| `FlushRetryBackoff` | `TimeSpan` | 100ms | 100ms | `Whizbang__Workers__InboxBatch__FlushRetryBackoff` / `Whizbang__Workers__OutboxBatch__FlushRetryBackoff` | Wait before the first retry of a batch store; doubles per retry |
+| `FlushRetryMaxBackoff` | `TimeSpan` | 5s | 5s | `Whizbang__Workers__InboxBatch__FlushRetryMaxBackoff` / `Whizbang__Workers__OutboxBatch__FlushRetryMaxBackoff` | Longest wait between two attempts to store a batch |
 
 :::new
 `MaxFlushAttempts`, `FlushRetryBackoff` and `FlushRetryMaxBackoff` govern what the inbox and outbox batchers do
@@ -1322,6 +1322,7 @@ Re-delivery (repair) pump bounds. **Configure:** bound automatically from `Whizb
 | `IdleThresholdPolls` | `int` | `2` | `Whizbang__Workers__Perspective__IdleThresholdPolls` | Consecutive empty polls before `OnWorkProcessingIdle` |
 | `PerspectiveBatchSize` | `int` | `100` | `Whizbang__Workers__Perspective__PerspectiveBatchSize` | Events processed per batch before saving model + checkpoint |
 | `MaxConcurrentPerspectives` | `int` | `30` | `Whizbang__Workers__Perspective__MaxConcurrentPerspectives` | Max perspective groups processed concurrently per batch; the effective per-consumer width is clamped against the coordinator gate (note below) |
+| `WriteMode` | `PerspectiveWriteMode` | `SetBased` | `Whizbang__Workers__Perspective__WriteMode` | How perspective rows are written: set-based across the batch's streams, or per stream; a perspective overrides it with `[PerspectiveWriteMode]`. See [Perspective Write Modes](../../fundamentals/perspectives/write-modes.md#selection) |
 | `MaxConcurrentDrainConsumers` | `int` | `4` | `Whizbang__Workers__Perspective__MaxConcurrentDrainConsumers` | Parallel consumer loops on the channel reader; consumers × per-consumer width may use at most half of `WorkCoordinatorGateOptions.MaxConcurrent` (note below) |
 | `MaxStreamsPerBatch` | `int` | `300` | `Whizbang__Workers__Perspective__MaxStreamsPerBatch` | Max streams returned per batch from the SQL function |
 | `DrainLoopMaxIterations` | `int` | `5` | `Whizbang__Workers__Perspective__DrainLoopMaxIterations` | Cap on per-stream drain-loop refetch iterations; 1 disables |
@@ -1793,7 +1794,7 @@ Dedicated long-lived PostgreSQL connections for background workers, bypassing a 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
 | `ConnectionStringName` | `string?` | `null` | `Whizbang__Workers__PinnedPool__ConnectionStringName` | `ConnectionStrings:*` key resolving to the direct (non-pooler) string; convention `{service}-db-direct` |
-| `ConnectionString` | `string?` | `null` | `Whizbang__Workers__PinnedPool__ConnectionString` | Inline direct string when `ConnectionStringName` is unset; empty = feature no-op |
+| `ConnectionString` | [`SensitiveString?`](sensitive-settings.md) | `null` | `Whizbang__Workers__PinnedPool__ConnectionString` | Inline direct string when `ConnectionStringName` is unset; empty = feature no-op |
 | `Enabled` | `bool` | `false` | `Whizbang__Workers__PinnedPool__Enabled` | Master switch |
 | `Size` | `int` | `1` | `Whizbang__Workers__PinnedPool__Size` | Pinned connections held open |
 | `IncludeFlushWorkers` | `bool` | `true` | `Whizbang__Workers__PinnedPool__IncludeFlushWorkers` | Tier-2 flush workers also borrow from the pool |

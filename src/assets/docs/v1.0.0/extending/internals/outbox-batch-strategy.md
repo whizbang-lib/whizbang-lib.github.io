@@ -19,6 +19,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/DeadLetterRecoveryTypes.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Core/Workers/SlidingWindowOutboxBatchStrategy.cs
+  - src/Whizbang.Core/Workers/CoalescingOutboxBatchStrategy.cs
+  - src/Whizbang.Core/Workers/BatchStrategyResolution.cs
   - src/Whizbang.Core/Workers/SlidingWindowOutboxOptions.cs
   - src/Whizbang.Core/Workers/OutboxFlushFailureRecorder.cs
   - src/Whizbang.Core/Workers/BatchStoreRetry.cs
@@ -33,6 +35,8 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowOutboxFlushFailureTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/CoalescingOutboxBatchStrategyTests.cs
+  - tests/Whizbang.Core.Tests/Workers/BatchStrategyResolutionTests.cs
   - tests/Whizbang.Core.Component.Tests/Dispatcher/LocalInvokeResultOutboxFlushFailureComponentTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatcherAmbientContextTests.cs
   - tests/Whizbang.Core.Tests/Workers/OutboxFlushFailureCallbackTests.cs
@@ -50,7 +54,10 @@ buffers it under its stream and returns as soon as it is buffered. A worker of t
 stream's batch a moment later through `IWorkCoordinator.StoreOutboxMessagesAsync`. The caller does not wait
 for the write.
 
-The default strategy, `SlidingWindowOutboxBatchStrategy`, keeps one buffer per stream id:
+The default strategy, `CoalescingOutboxBatchStrategy`, coalesces writes from many streams into one flush
+([#2220](https://github.com/whizbang-lib/whizbang/issues/2220)). See [Coalescing](#coalescing).
+
+`SlidingWindowOutboxBatchStrategy`, the default before it, keeps one buffer per stream id:
 
 - Messages of one stream are stored by one worker, one batch at a time, in order. Different streams batch and
   store independently.
@@ -62,6 +69,44 @@ The default strategy, `SlidingWindowOutboxBatchStrategy`, keeps one buffer per s
 `ImmediateOutboxBatchStrategy` is the alternative with no batching: each append is stored before it returns.
 Register either, or your own, with `AddWhizbangOutboxStrategy`. The ordering guarantees the batcher keeps are
 described in the [event ordering invariant](event-ordering-invariant.md).
+
+Whichever is chosen, and however it is registered, it is bounded by the process-wide
+[batch buffer](../../messaging/outbox-pattern.md#bounded-buffer): one registered through
+`AddWhizbangOutboxStrategy` is wrapped at registration, and one registered directly as `IOutboxBatchStrategy` is
+wrapped where the framework resolves the strategy it appends to, once per instance. A custom strategy stores through
+the registered `OutboxBulkFlushCallback` and reports failures through the registered `OutboxFlushFailureCallback`:
+those give a batch's room in the buffer back. A strategy that stores some other way never gives it back, and once the
+buffer is full every append waits; the buffer's wait warning and its `whizbang.batch_buffer.*` metrics show it.
+
+## Coalescing {#coalescing}
+
+With one event per stream, a per-stream batcher stores one message per flush and keeps a buffer, a channel and a
+drain task alive for every stream; a burst over many thousands of streams became as many flushes, each waiting for a
+slot of the work coordinator gate. `CoalescingOutboxBatchStrategy` keeps a small fixed number of partitions instead:
+
+- Each stream maps to one partition (`Partitions`, default 4), which has one sliding window and one drain. A flush
+  carries up to `MaxSize` (500) messages from any number of streams, so a burst becomes a few flushes.
+- A stream always maps to the same partition and a partition stores one batch at a time, so a stream's messages are
+  stored in the order they were appended and two flushes never carry the same stream at once. Within a flush the
+  messages are ordered by stream and then by message id (UUIDv7, so chronological).
+- A batch is stored when no message has arrived for `SlidingWindow` (50 ms), when `MaxWait` (1 s) has passed since
+  its first message, or when it is full.
+- A failed store is retried, dead-lettered and reported exactly as below; the failure record names one stream, so a
+  coalesced batch is reported one stream at a time.
+
+| Setting (`Whizbang:Workers:CoalescingOutbox`) | Default |
+|---------|---------|
+| `SlidingWindow` | `00:00:00.050` |
+| `MaxWait` | `00:00:01` |
+| `MaxSize` | `500` |
+| `Partitions` | `4` |
+| `MaxFlushAttempts` | `5` |
+| `FlushRetryBackoff` | `00:00:00.100` |
+| `FlushRetryMaxBackoff` | `00:00:05` |
+
+To keep the per-stream batcher, register it: `services.AddWhizbangOutboxStrategy<SlidingWindowOutboxBatchStrategy>()`.
+
+{verified: CoalescingOutboxBatchStrategyTests.WritesFromManyStreams_AreStoredInOneFlushAsync, CoalescingOutboxBatchStrategyTests.WithinAFlush_MessagesAreOrderedByStream_ThenByMessageIdAsync, BatchStrategyResolutionTests.ARawOutboxRegistration_IsAppendedToBounded_AndBlocksAtTheLimitAsync}
 
 ## Settings {#settings}
 

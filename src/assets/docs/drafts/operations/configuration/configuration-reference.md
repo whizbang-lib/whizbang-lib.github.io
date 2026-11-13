@@ -111,7 +111,7 @@ Bound during Postgres driver registration with a hand-rolled binder. Controls th
 |-----|------|---------|----------------------|---------|
 | `SignalingMode` | `WorkSignalingMode` | `Auto` | `Whizbang__Database__SignalingMode` | Polling vs LISTEN/NOTIFY mode selection |
 | `ConnectionStringKey` | `string?` | `null` | `Whizbang__Database__ConnectionStringKey` | `ConnectionStrings` key for the listener connection; resolution prefers `{key}-direct`, then `{key}` |
-| `DirectConnectionString` | `string?` | `null` | `Whizbang__Database__DirectConnectionString` | Explicit direct connection string; overrides key-based lookup |
+| `DirectConnectionString` | [`SensitiveString?`](../../../v1.0.0/operations/configuration/sensitive-settings.md) | `null` | `Whizbang__Database__DirectConnectionString` | Explicit direct connection string; overrides key-based lookup |
 | `DisableNotifications` | `bool` | `false` | `Whizbang__Database__DisableNotifications` | Kill switch forcing polling-only mode |
 | `PollingFallbackInterval` | `TimeSpan` | `00:00:30` | `Whizbang__Database__PollingFallbackInterval` | Safety-net polling cadence while the listener is healthy |
 | `ListenKeepaliveInterval` | `TimeSpan` | `00:00:30` | `Whizbang__Database__ListenKeepaliveInterval` | Cadence of `SELECT 1` keepalive on the listener connection |
@@ -185,7 +185,7 @@ Every child of `Whizbang:Offloads:AzureBlob` registers one named provider. The p
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
-| `ConnectionString` | `string?` | `null` | `Whizbang__Offloads__AzureBlob__<name>__ConnectionString` | Azure Storage connection string (emulator or live) |
+| `ConnectionString` | [`SensitiveString?`](../../../v1.0.0/operations/configuration/sensitive-settings.md) | `null` | `Whizbang__Offloads__AzureBlob__<name>__ConnectionString` | Azure Storage connection string (emulator or live) |
 | `ContainerName` | `string` | `whizbang-offload-bodies` | `Whizbang__Offloads__AzureBlob__<name>__ContainerName` | Container holding offloaded bodies; lazily created on first upload |
 | `DefaultAccessTier` | `AccessTier?` | `null` (account default) | `Whizbang__Offloads__AzureBlob__<name>__DefaultAccessTier` | Blob access tier for uploads (Hot/Cool/Cold/Archive) |
 | `MaxDownloadBytes` | `long?` | `null` (no cap) | `Whizbang__Offloads__AzureBlob__<name>__MaxDownloadBytes` | Defensive cap on download size; refuses claims reporting a larger body |
@@ -1037,7 +1037,7 @@ Dedicated long-lived PostgreSQL connections for background workers, bypassing a 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
 | `ConnectionStringName` | `string?` | `null` | `Whizbang__Workers__PinnedPool__ConnectionStringName` | `ConnectionStrings:*` key resolving to the direct (non-pooler) string; convention `{service}-db-direct` |
-| `ConnectionString` | `string?` | `null` | `Whizbang__Workers__PinnedPool__ConnectionString` | Inline direct string when `ConnectionStringName` is unset; empty = feature no-op |
+| `ConnectionString` | [`SensitiveString?`](../../../v1.0.0/operations/configuration/sensitive-settings.md) | `null` | `Whizbang__Workers__PinnedPool__ConnectionString` | Inline direct string when `ConnectionStringName` is unset; empty = feature no-op |
 | `Enabled` | `bool` | `false` | `Whizbang__Workers__PinnedPool__Enabled` | Master switch |
 | `Size` | `int` | `1` | `Whizbang__Workers__PinnedPool__Size` | Pinned connections held open |
 | `IncludeFlushWorkers` | `bool` | `true` | `Whizbang__Workers__PinnedPool__IncludeFlushWorkers` | Tier-2 flush workers also borrow from the pool |

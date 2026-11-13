@@ -50,7 +50,7 @@ Earlier pre-v1.0 builds flushed through a single orchestrator SQL function. That
 | **Immediate** | Every `FlushAsync` call | Scoped | Real-time scenarios, low-throughput services |
 | **Scoped** (default) | Scope disposal / explicit flush | Scoped | Web APIs, message handlers |
 | **Interval** | Periodic timer | Singleton | Background workers, steady throughput |
-| **Batch** | Batch size reached OR debounce quiet period | Singleton | Bulk imports, seeding, high-volume processing |
+| **Batch** | Batch size reached OR debounce quiet period | Singleton | High-volume inbox completions and failures (see the note on outbox writes below) |
 
 ## Configuration
 
@@ -147,7 +147,8 @@ services.Configure<WorkCoordinatorOptions>(o => {
 
 - **Latency**: Adaptive (immediate at high volume, debounced at low volume)
 - **Database load**: Low (large batches during bursts, timely flushes during quiet periods)
-- **Use when**: Bulk imports, seeding, high-volume background processing where operations arrive in bursts
+- **Use when**: high-volume background processing where completions and failures arrive in bursts
+- **Not for outbox writes**: once the worker pipeline is registered, every work coordinator strategy is wrapped so that outbox writes go to the outbox batch strategy instead; choosing `Batch` does not change how they are batched. Writes from many streams are already coalesced into a few flushes by the default [outbox batch strategy](../extending/internals/outbox-batch-strategy.md#coalescing), and bounded by the [batch buffer](../messaging/outbox-pattern.md#bounded-buffer), so a bulk import needs no strategy change
 - **At host stop**: the debounce timer is stopped, a batch-size or debounce flush still running is waited for, and what is queued is flushed before the service provider is disposed (see [Stopping the Host](#host-stop))
 
 **Debounce behavior**: Each new `QueueOutboxMessage` or `QueueInboxMessage` call resets the debounce countdown. The timer only fires after messages stop arriving for the full `IntervalMilliseconds` window. This means continuous message flow keeps batching until `BatchSize` is hit, while gaps in the flow trigger timely partial flushes.
