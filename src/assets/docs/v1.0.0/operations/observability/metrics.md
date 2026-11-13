@@ -16,6 +16,9 @@ codeReferences:
   - src/Whizbang.Core/Observability/WhizbangMetrics.cs
   - src/Whizbang.Core/Observability/PassiveCounter.cs
   - src/Whizbang.Core/Observability/MaintenanceMetrics.cs
+  - src/Whizbang.Core/Observability/PendingReclamation.cs
+  - src/Whizbang.Core/Observability/PendingReclamationSampler.cs
+  - src/Whizbang.Data.Postgres/Migrations/401_CleanupReportsWhatItHasLeft.sql
   - src/Whizbang.Core/Observability/DispatcherMetrics.cs
   - src/Whizbang.Core/Observability/LifecycleMetrics.cs
   - src/Whizbang.Core/Observability/LifecycleCoordinatorMetrics.cs
@@ -55,6 +58,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityBacklogMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityCompletionMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsRepairedEventsTests.cs
+  - tests/Whizbang.Core.Tests/Observability/MaintenanceMetricsPendingTests.cs
+  - tests/Whizbang.Core.Component.Tests/Observability/PendingReclamationSamplerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PendingReclamationSqlTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/CollectiveReplayRunnerTests.cs
   - tests/Whizbang.Core.Tests/Observability/InstanceLivenessMetricsTests.cs
   - tests/Whizbang.Core.Tests/Lifecycle/LifecycleTrackingEndsTests.cs
@@ -129,11 +135,12 @@ Additional subsystem meters:
 |-------|-------|-------|
 | `Whizbang.DeadLetters` | `DeadLetterMetrics` | Internal DLQ adds, recoveries, holds, generation replay, per-stack arrivals, canary campaign verdicts and trickle waves |
 | `Whizbang.TransportDeadLetterDrain` | `TransportDeadLetterDrainWorker` | Broker-side DLQ drain counts |
-| `Whizbang.Maintenance` | `MaintenanceMetrics` | Per-task maintenance outcomes (rows affected, duration) and row-retention adoption |
+| `Whizbang.Maintenance` | `MaintenanceMetrics` | Per-task maintenance outcomes (rows affected, duration), row-retention adoption, and what cleanup has left to do (pending rows, ephemeral history walk remaining) |
 | `Whizbang.EventCategories` | `EventCategoryMetrics` | Category-routed event dispatch and fanout |
 | `Whizbang.Workers.PinnedPool` | `PinnedPoolMetrics` | Pinned connection pool borrows, timeouts, recycles |
 | `Whizbang.TableStatistics` | `TableStatisticsMetrics` | Queue depths, and every table's size, size split, rows and bloat |
 | `Whizbang.TypeRegistry` | `TypeRegistryMetrics` | Message type registry renames and drift |
+| `Whizbang.Ephemeral` | `EphemeralBlockerMetrics` | Events of ephemeral types kept Sourced by durable types in the same streams |
 | `Whizbang.StreamIntegrity` | `StreamIntegrityMetrics` | Continuity checkpoints, gap/divergence detection, repair and manifest flows |
 | `Whizbang.Housekeeping` | `HousekeepingCoordinator` | Arbitration verdicts, the running activity, per-activity volume rollup, and idle seconds-since-activity |
 | `Whizbang.Core.Routing.MessageDiscard` | `MessageDiscardPolicy` | Unsubscribed-message skips at the inbox and outbox gates |
@@ -737,6 +744,51 @@ Meter name: `Whizbang.Maintenance` (`MaintenanceMetrics`)
 
 `Whizbang.WorkCoordinator` also carries the `whizbang.maintenance.task.duration` and `whizbang.maintenance.task.rows_affected` histograms listed under its [Maintenance](#work-coordinator) heading; the per-task counter and the retention adoption signal live here.
 
+### What cleanup has left to do {#pending-reclamation}
+
+{verified: MaintenanceMetricsPendingTests.PendingRows_AreReportedPerTask_TaggedWithWhetherTheCountWasCappedAsync, MaintenanceMetricsPendingTests.HistoryWalkRemaining_IsReportedPerEventTypeAsync, MaintenanceMetricsPendingTests.AReading_ReplacesThePreviousOne_SoAnUnmeasuredTaskStopsReportingAsync, PendingReclamationSqlTests.EachTask_CountsWhatItWouldRemove_AndNothingElseAsync, PendingReclamationSqlTests.ACountPastTheCap_StopsAtTheCap_AndSaysSoAsync, PendingReclamationSqlTests.UnderDebugMode_TheTasksThatSkip_ReportNothingAsync, PendingReclamationSqlTests.AnIncompleteEphemeralWalk_ReportsWhatItHasLeft_AndACompleteOneNothingAsync, PendingReclamationSqlTests.AWindowAnotherInstanceTook_ReadsNothingAsync, PendingReclamationSamplerTests.TheInstanceThatTakesTheWindow_ReportsTheReadingAsync, PendingReclamationSamplerTests.AnInstanceThatDoesNotTakeTheNextWindow_ClearsItsReadingAsync, PendingReclamationSamplerTests.AZeroInterval_NeverAsksTheProviderAsync, DapperTableStatisticsTests.ADapperHost_ReportsWhatCleanupHasLeftAsync}
+
+`rows_affected` says what each task removed; these gauges say what each would remove now and has not, so a dashboard
+can tell "nothing left to clean" from "cleanup is falling behind", for example while the maintenance sweep is not
+admitted ([housekeeping arbitration](../workers/housekeeping-arbitration#the-starvation-floor)).
+
+| Metric Name | Unit / Type | Description |
+|-------------|-------------|-------------|
+| `whizbang.maintenance.pending_rows` | Gauge\<long\> | Rows a maintenance task would remove now; tagged by `task` (the same values as `rows_affected`) and `capped` (`true` when the count stopped at `PendingReclamationCountCap`, meaning at least that many) |
+| `whizbang.ephemeral.history_walk_remaining` | Gauge\<long\> | Events an incomplete ephemeral history walk has yet to visit (its type's event count at the walk's start, less the events its cursor has passed); tagged by `event_type`. A completed walk reports nothing |
+
+**Which tasks report.** Each count copies the task's own predicate and the setting it reads, with the same default,
+and reads through the index that serves the predicate:
+
+| `task` | counts | index |
+|--------|--------|-------|
+| `purge_completed_perspective_events` | completed perspective-event rows | `idx_perspective_events_processed` |
+| `purge_old_deduplication` | dedup rows past `dedup_retention_days` | `idx_message_dedup_first_seen` |
+| `purge_instance_evictions` | eviction tombstones past `instance_eviction_retention_hours` | `idx_instance_evictions_evicted_at` |
+| `prune_collective_ordering_heads` | ordering heads idle past `collective_ordering_head_retention_days` | `idx_collective_ordering_heads_updated_at` |
+| `purge_idle_routes` | routes not taken for `route_idle_days` | `idx_routes_last_seen` |
+
+A task whose predicate no index serves reports nothing, rather than a guess or a full scan on a sampling cadence:
+`purge_completed_outbox` and `purge_completed_inbox` (every `processed_at` index is partial on unprocessed rows),
+`purge_recovered_dead_letters`, `reap_consumed_ephemeral_bodies` (its per-type grace and the TTL held in body
+metadata leave the ephemeral index unbounded, because pointers whose bodies were already reaped stay in it),
+`reap_expired_perspective_rows` and the perspective row caps (`expires_at` is not indexed), and the other ledger
+trims. A missing series therefore means "not measured", never zero. Under `debug_mode`, the tasks that skip under it
+(`purge_completed_perspective_events`, `purge_idle_routes`) report nothing, because they would remove nothing.
+
+**Why it is shaped this way.**
+
+| choice | why |
+|--------|-----|
+| A bounded count per task: at most `PendingReclamationCountCap` rows read (default 10000), with `capped=true` when the count reaches it. | A reading costs the same however large the backlog is; an unbounded count on a schedule would make the meter the heaviest statement on the database exactly when cleanup is behind. The count reads one row past the cap, so exactly the cap is still reported as exact. |
+| Read by `PendingReclamationSampler` every `PendingReclamationSampleInterval` (default 5 minutes), never inside the maintenance cycle. | The cycle's statements hold locks the completion path needs; counting there would lengthen the very sweep the reading is about. |
+| One instance per window, as the event-type sample: the instance that claims the window in `wh_unique_emission_claims` reports, every other instance clears its reading. | The backlog is the service's, not the instance's, so a sum across instances counts it once; `max()` by `task` reads the same value. |
+| Tasks without a supporting index report nothing. | A sampled guess reads as a measurement, and a dashboard cannot tell the two apart. |
+
+Both settings live under `Whizbang:TableStatistics` ([configuration](../configuration/configuration-reference#tablestatisticsoptions)).
+An interval of `00:00:00` turns the reading off; a negative interval or a cap below 1 fails at host start.
+`PendingReclamationSampler.SampleCompleted` is raised after each reading with whether this instance took the window.
+
 ## Whizbang.EventCategories {#event-categories}
 
 Meter name: `Whizbang.EventCategories` (`EventCategoryMetrics`)
@@ -929,6 +981,16 @@ Meter name: `Whizbang.TypeRegistry` (`TypeRegistryMetrics`)
 | `whizbang.type_registry.renamed` | Counter\<long\> | Registry rows reconciled old→new for an acknowledged rename; tagged by `service` |
 | `whizbang.type_registry.drift_detected` | Counter\<long\> | Un-acknowledged registry drift left untouched; tagged by `service` |
 
+## Whizbang.Ephemeral {#ephemeral}
+
+{verified: EphemeralBlockerMetricsTests.BlockedEvents_ReportsEachPair_TaggedByEphemeralAndBlockingTypeAsync, EphemeralBlockerMetricsTests.BlockedEvents_APairThatLeftTheReport_ReadsZero_NotItsLastCountAsync}
+
+Meter name: `Whizbang.Ephemeral` (`EphemeralBlockerMetrics`)
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.ephemeral.blocked_events` | ObservableGauge\<long\> | Events of an ephemeral type kept Sourced because their streams hold a durable event type; tagged by `ephemeral_type` and `blocking_type`. A pair that is released or cleared reads zero. See [What holds ephemeral history back](../../fundamentals/events/ephemeral-events#what-holds-ephemeral-history-back) |
+
 ## Whizbang.StreamIntegrity {#stream-integrity}
 
 {verified: StreamIntegrityMetricsTests.Counters_AreCreatedWithExpectedNamesAsync, StreamIntegrityMetricsTests.Counters_AreNotNullAsync}
@@ -962,6 +1024,7 @@ Meter name: `Whizbang.StreamIntegrity` (`StreamIntegrityMetrics`)
 | `whizbang.stream_integrity.redelivery_answers_capped` | Counter\<long\> | Redelivery answers an origin stopped at its event bound with more selected; tagged by `kind` (window \| ordinary) |
 | `whizbang.stream_integrity.digest_buckets_verified` | Counter\<long\> | Settled digest buckets checked by the trust-but-verify sweep |
 | `whizbang.stream_integrity.digest_drift_healed` | Counter\<long\> | Digest buckets the sweep healed; tagged by `kind` (updated \| removed \| added) |
+| `whizbang.stream_integrity.repair_drain_holds` | Counter\<long\> | Times the paced repair drain stopped claiming because `MaxOutstandingRepairAnswers` buckets awaited their answer; counted once per hold, not per tick ([outstanding repair answers are capped](../../resilience/stream-integrity#outstanding-repair-answers-are-capped)) |
 | `whizbang.stream_integrity.redelivery_requests_received` | Counter\<long\> | Re-delivery requests served as an origin (repair + backfill flows) |
 | `whizbang.stream_integrity.sealed_through` | ObservableGauge\<long\> | Per-origin verified watermark: the exclusive end of the highest window that audited clean and complete; tagged by `origin_service_id` ([integrity gauges](../../resilience/stream-integrity#integrity-gauges)) |
 | `whizbang.stream_integrity.unhealed_buckets` | ObservableGauge\<long\> | Divergent buckets currently tracked by the ledger, in every state (repairable, awaiting an answer, answered, unhealable, exhausted); counts buckets, not events ([integrity gauges](../../resilience/stream-integrity#integrity-gauges)) |

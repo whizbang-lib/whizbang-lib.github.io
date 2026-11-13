@@ -13,7 +13,7 @@ tags: >-
   operations, partitioning, partitions, retention, wh_log, wh_signals, wh_lifecycle_completions, uuidv7, maintenance,
   postgres, storage, vacuum, maintainer duty, pg_partman, create_parent, run_maintenance
 codeReferences:
-  - src/Whizbang.Data.Postgres/Migrations/397_RepairedEventsRunOnlyReceptorsThatNeverRan.sql
+  - src/Whizbang.Data.Postgres/Migrations/407_RepairedEventsRunOnlyReceptorsThatNeverRan.sql
   - src/Whizbang.Data.Postgres/Migrations/226_PartitionManager.sql
   - src/Whizbang.Data.Postgres/Migrations/233_PartitionSignalsAndLifecycleCompletions.sql
   - src/Whizbang.Data.Postgres/Migrations/237_PartitionsCarryTheLedgersAutovacuumSettings.sql

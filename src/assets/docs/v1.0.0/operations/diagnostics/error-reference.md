@@ -476,6 +476,7 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ026 | Info | [No Topic Filters Found](whiz026.md) |
 | WHIZ027 | Info | [Perspective Runner Generated](whiz027.md) |
 | WHIZ028 | Info | [Perspective Runner Registry Generated](whiz028.md) |
+| WHIZ029 | Warning | [WhizbangId AcceptAnyVersion Disagrees](whiz029.md) |
 | WHIZ030 | Error | [Perspective Event Missing StreamId](whiz030.md) |
 | WHIZ031 | Error | [Multiple StreamId Attributes](whiz031.md) |
 | WHIZ032 | Error | [Perspective Name Collision](whiz032.md) |
@@ -533,6 +534,7 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ136 | Error | [Superseding event type has more than one key](whiz136.md) |
 | WHIZ137 | Error | [Destruction value has not shipped](whiz137.md) |
 | WHIZ138 | Error | [Superseding group's types disagree on their key](whiz138.md) |
+| WHIZ139 | Warning | [Read model keeps an allowed mixed-stream pair refused](whiz139.md) |
 | WHIZ140 | Warning | [Perspective shares stream event types with a group but joins none](whiz140.md) |
 | WHIZ141 | Warning | [Stream group has no announcing member with a row evictor](whiz141.md) |
 | WHIZ142 | Warning | [Bridge on a sole stream-group membership](whiz142.md) |

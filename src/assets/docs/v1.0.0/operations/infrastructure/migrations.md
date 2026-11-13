@@ -66,6 +66,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/CatalogCheckedDdl.cs
   - src/Whizbang.Data.Postgres/MigrationDeadlockRetry.cs
   - src/Whizbang.Data.Postgres/ConcurrentIndexBuild.cs
+  - src/Whizbang.Data.Postgres/Migrations/371_RepairAnswersAreCapped.sql
   - src/Whizbang.Data.EFCore.Postgres/FrameworkIndexBuildMaintenanceStep.cs
   - src/Whizbang.Data.Postgres/Migrations/334_PacedSubscriptionBackfill.sql
   - src/Whizbang.Data.Postgres/MigrationHashUpgrade.cs
@@ -135,6 +136,7 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSchemaAgainstRunningWorkersTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ConcurrentIndexBuildTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PacedBackfillIndexTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAnswerPendingCountSqlTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -1229,8 +1231,17 @@ holds a lock that blocks every write to the table until the build commits. On a 
 but it cannot run inside a transaction at all. So a framework index on such a table is never created by a migration.
 It is declared in `ConcurrentIndexBuild.FrameworkIndexes` and built after the migrations by the `framework-index-build`
 [maintenance step](../../fundamentals/workers/maintenance-steps#framework-index-build), which the EF Core Postgres
-driver registers. The first is `idx_event_store_type_commit_sequence`, which the
-[paced subscription backfill](../../resilience/stream-integrity#paced-backfill-index) reads one type's history through.
+driver registers. There are two:
+
+| Index | Table | What reads it |
+| --- | --- | --- |
+| `idx_event_store_type_commit_sequence` | `wh_event_store` | The [paced subscription backfill](../../resilience/stream-integrity#paced-backfill-index), reading one type's history in commit order |
+| `idx_integrity_ledger_answer_pending` | `wh_integrity_ledger` | The paced repair drain's count of the [repair answers it is waiting for](../../resilience/stream-integrity#outstanding-repair-answers-are-capped), on every tick it has tokens to spend |
+
+The ledger is far smaller than the event store, but the drain's claims and the comparisons write to it continuously,
+so its index is kept out of the migration (371) for the same reason: a build inside the migration's transaction would
+hold every one of those writes until it committed.
+{verified: IntegrityAnswerPendingCountSqlTests.Count_OnceTheIndexIsBuilt_IsAnsweredFromItAsync}
 
 | What the step finds | What it does |
 | --- | --- |
@@ -1269,10 +1280,10 @@ The log lines name the index and schema: `built concurrently` (Information), `dr
 interrupted concurrent build` (Information), `an index build is in progress on its table; this run steps aside`
 (Debug), and `could not be built concurrently` (Warning). To check one by hand:
 
-```sql{title="Is the backfill index built and valid?" category="Operations" difficulty="BEGINNER"}
+```sql{title="Are the framework indexes built and valid?" category="Operations" difficulty="BEGINNER"}
 SELECT c.relname, i.indisvalid
 FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
-WHERE c.relname = 'idx_event_store_type_commit_sequence';
+WHERE c.relname IN ('idx_event_store_type_commit_sequence', 'idx_integrity_ledger_answer_pending');
 ```
 
 ## The stored-form rewrite
@@ -1783,12 +1794,12 @@ connection has. The rules for authors are in [Writing SQL migrations](../../../c
 | `364_InstanceExitRetentionIsASetting.sql` | `wh_record_instance_exit` reads `wh_settings.instance_exit_retention_days` (30 days when unset) instead of a fixed 30 days | yes |
 | `385_StoredFormConversionsRecordWhoAppliedThem.sql` | Adds `applied_library_version` and `applied_application_version` to `wh_stored_form_migrations` and `wh_perspective_forms`, so [the rollback gate](../startup/rolling-upgrades#the-rollback-gate) counts stored-form conversions. Rewrites no row. Irreversible | yes |
 | `386_TheLedgerRecordsHowToReverseEachChange.sql` | Adds `wh_schema_migrations.reversal` and `down_sql` ([how a migration is reversed](#how-a-migration-is-reversed)), and redefines 359's trigger so a re-apply that records no reversal clears the old one. Irreversible | no |
-| `392_AnsweredRowsAreRecheckedFirst.sql` | Redefines `wh_integrity_claim_ledger_recheck` so rows whose repair was answered are re-checked first, and adds the partial index `idx_integrity_ledger_answered_unrechecked` ([answered rows are re-checked first](../../resilience/stream-integrity#answered-rows-are-rechecked-first)). Reversible | no |
-| `393_TheLedgerCountsWhatItOpensAndCloses.sql` | Gives each integrity ledger function a counting form and keeps the existing names as wrappers that answer as before, adds `wh_integrity_ledger_backlog`, and heals unscoped buckets in the batch heal ([repair backlog and ETA](../../resilience/stream-integrity#repair-backlog-and-eta)). Reversible | no |
-| `394_LedgerGaugesSplitBucketsByKind.sql` | Adds four columns at the end of `wh_integrity_ledger_gauges`, the unhealed buckets by kind ([unhealed buckets by kind](../../resilience/stream-integrity#unhealed-buckets-by-kind)). Reversible | no |
-| `395_IntegrityCompletionIsReportedDirectly.sql` | Adds `wh_integrity_known_origins.last_commit_sequence`, the per-minute tally `wh_integrity_ledger_tally` and its two functions ([derived completion meters](../../resilience/stream-integrity#derived-completion-meters)). Lossy: the reverse drops the tally's minutes and the kept watermarks, which the next ticks and checkpoints rebuild | no |
-| `396_ASealFallsOnlyAsFarAsARewriteReached.sql` | Adds the origin rewrite log `wh_integrity_origin_rewrites`, its two settings and `wh_integrity_seal_guard`; the generation moves only after a rewrite of the origin's own lane ([a rewrite lowers a seal only as far as it reached](../../resilience/stream-integrity#rewrite-floor)). Lossy: the log, its settings and the new guard are dropped, seals are kept, and the next generation change resets them as before | no |
-| `397_RepairedEventsRunOnlyReceptorsThatNeverRan.sql` | Adds the handled ledger `wh_receptor_handled` (partitioned by event id), its coverage, lookup and sweep, and records each processed event in `process_inbox_completions` ([repaired events and receptors](../../resilience/stream-integrity#repaired-events-and-receptors)). Lossy: the ledger and its coverage are dropped, and a later forward run starts coverage afresh, so nothing reads the lost records as complete | no |
+| `402_AnsweredRowsAreRecheckedFirst.sql` | Redefines `wh_integrity_claim_ledger_recheck` so rows whose repair was answered are re-checked first, and adds the partial index `idx_integrity_ledger_answered_unrechecked` ([answered rows are re-checked first](../../resilience/stream-integrity#answered-rows-are-rechecked-first)). Reversible | no |
+| `403_TheLedgerCountsWhatItOpensAndCloses.sql` | Gives each integrity ledger function a counting form and keeps the existing names as wrappers that answer as before, adds `wh_integrity_ledger_backlog`, and heals unscoped buckets in the batch heal ([repair backlog and ETA](../../resilience/stream-integrity#repair-backlog-and-eta)). Reversible | no |
+| `404_LedgerGaugesSplitBucketsByKind.sql` | Adds four columns at the end of `wh_integrity_ledger_gauges`, the unhealed buckets by kind ([unhealed buckets by kind](../../resilience/stream-integrity#unhealed-buckets-by-kind)). Reversible | no |
+| `405_IntegrityCompletionIsReportedDirectly.sql` | Adds `wh_integrity_known_origins.last_commit_sequence`, the per-minute tally `wh_integrity_ledger_tally` and its two functions ([derived completion meters](../../resilience/stream-integrity#derived-completion-meters)). Lossy: the reverse drops the tally's minutes and the kept watermarks, which the next ticks and checkpoints rebuild | no |
+| `406_ASealFallsOnlyAsFarAsARewriteReached.sql` | Adds the origin rewrite log `wh_integrity_origin_rewrites`, its two settings and `wh_integrity_seal_guard`; the generation moves only after a rewrite of the origin's own lane ([a rewrite lowers a seal only as far as it reached](../../resilience/stream-integrity#rewrite-floor)). Lossy: the log, its settings and the new guard are dropped, seals are kept, and the next generation change resets them as before | no |
+| `407_RepairedEventsRunOnlyReceptorsThatNeverRan.sql` | Adds the handled ledger `wh_receptor_handled` (partitioned by event id), its coverage, lookup and sweep, and records each processed event in `process_inbox_completions` ([repaired events and receptors](../../resilience/stream-integrity#repaired-events-and-receptors)). Lossy: the ledger and its coverage are dropped, and a later forward run starts coverage afresh, so nothing reads the lost records as complete | no |
 
 ## Upgrade notes {#upgrade-notes}
 

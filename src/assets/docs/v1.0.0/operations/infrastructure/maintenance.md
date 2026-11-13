@@ -22,6 +22,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/RetentionSettingsValidationTests.cs
   - tests/Whizbang.Core.Tests/Workers/RetentionSettingsBridgeTests.cs
   - tests/Whizbang.Core.Tests/Workers/RetentionSettingsBindingTests.cs
+  - tests/Whizbang.Core.Tests/Workers/HousekeepingHigherRankDeferralTests.cs
+  - tests/Whizbang.Core.Tests/Workers/HousekeepingPersistedDeferralTests.cs
 ---
 
 # Maintenance Cycle
@@ -99,7 +101,11 @@ whatever new completed rows arrive. A backlog of 3 million completed rows clears
 
 That is a ceiling: while the service is busy, maintenance waits for an idle moment, up to the forced ceiling
 (`Whizbang:Housekeeping:MaxDeferral`, one hour by default), so under sustained load a cycle can run as rarely as
-once an hour ([housekeeping arbitration](../workers/housekeeping-arbitration)). If settled rows arrive faster than
+once an hour ([housekeeping arbitration](../workers/housekeeping-arbitration)). The hour is measured from the first
+deferral even while integrity work or dead-letter recovery holds the housekeeping slot
+([a higher rank spends the ceiling](../workers/housekeeping-arbitration#a-higher-rank-spends-the-ceiling)), and across
+restarts and redeploys, because the first deferral is held in the service's store
+([the ceiling survives a restart](../workers/housekeeping-arbitration#the-ceiling-survives-a-restart)). If settled rows arrive faster than
 the purge removes them, `purge_completed_inbox` reports the full batch every cycle and the table keeps growing.
 
 ### Tuning the batch {#inbox-purge-batch-tuning}

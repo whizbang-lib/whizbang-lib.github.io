@@ -219,18 +219,20 @@ Earlier releases took the alive-lock but never registered the shared connection 
 :::
 
 ### The LISTEN connection's keepalive {#listen-keepalive}
-{verified: PgSharedNotifyConnectionCoverageTests.Keepalive_DuringIdlePeriod_IssuesSelectOneAndStaysAvailableAsync, PgSharedNotifyConnectionCoverageTests.Keepalive_WhoseWakeIsLost_RunsSelectOneOnceTheWaitTimesOutAsync, PgSharedNotifyConnectionCoverageTests.Resync_WhoseWakeIsLost_IsListenedOnceTheWaitTimesOutAsync}
+{verified: PgSharedNotifyConnectionCoverageTests.Keepalive_DuringIdlePeriod_IssuesSelectOneAndStaysAvailableAsync, PgSharedNotifyConnectionCoverageTests.Keepalive_WhoseWakeIsLost_RunsSelectOneOnceTheWaitTimesOutAsync, PgSharedNotifyConnectionCoverageTests.Resync_WhoseWakeIsLost_IsListenedOnceTheWaitTimesOutAsync, PgSharedNotifyConnectionCoverageTests.Recheck_BeforeTheKeepaliveIsDue_DoesNotRunSelectOneAsync, PgSharedNotifyConnectionCoverageTests.ListenWaitTimeout_IsTheRecheckOrTheKeepaliveRemainder_NeverZeroAsync}
 
 The shared LISTEN connection spends almost all of its time parked in Npgsql's wait for a notification. Two things
 must interrupt that wait even when nothing is sent: the keepalive, which runs `SELECT 1` to prove the connection is
 still alive (and makes the deferred alive-lock claim described above), and a resync, which LISTENs on a channel
 subscribed after the connection came up.
 
-**The bound.** Every wait carries a timeout equal to `Whizbang:Database:ListenKeepaliveInterval` (default 30 s). A
-wait that times out runs the keepalive, and the next pass of the loop syncs any subscription still waiting to be
-LISTENed before it parks again. So a dead connection is noticed, and a late subscription is LISTENed, within one
-keepalive interval. A new subscription still cancels the wait as a fast path, which in the usual case LISTENs at once;
-the timeout is the guarantee behind it.
+**The bound.** Every wait carries a timeout: a one-second resync recheck, or what is left of
+`Whizbang:Database:ListenKeepaliveInterval` (default 30 s) when that is shorter. After any timeout, the next pass of
+the loop syncs any subscription still waiting to be LISTENed before it parks again, so a late subscription is
+LISTENed within about one second. The keepalive `SELECT 1` runs only on a timeout that finds the keepalive interval
+passed since the connection came up, its last keepalive, or the last message from the server, so a dead connection is
+noticed within one keepalive interval and a recheck costs no round trip. A new subscription still cancels the wait as
+a fast path, which in the usual case LISTENs at once; the timeout is the guarantee behind it.
 
 **What a timeout does.** A timed-out wait returns `false`; it does not throw. The connection stays open on the same
 server session and its LISTENs stay in place, so the `SELECT 1` that follows runs on it and a notification sent
@@ -246,7 +248,10 @@ discards a cancel delivered in between. A lost wake left the wait on an idle soc
 so a subscription made after the connection came up could stay unlistened (every notification on its channel lost),
 and a dead connection could go unnoticed. The stop path was fixed separately, by ending the pass on the stopping token
 itself ([#2150](https://github.com/whizbang-lib/whizbang/issues/2150)). The keepalive and the resync are now bounded
-by the wait's timeout ([#2155](https://github.com/whizbang-lib/whizbang/issues/2155)).
+by the wait's timeout ([#2155](https://github.com/whizbang-lib/whizbang/issues/2155)). That timeout was the full
+keepalive interval at first, so a subscription whose wake was lost, and every subscription made behind it, could wait
+up to 30 s to be LISTENed; the wait now also times out at a one-second recheck
+([#2291](https://github.com/whizbang-lib/whizbang/issues/2291)).
 :::
 
 The interval must be greater than zero. Zero would mean an unbounded wait to the driver, which is exactly the lost-wake hang this bound exists to prevent, so a zero or negative `Whizbang:Database:ListenKeepaliveInterval` is refused when the options are first read, with an error naming the key.
@@ -256,8 +261,9 @@ The interval must be greater than zero. Zero would mean an unbounded wait to the
 | Choice | Reason | Verified |
 |--------|--------|----------|
 | The wait is bounded by a timeout, not woken by a cancel. | Npgsql arms its read timeout afresh on every read, after the reset that can lose a cancel, so a timeout cannot be lost; a token cancel can. | {verified: PgSharedNotifyConnectionCoverageTests.Keepalive_WhoseWakeIsLost_RunsSelectOneOnceTheWaitTimesOutAsync, NpgsqlWaitTimeoutTests.WaitAsync_TimeoutElapses_ReturnsFalseAndLeavesTheSameSessionOpenAsync} |
-| The timeout is `ListenKeepaliveInterval`, and the keepalive has no timer of its own. | One interval already decided how often the connection is checked; the same interval bounds a lost resync, so there is one setting to reason about and no second cancellation source that could itself be lost. | {verified: PgSharedNotifyConnectionCoverageTests.Keepalive_DuringIdlePeriod_IssuesSelectOneAndStaysAvailableAsync} |
-| A resync still cancels the wait, and every pass drains the resync request before it parks. | The cancel usually works and LISTENs at once; when it is lost, the timed-out pass drains it, so the subscription is LISTENed within one interval instead of never. | {verified: PgSharedNotifyConnectionCoverageTests.Resync_WhoseWakeIsLost_IsListenedOnceTheWaitTimesOutAsync} |
+| The timeout is a one-second resync recheck, or what is left of `ListenKeepaliveInterval` when shorter; the keepalive has no timer of its own and runs only when a timeout finds it due by the clock. | A notification sent before its channel is LISTENed is lost, so a lost resync must be recovered quickly, and a recheck that times out costs a timer and no round trip. The keepalive, which does cost a round trip, keeps its own interval, and there is still no second cancellation source that could itself be lost. | {verified: PgSharedNotifyConnectionCoverageTests.Keepalive_DuringIdlePeriod_IssuesSelectOneAndStaysAvailableAsync, PgSharedNotifyConnectionCoverageTests.Recheck_BeforeTheKeepaliveIsDue_DoesNotRunSelectOneAsync, PgSharedNotifyConnectionCoverageTests.ListenWaitTimeout_IsTheRecheckOrTheKeepaliveRemainder_NeverZeroAsync} |
+| The recheck is a constant, not an option. | It has no cost to trade against; the setting that costs a round trip is the keepalive interval. | {verified: PgSharedNotifyConnectionCoverageTests.Resync_WhoseWakeIsLost_IsListenedOnceTheWaitTimesOutAsync} |
+| A resync still cancels the wait, and every pass drains the resync request before it parks. | The cancel usually works and LISTENs at once; when it is lost, the timed-out pass drains it, so the subscription is LISTENed within one recheck instead of never. | {verified: PgSharedNotifyConnectionCoverageTests.Resync_WhoseWakeIsLost_IsListenedOnceTheWaitTimesOutAsync} |
 | Rejected: waking the wait with a NOTIFY sent to itself from another connection. | It needs a second connection for every wake, in a topology that keeps direct connections scarce (one per instance), and it cannot detect a dead LISTEN connection: a NOTIFY never reaches a dead socket, so a timeout is still needed, and the timeout alone covers both cases. | {verified: PgSharedNotifyConnectionCoverageTests.Keepalive_WhoseWakeIsLost_RunsSelectOneOnceTheWaitTimesOutAsync, NpgsqlWaitTimeoutTests.WaitAsync_NotificationAfterATimeout_ArrivesOnTheSameConnectionAsync} |
 
 ### The lock check: `wh_direct_alive_lock_holders` {#wh-direct-alive-lock-holders}

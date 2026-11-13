@@ -10,22 +10,39 @@ description: >-
   Declare an event ephemeral with [Ephemeral]: it is stored and routed like any event, but its body is
   deleted once every perspective has consumed it (or once its TTL passes), and the read model it feeds
   becomes the source of truth. Covers the attribute and its composition, what happens to the event and
-  the read model, the WHIZ130, WHIZ131, WHIZ132 and WHIZ134 build rules, the WHIZ133 mixed-stream refusal and the
-  other runtime guards, compaction
+  the read model, the WHIZ130, WHIZ131, WHIZ132, WHIZ134 and WHIZ139 build rules, the WHIZ133 mixed-stream refusal,
+  the pairs a read model may allow to share a stream, the other runtime guards, compaction
   and scheduled stream closes.
 tags: >-
   events, ephemeral, destruction, transient-storage, ttl, rewind-grace, reaper, snapshots, composition,
-  profiles, WHIZ130, WHIZ131, WHIZ132, WHIZ133, WHIZ134, compaction, stream-close, full-history
+  profiles, WHIZ130, WHIZ131, WHIZ132, WHIZ133, WHIZ134, WHIZ139, mixed-streams, compaction, stream-close, full-history
 codeReferences:
   - src/Whizbang.Data.Postgres/EphemeralHistoryReclassifyStep.cs
   - src/Whizbang.Data.Postgres/TypeHistoryWalker.cs
+  - src/Whizbang.Core/TypeNameFormatter.cs
+  - src/Whizbang.Core/Fingerprint/TypeDefinitionReconciler.cs
   - src/Whizbang.Data.Postgres/Migrations/381_EphemeralHistoryReclassifiesInBatches.sql
+  - src/Whizbang.Data.Postgres/Migrations/392_WhatHoldsEphemeralHistoryBackIsNamed.sql
+  - src/Whizbang.Data.Postgres/EphemeralBlockerReportText.cs
+  - src/Whizbang.Data.Postgres/EphemeralReleaseList.cs
+  - src/Whizbang.Core/Configuration/EphemeralBlockerReportOptions.cs
+  - src/Whizbang.Core/Observability/EphemeralBlockerMetrics.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveRunnerRegistry.cs
+  - src/Whizbang.Generators/PerspectiveRunnerRegistryGenerator.cs
   - src/Whizbang.Core/SystemEvents/AuditEligibility.cs
   - src/Whizbang.Core/Attributes/EphemeralAttribute.cs
   - src/Whizbang.Core/Attributes/Destruction.cs
   - src/Whizbang.Core/Attributes/TransientStorage.cs
   - src/Whizbang.Core/Attributes/EphemeralInfo.cs
   - src/Whizbang.Core/Attributes/DangerouslyAllowMixedEphemeralAndSourcedEventsAttribute.cs
+  - src/Whizbang.Core/Attributes/MixedStreams.cs
+  - src/Whizbang.Core/Perspectives/MixedStreamAllowance.cs
+  - src/Whizbang.Generators/Utilities/MixedStreamOptIn.cs
+  - src/Whizbang.Data.Postgres/CoordinatorMixedStreamSql.cs
+  - src/Whizbang.Data.Postgres/Migrations/393_AllowedPairsMayShareAStream.sql
+  - src/Whizbang.Data.Postgres/Migrations/397_TypesDeclaredEphemeralTogetherConvertTheirStreamsWhole.sql
+  - src/Whizbang.Data.Postgres/EphemeralStreamMates.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.RetentionSweeps.cs
   - src/Whizbang.Core/Attributes/DangerouslyAllowSourcedEventsFromEphemeralInputAttribute.cs
   - src/Whizbang.Core/Attributes/FullHistoryAttribute.cs
   - src/Whizbang.Core/IEphemeralEvent.cs
@@ -65,6 +82,18 @@ codeReferences:
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralHistoryReclassifySqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/HistoryWalkTargetNamingTests.cs
+  - tests/Whizbang.Core.Tests/TypeNameFormatterTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralBlockerReportSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralStreamByStreamSqlTests.cs
+  - tests/Whizbang.Core.Tests/Configuration/EphemeralBlockerOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Observability/EphemeralBlockerMetricsTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveRegistryMixedOptInTests.cs
+  - tests/Whizbang.Generators.Tests/MixedStreamAllowanceGeneratorTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/MixedStreamAllowanceTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorDefaultsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/MixedStreamAllowanceSqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMixedStreamAllowanceTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEphemeralHistoryReclassifyTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/AuditEphemeralExclusionTests.cs
   - tests/Whizbang.Core.Tests/Attributes/EphemeralAttributeTests.cs
@@ -374,6 +403,58 @@ public class DeliberatelyMixedProjection
 }
 ```
 
+### Allowing mixed streams {#allowing-mixed-streams}
+
+By itself the attribute changes nothing at run time: a stream still never holds both kinds
+([WHIZ133](#runtime-guards)). Set its `Streams` property to `MixedStreams.Allow` to let the (ephemeral type, Sourced
+type) pairs the read model applies share a stream. `MixedStreams.Refuse`, the default, is the attribute without the
+property.
+
+```csharp{title="Allowing a read model's pairs to share a stream" description="PresencePing and OrderPlaced may share a stream: either may be appended to a stream holding the other." framework="NET10" category="Core Concepts" difficulty="ADVANCED" tags=["ephemeral", "WHIZ130", "WHIZ139", "perspectives", "opt-in", "mixed-streams"] testFile="MixedStreamAllowanceGeneratorTests.cs" testMethod="Registry_AnAllowingReadModel_CarriesItsPairs_AndTheDefaultCarriesNoneAsync" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/MixedStreamAllowanceGeneratorTests.cs" tests=["MixedStreamAllowanceGeneratorTests.Registry_AnAllowingReadModel_CarriesItsPairs_AndTheDefaultCarriesNoneAsync"]}
+[DangerouslyAllowMixedEphemeralAndSourcedEvents(Streams = MixedStreams.Allow)]
+public class PresenceBoard
+  : IPerspectiveFor<Model, PresencePing>, IPerspectiveFor<Model, OrderPlaced> {
+  public Model Apply(Model current, PresencePing e) => current;
+  public Model Apply(Model current, OrderPlaced e) => current;
+}
+```
+
+For an allowed pair:
+
+- **Writes:** either kind may be appended to a stream holding the other. Any other type is still refused there, so a
+  stream mixed under an allowance holds only the types of allowed pairs.
+- **History:** the [history walk](#making-an-existing-type-ephemeral) no longer counts the pair as a blocker. It
+  reclassifies the ephemeral events in such streams and leaves the Sourced ones Sourced.
+- **Reaping:** the reaper reaps the ephemeral bodies in those streams on their normal rules, and keeps the Sourced ones.
+- **Rebuild:** a read model that applies only the Sourced type rebuilds those streams as before. The opted-in read
+  model applies the ephemeral type, so its full rebuild of them is refused, as for any ephemeral read model, and it
+  restores from its snapshot floor.
+
+**Safety.** A pair is allowed only when every read model that applies both of its types opts in with
+`Streams = MixedStreams.Allow`. One that applies both without it keeps the pair refused: it would otherwise refuse to
+rebuild the mixed streams and silently lose their Sourced events. The analyzer reports such a read model as a
+**warning**, [WHIZ139](../../operations/diagnostics/whiz139), naming the pair and the read model that allows it. The
+rule is applied again at run time over every registered read model, because read models in several assemblies
+contribute to one registry.
+
+The generator computes each read model's pairs, so the runtime needs no reflection. At startup the type-definition
+reconciler writes the allowed pairs, under every name each type is stored by, to the store, which the mixed-stream
+refusal reads; the history walk and the rebuild take them from the generated registry and pass them to the database as
+bound parameters.
+
+{verified: MixedStreamAllowanceTests.Allowed_TheDefaultRefuse_AllowsNothingAsync, MixedStreamAllowanceTests.Allowed_ASecondReadModelWithoutTheOptIn_KeepsThePairRefusedAsync, MixedStreamAllowanceGeneratorTests.SecondReadModelWithoutAllow_ReportsWHIZ139OnItAsync, MixedStreamAllowanceSqlTests.Append_AnAllowedPair_StoresEitherKindOnAStreamHoldingTheOtherAsync, MixedStreamAllowanceSqlTests.Reclassify_AnAllowedPair_ReclassifiesTheEphemeralEvents_KeepsTheDurable_AndTheDigestsEqualARecountAsync, MixedStreamAllowanceSqlTests.Reap_AnAllowedMixedStream_ReapsTheEphemeralBodies_AndKeepsTheDurableOnesAsync}
+
+| Choice | Reason | Verified |
+|---|---|---|
+| `MixedStreams.Refuse` is the default, and the attribute without the property changes nothing at run time. | Silencing WHIZ130 and letting streams mix are separate decisions; an existing opt-in must not start mixing streams on upgrade. | {verified: MixedStreamAllowanceTests.Allowed_TheDefaultRefuse_AllowsNothingAsync, MixedStreamAllowanceGeneratorTests.Registry_AnAllowingReadModel_CarriesItsPairs_AndTheDefaultCarriesNoneAsync, MixedStreamAllowanceSqlTests.Append_WithNoAllowance_IsRefusedAsBeforeAsync, MixedStreamAllowanceSqlTests.Reclassify_WithNoAllowingReadModel_TheAllowedPairStillBlocksAsync} |
+| `Allow` lets only the read model's own pairs mix; any other type is still refused on such a stream. | The allowance is for a pair, not for a stream: an unpaired type in a mixed stream would be skipped by its own read models' rebuilds. | {verified: MixedStreamAllowanceSqlTests.Append_AnAllowedPair_StoresEitherKindOnAStreamHoldingTheOtherAsync, MixedStreamAllowanceSqlTests.Append_AnUnpairedType_IsStillRefused_OnAStreamTheAllowanceMixedAsync, MixedStreamAllowanceSqlTests.Store_AnAllowedPairInOneOutboxWrite_StoresBothKindsAsync} |
+| A pair is allowed only when every read model applying both types opts in, and WHIZ139 names one that does not. | One read model's opt-in must never break another's rebuild. | {verified: MixedStreamAllowanceTests.Allowed_ASecondReadModelWithoutTheOptIn_KeepsThePairRefusedAsync, MixedStreamAllowanceGeneratorTests.SecondReadModelWithoutAllow_ReportsWHIZ139OnItAsync, MixedStreamAllowanceGeneratorTests.EveryReadModelAllows_OrNoneDoes_NoWHIZ139Async} |
+| The history walk reclassifies the ephemeral events of an allowed stream and keeps the Sourced ones, through the one digest fold. | Allowing mixing keeps the durable facts, unlike a release; the digests must still equal a recount. | {verified: MixedStreamAllowanceSqlTests.Reclassify_AnAllowedPair_ReclassifiesTheEphemeralEvents_KeepsTheDurable_AndTheDigestsEqualARecountAsync} |
+| The reaper reaps the ephemeral bodies of an allowed stream and keeps the Sourced ones. | The point of declaring the type ephemeral is to reclaim it; the stream's durable events are not its to reap. | {verified: MixedStreamAllowanceSqlTests.Reap_AnAllowedMixedStream_ReapsTheEphemeralBodies_AndKeepsTheDurableOnesAsync} |
+| A read model applying only the Sourced type rebuilds an allowed stream; the opted-in read model's full rebuild of it is refused. | The Sourced events are a complete log for a read model that never applies the ephemeral type; the opted-in read model is ephemeral state. | {verified: PerspectiveRebuilderTests.RebuildStreamsAsync_AnAllowedMixedStream_RebuildsForADurableOnlyReadModel_AndStaysRefusedForTheOptedInOneAsync, MixedStreamAllowanceSqlTests.StateBased_IgnoringTheAllowedEphemeralType_LeavesTheMixedStreamRebuildableAsync, DapperMixedStreamAllowanceTests.GetStateBasedStreamIdsAsync_PassingOverTheAllowedType_LeavesTheMixedStreamRebuildableAsync} |
+| An engine that does not implement the allowance ignores no ephemeral type and syncs nothing. | The safe direction: every stream holding an ephemeral event stays refused, as before. | {verified: WorkCoordinatorDefaultsTests.MixedStreamDefaults_IgnoreNothing_AndSyncNothingAsync} |
+| The allowed pairs are synced at startup as a full replace, under every stored name of each type. | A read model that drops the opt-in must refuse mixing again, and events stored under a former name hold a stream as the type does. | {verified: TypeDefinitionReconcilerCoverageTests.ReconcileAsync_SyncsTheAllowedMixedStreamPairs_UnderEveryStoredNameAsync, MixedStreamAllowanceSqlTests.Sync_ReplacesThePairs_AndAnEmptyListClearsThemAsync, MixedStreamAllowanceTests.Stored_AddsEachTypesFormerNames_FromTheCatalogAsync, DapperMixedStreamAllowanceTests.SyncMixedStreamAllowancesAsync_AllowsThePair_AndAnEmptyListAllowsNothingAsync} |
+
 ### WHIZ134: ambiguous composition {#whiz134}
 
 A type that inherits `[Ephemeral]` from two or more sibling profile interfaces whose `Destruction` or
@@ -417,8 +498,9 @@ by id, or an event that arrives after its predecessors' bodies are gone. These g
 **A stream never mixes ephemeral and Sourced events (WHIZ133).** Which events reach a stream is
 only known when they are stored, so this is checked where outbox and inbox events are copied into the event
 store and on every direct `IEventStore.AppendAsync`, not by the build. An event whose kind differs from the kind its stream already holds is refused, in
-either order, and there is no opt-in: one ephemeral event would mark the whole stream state-based and hide its
-Sourced history from every rebuild and rewind. A stream with nothing stored takes the kind of its first event.
+either order: one ephemeral event would mark the whole stream state-based and hide its
+Sourced history from every rebuild and rewind. The one exception is a pair every read model applying both allows
+(see [Allowing mixed streams](#allowing-mixed-streams)). A stream with nothing stored takes the kind of its first event.
 A compaction origin is neither kind, so a compacted stream keeps receiving the kind it held. A write its caller
 awaits (a direct append, and the immediate and scoped strategies' flush, which the dispatcher awaits when publishing) fails with `MixedStreamEventException`
 and keeps nothing of the write; every other write (batch flushes, handler commits, the inbox) dead-letters
@@ -520,14 +602,209 @@ the size of the store, and a crash resumes from the last committed batch.
 | Choice | Reason | Verified |
 |---|---|---|
 | The reclassification runs in the maintenance cycle, in bounded batches, not as one statement at startup. | One statement over every stored event of a type held a lock on every touched row for its whole length, wrote one burst of WAL, made startup wait, and could run into the command timeout, after which nothing was reclassified and the next startup tried the same again. | {verified: TypeDefinitionReconcilerCoverageTests.Reconcile_FlagOn_LeavesTheReclassifyToTheMaintenanceCycle_StartupDoesNotWaitOnItAsync, EphemeralHistoryReclassifySqlTests.Reclassify_RunsInBoundedBatches_AndResumesFromItsCursor_AfterACrashAsync} |
-| A stream that also holds a Sourced event of another type is left as it is, and its events are counted as blocked and logged. Each batch takes the per-stream locks the write paths take before judging a stream. | Reclassifying it would mix the stream (see WHIZ133 above). Under the locks, no event lands in the stream between the check and the stamp. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_AMixedStream_IsReportedAndLeftUntouched_AndTheDigestsEqualARecountAsync, EphemeralHistoryReclassifySqlTests.Reclassify_OnlyMixedStreams_ReportsThemBlocked_AndStillFinishesAsync} |
+| A stream that also holds a Sourced event of a type that is not declared ephemeral (nor released or allowed for one) is left as it is, and its events are counted as blocked and logged. Each batch takes the per-stream locks the write paths take before judging a stream. | Reclassifying it would mix the stream (see WHIZ133 above). Under the locks, no event lands in the stream between the check and the stamp. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_AMixedStream_IsReportedAndLeftUntouched_AndTheDigestsEqualARecountAsync, EphemeralHistoryReclassifySqlTests.Reclassify_OnlyMixedStreams_ReportsThemBlocked_AndStillFinishesAsync} |
 | The reclassified events leave the integrity digests through the one digest fold, batch by batch. | The stored digests then equal a recount of the Sourced events at every commit, so an audit running alongside the walk sees no false difference. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_AMixedStream_IsReportedAndLeftUntouched_AndTheDigestsEqualARecountAsync, StreamDigestWritersTests.ReclassifyEphemeral_SubtractsEveryLaneOfTheReclassifiedEventsAsync} |
 | History stored under a former name is the same type: it is walked too, and a stream holding the type under two names is not mixed. | A rename does not change which events are the type's. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_FormerNames_AreWalked_AndAStreamHoldingBothIsNotMixedAsync} |
+| Each walk names the type by its stored form, `Ns.Type, Assembly`, the form the append path writes to `event_type`; a bare former name from the pinned-type ledger is read in the type's current assembly, and a former name the ledger records with an assembly (a type that [moved to another assembly](../identity/pinned-type-ledger#a-type-that-moves-to-another-assembly)) is read in that one. The bare CLR name is used only to find the type's definition. | The walk reads the type's events through the index on `event_type`. Named by the bare CLR name, as it was until #2254, it matched no stored event and completed at once with every count at 0, so the setting reclassified nothing. A walk left complete under the bare name is a row of its own and does not stop the stored-name walk. | {verified: EphemeralHistoryReclassifySqlTests.TheWalk_NamesTheTypeAsTheAppendPathStoredIt_AndItsDefinitionByTheBareNameAsync, EphemeralHistoryReclassifySqlTests.AWalkCompletedUnderTheBareName_DoesNotStopTheStoredNameWalkAsync, HistoryWalkTargetNamingTests.EveryHistoryWalkStep_NamesItsTargetsAsTheAppendPathStoresThem_AndReadsThemAsync, TypeNameFormatterTests.FormatFormerName_ABareFormerName_TakesTheTypesAssemblyAsync, FormerNameFromAnotherAssemblyWalkTests.TheReclassifyWalk_ReadsTheHistoryOfATypeThatMovedAssemblies_UnderItsFormerStoredNameAsync} |
 | A walk completes only once none of the type's events is still waiting for the commit-order stamper. | The walk reads in commit order, so an event not yet stamped is read once it is. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_EventsUnstampedAtTheStart_AreReclassifiedOnceStampedAsync} |
 | A complete walk is not read again until the type-definition registry holds a newer definition of the type. | Events stored after the type became ephemeral are stored ephemeral; nothing new needs reclassifying. | {verified: EphemeralHistoryReclassifySqlTests.Reclassify_RunsInBoundedBatches_AndResumesFromItsCursor_AfterACrashAsync} |
 
+**Which name the walk reads.** The event store keeps each event's type in its stored form, `Ns.Type, Assembly`. The
+message-type catalog and the pinned-type ledger keep the bare CLR name, `Ns.Type`, so the step turns each into the stored
+form before it walks. A guard runs every step that walks stored history against events written through the append path,
+and fails if any walk is keyed by a name the store does not hold. The per-type rewind grace
+(`[Ephemeral(RewindGraceSeconds = ...)]`) is keyed the same way, because the reaper matches it against `event_type`.
+
+{verified: HistoryWalkTargetNamingTests.EveryHistoryWalkStep_NamesItsTargetsAsTheAppendPathStoresThem_AndReadsThemAsync, HistoryWalkTargetNamingTests.TheGuard_ReportsAWalkNamedOtherThanTheStoreDoesAsync, HistoryWalkTargetNamingTests.EveryHistoryWalkStep_IsCoveredByThisGuardAsync, TypeDefinitionReconcilerCoverageTests.ReconcileAsync_RewindGraceOverrides_AreKeyedByTheStoredName_TheEventStoreHoldsAsync}
+
 The step logs, per type and cycle, the events it reclassified, the events it left Sourced in mixed streams and how many
 of the type's events are left to read, and one line when a type's walk completes.
+
+#### A stream becomes ephemeral whole {#a-stream-becomes-ephemeral-whole}
+
+The walk converts stream by stream. Several event types often share one stream: a session stream, say, whose created,
+updated and ended events are all declared ephemeral after their history was written durable. When a batch reaches such a
+stream, it judges the stream by every Sourced type in it, not only the type it is walking:
+
+- a type declared `[Ephemeral]` (the walked type or any other) converts;
+- a type released for one of the declared types the stream holds converts with it;
+- a type allowed to share a stream with **every** declared type the stream holds stays Sourced;
+- any other type blocks the stream.
+
+A stream with no blocking type is converted whole, in one statement: every declared type's events in it, and the
+released ones, become ephemeral together. A stream with a blocking type is left whole, and only the blocking types are
+reported, so the report stays the list of types a developer has to decide about. The other declared types' events go
+through the same digest and integrity accounting as the walked type's own. When the other type's walk comes to the
+stream later, it finds its events already ephemeral: they count as read, not as changed.
+
+```text{
+title: "A session stream converted by the first walk that reaches it"
+description: "Two declared-ephemeral types share a stream; one walk converts both, and a durable type refuses its stream whole."
+framework: "NET10"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["ephemeral", "maintenance", "streams"]
+}
+stream A: SessionCreated, SessionUpdated, SessionUpdated      -> the SessionUpdated walk converts all three
+stream B: SessionCreated, SessionUpdated, SessionOwnerChanged -> refused whole; reported: SessionOwnerChanged
+```
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A stream converts as a unit: when every Sourced event in it is of a declared-ephemeral type, or released or allowed for one, the walk converts every declared type's events in it in the same statement. | Converting one type at a time cannot work for types that share streams: each type's walk saw the others' events, still durable, and refused the stream, so none could go first and the history was never converted. A stream is the unit every other history operation changes, and a stream that is wholly durable or wholly ephemeral keeps the reasoning about durability simple. It is never left partly converted, even for a moment between batches. | {verified: EphemeralStreamByStreamSqlTests.OneWalk_ConvertsEveryDeclaredEphemeralTypeInTheStream_Together_AndTheDigestsEqualARecountAsync, DapperEphemeralHistoryReclassifyTests.TwoDeclaredTypesSharingAStream_AreConvertedTogether_ByTheRegisteredStepAsync} |
+| This was chosen over only treating the other declared types as non-blockers. | That alone would let each walk convert its own type and leave the stream mixed until the other walks reached it, and a crash or a batch limit in between would leave it so. Converting the stream whole keeps every stream one kind at every commit. | {verified: EphemeralStreamByStreamSqlTests.OneWalk_ConvertsEveryDeclaredEphemeralTypeInTheStream_Together_AndTheDigestsEqualARecountAsync} |
+| A stream holding a type meant to stay durable is refused whole, and only that type is reported, under each declared type whose events it holds back. | The report is the list a developer acts on (mark ephemeral, release, allow the pair or keep). A declared-ephemeral type in it would ask for a decision that has already been made. | {verified: EphemeralStreamByStreamSqlTests.AStreamHoldingAGenuinelyDurableType_IsRefusedWhole_AndTheReportNamesOnlyThatTypeAsync} |
+| A release applies in the streams of the declared type it is for, whichever declared type's walk reaches the stream. | The release says the blocking type's events may go in that type's streams; the stream is the same whichever walk arrives first. | {verified: EphemeralStreamByStreamSqlTests.AReleaseOfTheOtherDeclaredType_AppliesInTheStreamsItIsIn_ToTheFirstWalkAsync} |
+| A Sourced type stays beside the converted events only when it is allowed with every declared type the stream holds; otherwise it blocks the stream. | After the conversion each declared type sits beside it, and a pair that is not allowed must never share a stream. | {verified: EphemeralStreamByStreamSqlTests.AnAllowedDurableType_ThatOnlyOneDeclaredTypeIsPairedWith_RefusesTheStream_AndIsReportedAsync, EphemeralStreamByStreamSqlTests.AnAllowedDurableType_PairedWithEveryDeclaredTypeInTheStream_StaysDurable_AndTheRestConvertAsync} |
+| The other declared types and their release and allow lists are part of each walk's variant (as a short digest), so declaring another type walks every declared type again. A type declared alone adds nothing to it. | A completed walk's report could otherwise go on naming a type that has since been declared ephemeral, and its counts would no longer describe what the walk would do now. The set grows with the catalog, so the variant stores a digest of it, not every name; the digest does not depend on the order the catalog lists the types in. | {verified: EphemeralStreamByStreamSqlTests.DeclaringAnotherType_WalksTheTypeAgain_SoItsReportNoLongerNamesTheNewlyDeclaredTypeAsync, EphemeralStreamByStreamSqlTests.TheVariant_IsTheSame_WhicheverOrderTheCatalogListsTheDeclaredTypesInAsync} |
+| Each walk counts only its own type's events as changed; the other declared types' events it converts are counted apart (`EventsReclassifiedWithStream`), and their own walk later reads them without changing them. | The per-type counters then add up to the events each type had, with nothing counted twice. | {verified: EphemeralStreamByStreamSqlTests.TheOtherTypesLaterWalk_FindsItsEventsAlreadyEphemeral_AndTheCountersStayTruthfulAsync} |
+
+#### What holds ephemeral history back {#what-holds-ephemeral-history-back}
+
+A large count of events left Sourced in mixed streams says how much history stays, not why. The blocker report says
+why: for each ephemeral type, the durable (Sourced) event types that share its streams. It is on by default and is
+recorded by the walk itself, from the streams each batch already locks, so it costs no extra pass over the store.
+
+For each pair of ephemeral type and blocking type the report keeps:
+
+- the events of the ephemeral type that stay Sourced, the streams they are in (each stream once per walk) and their
+  approximate stored size;
+- one sample stream id, to look at;
+- the route of the blocking type: the service, topic, caller class and caller member of the hop that wrote it, from the
+  newest [route](../../data/event-store#routes-and-traces) recorded for it (routes are recorded under the distilled
+  metadata form; without one the report says so).
+
+The report is logged once per ephemeral type when its walk finishes, and once at startup from the stored results. The
+gauge `whizbang.ephemeral.blocked_events` (meter `Whizbang.Ephemeral`, see [metrics](../../operations/observability/metrics#ephemeral))
+carries the same counts, tagged `ephemeral_type` and `blocking_type`.
+
+```text{
+title: "A blocker report entry"
+description: "What the report logs for one durable type that keeps an ephemeral type's history Sourced."
+framework: "NET10"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["ephemeral", "maintenance", "observability"]
+}
+Ephemeral history of Contracts.Sessions.SessionPinged, Contracts is held back by 1 durable event type(s):
+  Contracts.Sessions.SessionOpened, Contracts: 3 event(s) in 2 stream(s), about 1,184 bytes; sample stream 0193...
+    written by service sessions-service, topic sessions, SessionHandler.OpenAsync
+    to clear it: (1) mark Contracts.Sessions.SessionOpened [Ephemeral] if it is transient everywhere; (2) release it in
+    these streams only with the setting Whizbang:Ephemeral:ReleaseBlockers:Contracts.Sessions.SessionPinged:0 = Contracts.Sessions.SessionOpened, Contracts
+    (no registered read model applies it); (3) keep it: these events and streams stay stored; (4) allow mixing, which
+    keeps these durable events and lets the ephemeral ones go: put [DangerouslyAllowMixedEphemeralAndSourcedEvents(Streams = MixedStreams.Allow)]
+    on every read model that applies both types: App.SessionBoard.
+```
+
+The report needs the walk, so it appears only with `ReconcileHistoricalOnStartup` on. Turn it off with
+`Whizbang:Ephemeral:BlockerReport:Enabled` set to `false`; then nothing is recorded, logged or gauged, and the walk runs
+exactly as it does without the report.
+
+{verified: EphemeralBlockerReportSqlTests.Report_AMixedStream_NamesTheBlockingType_ItsCounts_ASampleStream_AndItsRouteAsync, EphemeralBlockerReportSqlTests.Report_ARouteWithOnlySomeParts_NamesWhatItHasAsync, EphemeralBlockerReportSqlTests.Report_WithoutARoute_OrAReadModel_SaysSoAsync, EphemeralBlockerReportSqlTests.StartupSummary_IsLoggedOnce_AndTheGaugeReadsTheStoredReportAsync, EphemeralBlockerReportSqlTests.Report_Off_RecordsNothing_LogsNothing_AndTheReclassifyIsUnchangedAsync}
+
+Each entry ends in what to do. There are four choices:
+
+1. **The blocking type is transient too:** mark it `[Ephemeral]` in code. The next walk clears both, and the route in
+   the report points at the code that writes it.
+2. **The blocking type is durable in general, but these streams are disposable:** release it for this ephemeral type
+   only (below). The report prints the exact setting line to add.
+3. **Keep it:** do nothing. The report shows what that costs: the events, the streams and their size.
+4. **Allow mixing:** the durable events stay durable and the ephemeral ones go. Put
+   `[DangerouslyAllowMixedEphemeralAndSourcedEvents(Streams = MixedStreams.Allow)]` on every read model that applies
+   both types; the report prints the attribute line and names those read models (or says that none applies both, so
+   there is none to opt in yet). Once allowed, the pair is no longer a blocker: see
+   [Allowing mixed streams](#allowing-mixed-streams).
+
+{verified: MixedStreamAllowanceSqlTests.Report_AnAllowedPair_IsNoBlocker_AndAnUnallowedOneOffersAllowMixingAsync, MixedStreamAllowanceSqlTests.Report_WhenNoReadModelAppliesBoth_SaysAllowMixingNeedsOneAsync}
+
+#### Releasing a blocking type {#releasing-a-blocking-type}
+
+`Whizbang:Ephemeral:ReleaseBlockers:<EphemeralType>` lists the durable types released for one ephemeral type. The key is
+the ephemeral type's name, with or without its assembly; each value is a blocking type as the report prints it
+(`Namespace.Type, Assembly`) or without its assembly.
+
+```json{
+title: "Releasing a blocking type for one ephemeral type"
+description: "Reclassifies SessionOpened with SessionPinged in the streams that hold SessionPinged, and nowhere else."
+framework: "NET10"
+category: "Core Concepts"
+difficulty: "ADVANCED"
+tags: ["ephemeral", "configuration", "maintenance"]
+}
+{
+  "Whizbang": {
+    "Ephemeral": {
+      "ReconcileHistoricalOnStartup": true,
+      "ReleaseBlockers": {
+        "Contracts.Sessions.SessionPinged": [ "Contracts.Sessions.SessionOpened, Contracts" ]
+      }
+    }
+  }
+}
+```
+
+A released type no longer keeps the ephemeral type's history Sourced. In each stream that holds the ephemeral type and
+nothing else durable once the released types are set aside, the walk reclassifies the released type's Sourced events
+along with the ephemeral type's, takes them out of the integrity digests the same way, and the ephemeral reaper then
+reclaims them like any other consumed ephemeral event. Changing the list walks the type's history again, so a walk that
+had already completed applies it.
+
+**Safety.**
+
+- Releasing is opt-in per pair. The default is empty: nothing durable changes without a setting.
+- The report is the dry run: it shows, before anything is released, how many events and streams the setting would turn
+  ephemeral.
+- Only streams that hold the ephemeral type are touched. The released type's events in every other stream stay
+  Sourced, and a stream that still holds another, unreleased durable type is left whole.
+- A read model that applies the released type cannot be rebuilt from those events once they are reaped. The report
+  names such read models next to the setting line.
+- A released stream is ephemeral from then on, so a later Sourced append to it is refused like any mixed write (see
+  WHIZ133 above). Release a type only when nothing writes it into those streams any more; the route in the report
+  shows what does.
+
+{verified: EphemeralBlockerReportSqlTests.Release_StampsTheBlockingEvents_OnlyInStreamsHoldingTheEphemeralType_AndTheDigestsEqualARecountAsync, EphemeralBlockerReportSqlTests.NoRelease_NoDurableEventChangesAsync, EphemeralBlockerReportSqlTests.Release_AStreamStillHeldByAnUnreleasedType_IsLeftWhole_AndReportedForThatTypeOnlyAsync, EphemeralBlockerReportSqlTests.Report_NamesTheReadModelsThatApplyTheBlockingType_NextToTheReleaseLineAsync, EphemeralBlockerReportSqlTests.Release_NamesWithOrWithoutTheAssembly_MatchTheConfiguredTypesAsync}
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The report is on by default. | It only counts what the walk already reads and changes no event; an operator who expected a reclaim needs it without first knowing to ask. | {verified: EphemeralBlockerOptionsTests.Defaults_TheReportIsOn_AndNothingIsReleasedAsync} |
+| With the report off, nothing is recorded, logged or gauged, and the walk keeps its earlier variant. | Off must mean off: no rows to clean up, no log noise, and no restarted walk. | {verified: EphemeralBlockerReportSqlTests.Report_Off_RecordsNothing_LogsNothing_AndTheReclassifyIsUnchangedAsync} |
+| The report is recorded inside the walk's batches, under the locks they already hold. | A separate pass over the store would cost the store's size; this costs only the blocked streams of each batch. | {verified: EphemeralBlockerReportSqlTests.Report_AMixedStream_NamesTheBlockingType_ItsCounts_ASampleStream_AndItsRouteAsync} |
+| The counts describe the type's current walk: a restarted walk (a newer definition, a changed release list or report setting) starts them again. | Counts summed across walks would grow on every restart and describe nothing. | {verified: EphemeralBlockerReportSqlTests.Counts_DescribeTheCurrentWalk_AndResetWhenItRestartsAsync, EphemeralBlockerReportSqlTests.Counts_OfAnEarlierWalk_AreNotReported_EvenBeforeTheRestartedWalkReadsABatchAsync} |
+| A stream is counted once per walk, however many batches read its events. | The streams figure is what a release would turn ephemeral; counting a stream per batch would overstate it. | {verified: EphemeralBlockerReportSqlTests.Streams_AreCountedOnce_WhenTheirEventsSpanSeveralBatchesAsync} |
+| Nothing durable changes without a release setting. | Turning durable events ephemeral is a deliberate, potentially lossy step; the report is the dry run. | {verified: EphemeralBlockerReportSqlTests.NoRelease_NoDurableEventChangesAsync} |
+| A release reclassifies the blocking type only in streams that hold the ephemeral type, and only once the stream is wholly ephemeral. | The blocking type is durable everywhere else; a partly released stream would be mixed. | {verified: EphemeralBlockerReportSqlTests.Release_StampsTheBlockingEvents_OnlyInStreamsHoldingTheEphemeralType_AndTheDigestsEqualARecountAsync, EphemeralBlockerReportSqlTests.Release_AStreamStillHeldByAnUnreleasedType_IsLeftWhole_AndReportedForThatTypeOnlyAsync} |
+| A changed release list walks the type again. | A completed walk reads nothing more, so a release added after it would otherwise never apply. | {verified: EphemeralBlockerReportSqlTests.ChangingTheReleaseList_WalksTheTypeAgain_AndReleasesWhatTheCompletedWalkLeftAsync} |
+| The release list reaches the database as a bound parameter. | A type name is data; it is compared, never executed. | {verified: EphemeralBlockerReportSqlTests.Release_ANameIsBoundAsData_NeverSqlTextAsync} |
+| A pair that leaves the report reads zero on the gauge. | A stale count would say the pair still holds history back. | {verified: EphemeralBlockerMetricsTests.BlockedEvents_APairThatLeftTheReport_ReadsZero_NotItsLastCountAsync} |
+| Each entry offers a fourth action, allow mixing, with the exact attribute line and the read models that must carry it; an allowed pair is no blocker. | Mark-ephemeral and release both give up the durable events; allowing mixing is the one choice that keeps them and still reclaims the ephemeral ones. | {verified: MixedStreamAllowanceSqlTests.Report_AnAllowedPair_IsNoBlocker_AndAnUnallowedOneOffersAllowMixingAsync, MixedStreamAllowanceSqlTests.Report_WhenNoReadModelAppliesBoth_SaysAllowMixingNeedsOneAsync} |
+
+#### Read models opted into mixing {#read-models-opted-into-mixing}
+
+A read model that carries `[DangerouslyAllowMixedEphemeralAndSourcedEvents]` applies both kinds on purpose. The
+attribute only silences [WHIZ130](#whiz130) at build time; without `Streams = MixedStreams.Allow` it changes nothing at
+runtime (see [Allowing mixed streams](#allowing-mixed-streams)). The blocker report covers
+each such read model too, once per process with the startup summary: for each of its durable inputs, how many of its
+events are still stored, in how many streams, and how many of those streams also hold one of its ephemeral inputs
+(history only: the store refuses new mixing).
+
+- **No durable events left:** the report says the read model is ready to drop the attribute. Remove it and the
+  durable `Apply` methods, and the read model becomes purely ephemeral (its rebuild is then refused, as for any
+  ephemeral read model).
+- **Durable events remain:** the report names each durable input with its counts. When an input shares streams with
+  an ephemeral type, it is also a blocker above, and the entry says so and points at
+  [releasing it](#releasing-a-blocking-type) if those streams are disposable.
+
+The generated perspective registry carries the opt-in (`PerspectiveRegistrationInfo.AllowsMixedEphemeralAndSourced`),
+so the report needs no reflection.
+
+{verified: EphemeralBlockerReportSqlTests.MixedReadModel_WithNoDurableInputLeft_IsReportedReadyToDropTheAttributeAsync, EphemeralBlockerReportSqlTests.MixedReadModel_WithDurableInputsLeft_ReportsTheirCounts_InTheirOwnStreamsAsync, EphemeralBlockerReportSqlTests.MixedReadModel_ADurableInputSharingStreams_IsLinkedToItsBlockerEntryAsync, PerspectiveRegistryMixedOptInTests.Registry_MarksAPerspectiveThatAllowsMixing_AndOnlyThatOneAsync}
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The generated registry records which read models carry the opt-in. | The attribute is compile-time only; without the registry the runtime could not know which read models to report, and reading it by reflection would break AOT. | {verified: PerspectiveRegistryMixedOptInTests.Registry_MarksAPerspectiveThatAllowsMixing_AndOnlyThatOneAsync} |
+| A read model whose durable inputs have no stored event left is reported ready to drop the attribute. | That is the moment the opt-in stops buying anything, and nothing else tells the operator. | {verified: EphemeralBlockerReportSqlTests.MixedReadModel_WithNoDurableInputLeft_IsReportedReadyToDropTheAttributeAsync} |
+| Remaining durable inputs are counted, and linked to their blocker entry when they share streams. | The counts say how far the read model is from purely ephemeral; the link shows which release would close the gap. | {verified: EphemeralBlockerReportSqlTests.MixedReadModel_WithDurableInputsLeft_ReportsTheirCounts_InTheirOwnStreamsAsync, EphemeralBlockerReportSqlTests.MixedReadModel_ADurableInputSharingStreams_IsLinkedToItsBlockerEntryAsync} |
+| It is counted once per process, not per cycle. | It reads each durable input's stored events; once at startup keeps that cost out of every maintenance cycle. | {verified: EphemeralBlockerReportSqlTests.MixedReadModel_WithNoDurableInputLeft_IsReportedReadyToDropTheAttributeAsync} |
 
 ## Destruction hooks {#destruction-hooks}
 
