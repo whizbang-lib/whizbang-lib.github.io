@@ -627,6 +627,31 @@ cleared in place, so on a run whose snapshot is due the runner serializes the cl
 write. Whether it is due is decided before the write, so a run that takes no snapshot serializes nothing
 extra. A rewind from either snapshot keeps the columns' values.
 
+### A projected document carries its promoted fields {#a-projected-document-carries-its-promoted-fields}
+{verified: InitOnlyPhysicalFieldHydrationTests.SplitRecord_AProjectedDocumentRead_CarriesThePromotedFieldsAsync, InitOnlyPhysicalFieldHydrationTests.SplitRecord_AProjectedDocumentRead_WithASortAndPaging_CarriesThePromotedFieldsAsync, InitOnlyPhysicalFieldHydrationTests.SplitRecord_AProjectedFirstOrDefault_CarriesThePromotedFieldsAsync, InitOnlyPhysicalFieldHydrationTests.SplitClass_WithAnInitOnlyPromotedField_AProjectedDocumentRead_CarriesItAsync, InitOnlyPhysicalFieldHydrationTests.ExtractedRecord_AProjectedDocumentRead_IsUnchanged_TheDocumentHoldsTheFieldsAsync, InitOnlyPhysicalFieldHydrationTests.SplitRecord_ACountOverTheProjection_IsUnaffectedAsync, SplitDocumentProjectionGenerationTests.SplitRecord_RegistersAProjectionThatReadsEveryPromotedColumn_AndACopyWithAWithExpressionAsync, SplitDocumentProjectionGenerationTests.ExtractedModel_RegistersNoProjection_ItsDocumentAlreadyHoldsTheFieldsAsync, SplitDocumentRegistryTests.Rewrite_AnyOtherShape_IsLeftAsItWasAsync}
+
+A query that ends in `Select(r => r.Data)`, the shape an `IQueryable` composer such as a GraphQL list field returns,
+materializes only the document, not the row, so no hydrator runs; in `Split` mode the document does not hold the
+promoted fields. The generator therefore registers, for each model with a `Split` field, a projection that reads the
+promoted columns beside the document and copies them in by the rules above, and `UseWhizbangPhysicalFields` substitutes
+it when the document projection is the query's last and only paging or an element operator without a predicate
+(`Skip`, `Take`, `First`, `Single`, `Last` and their `OrDefault` forms) follows it. EF Core reads the columns with the
+document and runs the copy on each result.
+
+```csharp{title="A projected document read of a Split model" description="The promoted fields arrive with their column values, as on a whole-row read." category="Querying" difficulty="INTERMEDIATE" tags=["perspectives", "physical-fields", "split", "querying"]}
+var products = await lens.Query
+  .Where(r => r.Data.Category == "electronics")
+  .OrderBy(r => r.Id)
+  .Select(r => r.Data)
+  .Take(20)
+  .ToListAsync();
+// products[0].Category == "electronics", read from its column
+```
+
+A filter, sort or other operator written over the model after the projection keeps the query as it was, because the
+copy runs on the client after the query; write it over the row before the projection, as above. A count over the
+projection, and `Extracted` and `JsonOnly` models, whose documents hold their fields, are not rewritten.
+
 ## Defining Physical Fields
 
 Use the `[PhysicalField]` attribute to mark properties for physical column storage:

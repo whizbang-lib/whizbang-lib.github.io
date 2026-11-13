@@ -845,7 +845,9 @@ Each entry ends in what to do. There are four choices:
 
 `Whizbang:Ephemeral:ReleaseBlockers:<EphemeralType>` lists the durable types released for one ephemeral type. The key is
 the ephemeral type's name, with or without its assembly; each value is a blocking type as the report prints it
-(`Namespace.Type, Assembly`) or without its assembly.
+(`Namespace.Type, Assembly`) or without its assembly. A released type's former names are released with it, each in the
+form the store holds it: a bare former name takes the type's own assembly.
+{verified: EphemeralBlockerReportSqlTests.Release_AReleasedTypesBareFormerName_ReachesTheEventsStoredUnderItAsync}
 
 ```json{
 title: "Releasing a blocking type for one ephemeral type"

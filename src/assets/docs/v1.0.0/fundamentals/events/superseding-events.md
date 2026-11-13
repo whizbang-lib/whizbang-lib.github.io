@@ -298,6 +298,19 @@ tests: ["ProcessWideOptionsBindingTests.Superseding_Unconfigured_ReconcilesHisto
 }
 ```
 
+### Former names {#history-under-former-names}
+
+A type renamed, or moved from another assembly, keeps its former names in the
+[pinned-type ledger](../identity/pinned-type-ledger), and its older events stay stored under them. They are one logical
+type, so an event under a type's current name supersedes one with the same key stored under any of its former names.
+The reconcile walks each former name as well as the current one, in the form the store holds it (a former name from
+another assembly keeps that assembly; a bare one takes the type's own), and reads every event's key with the type's own
+accessor. An event under a former name is stamped with the type's [group](#superseding-groups), or, for an ungrouped
+type, with its current stored name as the group, so the reconcile and the write paths, which match on the group or else
+the event type, judge supersession across all of the type's names. A group spans former names the same way. A host
+with no message type catalog knows no former names and walks the current name only.
+{verified: SupersedingFormerNameReconcileSqlTests.Reconcile_AnOlderEventUnderAFormerAssemblyQualifiedName_IsSupersededByTheNewerOneUnderTheCurrentNameAsync, SupersedingFormerNameReconcileSqlTests.Reconcile_AnEventUnderABareFormerName_IsWalkedUnderTheTypesOwnAssembly_AndSupersededAsync, SupersedingFormerNameReconcileSqlTests.Reconcile_ANewerEventUnderTheCurrentName_LeavesAnotherKeyUnderAFormerNameAsync, SupersedingFormerNameReconcileSqlTests.Reconcile_WithoutTheCatalog_WalksOnlyTheCurrentNameAsync}
+
 ### What it costs {#history-reconcile-cost}
 
 The walk reads the type's own events and nothing else. Each batch takes the type's next 5,000 stamped events in commit
