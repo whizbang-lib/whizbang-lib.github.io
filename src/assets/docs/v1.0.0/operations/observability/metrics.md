@@ -767,6 +767,9 @@ and reads through the index that serves the predicate:
 | `purge_instance_evictions` | eviction tombstones past `instance_eviction_retention_hours` | `idx_instance_evictions_evicted_at` |
 | `prune_collective_ordering_heads` | ordering heads idle past `collective_ordering_head_retention_days` | `idx_collective_ordering_heads_updated_at` |
 | `purge_idle_routes` | routes not taken for `route_idle_days` | `idx_routes_last_seen` |
+| `prune_ancient_ephemeral_pointers` | ephemeral pointers the opt-in [pointer prune](../../fundamentals/events/ephemeral-events#pruning-ancient-pointers) would remove once due (past the horizon, body reaped, no pending work, not the newest of their stream); reported only while the prune is enabled | `idx_event_store_ephemeral_reap` |
+| `convert_metadata_history` | event rows the [historical metadata conversion](../../data/event-store#history-conversion-remaining) has yet to read past its cursor; `0` once complete, nothing while it is skipped | the `wh_event_body` key |
+| `convert_audit_record_bodies` | audit records the [audit body conversion](../../fundamentals/events/system-events#audit-body-conversion) has yet to read, from its walk's stored progress; `0` once complete, nothing before it starts | none needed: read from `wh_type_history_walks` |
 
 A task whose predicate no index serves reports nothing, rather than a guess or a full scan on a sampling cadence:
 `purge_completed_outbox` and `purge_completed_inbox` (every `processed_at` index is partial on unprocessed rows),
@@ -774,7 +777,9 @@ A task whose predicate no index serves reports nothing, rather than a guess or a
 metadata leave the ephemeral index unbounded, because pointers whose bodies were already reaped stay in it),
 `reap_expired_perspective_rows` and the perspective row caps (`expires_at` is not indexed), and the other ledger
 trims. A missing series therefore means "not measured", never zero. Under `debug_mode`, the tasks that skip under it
-(`purge_completed_perspective_events`, `purge_idle_routes`) report nothing, because they would remove nothing.
+(`purge_completed_perspective_events`, `purge_idle_routes`, `prune_ancient_ephemeral_pointers`,
+`convert_metadata_history`) report nothing, because they would remove nothing.
+{verified: EphemeralPointerPruneSqlTests.Pending_CountsWhatThePruneWouldRemove_OnlyWhileItIsEnabledAsync, MetadataHistoryConversionSqlTests.Remaining_CountsTheRowsPastTheCursor_AndReachesZeroAsync, AuditBodyConversionSqlTests.Step_ConvertsInBoundedBatches_Resumes_AndReportsWhatIsLeftAsync}
 
 **Why it is shaped this way.**
 

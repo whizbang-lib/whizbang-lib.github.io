@@ -14,6 +14,8 @@ tags: >-
   configuration, options, environment variables, appsettings, reference,
   binding
 codeReferences:
+  - src/Whizbang.Core/Configuration/EphemeralSystemEventsOptions.cs
+  - src/Whizbang.Core/Configuration/MetadataHistoryConversionOptions.cs
   - src/Whizbang.Core/Messaging/EventStoreMetadataOptions.cs
   - src/Whizbang.Core/Messaging/EventStoreMetadataSettings.cs
   - src/Whizbang.Core/Archival/ArchiveOptions.cs
@@ -239,6 +241,7 @@ DbContext), the latest registration is used and startup logs a warning naming th
 | `Whizbang` | `WhizbangOptions` | Automatic (worker pipeline) |
 | `Whizbang:SchemaInitialization` | `SchemaInitializationOptions` | Automatic |
 | `Whizbang:Ephemeral` | `EphemeralOptions` | Automatic |
+| `Whizbang:Workers:Maintenance:MetadataHistoryConversion` | `MetadataHistoryConversionOptions` | Automatic (worker pipeline); see [MetadataHistoryConversionOptions](#metadata-history-conversion-options) |
 | `Whizbang:SignalBus` | `SignalBusOptions` | Automatic |
 | `Whizbang:UnobservedExceptionDiagnostics` | `UnobservedExceptionDiagnosticsOptions` | Automatic |
 | `Whizbang:WorkCoordinator` | `WorkCoordinatorOptions` | Automatic |
@@ -807,6 +810,7 @@ Startup reconciliation of ephemeral-event settings drift. **Configure:** bound a
 | `PointerPrune.Enabled` | `bool?` | unset (database: `false`) | `Whizbang__Ephemeral__PointerPrune__Enabled` | Turn on the prune of ancient ephemeral pointers. Publishes `ephemeral_deep_maintenance_enabled` |
 | `PointerPrune.RetentionDays` | `int?` | unset (database: `90`) | `Whizbang__Ephemeral__PointerPrune__RetentionDays` | Days a reaped pointer is kept before it may be pruned; never shorter than the deduplication window. Publishes `ephemeral_pointer_retention_days` |
 | `PointerPrune.IntervalDays` | `int?` | unset (database: `30`) | `Whizbang__Ephemeral__PointerPrune__IntervalDays` | Days between prunes. Publishes `ephemeral_pointer_prune_interval_days` |
+| `SystemEvents.Ttl` | `TimeSpan` | `30.00:00:00` | `Whizbang__Ephemeral__SystemEvents__Ttl` | How long the framework's rewind and rebuild events are kept after they are written: the TTL stamped on a new one and the per-type reaper grace that ages out reclassified history. Must be greater than zero and fit in whole seconds of an int; rejected at host start otherwise. See [Framework system events](../../fundamentals/events/ephemeral-events#framework-system-events) {verified: SystemEventRetentionTests.SystemEventsTtl_BindsFromConfigurationAsync, SystemEventRetentionTests.Validator_RejectsATtlBeyondWholeSecondsInAnInt_AndAcceptsOneSecondAsync} |
 | `BlockerReport.Enabled` | `bool` | `true` | `Whizbang__Ephemeral__BlockerReport__Enabled` | Record, log and gauge which durable event types keep each ephemeral type's history Sourced. Off: nothing recorded, logged or gauged. See [What holds ephemeral history back](../../fundamentals/events/ephemeral-events#what-holds-ephemeral-history-back) {verified: EphemeralBlockerOptionsTests.BlockerReport_AndReleaseBlockers_BindFromConfigurationAsync, EphemeralBlockerReportSqlTests.Report_Off_RecordsNothing_LogsNothing_AndTheReclassifyIsUnchangedAsync} |
 | `ReleaseBlockers` | `Dictionary<string, List<string>>` | empty | `Whizbang__Ephemeral__ReleaseBlockers__<EphemeralType>__0` | Per ephemeral type, the durable types to reclassify with it in its own streams only. Empty: no durable event changes. See [Releasing a blocking type](../../fundamentals/events/ephemeral-events#releasing-a-blocking-type) {verified: EphemeralBlockerOptionsTests.BlockerReport_AndReleaseBlockers_BindFromConfigurationAsync, EphemeralBlockerReportSqlTests.NoRelease_NoDurableEventChangesAsync} |
 
@@ -1452,6 +1456,16 @@ Operator rung of the row-retention override ladder. **Configure:** bound automat
 | `Partitioning.Enabled` | `bool` | `false` | `Whizbang__Workers__Maintenance__Partitioning__Enabled` | Convert the framework's time-ordered tables (`wh_log`, `wh_signals`, `wh_lifecycle_completions`) to time partitions and keep them: create ahead, drop past the window ([partitioned ledgers](../infrastructure/partitioned-ledgers#enabling-it)). Publishes `partition_maintenance_enabled` |
 | `Partitioning.CreateAhead` | `int` | `3` | `Whizbang__Workers__Maintenance__Partitioning__CreateAhead` | Partition intervals past the current one each cycle makes sure exist; at least `1` |
 | `Partitioning.Strategy` | `PartitionManagementStrategy` | `Auto` | `Whizbang__Workers__Maintenance__Partitioning__Strategy` | Who creates partitions: `Auto` (pg_partman where it is already Ready, otherwise the built-in manager; never installs pg_partman), `BuiltIn`, or `PgPartman` (requires the extension, so start fails without it). Expired partitions are always dropped by the built-in manager ([pg_partman](../infrastructure/partitioned-ledgers#pg-partman)) {verified: PartitionManagementStrategyTests.Resolve_EachCellAsync, PartitionManagementStrategyTests.TheSetting_DefaultsToAuto_AndBindsFromConfigurationAsync} |
+
+### MetadataHistoryConversionOptions {#metadata-history-conversion-options}
+
+How much of the historical metadata conversion one maintenance cycle does. **Configure:** bound automatically from `Whizbang:Workers:Maintenance:MetadataHistoryConversion`, with no registration call needed, and validated when the host starts. **Details:** [The cycle's budget](../../data/event-store#history-conversion-budget).
+
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|--------------------|---------|
+| `BatchSize` | `int` | `1000` | `Whizbang__Workers__Maintenance__MetadataHistoryConversion__BatchSize` | Event rows one batch reads, one transaction. At least 1 {verified: MetadataHistoryConversionOptionsTests.Options_BindFromConfiguration_AndAreValidatedAtStartAsync, MetadataHistoryConversionOptionsTests.Validator_RejectsABudgetThatConvertsNothing_NamingTheKeyAsync} |
+| `MaxBatchesPerCycle` | `int` | `200` | `Whizbang__Workers__Maintenance__MetadataHistoryConversion__MaxBatchesPerCycle` | Batches one cycle runs at most. At least 1 {verified: MetadataHistoryConversionOptionsTests.Options_BindFromConfiguration_AndAreValidatedAtStartAsync} |
+| `TimeBudget` | `TimeSpan` | `00:00:30` | `Whizbang__Workers__Maintenance__MetadataHistoryConversion__TimeBudget` | No batch starts once this has passed since the cycle's first, on the host's `TimeProvider`; a batch in progress is never cut short. Greater than zero {verified: MetadataHistoryConversionSqlTests.Step_StopsStartingBatches_OnceTheTimeBudgetHasPassedAsync} |
 
 The `Retention` windows are database-side settings: each cycle publishes the ones you set to `wh_settings` before
 the sweep reads them, and leaves the ones you do not set alone. See [Database-side settings](#database-side-settings).
@@ -2140,6 +2154,10 @@ These settings have no option yet and are set in SQL only:
 | `integrity_epoch_max_stall_seconds` | `3600` | — *code-only* | Digest-epoch stall escape: a lane whose frontier has not advanced this long closes its first blocked epoch anyway (once per sweep). Non-positive disables |
 | `integrity_origin_rewrite_log_rows` | `10000` | none, SQL only | How many origin generation bumps the rewrite log (`wh_integrity_origin_rewrites`) keeps. A consumer whose recorded generation is further behind is answered as unknown and resets its seal to 0; within it, a seal falls only as far as a rewrite reached. See [a rewrite lowers a seal only as far as it reached](/v1.0.0/resilience/stream-integrity#rewrite-floor) |
 | `integrity_origin_rewrite_log_from` | the generation when migration 396 ran | none, written by migration 396 | The generation the rewrite log starts at; a bump before it recorded no floor, so a consumer whose recorded generation is older is answered as unknown. Not meant to be changed |
+| `ledger_sweep_max_batches` | `20` | none, SQL only | The most batches each looping task of the ledger sweep (`reap_unbounded_ledgers`) deletes per call; a task that stops there with rows left reports `capped`. See [Ledger retention](../../fundamentals/workers/maintenance-steps#ledger-retention) |
+| `ephemeral_pointer_prune_batch_size` | `50000` | none, SQL only | The most ephemeral pointers one call of the opt-in pointer prune deletes; a full batch leaves the next cycle due. See [Pruning ancient pointers](../../fundamentals/events/ephemeral-events#pruning-ancient-pointers) |
+| `stream_lifecycle_ephemeral_release_version` | `0`, or `1` on a ledger with no rows | none, written by migration 443 | Gates the one-time release of ephemeral streams from the stream lifecycle ledger (`0` to do, `1` done). Set `0` to run it again. See [Ephemeral streams leave the ledger](../../fundamentals/events/stream-end-of-life#ephemeral-streams) |
+| `stream_lifecycle_ephemeral_release_cursor` | the empty uuid | none, written by migration 443 | The last stream id the release committed; the next batch starts after it. Not meant to be changed |
 | `perspective_storage_manual_tables` | empty | none, SQL only | Comma-separated perspective tables whose fillfactor and autovacuum settings are managed by hand: each start neither sets nor resets them, logs the list and warns of declared values it ignores. Read at every start. See [Manually managed tables](../../fundamentals/perspectives/physical-fields#manually-managed-tables) |
 
 ## Turnkey-bound options sections (complete sweep)
