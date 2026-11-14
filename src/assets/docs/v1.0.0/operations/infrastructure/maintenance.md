@@ -50,7 +50,7 @@ sweep, the [perspective row retention sweeps](../../fundamentals/workers/mainten
 `wh_perform_maintenance` is one statement from the host's point of view, and it runs as one transaction under the
 work coordinator's fixed command budget (180 seconds on the EF Core driver, see
 [command timeouts](../configuration/configuration-reference#command-timeouts)). If the call runs past that budget,
-it is cancelled: every task in it rolls back, including the ones that had finished. A cancellation is the one failure
+it is canceled: every task in it rolls back, including the ones that had finished. A cancellation is the one failure
 no task can survive inside the call. Since migration 422 a task that raises an error is rolled back alone and the
 others commit, and the worker runs the sweeps that follow the call whether or not the call succeeded
 ([a failed task does not stop the cycle](#a-failed-task-does-not-stop-the-cycle)).
