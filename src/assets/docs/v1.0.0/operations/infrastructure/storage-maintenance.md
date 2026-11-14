@@ -8,7 +8,9 @@ description: >-
   How Whizbang keeps its own tables from bloating: autovacuum and fillfactor settings on the framework tables, and how
   a table that has already grown is rewritten, as the table rewrite strategy and AllowTableRewrite decide, including
   the online rewrite through pg_squeeze or pg_repack that the maintenance cycle drives within a per-cycle byte budget,
-  and the concurrent rebuild of bloated indexes on the queue tables that churn to empty
+  how bloat is measured across the heap and its TOAST relation, the configured rewrite thresholds and the
+  post-rewrite floor that stops a freshly rewritten table being rewritten again, and the concurrent rebuild
+  of bloated indexes on the queue tables that churn to empty
 tags: >-
   operations, storage, autovacuum, fillfactor, hot, vacuum, bloat, toast, postgres, maintenance, table rewrite,
   pg_squeeze, pg_repack, pgstattuple, brin, index, correlation, reindex, index bloat
@@ -40,6 +42,10 @@ codeReferences:
   - src/Whizbang.Core/Workers/MaintenanceWorkerOptionsValidator.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Data.Postgres/QueueIndexSql.cs
+  - src/Whizbang.Core/Workers/TableRewriteSettings.cs
+  - src/Whizbang.Core/Workers/OnlineRewriteTools.cs
+  - src/Whizbang.Data.Postgres/Migrations/430_BloatIsMeasuredWithItsToast.sql
+  - src/Whizbang.Data.Postgres/TableMaintenanceSql.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/FrameworkTableAutovacuumTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PerspectiveCursorFillFactorTests.cs
@@ -61,6 +67,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/BrinIndexCandidatesTests.cs
   - tests/Whizbang.Core.Tests/Workers/QueueIndexReindexStepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueueIndexReindexSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ToastAwareBloatEstimateSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RewriteRegrowthFloorSqlTests.cs
+  - tests/Whizbang.Core.Tests/Workers/TableRewriteSettingsTests.cs
 ---
 
 # Storage Maintenance
@@ -134,7 +143,7 @@ once, whatever the table's bloat:
 |---|---|
 | lowered (100 to 90, say) | rewritten **once** by an [online rewrite](#online-rewrite) (pg_squeeze, or pg_repack in process), within the cycle's byte budget; cleared once the rewrite ran |
 | raised, or reset to a value at or above where the pages were packed | the bloat rule alone decides, as before |
-| lowered, with no online strategy chosen | waits; each start logs once which tables wait and what would rewrite them; `VACUUM FULL` never takes it |
+| lowered, with no online tool in use (none chosen, or `Auto` with neither tool Ready) | waits; each start logs once which tables wait and what would rewrite them; `VACUUM FULL` never takes it |
 
 How it works, and why:
 
@@ -153,11 +162,15 @@ How it works, and why:
   never worth it, whatever `AllowTableRewrite` says. A table that is lowered and also bloated is offered for its bloat,
   under the usual rules for every strategy.
 - **The same gate and budget.** It is done by the online rewrite step, so only when `TableRewriteStrategy` is
-  `PgSqueeze`, or `PgRepack` in process, only where that strategy's capabilities are `Ready`, only on the maintainer
-  duty's holder when the housekeeping gate admits the cycle, and only within `OnlineRewriteMaxBytesPerCycle`. With
-  `Auto`, `VacuumFull` or `None` nothing is rewritten. pg_repack in `External` mode leaves it to your job: list the
-  tables from `wh_tables_owed_fillfactor_rewrite()` as well as `wh_tables_needing_rewrite()`, and call
-  `wh_clear_table_rewrite` after each.
+  `PgSqueeze`, `PgRepack` in process, `Online`, or `Auto` resolved to an online tool on that cycle (see
+  [Table rewrite strategy](#table-rewrite-strategy)), only where that tool's capabilities are `Ready`, only on the
+  maintainer duty's holder when the housekeeping gate admits the cycle, and only within
+  `OnlineRewriteMaxBytesPerCycle`. With `VacuumFull`, `None`, or `Auto` with neither tool Ready, nothing is rewritten.
+  pg_repack in `External` mode leaves it to your job: list the tables from `wh_tables_owed_fillfactor_rewrite()` as
+  well as `wh_tables_needing_rewrite()`, and call `wh_clear_table_rewrite` after each.
+- **Not held back by the [post-rewrite floor](#post-rewrite-floor).** The rewrite is owed whatever the table's bloat,
+  so a table rewritten recently for its bloat is still rewritten once for a lowered fillfactor.
+  {verified: RewriteRegrowthFloorSqlTests.AFillFactorDecrease_IsNotHeldBackByTheFloorAsync}
 
 **This revisits the decision of #1594.** It decided that a fillfactor change records a rewrite request and the
 rewriter acts on bloat alone, to be revisited once an online rewrite existed, because the only rewrite then was the
@@ -278,15 +291,17 @@ whole duration with `VACUUM FULL`, so plan it for a quiet window or use an onlin
 a rewrite; the [table rewrite strategy](#table-rewrite-strategy) decides what happens to it.
 
 ## How bloat is measured {#how-bloat-is-measured}
-{verified: MaintenanceWorkerBloatMeasurementTests.WithoutACapabilityRegistry_TheEstimateIsRecorded_AndNothingIsMeasuredAsync, MaintenanceWorkerBloatMeasurementTests.WhenReady_ACandidateIsMeasuredWithApprox_AndQueuedWithTheMeasuredRatioAsync, MaintenanceWorkerBloatMeasurementTests.WhenReady_AFalsePositiveEstimate_IsNotQueued_AndTheLogGivesBothFiguresAsync, MaintenanceWorkerBloatMeasurementTests.WhenReady_AMeasurementThatDisagreesWithItsEstimate_IsLoggedWithBothFiguresAsync, MaintenanceWorkerBloatMeasurementTests.WhenReady_AMeasurementThatFails_FallsBackToTheEstimate_AndSaysWhyAsync, TableBloatMeasurementSqlTests.Approx_OnAStaleEstimate_MeasuresTheTableLeanAsync, TableBloatMeasurementSqlTests.AMeasuredRequest_IsQueuedWithItsRatioAndMethod_AndTheQueueOrdersByTheMeasuredRatioAsync, OnlineTableRewriteStepTests.WhenPgstattupleIsReady_TheReMeasureIsApprox_AndItDecidesTheClearAsync, TableRewriteStartupStepTests.WhenPgstattupleIsReady_TheReMeasureIsApprox_AndItDecidesTheClearAsync}
+{verified: MaintenanceWorkerBloatMeasurementTests.WithoutACapabilityRegistry_TheEstimateIsRecorded_AndNothingIsMeasuredAsync, MaintenanceWorkerBloatMeasurementTests.WhenReady_ACandidateIsMeasuredWithApprox_AndQueuedWithTheMeasuredRatioAsync, MaintenanceWorkerBloatMeasurementTests.WhenReady_AFalsePositiveEstimate_IsNotQueued_AndTheLogGivesBothFiguresAsync, MaintenanceWorkerBloatMeasurementTests.WhenReady_AMeasurementThatDisagreesWithItsEstimate_IsLoggedWithBothFiguresAsync, MaintenanceWorkerBloatMeasurementTests.WhenReady_AMeasurementThatFails_FallsBackToTheEstimate_AndSaysWhyAsync, TableBloatMeasurementSqlTests.Approx_OnAStaleEstimate_MeasuresTheTableLeanAsync, TableBloatMeasurementSqlTests.AMeasuredRequest_IsQueuedWithItsRatioAndMethod_AndTheQueueOrdersByTheMeasuredRatioAsync, OnlineTableRewriteStepTests.WhenPgstattupleIsReady_TheReMeasureIsApprox_AndItDecidesTheClearAsync, TableRewriteStartupStepTests.WhenPgstattupleIsReady_TheReMeasureIsApprox_AndItDecidesTheClearAsync, ToastAwareBloatEstimateSqlTests.AMostlyDeadToast_UnderALeanHeap_IsACandidateAsync, ToastAwareBloatEstimateSqlTests.AHealthyToastedTable_IsNotACandidate_AndItsEstimateReadsLeanAsync, ToastAwareBloatEstimateSqlTests.Approx_MeasuresTheToastRelationToo_SoItConfirmsTheEstimateAsync}
 
-The bloat ratio is the heap's size over its live rows times the width those rows should need; about 1.0 is lean. It is
-obtained one of three ways, and every stored or reported ratio says which:
+A table's bloat ratio is the worse of two ratios: its heap's size over its live rows times the bytes those rows should
+need, and its TOAST relation's size over its live chunks times the space a packed chunk takes (see
+[the heap and the TOAST relation](#bloat-heap-and-toast)). About 1.0 is lean. It is obtained one of three ways, and
+every stored or reported ratio says which:
 
 | Method | Obtained with | Cost | Used for |
 |---|---|---|---|
-| `estimate` | `pg_stats` row widths and the planner's row count | a catalog read | every table, every statistics pass; the shortlist |
-| `approx` | `pgstattuple_approx` | reads the visibility map and scans only the pages that are not all-visible | confirming a shortlisted table before it is queued, and the re-measure after its rewrite |
+| `estimate` | `pg_stats` row widths, the planner's row count and the TOAST relation's chunk count (`wh_estimate_table_bloat`) | a catalog read | every table, every statistics pass; the shortlist |
+| `approx` | `pgstattuple_approx`, on the heap and on the TOAST relation | reads the visibility map and scans only the pages that are not all-visible | confirming a shortlisted table before it is queued, and the re-measure after its rewrite |
 | `exact` | `pgstattuple` | scans the whole table | never run by the library; the name exists so a measurement an operator takes can be recorded as one |
 
 The estimate guesses. Rows added since the last `ANALYZE` are not in the planner's row count, so a growing table can
@@ -336,7 +351,64 @@ dropped column stay inside every row written before the drop: that ratio would c
 that removed them would not read as an improvement.
 
 The [`whizbang.table.bloat_ratio`](../observability/metrics#table-statistics) gauge carries the method as its
-`method` tag: every table's estimate is `estimate`, and a table the cycle measured is a second series, `approx`.
+`method` tag: every table's estimate is `estimate`, and a table the cycle measured is a second series, `approx`. Its
+`part` tag says which relation a value is for: `heap` and `toast` for the two halves of the estimate, and `table` for
+a measurement, which is the worse of the two. [`whizbang.table.reclaimable_bytes`](../observability/metrics#table-rewrites)
+reports, per part, the bytes a rewrite would free now.
+
+### The heap and the TOAST relation {#bloat-heap-and-toast}
+{verified: ToastAwareBloatEstimateSqlTests.AMostlyDeadToast_UnderALeanHeap_IsACandidateAsync, ToastAwareBloatEstimateSqlTests.AHealthyToastedTable_IsNotACandidate_AndItsEstimateReadsLeanAsync, ToastAwareBloatEstimateSqlTests.AnUntoastedTableWithoutNulls_ReadsAsTheHeapOnlyEstimateDidAsync, ToastAwareBloatEstimateSqlTests.AMostlyNullWideColumn_DoesNotHideHeapBloatAsync, ToastAwareBloatEstimateSqlTests.AToastNeverVacuumed_IsNotMeasured_ForItsLiveChunksAreUnknownAsync, ToastAwareBloatEstimateSqlTests.ASmallDeadToast_IsMeasuredAgainstTheMinimumRows_SoItIsNotOfferedAsync, ToastAwareBloatEstimateSqlTests.Approx_MeasuresTheToastRelationToo_SoItConfirmsTheEstimateAsync, ToastAwareBloatEstimateSqlTests.TheFillFactorQueue_OrdersByTheSameEstimateAsync}
+
+PostgreSQL stores a value too large for the row (a large JSON document, for example) out of line, in the table's TOAST
+relation, cut into chunks. An update or delete leaves the old chunks dead there exactly as it leaves the old row dead
+in the heap, and a rewrite copies both. So the estimate measures both, from catalog reads only, and nothing scans a
+table:
+
+| Part | Ratio | Read from |
+|---|---|---|
+| Heap | heap bytes / (`reltuples` x expected row bytes) | `pg_relation_size`, `pg_class.reltuples`, `pg_stats` |
+| TOAST | TOAST bytes / (live chunks x `block_size / 4`) | `pg_relation_size` and `pg_class.reltuples` of the TOAST relation |
+
+- **The expected row bytes weigh each column by how often it is present:** the sum of
+  `avg_width x (1 - null_frac)` over the columns, plus 28 bytes of tuple header and item pointer
+  (`wh_expected_row_bytes`). `pg_stats.avg_width` is a column's average over the rows where it is not NULL, so
+  without the weighting a wide column present on a few rows counted its full width against every row, and a bloated
+  heap read as dense. A table without NULLs reads exactly as it did before.
+- **A packed chunk takes a quarter of a page.** PostgreSQL sizes a TOAST chunk (`TOAST_MAX_CHUNK_SIZE`, 1,996 bytes of
+  data at the default 8 kB block) so that exactly four chunk rows fill a page (`TOAST_TUPLES_PER_PAGE = 4`). Densely
+  packed live chunks therefore occupy `block_size / 4` each, and a healthy TOAST relation reads at or below 1 (a
+  value's last chunk is partial, so it reads a little under). The constant follows the server's block size rather
+  than assuming 8 kB.
+- **A chunk count VACUUM never took is no measure.** The live chunk count is the TOAST relation's `reltuples`, which
+  only VACUUM keeps: `ANALYZE` never visits a TOAST relation. While it reads `-1` the TOAST ratio is not computed and
+  the heap alone decides, rather than guessing a count.
+- **The chunk count is floored at the row floor.** A heap with fewer than `table_rewrite_min_rows` rows (default
+  1,000) is not measured, because page overhead dominates the per-row average. The TOAST relation is measured against
+  at least that many chunks, so a small TOAST relation of a few pages never reads alarmingly bloated.
+- **The worse of the two, not a combined ratio.** A rewrite copies both relations, and either one holding mostly empty
+  pages is space the rewrite returns. A combined ratio would let a large lean heap hide a small, mostly dead TOAST
+  relation, which is the case the heap-only estimate missed.
+- **pgstattuple measures the TOAST relation too.** While pgstattuple is `Ready`, `wh_measure_table_bloat_approx`
+  runs `pgstattuple_approx` on the heap and on the TOAST relation and returns the worse ratio on the same scale. A
+  heap-only measurement would turn away every table the TOAST ratio shortlisted.
+
+One function, `wh_estimate_table_bloat`, gives this estimate to every reader: the candidate scan
+(`wh_tables_needing_rewrite`), the order of the [lowered-fillfactor](#fillfactor-decrease) queue
+(`wh_tables_owed_fillfactor_rewrite`), and the re-measure after a rewrite.
+
+```sql{title="Read a table's estimate, part by part" category="Operations" difficulty="INTERMEDIATE" tests=["ToastAwareBloatEstimateSqlTests.AMostlyDeadToast_UnderALeanHeap_IsACandidateAsync"]}
+SELECT c.relname,
+       wh_estimate_table_bloat(c.relname) AS bloat_ratio,
+       pg_relation_size(c.oid) AS heap_bytes, c.reltuples AS live_rows,
+       pg_relation_size(t.oid) AS toast_bytes, t.reltuples AS live_chunks
+FROM pg_class c LEFT JOIN pg_class t ON t.oid = c.reltoastrelid
+WHERE c.relname = 'wh_event_body';
+```
+
+What the catalog cannot show stays out of the estimate: alignment padding between columns and the page-level overhead
+of headers and the fillfactor reserve are not in `pg_stats`. That is why a freshly rewritten table can read 1.5x to
+2x and stay there, and why the [post-rewrite floor](#post-rewrite-floor) exists. `pgstattuple_approx` remains the
+authority for those while it is `Ready`.
 
 ### Why it works this way {#bloat-measurement-decisions}
 
@@ -403,26 +475,158 @@ request is the decision; the rewrite's own re-measure is what judges it.
 library asks only for `approx`, and the coordinator refuses `exact` with `NotSupportedException`. The `exact` name
 exists so a measurement an operator takes by hand can be recorded as what it is.
 
+## Rewrite thresholds {#rewrite-thresholds}
+{verified: TableRewriteSettingsTests.TheThreshold_DefaultsByHowTheStartRewritesAsync, TableRewriteSettingsTests.EveryStart_PublishesAllThreeKeysAsync, TableRewriteSettingsTests.AConfiguredValue_WinsOverEveryDefaultAsync, TableRewriteSettingsTests.TheOptions_BindFromTheMaintenanceSectionAsync, TableRewriteSettingsTests.Validate_RejectsEachValueOutsideItsRangeByNameAsync, TableRewriteSettingsTests.TheValidator_RejectsTheTableRewriteSettingsByNameAsync, TableRewriteStartupStepTests.EveryStart_PublishesTheEffectiveSettings_BeforeReadingTheCandidatesAsync, TableRewriteStartupStepTests.AFailedPublish_IsLoggedWithTheSettings_AndTheStepGoesOnAsync, RewriteRegrowthFloorSqlTests.EveryStart_PutsBackAHandEditedSetting_WithTheEffectiveValueAsync}
+
+The candidate scan runs in SQL, so it reads its three settings from `wh_settings`. Each comes from an option under
+`Whizbang:Workers:Maintenance`:
+
+| Option | Default | Valid values | `wh_settings` key | What it decides |
+|---|---|---|---|---|
+| `TableRewriteBloatThreshold` | unset: `2.0` when the start rewrites with an online tool, `3.0` otherwise | finite, greater than 1 | `table_rewrite_bloat_threshold` | the ratio at or above which a table is offered for a rewrite |
+| `TableRewriteMinRows` | unset: `1000` | 0 or greater | `table_rewrite_min_rows` | the fewest rows a table must hold to be measured, and the fewest chunks its TOAST relation is measured against |
+| `TableRewriteRegrowthFactor` | unset: `1.5` | finite, greater than 1 | `table_rewrite_regrowth_factor` | how far past its [post-rewrite floor](#post-rewrite-floor) a table must regrow to be offered again |
+
+- **The threshold's default follows how the start rewrites.** With an online tool (`PgSqueeze`, `PgRepack`, `Online`,
+  or `Auto` resolved to pg_squeeze or pg_repack on that start) a rewrite takes no long lock, so it is worth running at
+  2.0. With a blocking `VACUUM FULL`, or detection only, the line stays at 3.0. A line as low as 2.0 is safe online
+  because the [post-rewrite floor](#post-rewrite-floor) stops a table being rewritten again while it reads no worse
+  than its last rewrite left it.
+- **Written on every start, before the candidates are read.** The boot-time `Rewrite` step writes the effective value
+  of all three, set or not, so configuration is the source of truth. A value edited by hand in `wh_settings` is put
+  back on the next start. This differs from the [retention windows](../configuration/configuration-reference#database-side-settings),
+  which are written only when set.
+- **A failed write never fails the start.** It is logged as a warning naming the values it was writing, and the
+  values already stored stand until the next start:
+  `Rewrite step: the table-rewrite settings (table_rewrite_bloat_threshold=2, table_rewrite_min_rows=1000, table_rewrite_regrowth_factor=1.5) could not be written to wh_settings; the values already stored stand until the next start`.
+- **An out-of-range value stops the host at startup,** naming the key. A threshold of 1 or less would rewrite every
+  table, since a lean table reads about 1; a regrowth factor of 1 or less would offer a table its last rewrite left
+  lean again at once.
+
+:::updated
+Earlier releases read the threshold and the row floor as migration 089 seeded them (a threshold of 3.0 for every
+strategy) and never wrote them, so changing one took an `UPDATE` in every service database. From this release all
+three settings are written on every start: **a value edited by hand in `wh_settings` is overwritten.** Move it to configuration before upgrading. On a
+host that rewrites online, the threshold also drops from 3.0 to 2.0 unless `TableRewriteBloatThreshold` is set.
+:::
+
+```json{title="Rewrite thresholds set from configuration" description="Offers a table for rewrite at 2.5x, measures tables of 5,000 rows or more, and requires a rewritten table to regrow to twice its post-rewrite ratio." category="Configuration" difficulty="INTERMEDIATE" tags=["storage", "table-rewrite", "bloat", "maintenance", "configuration", "wh_settings"] tests=["TableRewriteSettingsTests.TheOptions_BindFromTheMaintenanceSectionAsync", "TableRewriteSettingsTests.AConfiguredValue_WinsOverEveryDefaultAsync"]}
+{
+  "Whizbang": {
+    "Workers": {
+      "Maintenance": {
+        "TableRewriteBloatThreshold": 2.5,
+        "TableRewriteMinRows": 5000,
+        "TableRewriteRegrowthFactor": 2.0
+      }
+    }
+  }
+}
+```
+
+The same as environment variables:
+
+```bash{title="Rewrite thresholds as environment variables" category="Configuration" difficulty="BEGINNER" tags=["storage", "table-rewrite", "configuration"] tests=["TableRewriteSettingsTests.TheOptions_BindFromTheMaintenanceSectionAsync"]}
+Whizbang__Workers__Maintenance__TableRewriteBloatThreshold=2.5
+Whizbang__Workers__Maintenance__TableRewriteMinRows=5000
+Whizbang__Workers__Maintenance__TableRewriteRegrowthFactor=2.0
+```
+
+## Post-rewrite floor {#post-rewrite-floor}
+{verified: RewriteRegrowthFloorSqlTests.ARewrittenTable_BelowItsRegrowthFloor_IsHeldBackAsync, RewriteRegrowthFloorSqlTests.ARewrittenTable_ThatRegrewPastItsFloor_IsOfferedAsync, RewriteRegrowthFloorSqlTests.OnlyTheLatestRewrite_SetsTheFloorAsync, RewriteRegrowthFloorSqlTests.TheFactor_IsReadFromItsSettingAsync, RewriteRegrowthFloorSqlTests.ATableWithoutHistory_IsOfferedAtTheThresholdAsync, RewriteRegrowthFloorSqlTests.AFillFactorDecrease_IsNotHeldBackByTheFloorAsync, RewriteRegrowthFloorSqlTests.TheQueueStatus_CountsTheQueue_AndTheTablesTheFloorHeldBackAsync}
+
+The estimate cannot see page headers, alignment padding or the fillfactor reserve, so a table rewritten a moment ago
+can read 1.5x to 2x and stay there. With the threshold at 2.0, such a table would be offered again on every cycle and
+rewritten for nothing. So a table's latest rewrite sets a floor under it: a table whose last recorded rewrite left it
+at a ratio F (`bloat_after` in the [rewrite history](#rewrite-history)) is offered only once it reads at least
+
+```text
+GREATEST(table_rewrite_bloat_threshold, F x table_rewrite_regrowth_factor)
+```
+
+A rewrite that left a table at 1.8 sets a floor of 2.7 at the default factor of 1.5: at 2.1 the table is over the
+threshold but held back, and at 2.8 it is offered again. The churn on a table whose healthy reading sits above the
+threshold stops, and a table that really regrows is still caught.
+
+- **The latest rewrite sets it.** Only the newest history row with a `bloat_after` counts, so a rewrite that did
+  better lowers the floor. A table with no history, or whose history aged past the history's 90-day bound, is offered
+  at the threshold, as before.
+- **The ratios compare.** `bloat_after` is on the estimate's scale whichever method took it, since a
+  `pgstattuple_approx` measurement is kept on that scale ([the measured ratio](#bloat-measured-ratio-scale)).
+- **A lowered fillfactor is not held back.** A table owed a rewrite for a [lowered fillfactor](#fillfactor-decrease)
+  is rewritten once whatever its bloat, floor or not.
+- **Held-back tables are counted, not hidden.** `wh_table_rewrite_queue_status()` returns the queue's length, the
+  threshold and how many tables at or above the threshold the floor held back. The [online rewrite](#online-rewrite)
+  puts that count in its cycle line, and the [`whizbang.table.rewrite.queue`](../observability/metrics#table-rewrites)
+  gauge reports it as `state="held_by_floor"`. Each table's floor ratio is on
+  [`whizbang.table.rewrite.floor`](../observability/metrics#table-rewrites).
+- **The factor is a setting.** `TableRewriteRegrowthFactor` (default 1.5) sets it; see
+  [Rewrite thresholds](#rewrite-thresholds).
+
+```sql{title="Read the rewrite queue and the tables the floor holds back" category="Operations" difficulty="BEGINNER" tests=["RewriteRegrowthFloorSqlTests.TheQueueStatus_CountsTheQueue_AndTheTablesTheFloorHeldBackAsync"]}
+SELECT requested, threshold, held_back FROM wh_table_rewrite_queue_status();
+SELECT DISTINCT ON (table_name) table_name, bloat_after
+FROM wh_table_rewrite_history WHERE bloat_after IS NOT NULL
+ORDER BY table_name, id DESC;
+```
+
+### From estimate to rewrite {#rewrite-candidate-decision}
+
+Put together, a table goes from its estimate to a rewrite like this:
+
+```mermaid{caption="How a table becomes a rewrite: the worse of its heap and TOAST ratios is checked against the threshold and its post-rewrite floor, then the cycle's byte budget, and under Auto the first online tool that is Ready rewrites it." tests=["ToastAwareBloatEstimateSqlTests.AMostlyDeadToast_UnderALeanHeap_IsACandidateAsync", "ToastAwareBloatEstimateSqlTests.AToastNeverVacuumed_IsNotMeasured_ForItsLiveChunksAreUnknownAsync", "RewriteRegrowthFloorSqlTests.ARewrittenTable_BelowItsRegrowthFloor_IsHeldBackAsync", "RewriteRegrowthFloorSqlTests.ARewrittenTable_ThatRegrewPastItsFloor_IsOfferedAsync", "OnlineTableRewriteStepTests.Budget_SkipsATableThatWouldOverrunIt_AndTakesASmallerOneThatFitsAsync", "OnlineTableRewriteStepTests.Auto_WithPgSqueezeReady_RewritesThroughItAsync", "OnlineTableRewriteStepTests.Auto_WithOnlyPgRepackReadyInProcess_RepacksAsync", "OnlineTableRewriteStepTests.Auto_WithNoOnlineToolThatCanRun_DoesNothing_AndNeverRebuildsAsync"]}
+flowchart TD
+  T["wh_ table with at least<br/>table_rewrite_min_rows rows"] --> H["Heap ratio<br/>bytes / rows x null-weighted width"]
+  T --> K{"TOAST chunk count<br/>taken by VACUUM?"}
+  K -->|yes| X["TOAST ratio<br/>bytes / chunks x quarter page"]
+  K -->|"no (-1)"| O["Heap alone decides"]
+  H --> W["Worse of the two"]
+  X --> W
+  O --> W
+  W --> L{"At or above<br/>table_rewrite_bloat_threshold?"}
+  L -->|no| N["Not offered"]
+  L -->|yes| F{"At or above the<br/>post-rewrite floor?"}
+  F -->|no| HB["Held back;<br/>counted in the cycle line"]
+  F -->|yes| C["Candidate,<br/>largest ratio first"]
+  C --> B{"Heap plus TOAST fits<br/>the bytes left of the budget?"}
+  B -->|no| D["Deferred to a later cycle"]
+  B -->|yes| A{"Under Auto,<br/>which tool is Ready?"}
+  A -->|pg_squeeze| SQ["Rewritten by pg_squeeze"]
+  A -->|"else pg_repack in process"| RP["Rewritten by pg_repack"]
+  A -->|neither| VF["No online rewrite:<br/>VACUUM FULL at boot if<br/>AllowTableRewrite, else reported"]
+
+  style SQ fill:#d4edda,stroke:#28a745,stroke-width:2px
+  style RP fill:#d4edda,stroke:#28a745,stroke-width:2px
+  style HB fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+  style D fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+  style VF fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+```
+
+Under `Auto` the tool is chosen once per maintenance cycle, before the queue is read: with neither tool Ready the cycle
+does nothing, and the boot-time `Rewrite` step keeps its `VACUUM FULL` or report-only behavior. The explicit
+strategies replace the last step with their own tool, as [Table rewrite strategy](#table-rewrite-strategy) describes.
+
 ## Table rewrite strategy {#table-rewrite-strategy}
-{verified: TableRewriteStrategyTests.Resolve_EachCellOfTheMatrixAsync, TableRewriteStrategyTests.TheSetting_DefaultsToAuto_AndBindsFromConfigurationAsync, TableRewriteStartupStepTests.PgSqueeze_IsLeftToTheMaintenanceCycle_NotRunAtBootAsync, TableRewriteStartupStepTests.PgRepackInProcess_IsLeftToTheMaintenanceCycle_NotRunAtBootAsync}
+{verified: TableRewriteStrategyTests.Resolve_EachCellOfTheMatrixAsync, TableRewriteStrategyTests.TheSetting_DefaultsToAuto_AndBindsFromConfigurationAsync, TableRewriteStartupStepTests.PgSqueeze_IsLeftToTheMaintenanceCycle_NotRunAtBootAsync, TableRewriteStartupStepTests.PgRepackInProcess_IsLeftToTheMaintenanceCycle_NotRunAtBootAsync, TableRewriteStrategyTests.Auto_WithAnOnlineToolThatCanRun_ResolvesToItAsync, TableRewriteStrategyTests.Auto_WithPgSqueezeUsableButNotRunnable_SaysWhatItNeeds_AndDoesNotPickItAsync, TableRewriteStartupStepTests.Auto_WithPgSqueezeReady_LeavesTheTablesToTheCycle_AndTakesNoneWithVacuumFullAsync, TableRewriteStartupStepTests.Auto_WithOnlyPgRepackReadyInProcess_LeavesTheTablesToTheCycleAsync, TableRewriteStartupStepTests.Auto_WithNoOnlineTool_KeepsVacuumFull_AndDoesNotThrowAsync}
 
 `Whizbang:Workers:Maintenance:TableRewriteStrategy` (default `Auto`) chooses how the post-ready `Rewrite` step
 reclaims the space of the tables the maintenance cycle recorded, together with `AllowTableRewrite` (default `false`),
 the operator's permission for a blocking rewrite at boot:
 
-| Strategy | pg_squeeze usable | `AllowTableRewrite = true` | `AllowTableRewrite = false` |
+| Strategy | What the server offers | `AllowTableRewrite = true` | `AllowTableRewrite = false` |
 |---|---|---|---|
-| `Auto` | yes | `VACUUM FULL` at boot; the report says pg_squeeze is usable and how to opt in | detect and report only, with the same hint |
-| `Auto` | no | `VACUUM FULL` at boot | detect and report only |
-| `PgSqueeze` | yes | [online rewrite](#online-rewrite) from the maintenance cycle | [online rewrite](#online-rewrite) from the maintenance cycle |
-| `PgSqueeze` | no | start fails with the capability verdict (it warns when the probe cannot tell) | start fails with the capability verdict (it warns when the probe cannot tell) |
+| `Auto` | pg_squeeze Ready | [online rewrite](#online-rewrite) through pg_squeeze from the maintenance cycle | [online rewrite](#online-rewrite) through pg_squeeze from the maintenance cycle |
+| `Auto` | pg_squeeze not Ready; pg_repack and its client Ready, `Mode = InProcess` | [online rewrite](#online-rewrite) through [pg_repack](#pg-repack) from the maintenance cycle | [online rewrite](#online-rewrite) through [pg_repack](#pg-repack) from the maintenance cycle |
+| `Auto` | neither | `VACUUM FULL` at boot | detect and report only |
+| `PgSqueeze` | pg_squeeze usable | [online rewrite](#online-rewrite) from the maintenance cycle | [online rewrite](#online-rewrite) from the maintenance cycle |
+| `PgSqueeze` | pg_squeeze not usable | start fails with the capability verdict (it warns when the probe cannot tell) | start fails with the capability verdict (it warns when the probe cannot tell) |
 | `PgRepack`, `InProcess` | either | [online rewrite](#online-rewrite) through [pg_repack](#pg-repack) from the maintenance cycle | [online rewrite](#online-rewrite) through [pg_repack](#pg-repack) from the maintenance cycle |
 | `PgRepack`, `External` | either | nothing is started; [your job runs pg_repack](#pg-repack) | nothing is started; [your job runs pg_repack](#pg-repack) |
 | `Online` | either | from the maintenance cycle: pg_squeeze, else pg_repack in process, else a [blue-green rebuild](#blue-green-rewrite) of a perspective table | the same: `AllowTableRewrite` gates only `VACUUM FULL` |
 | `VacuumFull` | either | `VACUUM FULL` at boot | detect and report only |
 | `None` | either | nothing is rewritten | nothing is rewritten |
 
-```mermaid{caption="How the Rewrite step resolves the table rewrite strategy against AllowTableRewrite; Auto never starts an online rewrite, and every online rewrite Whizbang runs comes from the maintenance cycle." tests=["TableRewriteStrategyTests.Resolve_EachCellOfTheMatrixAsync","PgRepackTests.Resolve_PgRepack_IsTheExplicitChoice_WhateverElseHoldsAsync","TableRewriteStrategyTests.ExplicitPgSqueeze_OnAServerThatDoesNotAllowlistIt_FailsStartWithTheFixAsync","TableRewriteStartupStepTests.PgSqueeze_IsLeftToTheMaintenanceCycle_NotRunAtBootAsync","TableRewriteStartupStepTests.PgRepackInProcess_IsLeftToTheMaintenanceCycle_NotRunAtBootAsync","PgRepackTests.External_TheRewriteStepSkips_AndStartsNothingAsync"]}
+```mermaid{caption="How the Rewrite step resolves the table rewrite strategy against AllowTableRewrite; Auto takes an online tool when one is Ready, and every online rewrite Whizbang runs comes from the maintenance cycle." tests=["TableRewriteStrategyTests.Resolve_EachCellOfTheMatrixAsync","TableRewriteStrategyTests.Auto_WithAnOnlineToolThatCanRun_ResolvesToItAsync","TableRewriteStartupStepTests.Auto_WithNoOnlineTool_KeepsVacuumFull_AndDoesNotThrowAsync","PgRepackTests.Resolve_PgRepack_IsTheExplicitChoice_WhateverElseHoldsAsync","TableRewriteStrategyTests.ExplicitPgSqueeze_OnAServerThatDoesNotAllowlistIt_FailsStartWithTheFixAsync","TableRewriteStartupStepTests.PgSqueeze_IsLeftToTheMaintenanceCycle_NotRunAtBootAsync","TableRewriteStartupStepTests.PgRepackInProcess_IsLeftToTheMaintenanceCycle_NotRunAtBootAsync","PgRepackTests.External_TheRewriteStepSkips_AndStartsNothingAsync"]}
 flowchart TD
   S{TableRewriteStrategy} -->|None| N[Nothing rewritten]
   S -->|PgRepack| M{PgRepack Mode}
@@ -431,14 +635,35 @@ flowchart TD
   S -->|PgSqueeze| Q{pg_squeeze usable?}
   Q -->|no| F[Capability verdict<br/>stops start]
   Q -->|yes| O[Online rewrite from the<br/>maintenance cycle]
-  S -->|Auto or VacuumFull| A{AllowTableRewrite?}
+  S -->|Auto| T{pg_squeeze Ready, else<br/>pg_repack in process Ready?}
+  T -->|one is| O
+  T -->|neither| A
+  S -->|VacuumFull| A{AllowTableRewrite?}
   A -->|true| V[VACUUM FULL at boot]
   A -->|false| R[Detect and report only]
 ```
 
-- **`Auto` never starts an online rewrite.** Rewriting a table online is opted into with `PgSqueeze`. Where
-  pg_squeeze is usable, `Auto` says so in the step's report and names the setting that opts in. With
-  `AllowTableRewrite = true`, `Auto` keeps the behavior earlier releases had: `VACUUM FULL` at boot.
+- **`Auto` rewrites online where the server allows it.** Each maintenance cycle it takes pg_squeeze when it is
+  `Ready` on every database the registry probed, else pg_repack run in process when the `pg_repack` extension and the
+  `program/pg_repack` client are `Ready` and `TableRewrite:PgRepack:Mode` is `InProcess`, and rewrites through the
+  [online rewrite](#online-rewrite) within `OnlineRewriteMaxBytesPerCycle`. The boot-time `Rewrite` step then reports,
+  for example, `Auto: online rewrite through pg_squeeze, which is Ready here`, and takes no table with `VACUUM FULL`
+  on that start. With neither tool Ready, `Auto` keeps the behavior earlier releases had: `VACUUM FULL` at boot when
+  `AllowTableRewrite = true`, otherwise detect and report.
+- **`Auto` requires nothing and never fails start.** It declares no capability requirement, so a server without
+  either extension starts as before. Under `Auto` with the default `InProcess` mode the pg_repack client is still
+  probed (`pg_repack --version`) at start, so the cycle knows whether it can run, but a missing client only means
+  pg_repack is not chosen. In `External` mode it is not probed.
+  {verified: OnlineTableRewriteStepTests.Auto_InProcess_ProbesTheClient_ButDoesNotRequireItAsync, OnlineTableRewriteStepTests.Auto_External_DoesNotProbeTheClientAsync}
+- **`Auto` never starts a blue-green rebuild.** Rebuilding a perspective table from its events is opted into with
+  `Online`; under `Auto` with neither tool Ready, the cycle rewrites nothing.
+  {verified: OnlineTableRewriteStepTests.Auto_WithNoOnlineToolThatCanRun_DoesNothing_AndNeverRebuildsAsync, TableRewriteStrategyTests.Auto_NeverResolvesToAnOnlineRewrite_ABlueGreenRebuildIncludedAsync}
+- **No per-table fallback within a cycle.** Under `Auto` and `Online` the tool is chosen for the cycle, not for each
+  table. When pg_squeeze is chosen but refuses one table (no primary key or replica identity, no logical WAL, no free
+  replication slot), the [prerequisite check](#online-rewrite-prerequisites) logs why and that table stays queued; it
+  is not handed to pg_repack in the same cycle, and the attempt is counted `outcome="failed"` on
+  [`whizbang.table.rewrites`](../observability/metrics#table-rewrites). Fix the prerequisite, or choose
+  `TableRewriteStrategy = PgRepack` for a server where pg_squeeze cannot take such tables.
 - **`PgSqueeze` requires the extension.** It is the first setting in the library that
   [declares a capability requirement](./capabilities#declaring-a-requirement): set explicitly on a server where
   pg_squeeze is not usable, the [capability verdict](./capabilities#validation) stops the host with the fix, for
@@ -560,10 +785,11 @@ done
 Candidates are re-measured whenever the queue is read, so a request whose table is lean again is no longer offered.
 
 ## Online rewrite from the maintenance cycle {#online-rewrite}
-{verified: OnlineTableRewriteStepTests.Rewrites_TheLargestBloatRatioFirstAsync, OnlineTableRewriteStepTests.Budget_SkipsATableThatWouldOverrunIt_AndTakesASmallerOneThatFitsAsync, OnlineTableRewriteStepTests.NotImproved_LeavesTheRequestQueuedAsync, OnlineTableRewriteStepTests.PgSqueezeNotReadyOnEveryDatabase_RewritesNothing_AndSaysWhereAsync, OnlineTableRewriteStepTests.PgRepack_RewritesTheLargestBloatRatioFirst_WithinTheBudgetAsync, OnlineTableRewriteStepTests.PgRepack_ClearsOnlyWhatImprovedAsync, OnlineTableRewriteStepTests.PgRepack_ClientNotReady_RewritesNothing_AndSaysWhyAsync}
+{verified: OnlineTableRewriteStepTests.Rewrites_TheLargestBloatRatioFirstAsync, OnlineTableRewriteStepTests.Budget_SkipsATableThatWouldOverrunIt_AndTakesASmallerOneThatFitsAsync, OnlineTableRewriteStepTests.NotImproved_LeavesTheRequestQueuedAsync, OnlineTableRewriteStepTests.PgSqueezeNotReadyOnEveryDatabase_RewritesNothing_AndSaysWhereAsync, OnlineTableRewriteStepTests.PgRepack_RewritesTheLargestBloatRatioFirst_WithinTheBudgetAsync, OnlineTableRewriteStepTests.PgRepack_ClearsOnlyWhatImprovedAsync, OnlineTableRewriteStepTests.PgRepack_ClientNotReady_RewritesNothing_AndSaysWhyAsync, OnlineTableRewriteStepTests.NothingQueued_RewritesNothing_AndSaysSoOnce_WithTheQueueAndTheThresholdAsync, OnlineTableRewriteStepTests.Summary_SaysHowManyThePostRewriteFloorHeldBackAsync, OnlineTableRewriteStepTests.Auto_WithPgSqueezeReady_RewritesThroughItAsync, OnlineTableRewriteStepTests.Auto_WithOnlyPgRepackReadyInProcess_RepacksAsync}
 
 With `TableRewriteStrategy = PgSqueeze`, or `PgRepack` with its client [in process](#pg-repack), the maintenance cycle
-rewrites queued tables online. `Online` does the same with whichever of the two is `Ready`, pg_squeeze first, and
+rewrites queued tables online. `Auto` does the same with whichever of the two is `Ready`, pg_squeeze first, and
+otherwise leaves the cycle idle (see [Table rewrite strategy](#table-rewrite-strategy)). `Online` does the same with whichever of the two is `Ready`, pg_squeeze first, and
 falls back to a [blue-green rebuild](#blue-green-rewrite) of a perspective table when neither is. pg_squeeze (`squeeze.squeeze_table`) copies the table while it stays readable and
 writable and holds an exclusive lock only for the final swap; pg_repack does the same from its client program, holding
 an ACCESS EXCLUSIVE lock only briefly at the start and the end. Both are bounded by the same budget. It runs as a [maintenance step](../../fundamentals/workers/maintenance-steps) named
@@ -576,13 +802,15 @@ Each cycle:
    [capability registry](./capabilities) probed; for pg_repack, the `pg_repack` extension on every database and the
    `program/pg_repack` client on this host. Anything else (including `Provisionable`, an extension that provisioning
    is turned off for, and a client the probe could not decide) rewrites nothing and logs why; the queue is kept.
-   pg_repack in `External` mode does nothing here, not even a scan.
+   pg_repack in `External` mode does nothing here, not even a scan. Under `Auto`, a cycle where neither tool is
+   `Ready` does nothing and logs nothing: the boot-time `Rewrite` step already said what it does instead.
 2. **Takes the queued tables** (`pending_table_rewrites`, which the cycle's bloat detection fills) that still measure
-   over the bloat threshold, and those owed one rewrite for a [lowered fillfactor](#fillfactor-decrease),
+   at or over the [bloat threshold](#rewrite-thresholds) and their [post-rewrite floor](#post-rewrite-floor), and those
+   owed one rewrite for a [lowered fillfactor](#fillfactor-decrease),
    **largest bloat ratio first** (the [measured ratio](#how-bloat-is-measured) where the
    table was queued with one), ties in name order.
-3. **Spends a byte budget.** A table is rewritten only when its heap fits what is left of
-   `OnlineRewriteMaxBytesPerCycle`; one that does not fit is deferred to a later cycle, and the next smaller table that
+3. **Spends a byte budget.** A table is rewritten only when its heap and its TOAST relation together
+   (`pg_table_size`, which an online rewrite copies) fit what is left of `OnlineRewriteMaxBytesPerCycle`; one that does not fit is deferred to a later cycle, and the next smaller table that
    fits is taken. A table larger than the whole budget is never rewritten, and the log names the setting to raise.
 4. **Rewrites each table and re-measures.** For pg_squeeze it checks the
    [prerequisites](#online-rewrite-prerequisites) for the table, then calls pg_squeeze. For pg_repack it starts the
@@ -610,8 +838,8 @@ flowchart TD
 
 | Key | Environment variable | Default | Meaning |
 |---|---|---|---|
-| `Whizbang:Workers:Maintenance:TableRewriteStrategy` | `Whizbang__Workers__Maintenance__TableRewriteStrategy` | `Auto` | `PgSqueeze`, or `PgRepack` in process, turns the online rewrite on. |
-| `Whizbang:Workers:Maintenance:OnlineRewriteMaxBytesPerCycle` | `Whizbang__Workers__Maintenance__OnlineRewriteMaxBytesPerCycle` | `1073741824` (1 GiB) | The most heap bytes one cycle rewrites, through either tool. pg_squeeze and pg_repack each write a full copy of the table, plus the WAL for it, so this bounds the extra disk and WAL one cycle can cause. `0` rewrites nothing. |
+| `Whizbang:Workers:Maintenance:TableRewriteStrategy` | `Whizbang__Workers__Maintenance__TableRewriteStrategy` | `Auto` | `PgSqueeze`, or `PgRepack` in process, turns the online rewrite on; `Auto` turns it on when either tool is `Ready`. |
+| `Whizbang:Workers:Maintenance:OnlineRewriteMaxBytesPerCycle` | `Whizbang__Workers__Maintenance__OnlineRewriteMaxBytesPerCycle` | `1073741824` (1 GiB) | The most bytes one cycle rewrites, through either tool, counting each table's heap and its TOAST relation (indexes are not counted). pg_squeeze and pg_repack each write a full copy of the table, plus the WAL for it, so this bounds the extra disk and WAL one cycle can cause. `0` rewrites nothing. |
 
 ```json{title="Online rewrite with a 4 GiB budget per cycle" description="Selects pg_squeeze for table rewrites and lets each maintenance cycle rewrite up to 4 GiB of queued tables." category="Configuration" difficulty="INTERMEDIATE" tags=["storage", "table-rewrite", "pg_squeeze", "maintenance", "configuration"] tests=["OnlineTableRewriteStepTests.TheBudget_DefaultsToOneGibibyte_AndBindsFromConfigurationAsync", "OnlineTableRewriteStepTests.Budget_SkipsATableThatWouldOverrunIt_AndTakesASmallerOneThatFitsAsync"]}
 {
@@ -627,7 +855,25 @@ flowchart TD
 ```
 
 A cycle ends with one line, for example
-`Online rewrite: 1 of 2 queued table(s) rewritten this cycle; 1 left queued`.
+`Online rewrite: 1 of 2 queued table(s) rewritten this cycle; 1 left queued; 0 held back by their post-rewrite floor`.
+
+A cycle with nothing to rewrite says so once, at Information, so "nothing to do" can be told from "never ran":
+
+```text
+Online rewrite: no table needs a rewrite: 3 requested, none at or above 2x; 1 held back by their post-rewrite floor
+```
+
+The figures come from `wh_table_rewrite_queue_status()`: how many tables are in `pending_table_rewrites`, the
+threshold in force, and how many tables reach the threshold but are held back by their
+[post-rewrite floor](#post-rewrite-floor). Every cycle, empty or not, also reports the queue on
+[`whizbang.table.rewrite.queue`](../observability/metrics#table-rewrites) and each attempt on
+[`whizbang.table.rewrites`](../observability/metrics#table-rewrites).
+
+**A requested table below the line is still not offered.** A table in `pending_table_rewrites` is offered only while
+it measures at or above the threshold and its floor, as before. A replayed migration that requests an already
+rewritten table again must not rewrite it again, and an external pg_repack job reads the same
+`wh_tables_needing_rewrite()`, so the requests are reported in the line above rather than rewritten.
+{verified: RewriteRegrowthFloorSqlTests.TheQueueStatus_CountsTheQueue_AndTheTablesTheFloorHeldBackAsync, TableRewriteRequestSqlTests.LeanTable_IsNotOfferedForRewrite_EvenWhenRequestedAsync}
 
 ### Prerequisites checked before each call {#online-rewrite-prerequisites}
 {verified: PgSqueezePrerequisitesTests.EveryPrerequisiteMet_IsNothingUnmetAsync, PgSqueezePrerequisitesTests.TheFirstUnmetPrerequisite_IsTheOneReportedAsync, OnlineTableRewriteSqlTests.ThePrerequisiteQuery_ReadsTheServersFactsAsync, OnlineTableRewriteSqlTests.Squeeze_OnAServerWithoutPgSqueeze_IsReportedAndNotAttemptedAsync}

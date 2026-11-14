@@ -41,6 +41,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/TableStatisticsServiceCollectionExtensions.cs
   - src/Whizbang.Core/Observability/ITableStatisticsProvider.cs
   - src/Whizbang.Data.Postgres/Observability/PostgresTableStatisticsProvider.cs
+  - src/Whizbang.Core/Observability/TableRewriteAttempt.cs
   - src/Whizbang.Core/Observability/TypeRegistryMetrics.cs
   - src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs
   - src/Whizbang.Core/Workers/TransportDeadLetterDrainWorker.cs
@@ -55,6 +56,7 @@ codeReferences:
   - src/Whizbang.Core/Transports/ITrafficClassOpsRateSource.cs
   - src/Whizbang.Transports.AzureServiceBus/AsbTrafficClassOpsRateSource.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/Observability/TableRewriteMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityBacklogMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityCompletionMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsRepairedEventsTests.cs
@@ -825,7 +827,7 @@ Every gauge on this meter also carries a `database` tag, the name of the databas
 | `whizbang.table.estimated_bytes` | ObservableGauge (bytes) | `table_name` | The table's whole size on disk: heap, TOAST and indexes together |
 | `whizbang.table.component_bytes` | ObservableGauge (bytes) | `table_name`, `component` | The same size split three ways. `component` is `heap` (the rows stored inline, with the free space and visibility maps), `toast` (values too large to store inline, such as large JSON documents, with the TOAST index) or `indexes` (every index on the table). The three add up exactly to `estimated_bytes` |
 | `whizbang.table.live_rows` | ObservableGauge (rows) | `table_name` | The planner's row count, which `ANALYZE` and `VACUUM` (and so autovacuum) refresh. A table never analyzed reports the server's running count of live rows instead |
-| `whizbang.table.bloat_ratio` | ObservableGauge (ratio) | `table_name`, `method` | Heap bytes per live row divided by the width those rows should need. Around 1.0 is lean; a sustained large multiple is space the table holds but cannot use: dead tuples awaiting vacuum, or the bytes of a dropped column, which stay in every row written before the drop until the table is rewritten. Reported only for tables with more than 1,000 live rows, where the per-row average measures the rows rather than page overhead. `method` says how the value was obtained: `estimate` for every table's catalog estimate, and `approx` for a second series on a table the maintenance cycle measured with `pgstattuple_approx` before queuing it for a rewrite ([how bloat is measured](../infrastructure/storage-maintenance#how-bloat-is-measured)) {verified: TableStatisticsMetricsBloatMethodTests.AMeasuredTable_IsASeriesOfItsOwn_TaggedWithItsMethodAsync} |
+| `whizbang.table.bloat_ratio` | ObservableGauge (ratio) | `table_name`, `method`, `part` | Bytes per live row divided by what those rows should need, for the heap and for the TOAST relation. Around 1.0 is lean; a sustained large multiple is space the table holds but cannot use: dead tuples awaiting vacuum, or the bytes of a dropped column, which stay in every row written before the drop until the table is rewritten. Reported only for tables with more than 1,000 live rows, where the per-row average measures the rows rather than page overhead. `method` says how the value was obtained: `estimate` for every table's catalog estimate, and `approx` for a second series on a table the maintenance cycle measured with `pgstattuple_approx` before queuing it for a rewrite ([how bloat is measured](../infrastructure/storage-maintenance#how-bloat-is-measured)). `part` says which relation: `heap` (heap bytes over live rows times the null-weighted row width) and `toast` (TOAST bytes over live chunks times a quarter page, reported only once VACUUM has counted the chunks) for the estimate, and `table` for a measurement, which is the worse of the two ([the heap and the TOAST relation](../infrastructure/storage-maintenance#bloat-heap-and-toast)) {verified: TableStatisticsMetricsBloatMethodTests.AMeasuredTable_IsASeriesOfItsOwn_TaggedWithItsMethodAsync, TableRewriteMetricsTests.TheBloatRatio_ReportsTheHeapAndTheToastRelation_ByPartAsync, PostgresTableStatisticsProviderTests.GetTableStorageAsync_ReportsTheToastRelationsBloat_AndTheBytesARewriteWouldFreeAsync} |
 | `whizbang.table.unused_index_bytes` | ObservableGauge (bytes) | `table_name`, `index_name` | The size of each index on a `wh_` table that no query has scanned since the statistics were last reset. See [Unused indexes](#unused-indexes) |
 | `whizbang.queue.estimated_depth` | ObservableGauge (messages) | `queue_name` | Unprocessed message count per queue. `queue_name` values: `inbox`, `outbox`, `dead_letters_held` (HoldForReview quarantine), `dead_letters_pending` (recovery backlog), `dead_letters_failed` (PermanentlyFailed). The dead-letter slices are emitted even at zero: standing inventory is a positively-reported value, not an absent series |
 
@@ -845,7 +847,7 @@ Every table in the service's schema whose name starts with `wh_`: the framework'
 
 A service can declare any number of perspectives, so the number of `table_name` values is capped by [`Whizbang:TableStatistics:MaxTrackedTables`](../configuration/configuration-reference#tablestatisticsoptions) (default 500). Past the cap the smallest tables are summed under `table_name="other"`: bytes, components and rows are added, so every total stays right, and the bloat ratio, which cannot be added, is not reported for them. {verified: PostgresTableStatisticsProviderTests.GetTableStorageAsync_PastTheCap_SumsTheSmallestUnderOtherAsync, TableStatisticsRegistrationTests.MaxTrackedTables_BindsFromTheTableStatisticsSectionAsync, DapperTableStatisticsDatabaseTests.TheConfiguredCap_FoldsTheSmallestTablesUnderOtherAsync}
 
-With the cap at N, the meter reports at most N + 1 series of `estimated_bytes` and `live_rows`, 3 x (N + 1) of `component_bytes`, N of `bloat_ratio` with `method="estimate"` (plus one `method="approx"` series per table measured for the rewrite queue), N + 1 of `unused_index_bytes`, and 5 of `queue.estimated_depth`.
+With the cap at N, the meter reports at most N + 1 series of `estimated_bytes` and `live_rows`, 3 x (N + 1) of `component_bytes`, 2 x N of `bloat_ratio` with `method="estimate"` (`part="heap"`, and `part="toast"` for a table with a measured TOAST relation; plus one `method="approx"`, `part="table"` series per table measured for the rewrite queue), 2 x (N + 1) of `reclaimable_bytes`, N of `rewrite.floor`, 4 of `rewrite.queue`, N + 1 of `unused_index_bytes`, and 5 of `queue.estimated_depth`.
 
 ### One series per database {#table-statistics-database}
 
@@ -971,6 +973,42 @@ sum by (part) (max by (database, event_type, part) (whizbang_event_store_estimat
 - **Failures and shutdown.** A failed sample is logged as a warning and costs that window only. An interval of `00:00:00` turns the sampler off. {verified: EventTypeBytesSamplerTests.AFailedSample_IsLogged_AndTheNextWindowIsStillSampledAsync, EventTypeBytesSamplerTests.AZeroInterval_NeverAsksTheProviderAsync}
 
 `EventTypeBytesSampler.SampleCompleted` is raised after each sample with whether this instance took the window, for a test or a health check that needs to wait on it rather than on time.
+
+### Table rewrites {#table-rewrites}
+
+{verified: TableRewriteMetricsTests.ARewrittenAttempt_IsCounted_Timed_AndItsBytesAddedAsync, TableRewriteMetricsTests.AnAttemptThatReturnedNothing_IsCountedByItsOutcome_AndAddsNoBytesAsync, TableRewriteMetricsTests.ARewriteWhoseSizeWasNotRead_AddsNoBytes_AndAFillFactorReasonIsTaggedAsync, TableRewriteMetricsTests.TheDatabase_TagsTheRecordedInstrumentsOnceKnownAsync, TableRewriteMetricsTests.EachStrategy_IsTaggedByItsToolAsync, TableRewriteMetricsTests.Reclaimed_IsTheDropClampedAtZero_AndNeedsBothSizesAsync, TableRewriteMetricsTests.TheQueueGauge_ReportsEachStateAsync, TableRewriteMetricsTests.TheFloorGauge_ReportsTheLatestFloors_AndDropsAStaleTableAsync, TableRewriteMetricsTests.TheReclaimableGauge_ReportsEachPartAStatisticsPassMeasuredAsync, OnlineTableRewriteStepTests.EachAttempt_IsMetered_WithItsOutcome_Duration_AndReturnedBytesAsync, OnlineTableRewriteStepTests.TheQueueGauge_ReportsTheCycle_IncludingWhatTheBudgetPassedOverAsync, OnlineTableRewriteStepTests.AnEmptyCycle_StillReportsTheQueueAsync, TableRewriteStartupStepTests.EachVacuumFull_IsMetered_WithItsOutcome_Duration_AndReturnedBytesAsync, TableRewriteStartupStepTests.ARewriteThatRewroteNothing_IsMeteredAsFailedAsync, TableRewriteStartupStepTests.ARewriteThatThrows_IsMeteredAsFailed_AndStillThrowsAsync}
+
+Every table rewrite Whizbang attempts is metered on the same `Whizbang.TableStatistics` meter: the online rewrite
+from the maintenance cycle (pg_squeeze, pg_repack, a blue-green rebuild) and the boot-time `VACUUM FULL`. So an
+operator can see what was rewritten, what it returned, how long it took, what is waiting and why. The tag key and the
+unit follow this meter's existing per-table gauges (`table_name`, `bytes`), so the series join them. See
+[Storage maintenance](../infrastructure/storage-maintenance#online-rewrite) for the rewrites themselves.
+
+| Metric Name | Type | Unit | Tags | Description |
+|-------------|------|------|------|-------------|
+| `whizbang.table.rewrites` | Counter (passive) | `{rewrite}` | `table_name`, `tool`, `reason`, `outcome` | One per attempted rewrite. `tool` is `pg_squeeze`, `pg_repack`, `vacuum_full` or `blue_green`. `reason` is `bloat`, or `fillfactor` for a [lowered fillfactor](../infrastructure/storage-maintenance#fillfactor-decrease). `outcome` is `rewritten` (it measured better, or applied a lowered fillfactor, and its request was cleared), `no_gain` (it ran but the table measures no better; the request stays queued) or `failed` (it threw, or rewrote nothing: a prerequisite unmet, a role that does not own the table) |
+| `whizbang.table.rewrite.reclaimed_bytes` | Counter (passive) | `bytes` | `table_name`, `tool` | What a rewrite returned: the table's whole size (`pg_total_relation_size`: heap, TOAST and indexes) before less after, at least 0. Added only for `outcome="rewritten"`, and only when both sizes were read |
+| `whizbang.table.rewrite.duration` | Histogram | `ms` | `table_name`, `tool`, `outcome` | How long each attempt took, timed with the host's `TimeProvider` |
+| `whizbang.table.rewrite.queue` | ObservableGauge | `{table}` | `state` | The latest online rewrite cycle's queue. `state` is `requested` (tables in `pending_table_rewrites`), `candidate` (offered this cycle), `held_by_floor` (at or above the threshold but held back by their [post-rewrite floor](../infrastructure/storage-maintenance#post-rewrite-floor)) or `over_budget` (offered but passed over because they did not fit `OnlineRewriteMaxBytesPerCycle`). Reported by the instance that runs the cycle, including a cycle with nothing to rewrite |
+| `whizbang.table.rewrite.floor` | ObservableGauge | `ratio` | `table_name` | The bloat ratio each table's latest recorded rewrite left it at (`bloat_after` in `wh_table_rewrite_history`), the floor the post-rewrite guard measures regrowth from: the table is offered again at this value times `TableRewriteRegrowthFactor`, or at the threshold if that is higher. Read on each table statistics refresh; a table with no recorded rewrite does not report |
+| `whizbang.table.reclaimable_bytes` | ObservableGauge | `bytes` | `table_name`, `part` | The bytes a rewrite would free now, from the same TOAST-aware estimate: `part="heap"` is the heap's size less what its live rows are expected to occupy, and `part="toast"` the TOAST relation's size less what its live chunks occupy, each at least 0. Capped and rolled up like the other per-table gauges: past `MaxTrackedTables`, the smallest tables are summed under `table_name="other"` |
+
+The two counters and the histogram also carry the `database` tag once the provider has named its database, as the
+gauges do ([One series per database](#table-statistics-database)).
+
+```promql{title="Table rewrites: what ran, what it returned, what waits" description="PromQL over the table rewrite meters: failed rewrites by tool, bytes returned per day, and tables the post-rewrite floor holds back." category="Observability" difficulty="INTERMEDIATE" tags=["metrics", "table-rewrite", "prometheus", "storage"]}
+# Rewrites that failed in the last day, by tool
+sum by (tool) (increase(whizbang_table_rewrites_total{outcome="failed"}[1d]))
+
+# Bytes the rewrites returned in the last day
+sum(increase(whizbang_table_rewrite_reclaimed_bytes_total[1d]))
+
+# Tables at or above the threshold that the post-rewrite floor holds back
+whizbang_table_rewrite_queue{state="held_by_floor"}
+
+# The tables with the most space a rewrite would free now
+topk(10, sum by (table_name) (whizbang_table_reclaimable_bytes))
+```
 
 ## Whizbang.TypeRegistry {#type-registry}
 
