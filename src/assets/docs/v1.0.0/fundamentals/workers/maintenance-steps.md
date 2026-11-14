@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/221_LedgerRetention.sql
   - src/Whizbang.Data.Postgres/Migrations/238_LogSweepClearsTheDefaultPartition.sql
   - src/Whizbang.Data.Postgres/Migrations/279_CollectiveApplyProgress.sql
+  - src/Whizbang.Data.Postgres/Migrations/440_LedgerSweepsAreBoundedAndReturnDrainedDefaults.sql
   - src/Whizbang.Core/Workers/RetentionSettingsBridge.cs
   - src/Whizbang.Core/Workers/QueueIndexReindexStep.cs
   - src/Whizbang.Data.EFCore.Postgres/FrameworkIndexBuildMaintenanceStep.cs
@@ -28,6 +29,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerRetentionSyncTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/LedgerRetentionSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/LogPartitionConversionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/LedgerDefaultPartitionSweepTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperLedgerRetentionSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveApplyProgressSqlTests.cs
   - tests/Whizbang.Core.Tests/Workers/QueueIndexReindexStepTests.cs
@@ -149,7 +151,7 @@ failure it repairs and the reason for each rule.
 
 {verified: LedgerRetentionSqlTests.Log_OlderThanTheWindow_IsRemoved_YoungerIsKeptAsync, LedgerRetentionSqlTests.ScheduleRuns_OlderThanTheWindow_AreRemoved_ButTheNewestRunOfEachScheduleIsKeptAsync, LedgerRetentionSqlTests.StreamPurgeAudit_IsKeptForeverByDefault_AndBoundedWhenConfiguredAsync, LedgerRetentionSqlTests.IntegrityLedger_IsTrimmedToTheConfiguredCount_NewestKeptAsync, LedgerRetentionSqlTests.DebugMode_KeepsEveryLedgerRowAsync, DapperLedgerRetentionSqlTests.Maintenance_BoundsTheLogAndScheduleRuns_KeepingEachSchedulesNewestRunAsync}
 
-The last task of the maintenance sweep bounds the framework ledgers that nothing else deletes from. Each task deletes in batches, so a large backlog is never one long delete, and each is skipped while `debug_mode` is on.
+The last task of the maintenance sweep bounds the framework ledgers that nothing else deletes from. Each task deletes in batches, so a large backlog is never one long delete, and each is skipped while `debug_mode` is on. Each looping task also stops after `ledger_sweep_max_batches` batches per call (a `wh_settings` key, default 20), so one cycle's work is bounded however large a backlog is; a task that stops there with rows past its window left adds `(capped: more past the window, next cycle)` to its status, and the next cycle goes on.
 
 | Ledger | Task | Kept | Window setting (default) |
 |---|---|---|---|
@@ -186,6 +188,38 @@ table holds a row per collective and handler, not per projection row.
 {verified: CollectiveApplyProgressSqlTests.TheSweep_RemovesAFinishedRecordPastTheHorizon_AndKeepsAYoungerOneAsync, CollectiveApplyProgressSqlTests.TheSweep_HonorsTheConfiguredHorizonAsync, CollectiveApplyProgressSqlTests.TheSweep_KeepsAFinishedRecord_WhileItsWorkRowIsPendingAsync, CollectiveApplyProgressSqlTests.TheSweep_KeepsUnfinishedAndAbandonedRecords_AndTheFinishedRecordsOfADeadLetteredCollectiveAsync, CollectiveApplyProgressSqlTests.TheSweep_UnderDebugMode_KeepsEveryRecordAsync, CollectiveApplyProgressSqlTests.PurgingTheDeadLetter_SweepsItsAbandonedRecords_AndKeepsTheFinishedOnesAsync}
 
 Each setting lives under `Whizbang:Workers:Maintenance:Retention` and is published to `wh_settings` before the sweep reads it (next section); the keys are listed under [Database-side settings](../../operations/configuration/configuration-reference#database-side-settings).
+
+### Drained default partitions give their space back {#drained-default-partitions}
+
+The traces (`wh_traces`), staged metadata (`wh_event_metadata_staging`) and `wh_log` are swept the same way once
+partitioned and maintained: only their default partition, row by row. On a server where tracing ran before day
+partitions existed, that default partition holds weeks of rows that all reach the window within days of one another,
+which is what the per-call batch limit above bounds. Deleting the rows did not return the partition's space, though:
+autovacuum makes it reusable, but nothing writes there once day partitions cover every day, and its indexes never
+shrink. So once a sweep has drained a default partition, it truncates it:
+
+- only when the statistics say the partition holds no rows and it still has pages;
+- under an `ACCESS EXCLUSIVE` lock on the default partition alone, taken without waiting (`NOWAIT`): a lock not granted
+  at once, for example while a reader holds the partition, leaves it to a later cycle;
+- after checking again, under that lock, that it holds no row, so statistics that are stale never cost a row.
+
+The task's status then adds `(drained default partition truncated)`. Appends routed to the day partitions never wait
+on it; a write routed to the default partition waits for the maintenance transaction to commit. Under `debug_mode`
+nothing is swept or truncated.
+{verified: LedgerDefaultPartitionSweepTests.TheTraceSweep_IsBoundedPerCall_AndTheNextCallGoesOnAsync, LedgerDefaultPartitionSweepTests.ADrainedDefaultPartition_IsTruncated_AndAnotherIsLeftAloneAsync, LedgerDefaultPartitionSweepTests.ADefaultPartitionAnotherTransactionHolds_IsLeftForALaterCycleAsync, LedgerDefaultPartitionSweepTests.UnderDebugMode_NothingIsSwept_AndNoDefaultPartitionIsTruncatedAsync}
+
+```mermaid{caption="A default-partition sweep deletes at most a bounded number of batches per call, and truncates the partition once it is drained and a lock is granted without waiting." tests=["LedgerDefaultPartitionSweepTests.TheTraceSweep_IsBoundedPerCall_AndTheNextCallGoesOnAsync", "LedgerDefaultPartitionSweepTests.ADrainedDefaultPartition_IsTruncated_AndAnotherIsLeftAloneAsync", "LedgerDefaultPartitionSweepTests.ADefaultPartitionAnotherTransactionHolds_IsLeftForALaterCycleAsync"]}
+flowchart TD
+  A["Sweep the default partition<br/>(rows past the window)"] --> B{"ledger_sweep_max_batches<br/>full batches?"}
+  B -- yes --> C["Status: capped,<br/>next cycle goes on"]
+  B -- no --> D{"Statistics: no rows,<br/>pages left?"}
+  D -- no --> E["ok"]
+  D -- yes --> F{"Lock granted<br/>without waiting?"}
+  F -- no --> E
+  F -- yes --> G{"Empty under<br/>the lock?"}
+  G -- no --> E
+  G -- yes --> H["TRUNCATE: heap and<br/>index space returned"]
+```
 
 ## Settings published before the sweep {#settings-published-before-the-sweep}
 

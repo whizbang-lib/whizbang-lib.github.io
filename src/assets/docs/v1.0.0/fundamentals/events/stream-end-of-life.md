@@ -12,6 +12,7 @@ category: Core Concepts
 order: 16
 tags: 'event-streams, stream-lifecycle, end-of-life, archive, storage, event-store, sealing, terminal-event, finalize, disposition, final-snapshot, compaction, policies, idle-ttl, version-cap'
 codeReferences:
+  - src/Whizbang.Data.Postgres/Migrations/443_TheLifecycleLedgerLetsGoOfEphemeralStreams.sql
   - src/Whizbang.Data.Postgres/Migrations/272_ArchivedStreamTypeIndex.sql
   - src/Whizbang.Data.Postgres/Migrations/260_StreamLifecycleLedger.sql
   - src/Whizbang.Data.Postgres/StreamLifecycleBackfill.cs
@@ -160,6 +161,44 @@ and `approx_bytes` keeps counting the truncated bodies. An archiving truncate go
 - **Events without a stream.** The empty stream id means "no stream"; there is nothing to finalize, archive or purge
   (a purge refuses the empty id too).
   {verified: StreamLifecycleLedgerSqlTests.EventsWithoutAStream_CreateNoRowAsync}
+
+### Ephemeral streams leave the ledger {#ephemeral-streams}
+
+A stream written while its type was Sourced got its row then. When the
+[history walk](ephemeral-events#making-an-existing-type-ephemeral) later reclassifies the stream ephemeral, it settles
+the streams of each batch in the ledger, under the batch's own per-stream locks: a stream that no longer holds a counted
+event loses its row, and a stream that still holds Sourced events (a pair a read model
+[allows to share a stream](ephemeral-events#allowing-mixed-streams)) has its `approx_bytes` recounted over the events
+the ledger counts, so the reaper deleting the ephemeral bodies does not leave them counted. Before this, such rows stayed
+with their full `approx_bytes`, which skewed the size ranking and any `TenantByteCap` policy.
+{verified: StreamLifecycleEphemeralSqlTests.Reclassifying_AStreamWhole_RemovesItsLedgerRowAsync}
+
+```mermaid{caption="Each batch of the ephemeral history walk settles its streams in the lifecycle ledger; the one-time release settles the rows a store already held." tests=["StreamLifecycleEphemeralSqlTests.Reclassifying_AStreamWhole_RemovesItsLedgerRowAsync", "StreamLifecycleEphemeralSqlTests.Release_RemovesHeldEphemeralRows_InBatches_AndRecountsAMixedStreamAsync"]}
+flowchart LR
+  A["History walk batch<br/>or release batch"] --> B["Take the streams'<br/>append locks"]
+  B --> C{"Stream holds a<br/>counted event?"}
+  C -- no --> D["Ledger row removed"]
+  C -- yes --> E{"Also holds an<br/>ephemeral event?"}
+  E -- yes --> F["approx_bytes recounted<br/>over counted events"]
+  E -- no --> G["Row left as it is"]
+```
+
+#### Releasing the rows already held {#releasing-ephemeral-streams}
+
+A store that reclassified history before this release already holds rows for ephemeral streams. A one-time release
+settles them, driven by the same `stream-lifecycle-backfill` step once the backfill itself is done, with the rounds the
+cycle has left. It has the backfill's shape:
+
+- gated on `stream_lifecycle_ephemeral_release_version` (`0` to do, `1` done; a ledger with no rows when migration 443
+  runs is recorded as done), so a finished release costs one keyed read a cycle;
+- `wh_stream_lifecycle_release_ephemeral_batch` takes the next batch of ledger rows after its cursor
+  (`stream_lifecycle_ephemeral_release_cursor`), takes their streams' append locks in stream id order, and settles them
+  as the history walk does: the row of a stream with no counted event goes, a mixed stream is recounted, every other
+  row is left as it is;
+- one instance at a time: a caller that finds the cursor held gets `-1` and steps aside for the cycle.
+
+The step logs once, at Information, when a run finishes the release.
+{verified: StreamLifecycleEphemeralSqlTests.Release_RemovesHeldEphemeralRows_InBatches_AndRecountsAMixedStreamAsync, StreamLifecycleEphemeralSqlTests.Release_WhileAnotherCallerHoldsTheCursor_StepsAsideAsync, StreamLifecycleEphemeralSqlTests.Backfill_NeverSeedsAnEphemeralStreamAsync}
 
 ## Built for the append path {#built-for-the-append-path}
 
