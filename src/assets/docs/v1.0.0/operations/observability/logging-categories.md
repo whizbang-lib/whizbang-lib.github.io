@@ -150,6 +150,7 @@ To temporarily re-enable a category for debugging, set it to `"Debug"`:
 | `Whizbang.Core.Workers.InboxDrainWorker` | Inbox drain: turns claimed stream ids into queued inbox rows. Working-set budget hand-backs at `Information`; transient database failures, hand-back failures, and rows whose envelope cannot be read, at `Warning`; such a row past `MaxInboxAttempts` as the [dead-letter record](#dead-lettered-messages); a drain batch lost to a defect, and a [database that keeps failing](#database-failure-escalation) (once), at `Error`. See [Inbox pipeline events](#inbox-pipeline-events). | Information |
 | `Whizbang.Core.Workers.InboxDispatchWorker` | Inbox dispatch and its lease keeper: dispatch failures, lease renewal failures, lapsed held rows and control-plane drops at `Warning`; skipped duplicate copies at `Debug`; a message it dead-letters as the [dead-letter record](#dead-lettered-messages). | Information |
 | `Whizbang.Core.Workers.InboxHandlerWorker` | Batched inbox commits: each failed commit (first five per flush, then a summary) at `Warning`. | Information |
+| `Whizbang.Core.Workers.OutboxBatchFlush` | The outbox batch flush's Distribute stages: a receptor that throws, or a message whose stage fails before any receptor runs, at `Error`, one entry per failure naming the receptor (when one threw), message type and message id; the rest of the flush still runs. See [When a Distribute receptor fails](../../fundamentals/lifecycle/lifecycle-stages.md#distribute-failures). | Information |
 
 ### Transport
 
@@ -165,6 +166,7 @@ To temporarily re-enable a category for debugging, set it to `"Debug"`:
 | Category | Description | Default Level |
 |----------|-------------|---------------|
 | `Whizbang.Core.Messaging.ReceptorInvoker` | Receptor invocation — logs handler resolution and execution. | Debug |
+| `Whizbang.Core.Messaging.SuppressedReceptorRoute` | A receptor declared `[SuppressReceptorRegistration]` whose compiled route found no instance in dependency injection and skipped it, at `Debug`, once per receptor type. See [When it is registered neither way](../../fundamentals/receptors/receptors.md#unregistered-suppressed-receptor). | Debug |
 | `Whizbang.Core.Messaging.ScopedWorkCoordinatorStrategy` | Scoped work coordinator — logs batch processing within DI scopes. | Information |
 | `Whizbang.Core.Messaging.ImmediateWorkCoordinatorStrategy` | Immediate work coordinator — logs direct dispatch processing. | Information |
 | `Whizbang.Core.Messaging.IntervalWorkCoordinatorStrategy` | Interval work coordinator — logs timer-based batch processing. | Information |
