@@ -12,6 +12,8 @@ description: >-
   audit ledger, the global kinds on the dedicated system stream
 tags: 'system-events, audit, monitoring, observability, diagnostics, security, compliance'
 codeReferences:
+  - src/Whizbang.Data.Postgres/AuditBodyConversionStep.cs
+  - src/Whizbang.Data.Postgres/Migrations/444_HistoricalAuditRecordsBecomePointers.sql
   - src/Whizbang.Core/SystemEvents/ISystemEvent.cs
   - src/Whizbang.Core/SystemEvents/SystemEventEmitter.cs
   - src/Whizbang.Core/SystemEvents/ISystemEventEmitter.cs
@@ -349,6 +351,37 @@ Upgrading: a consumer that reads `OriginalBody` sets `Include` or marks the type
 event by `OriginalEventId`.
 
 {verified: AuditingEventStoreDecoratorTests.AppendAsync_ByDefault_TheAuditRecordPointsAtTheEventWithoutItsBodyAsync, AuditingEventStoreDecoratorTests.AppendAsync_ATypeThatAsksForItsBody_IsRecordedWithItAsync, AuditingEventStoreDecoratorTests.AppendAsync_TheDefaultSetToInclude_RecordsEveryBodyAsync, AuditOutboxMessageBuilderTests.TryBuildAuditMessage_ByDefault_LeavesTheBodyOutAsync, SystemEventEmitterTests.EmitEventAuditedAsync_ByDefault_RecordsNoBodyAsync, AuditEventRegistryGeneratorTests.Generator_IncludeBody_IsRegisteredAsync}
+
+##### Records written before the pointer default {#audit-body-conversion}
+
+Audit records written before the pointer default each carry `OriginalBody`, a full copy of the audited event, and
+because they sit on the audited events' own streams a stream-level policy reaches few of them. The
+`audit-body-conversion` maintenance step (both Postgres drivers) converts them to the pointer form: it walks the
+`EventAudited` records through the per-type history walker (operation `audit-body`), in commit order, 5,000 records a
+batch and 20 batches a cycle at most, each batch its own transaction, resumable after a crash, one instance at a time.
+In each window it removes `OriginalBody` from every record whose `OriginalEventType` is not a type declared
+`[AuditEvent(IncludeBody = true)]`, by either name the writers record (the simple name, or the full name the ledger
+rebuild writes). Every other field is untouched, so `OriginalEventId` still finds the audited event and the stored
+record is exactly what the writers store for it now. Event ids, versions and streams do not change, so the stream
+digests do not either.
+
+- **Nothing runs under `AuditBodyDefault.Include`**: every record keeps its body then.
+- **The set of types that keep their bodies is the walk's variant**, so marking one more type `IncludeBody` walks the
+  records again; its records already converted have lost their copy, and the original event still holds it.
+- **What is left** is reported as the `convert_audit_record_bodies` task of
+  [`whizbang.maintenance.pending_rows`](../../operations/observability/metrics#pending-reclamation), from the walk's
+  stored progress; `0` once it is complete.
+
+{verified: AuditBodyConversionSqlTests.Step_ConvertsAHistoricalRecordToThePointerForm_AndKeepsIncludeBodyTypesAsync, AuditBodyConversionSqlTests.Step_ConvertsInBoundedBatches_Resumes_AndReportsWhatIsLeftAsync, AuditBodyConversionSqlTests.Step_UnderAuditBodyDefaultInclude_ConvertsNothingAsync, AuditBodyConversionSqlTests.KeptBodyNames_AreBothFormsOfEachIncludeBodyType_SortedAsync, PostgresDriverExtensionsTests.Postgres_RegistersTheAuditBodyConversionStep_OnceAsync}
+
+```csharp{title="A historical record converted, a kept type left alone" description="One cycle of the step removes the copied body from a record of an ordinary type and keeps it for a type declared IncludeBody; the pointer still names the audited event." framework="NET10" category="System Events" difficulty="ADVANCED" tags=["audit", "maintenance", "history-conversion"] tests=["AuditBodyConversionSqlTests.Step_ConvertsAHistoricalRecordToThePointerForm_AndKeepsIncludeBodyTypesAsync"]}
+AuditEventRegistry.Register(typeof(AuditBodyKeptProbe), new AuditEventAttribute { IncludeBody = true });
+
+var result = await new AuditBodyConversionStep(NullLogger.Instance, 100, 10).ConvertAsync(services, CancellationToken.None);
+
+// result.RecordsConverted == 1 (the OrderPlaced record), result.RecordsKept == 1 (the AuditBodyKeptProbe record)
+// The converted record still carries OriginalEventId and OriginalEventType.
+```
 
 #### What hooks receive
 

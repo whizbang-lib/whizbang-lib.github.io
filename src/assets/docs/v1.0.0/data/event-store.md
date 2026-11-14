@@ -14,6 +14,9 @@ tags: >-
   postgresql
 codeReferences:
   - src/Whizbang.Core/Messaging/IEventStore.cs
+  - src/Whizbang.Data.Postgres/MetadataHistoryConversionStep.cs
+  - src/Whizbang.Core/Configuration/MetadataHistoryConversionOptions.cs
+  - src/Whizbang.Data.Postgres/Migrations/441_MetadataHistoryConversionReportsWhatIsLeft.sql
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Core/Messaging/IEventUpcaster.cs
   - src/Whizbang.Data.Schema/Schemas/EventStoreSchema.cs
@@ -479,8 +482,9 @@ drivers) converts those rows once: it rewrites each one to exactly what a write 
 plus its route id. It is the only place event rows are rewritten.
 
 It runs in the maintenance cycle, so it waits for the service to settle and runs only on the holder of the maintainer
-duty. It calls `wh_convert_event_metadata_history` in batches of 1,000 rows, each batch its own transaction, until a
-batch comes back short, a batch does not come back `ok`, or 20 batches (20,000 rows) have run. Each batch:
+duty. It calls `wh_convert_event_metadata_history` in batches, each batch its own transaction, until a batch comes back
+short, a batch does not come back `ok`, the cycle's batch limit is reached, or its time budget has passed (see
+[The cycle's budget](#history-conversion-budget)). Each batch:
 
 1. reads the next rows past its cursor (`wh_metadata_history_conversion`) in event id order, through the key index;
 2. leaves alone a row that already has a route id, a row of a type [kept full](#keeping-an-event-type-full), a row whose
@@ -514,6 +518,48 @@ value is the default. {verified: EventStoreMetadataSettingsTests.ConvertHistory_
 Under `Slim` the rows are converted and no route or trace is written, as `Slim` writes none for new events. An event
 older than the trace window gets no trace: retention would remove it in the same cycle, so writing it would only cost
 WAL; its row keeps its route id, which still says how it got here. {verified: MetadataHistoryConversionSqlTests.Convert_UnderSlim_WritesNoRoutesOrTracesAsync, MetadataHistoryConversionSqlTests.Convert_UnderLinked_CountsTheRoute_AndTracesOnlyWhatIsInsideTheTraceWindowAsync}
+
+#### The cycle's budget {#history-conversion-budget}
+
+A cycle used to convert a fixed 20,000 rows, so a database with millions of full-form rows took days. The budget is
+configurable under `Whizbang:Workers:Maintenance:MetadataHistoryConversion`, validated at host start:
+
+| Key | Default | What it sets |
+|---|---|---|
+| `BatchSize` | `1000` | rows one batch reads, one transaction (at least 1) |
+| `MaxBatchesPerCycle` | `200` | batches one cycle runs at most, so 200,000 rows at the default batch (at least 1) |
+| `TimeBudget` | `00:00:30` | no batch starts once this has passed since the cycle's first; a batch in progress is never cut short (greater than zero) |
+
+The time budget is measured on the host's `TimeProvider`, so a slow database converts less per cycle instead of holding
+maintenance longer. At the measured cost below (about a quarter of a second a batch of 1,000), the defaults convert
+roughly 100,000 to 120,000 rows in a 30-second cycle.
+{verified: MetadataHistoryConversionOptionsTests.Defaults_AreALargerBoundedBudgetAsync, MetadataHistoryConversionOptionsTests.Options_BindFromConfiguration_AndAreValidatedAtStartAsync, MetadataHistoryConversionOptionsTests.Validator_RejectsABudgetThatConvertsNothing_NamingTheKeyAsync, MetadataHistoryConversionSqlTests.Step_StopsStartingBatches_OnceTheTimeBudgetHasPassedAsync, MetadataHistoryConversionSqlTests.FromServices_TakesTheConfiguredBudget_AndTheHostsClockAsync}
+
+```csharp{title="A smaller conversion budget" description="The step reads its budget from the bound options and measures the time budget on the host's clock; here one batch of two rows a cycle." framework="NET10" category="Configuration" difficulty="INTERMEDIATE" tags=["metadata", "history-conversion", "maintenance", "configuration"] tests=["MetadataHistoryConversionSqlTests.FromServices_TakesTheConfiguredBudget_AndTheHostsClockAsync"]}
+var services = new ServiceCollection()
+  .AddSingleton(Options.Create(new MetadataHistoryConversionOptions { BatchSize = 2, MaxBatchesPerCycle = 1 }))
+  .AddSingleton<TimeProvider>(new FakeTimeProvider())
+  .BuildServiceProvider();
+
+// databaseServices: the maintenance cycle's services, carrying the PostgresArchiveConnection
+var result = await MetadataHistoryConversionStep.FromServices(services).ConvertAsync(databaseServices, CancellationToken.None);
+// result.Batches == 1, result.RowsAffected == 2
+```
+
+#### What is left {#history-conversion-remaining}
+
+`wh_metadata_history_remaining(cap)` counts the rows past the conversion's cursor through the table's key, reading at
+most `cap + 1` of them, so a reading costs the same however large the remainder is: no row while the conversion is
+skipped, `0` once it is complete, otherwise the count (`capped` when it stopped at the cap). The rows past the cursor are
+what the walk still reads, rows written since slim metadata included, so this is the work left in reads, which is what
+each cycle spends. It reaches the metrics as the `convert_metadata_history` task of
+[`whizbang.maintenance.pending_rows`](../operations/observability/metrics#pending-reclamation).
+{verified: MetadataHistoryConversionSqlTests.Remaining_CountsTheRowsPastTheCursor_AndReachesZeroAsync, MetadataHistoryConversionSqlTests.Remaining_WhileSkipped_ReportsNothing_AndAPastTheCapCountSaysSoAsync}
+
+Every cycle logs what it converted with what is left: `... ; 3 row(s) left to read, about 2 more cycle(s)`. A cycle
+that converted nothing and ended on a status other than `ok` while rows remain (a held or skipped batch) logs a
+warning that the conversion is not moving; converting nothing with status `ok` is reading rows that are already slim.
+{verified: MetadataHistoryConversionSqlTests.Step_LogsWhatIsLeft_AndHowManyCyclesItWillTakeAsync, MetadataHistoryConversionSqlTests.Step_AHeldCycleWithRowsLeft_WarnsThatTheConversionIsNotMovingAsync}
 
 **It never waits.** The cursor row is taken with `SKIP LOCKED`, so a second instance skips rather than queueing behind
 the first. Each event row is locked with `SKIP LOCKED` too: a row another transaction holds (a reaper deleting it, for
@@ -632,8 +678,8 @@ conversion reports complete, after a checkpoint, so every batch pays the full-pa
 What the numbers say:
 
 - **The cost is per row, so the batch size only sets the length of a transaction.** WAL and blocks grow linearly with
-  the batch. 1,000 rows is about a quarter of a second, a short transaction; a cycle of 20 batches converts 20,000 rows
-  in about five seconds of idle time and writes about 83 MB of WAL. A converted row costs about 4.2 KB of WAL here (5.8 KB
+  the batch. 1,000 rows is about a quarter of a second, a short transaction; 20 batches convert 20,000 rows in about five
+  seconds of idle time and write about 83 MB of WAL. A converted row costs about 4.2 KB of WAL here (5.8 KB
   on a second build server), about what storing one new event costs (the outbox emit chain wrote 5.7 KB an event in
   [the measurement above](#what-slim-metadata-costs)), so a cycle's WAL is that of storing 20,000 events.
 - **No update is heap-only.** An event row's page is full when it is written, and the old version stays on it until a
