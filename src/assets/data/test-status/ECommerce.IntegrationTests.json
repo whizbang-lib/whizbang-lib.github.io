@@ -1,1 +1,1 @@
-{"OrderServiceIntegrationTests.OrderLineItem_CalculatesTotalCorrectlyAsync":{"o":"passed","d":1615,"s":"unit"},"OrderServiceIntegrationTests.CreateOrderCommand_HasRequiredPropertiesAsync":{"o":"passed","d":1628,"s":"unit"}}
+{"OrderServiceIntegrationTests.OrderLineItem_CalculatesTotalCorrectlyAsync":{"o":"passed","d":1589,"s":"unit"},"OrderServiceIntegrationTests.CreateOrderCommand_HasRequiredPropertiesAsync":{"o":"passed","d":1601,"s":"unit"}}
