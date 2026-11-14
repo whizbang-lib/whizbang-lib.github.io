@@ -372,6 +372,15 @@ services.AddWhizbangServiceAnchor<NotificationsWorker>();
 when the process holds one service, every assembly is included wherever its DbContext lives. A service split over
 several assemblies keeps all of them, which is what the contribution rules above rely on.
 
+**An assembly that loads later is classified when it does.** A host's scope is computed from the assemblies whose
+facts are recorded when it is anchored, and it follows the record: an assembly whose facts register afterwards (a
+service whose code a test host or a gateway loads later) is classified by the same rule the first time the host asks
+about it. Another service's root, and what only it is built on, are excluded; what an anchor is built on, and a helper
+no other service is built on, stay. An assembly classified when the scope was computed keeps its classification, so the
+registrations already made under it stay consistent. The classification is redone once per change to the record, not
+on every lookup.
+{verified: LateLoadedServiceAssemblyTests.AServiceRootThatRegistersAfterTheHostIsAnchored_IsExcludedAsync, LateLoadedServiceAssemblyTests.AnAssemblyOnlyALateRootIsBuiltOn_IsExcludedWithItAsync, LateLoadedServiceAssemblyTests.ALateAssemblyTheAnchorIsBuiltOn_AndALateHelperNoServiceIsBuiltOn_StayAsync, LateLoadedServiceAssemblyTests.TheHostsScope_DoesNotCountALateServicesReceptorsOrConsumedTypesAsync}
+
 **A host that names no service keeps everything,** as before: so does a host whose anchor recorded no facts (an
 assembly compiled without the generators, or one whose module initializer has not run yet).
 

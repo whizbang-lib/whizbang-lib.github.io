@@ -962,6 +962,17 @@ because both columns were already indexed. The tests force the generic plan and 
 reads (`pg_stat_xact_user_tables`) against a lane much larger than the window, so a return to the whole-lane read
 fails them.
 
+**A walk keeps every type it started with.** A stream-level answer that names more streams than one page holds carries
+a resume cursor, and the consumer follows it with a request for the next page of the same window. Each follow-up used to
+ask only for the types that appeared on the page before it, so a type with no streams on one page dropped out of the
+rest of the walk, even when later pages held its streams. A stream-level answer now echoes the types its request named
+(`IntegrityManifest.RequestedEventTypes`, including the types the origin added for the asker's absorbed namespaces), and
+each follow-up asks for all of them. A page with a cursor and the echo is followed even when it has nothing of its own
+to compare: it held no digest, or each one was left out because this service does not keep the type or the origin is
+not authoritative for it. An answer from an origin that predates the echo carries none, and its follow-ups ask for the
+page's own types as before; an empty page with no echo, or with no cursor, ends the walk.
+{verified: IntegrityManifestReceptorTests.RequestReceptor_AStreamLevelAnswer_EchoesTheTypesTheAskNamedAsync, IntegrityManifestReceptorTests.ManifestReceptor_AFollowUpPage_AsksForEveryTypeTheWalkStartedWith_NotOnlyThoseOnThePageAsync, IntegrityManifestReceptorTests.ManifestReceptor_AFollowUpPage_WithNoDigestOfItsOwn_StillAsksForTheWalksTypesAsync, IntegrityManifestReceptorTests.ManifestReceptor_APageOfOnlyTypesTheOriginIsNotAuthoritativeFor_StillFollowsTheWalkAsync, IntegrityManifestReceptorTests.ManifestReceptor_AFollowUpPage_FromAnOriginThatEchoesNoTypes_AsksForThePagesTypesAsync, IntegrityManifestReceptorTests.ManifestReceptor_AnEmptyPage_FromAnOriginThatEchoesNoTypes_EndsTheWalkAsync}
+
 #### The windowed read is planned per call {#windowed-read-planned-per-call}
 {verified: WindowedDigestTypeIndexTests.TypeFilteredWindow_ReadsThroughAnIndexConditionOnTheType_UnderAGenericPlanAsync, WindowedDigestTypeIndexTests.TheRead_PlansEachCallAgainstItsOwnWindow_WhateverTheCallersPlanModeAsync, WindowedDigestTypeIndexTests.BeforeTheTypeIndexIsBuilt_TheReadAnswersTheSameAsync, WindowedDigestLaneReadTests.ManifestStreamWindow_ReadsTheWindow_NotTheLaneAsync}
 
@@ -2243,14 +2254,33 @@ purpose. Maintenance waits for an idle service, and a service whose repair stall
 which is exactly when the rows matter. The pass is bounded by the ledger, which is capped, reads it once and writes only
 the rows it re-arms.
 
-:::warning
-**Known limit.** An answer claims the full window it was asked for. An ordinary request that the origin capped at
-`MaxEventsPerRequest`, or split across bundles, still echoes the requested window on every bundle, so a capped answer
-that stored nothing can mark a bucket whose missing events lie past the cap. A capped ordinary answer is counted on
-`redelivery_answers_capped` with `kind=ordinary` ([an answer never stops short in silence](#answers-say-where-they-stopped));
-a non-zero rate there means some marks may rest on a window the answer did not fully ship. Paced backfill pages are not
-affected: each page echoes only what it covered.
-:::
+**A bundle that carried a stream only in part never marks it (#2149).** An answer is split: across bundles by the
+origin's count and byte bounds, across the pages of its (stream, version) selection, and at its `MaxEventsPerRequest`
+cap. Every bundle claims the answer's window, so a bundle that carried only part of a stream, all of it already stored,
+used to mark the stream's bucket although the stream's missing events were in another bundle or past the cap. Each
+bundle now names the streams it carries only in part (`RedeliveryComposite.AnsweredPartialStreamIds`, read back as
+`RedeliveryAnswerWindow.PartialStreamIds`): the pump names a stream it split across bundles, including bundles that
+span streams, and an ordinary answer names a stream that runs across a page or stops at the cap. Such a stream's bucket
+is recorded as answered and stays repairable, in the commit-time record (migration 410 adds the partial streams to
+`wh_integrity_record_bundle_answer`) and in the deferred reconcile, whose record carries them. A bundle holding a
+partial stream of a type does not mark that type's [whole-type request](#a-whole-type-answer-that-brings-nothing-stops-the-asking)
+either. A refused bucket is still marked, and a stream carried whole is judged by the window as before. A paced backfill
+page's window already stops at the commit sequence the page reached, so only its bundle splits name partial streams.
+A full page names its last stream even when that stream happened to end there; that only leaves the bucket repairable
+for another try. A bundle from an origin on an earlier release names none and is judged as before.
+{verified: RedeliveryPumpWindowTests.PublishAnswer_AStreamSplitAcrossBundles_IsNamedPartialInEach_AWholeStreamInNoneAsync, RedeliveryPumpWindowTests.PublishAnswer_AStreamTheCallerSaysContinues_IsNamedPartialInTheBundleThatCarriesItAsync, RedeliveryRequestReceptorTests.Receptor_AStreamThatRunsAcrossPages_IsNamedPartialOnEveryPageItIsOnAsync, RedeliveryRequestReceptorTests.Receptor_AStreamCutAtTheOriginsCap_IsNamedPartialAsync, RedeliveryRequestReceptorTests.Receptor_StreamsThatEndInsideTheLastPage_AreNotNamedPartialAsync, IntegrityAnswerCoverageSqlTests.RecordBundleAnswer_AStreamTheBundleCarriedOnlyInPart_IsAnsweredButStaysRepairableAsync, IntegrityAnswerCoverageSqlTests.RecordBundleAnswer_AnotherStreamCarriedInPart_DoesNotStopTheMarkOfAStreamCarriedWholeAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_ABundleThatCarriedAStreamOfTheTypeInPart_LeavesTheTypeLaneRepairableAsync, RedeliveryAnswerCoverageTests.TheDrain_ReadsThePartialStreamsBack_AndLeavesTheirBucketsRepairableAsync}
+
+### A whole-type answer that brings nothing stops the asking {#a-whole-type-answer-that-brings-nothing-stops-the-asking}
+{verified: IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AnAnswerThatStoredNothing_CoveringTheTypeLanesRequest_MarksTheTypeLaneAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AnAnswerThatStoredSomething_LeavesTheTypeLaneRepairableAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AnAnswerNarrowerThanTheTypeLanesRequest_LeavesItRepairableAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AnAnswerThatDoesNotSayItsWindow_LeavesTheTypeLaneRepairableAsync}
+
+A bulk backfill or a confirmed checkpoint gap asks the origin for every event of one (tenant, type) in a window, and is
+recorded on the type's *type lane*: the ledger row with the empty stream id. When the request leaves, the type lane keeps
+the window it asked for (migration 383, #2211). A committed answer bundle that stored nothing and says the window it
+answered marks the type lane as one repair cannot change when that window covered the requested one, as a per-stream
+bucket is marked, so the same whole-type request is not granted again and the origin does not re-ship events this
+service already holds. An answer that stored something, one narrower than the request, or one that does not say its
+window leaves the type lane repairable; so does a bundle that carried one of the type's streams only in part (#2149). A
+stream of the type that is genuinely missing is still compared and repaired on its own by the stream-level drill-down.
 
 ### Repair waits for its answer {#repair-waits-for-its-answer}
 
