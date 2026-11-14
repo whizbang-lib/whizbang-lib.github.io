@@ -49,12 +49,15 @@ sweep, the [perspective row retention sweeps](../../fundamentals/workers/mainten
 
 `wh_perform_maintenance` is one statement from the host's point of view, and it runs as one transaction under the
 work coordinator's fixed command budget (180 seconds on the EF Core driver, see
-[command timeouts](../configuration/configuration-reference#command-timeouts)). If any task inside it runs past that budget, the
-whole call is cancelled: every task in it rolls back, including the ones that had finished, and the cycle stops
-there, so none of the sweeps that follow the call run in that cycle either.
+[command timeouts](../configuration/configuration-reference#command-timeouts)). If the call runs past that budget,
+it is canceled: every task in it rolls back, including the ones that had finished. A cancellation is the one failure
+no task can survive inside the call. Since migration 422 a task that raises an error is rolled back alone and the
+others commit, and the worker runs the sweeps that follow the call whether or not the call succeeded
+([a failed task does not stop the cycle](#a-failed-task-does-not-stop-the-cycle)).
 
 So a task in the call must never do an amount of work that grows without limit with the size of a table. A task
 whose work is bounded per cycle always finishes, and a backlog it cannot clear in one cycle is cleared over several.
+Every purge in the call is bounded that way ([every purge is bounded](#every-purge-is-bounded)).
 
 ## The completed-inbox purge is bounded {#completed-inbox-purge-is-bounded}
 
@@ -148,6 +151,93 @@ tests: ["RetentionSettingsBindingTests.MaintenanceRetention_BindsFromItsEnvironm
   batch of zero would never purge. A value below 1 written in SQL is treated as 1.
 - **To keep completed rows, use debug mode** (`Whizbang:WorkCoordinator:DebugMode`), not a small batch. Debug mode
   is the only way to keep them.
+
+## Every purge is bounded {#every-purge-is-bounded}
+
+{verified: MaintenanceTests.PerformMaintenance_ABoundedPurge_DeletesAtMostItsBatch_AndTheRestOnTheNextCycleAsync, MaintenanceTests.PerformMaintenance_ABoundedPurgeSetBelowOne_StillDeletesOneRowPerCycleAsync, MaintenanceTests.PerformMaintenance_ABoundedPurgeWithNoSetting_DeletesUpToTheDefaultAsync, MaintenanceTests.Migration_SeedsEachPurgeBatchDefaultAsync, RetentionSettingsValidationTests.EveryOtherPurgeBatchBelowOne_IsRejectedByNameAsync, RetentionSettingsBridgeTests.EachIntegerOption_PublishesItsKeyAsAnIntegerLiteralAsync}
+
+The [completed-inbox purge](#completed-inbox-purge-is-bounded) was the first purge given a batch. Since migration 421
+the other four purges in the call delete at most their own batch per cycle too, and leave the rest for later cycles:
+
+| Task | What it deletes | `wh_settings` key | Option (`Whizbang:Workers:Maintenance:Retention:`) |
+|---|---|---|---|
+| `purge_completed_outbox` | completed outbox rows | `completed_outbox_purge_batch_size` | `CompletedOutboxPurgeBatchSize` |
+| `purge_stuck_inbox` | inbox rows never processed, leased or claimed, older than `stuck_inbox_retention_days` | `stuck_inbox_purge_batch_size` | `StuckInboxPurgeBatchSize` |
+| `purge_completed_perspective_events` | completed perspective-event rows | `completed_perspective_event_purge_batch_size` | `CompletedPerspectiveEventPurgeBatchSize` |
+| `purge_old_deduplication` | deduplication rows older than `dedup_retention_days` | `deduplication_purge_batch_size` | `DeduplicationPurgeBatchSize` |
+
+Each batch is 50000 by default, seeded in `wh_settings` and used as the fallback when the row is missing. Each must be
+`1` or greater: a configured value below `1` is refused at startup naming the key, and a value below `1` written in
+SQL is treated as `1`, because a batch of zero would stop that purge for good. Debug mode
+(`Whizbang:WorkCoordinator:DebugMode`) still keeps completed rows; a small batch is not the way to keep them.
+
+Why: each of these was one unbounded delete inside the call, the shape that timed out the completed-inbox purge
+before #2171. The deduplication table holds one row per message received within its window, so on a busy service it
+is the largest table the purges read, and a backlog behind it could outgrow the [command budget](#one-command-budget)
+the same way. Like the inbox batch, each batch is picked without an order, since sorting the backlog every cycle would
+cost what the bound saves; the deduplication purge finds its aged rows through the `first_seen_at` index.
+
+A backlog drains at up to `batch size x cycles per hour`, as for the inbox
+([how long a backlog takes to drain](#inbox-purge-drain-time)): with the defaults, about 300000 rows an hour per purge,
+7.2 million a day, when maintenance is not deferred. A service whose rows become eligible faster than that sees its
+task report the full batch every cycle; raise that purge's batch while its duration stays well inside the budget, or
+shorten the interval, as in [tuning the batch](#inbox-purge-batch-tuning).
+
+```json{
+title: "Raise the deduplication purge batch"
+description: "Lets each maintenance cycle purge up to 100000 deduplication rows past their retention, published to wh_settings.deduplication_purge_batch_size on the next cycle."
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["maintenance", "deduplication", "retention", "wh_settings", "appsettings"]
+tests: ["RetentionSettingsBindingTests.MaintenanceRetention_BindsFromItsEnvironmentVariablesAsync", "RetentionSettingsBridgeTests.EachIntegerOption_PublishesItsKeyAsAnIntegerLiteralAsync"]
+}
+{
+  "Whizbang": {
+    "Workers": {
+      "Maintenance": {
+        "Retention": {
+          "DeduplicationPurgeBatchSize": 100000
+        }
+      }
+    }
+  }
+}
+```
+
+## A failed task does not stop the cycle {#a-failed-task-does-not-stop-the-cycle}
+
+{verified: MaintenanceWorkerTaskIsolationTests.AFailedTask_IsLoggedByName_AndEveryLaterTaskStillRunsAsync, MaintenanceWorkerTaskIsolationTests.TheMaintenanceCallFailing_NamesItInTheWarningAsync, MaintenanceWorkerTaskIsolationTests.TheDestructionReadFailing_GivesTheReapNothing_AndTheCycleGoesOnAsync, MaintenanceWorkerTaskIsolationTests.ATaskTheDatabaseReportsFailed_IsLoggedAsAWarningByNameAsync, MaintenanceWorkerTaskIsolationTests.Cancellation_StillStopsTheCycleAsync, MaintenanceTests.PerformMaintenance_ATaskThatFails_IsReportedByName_AndTheTasksBeforeAndAfterItStillCommitAsync, MaintenanceTests.PerformMaintenance_TheDeduplicationTaskFailing_LeavesTheDeadLetterPurgeItsRetentionAsync}
+
+A maintenance cycle is a list of named tasks, run in order, and each one runs on its own. When a task fails, the
+worker logs a warning naming the task, with its exception, and runs the next task. The failed task runs again on the
+next cycle. The tasks, in order:
+
+`retention_settings_sync`, `reap_driven_snapshots`, `ephemeral_destruction_hooks`, `digest_epoch_closure`,
+`integrity_traffic_sweep`, `perform_maintenance`, `lifecycle_completion_cleanup`, `handled_ledger_sweep`,
+`ephemeral_pointer_prune`, `offload_claim_sweep`, `perspective_row_sweeps`, `table_rewrite_detection`,
+`stuck_row_sentinel`, `exhausted_inbox_conclusion` and `maintenance_steps`.
+
+Inside the call, each task of `wh_perform_maintenance` runs in its own block (migration 422). A task that raises an
+error (a lock timeout, a deadlock, a setting its cast rejects) is rolled back alone and reported as its own row, with
+0 rows and the status `failed: <error>`; the worker logs that row as a warning naming the task. The tasks before it
+and after it run and commit with the call. Each task reads the settings it uses itself, so a failure in one cannot
+leave another without its window.
+
+What still holds:
+
+- **Cancellation ends the cycle.** A canceled task is a host shutting down, not a failed task, so it is never logged
+  and passed over. A call canceled by its command budget rolls back as a whole
+  ([one command budget](#one-command-budget)); the worker then runs the sweeps after it.
+- **The reap deletes only what the destruction hooks were given.** When reading the batch for the destruction hooks
+  fails, the reap is given an empty set and nothing is reaped that cycle, rather than every eligible body. The
+  PostDestruction hooks fire only after a maintenance call that returned.
+- **A step you register is isolated the same way,** each step on its own ([maintenance steps](../../fundamentals/workers/maintenance-steps)).
+
+Why: before #2174 a task that threw ended the cycle, and inside the call a task that raised rolled back every other
+task with it. When the call timed out on a large backlog, a service ran none of the perspective row retention sweeps,
+the lifecycle-completion cleanup, the offload sweep, bloat detection, the stuck-row sentinel or the registered steps
+for days, although none of them depended on the call. The cycle being a list is what keeps it that way: a task added
+to it is isolated without anyone remembering to catch its failure.
 
 ## Related
 
