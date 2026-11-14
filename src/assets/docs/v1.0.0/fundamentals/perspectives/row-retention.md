@@ -12,6 +12,7 @@ tags: >-
   perspectives, retention, row-ttl, row-cap, stream-groups, eviction, cursors, snapshots, rebuild,
   resurrection, maintenance, read-models, storage-economy
 codeReferences:
+  - src/Whizbang.Data.Postgres/Migrations/445_RowCapsPartitionByAModelProperty.sql
   - src/Whizbang.Core/Attributes/RowTtlAttribute.cs
   - src/Whizbang.Core/Attributes/RowCapAttribute.cs
   - src/Whizbang.Core/Attributes/StreamGroupAttribute.cs
@@ -99,6 +100,38 @@ public class RecentActivityProjection : IPerspectiveFor<RecentActivityModel, Act
 A TTL bounds how old rows get; a cap bounds how many there are. The cap ranks rows by business time
 (`updated_at`), newest first, so "keep the newest N" means the N most recently active, and a rebuild
 ranks them the same way. A cap is a complete policy on its own and needs no TTL.
+
+### Per-property caps {#per-property-caps}
+
+`PerScope` and `PerTenant` rank rows within a scope. A read model that must keep "the newest N rows per job" ranks
+within the value of one of its own properties instead: `PerProperty` names the property and `Max` the number kept per
+value.
+
+```csharp{title="Keep the newest three snapshot rows per job" description="PerProperty with Max partitions the cap by a model property: the generator registers the key data:JobId, and the sweep keeps the three most recently active rows of each JobId value." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["row-retention", "row-cap", "perspectives", "per-property"] tests=["RowCapPerPropertyGeneratorTests.PerProperty_WithMax_RegistersTheDataKey_AndOutranksPerScopeAsync", "EvictionCompanionCleanupSqlTests.CapPerProperty_KeepsTheNewestRowsOfEachKeyValue_AndCleansCompanionsAsync"]}
+public record JobSnapshotModel {
+  [StreamId]
+  public string Id { get; init; } = "";
+  public string JobId { get; init; } = "";
+}
+
+[RowCap(PerProperty = nameof(JobSnapshotModel.JobId), Max = 3)]
+public class JobSnapshotPerspective : IPerspectiveFor<JobSnapshotModel, SnapshotTaken> {
+  public JobSnapshotModel Apply(JobSnapshotModel currentData, SnapshotTaken @event) => currentData;
+}
+```
+
+- **The most specific partition wins.** `PerProperty` with `Max` outranks `PerScope`, which outranks `PerTenant`.
+  `PerProperty` without `Max`, or with a blank name, is not a per-property cap; the other caps apply as declared.
+- **The property is read from the stored document**, `data ->> '<name>'`, under the name you give it. Name a property
+  stored in the document under its declared name; a property moved to a physical column is not in the document.
+- **Eviction is the same as for the other caps.** The oldest rows by `updated_at` beyond `Max` in each value go, are
+  journaled, and take their cursors and all but their latest snapshot with them; a row of another value is untouched
+  however old it is. The rows of documents that lack the property rank together, as one value.
+- **One mapping from the key to the partition.** The registry stores the cap's key (`u`, `t`, or `data:<name>`), and
+  `_wh_row_cap_partition` turns it into the expression both the reap-target collection and the cap sweep partition by,
+  so the rows a guard is offered are the rows the sweep removes.
+
+{verified: RowCapPerPropertyGeneratorTests.PerProperty_WithMax_RegistersTheDataKey_AndOutranksPerScopeAsync, RowCapPerPropertyGeneratorTests.PerProperty_WithoutMax_FallsBackToTheOtherCapsAsync, EvictionCompanionCleanupSqlTests.CapPerProperty_KeepsTheNewestRowsOfEachKeyValue_AndCleansCompanionsAsync, EvictionCompanionCleanupSqlTests.Partition_MapsEachKeyForm_ToItsExpressionAsync}
 
 ### Stream groups: evicting related rows together {#stream-groups}
 

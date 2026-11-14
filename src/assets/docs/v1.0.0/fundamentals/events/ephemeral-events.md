@@ -17,6 +17,10 @@ tags: >-
   events, ephemeral, destruction, transient-storage, ttl, rewind-grace, reaper, snapshots, composition,
   profiles, WHIZ130, WHIZ131, WHIZ132, WHIZ133, WHIZ134, WHIZ139, mixed-streams, compaction, stream-close, full-history
 codeReferences:
+  - src/Whizbang.Core/Events/System/IEphemeralSystemEvent.cs
+  - src/Whizbang.Core/Events/System/SystemEventRetention.cs
+  - src/Whizbang.Core/Configuration/EphemeralSystemEventsOptions.cs
+  - src/Whizbang.Data.Postgres/Migrations/442_EphemeralPointerPruneDrainsItsBacklog.sql
   - src/Whizbang.Data.Postgres/EphemeralHistoryReclassifyStep.cs
   - src/Whizbang.Data.Postgres/TypeHistoryWalker.cs
   - src/Whizbang.Core/TypeNameFormatter.cs
@@ -931,6 +935,123 @@ so the report needs no reflection.
 | A read model whose durable inputs have no stored event left is reported ready to drop the attribute. | That is the moment the opt-in stops buying anything, and nothing else tells the operator. | {verified: EphemeralBlockerReportSqlTests.MixedReadModel_WithNoDurableInputLeft_IsReportedReadyToDropTheAttributeAsync} |
 | Remaining durable inputs are counted, and linked to their blocker entry when they share streams. | The counts say how far the read model is from purely ephemeral; the link shows which release would close the gap. | {verified: EphemeralBlockerReportSqlTests.MixedReadModel_WithDurableInputsLeft_ReportsTheirCounts_InTheirOwnStreamsAsync, EphemeralBlockerReportSqlTests.MixedReadModel_ADurableInputSharingStreams_IsLinkedToItsBlockerEntryAsync} |
 | It is counted once per process, not per cycle. | It reads each durable input's stored events; once at startup keeps that cost out of every maintenance cycle. | {verified: EphemeralBlockerReportSqlTests.MixedReadModel_WithNoDurableInputLeft_IsReportedReadyToDropTheAttributeAsync} |
+
+## Framework system events {#framework-system-events}
+
+The framework's own rewind and rebuild events are ephemeral. They are operational bookkeeping: they say that a
+perspective was rebuilt or rewound, by whom and with what result, and nothing rebuilds state from them weeks later.
+Stored forever, they grew to a large share of a long-running database's event bytes, one stream per rebuild run and
+per rewind.
+
+| Event | Stream |
+|---|---|
+| `PerspectiveRebuildStarted`, `PerspectiveRebuildProgress`, `PerspectiveRebuildCompleted`, `PerspectiveRebuildFailed` | the rebuild run's own id |
+| `PerspectiveRewindStarted`, `PerspectiveRewindCompleted` | the rewind's own id (never the stream being rewound) |
+
+Each implements `IEphemeralSystemEvent`, a profile interface carrying
+`[Ephemeral(Destruction = Destruction.AfterTtl, TtlSeconds = 2592000, RewindGraceSeconds = 2592000)]`: 30 days.
+Because every one of them is written to a stream of its own, no stream holds both kinds of event.
+`StreamRewindStarted` and `StreamRewindCompleted` are not in the family: their stream id is the application stream
+being rewound, so an ephemeral event there would mix modes (WHIZ133). Nothing emits them today.
+{verified: SystemEventRetentionTests.EveryRewindAndRebuildEvent_IsEphemeral_ForThirtyDaysByDefaultAsync, SystemEventRetentionTests.StreamRewindEvents_StaySourced_BecauseTheyNameTheApplicationStreamAsync}
+
+### How long they are kept
+
+`Whizbang:Ephemeral:SystemEvents:Ttl` sets the retention for the whole family (default `30.00:00:00`). It must be
+greater than zero and fit in whole seconds of a 32-bit integer; anything else stops the host at start, naming the key.
+The value reaches two places, and both are needed:
+
+- **The TTL stamped on a new event.** The ephemeral-mode resolver applies it, so dispatch stamps the configured TTL
+  and the body is kept until that long after the event was written.
+- **The per-type reaper grace.** The startup reconciler writes it to `wh_ephemeral_type_grace` for each type, under
+  every stored name. The reaper measures the grace from each event's stored `created_at`, so an event stored before
+  the type became ephemeral, which carries no stamped expiry, is kept for exactly the same retention once the history
+  walk has reclassified it. Without the grace it would be reaped five minutes after its reclassification.
+
+{verified: SystemEventRetentionTests.Resolver_AppliesTheConfiguredTtl_ToSystemEventsOnlyAsync, SystemEventRetentionTests.Reconciler_SyncsTheConfiguredTtl_AsTheGraceOfEverySystemEventAsync, SystemEventRetentionTests.Validator_RejectsANonPositiveTtl_NamingTheKeyAsync}
+
+```mermaid{caption="A rewind or rebuild event is reaped once the configured retention has passed since it was written, whether it was written ephemeral or stored before and reclassified by the history walk." tests=["SystemEventRetentionSqlTests.HistoricalRewindEvents_AreReclassified_AndReapedOnlyOnceTheirRetentionHasPassedAsync", "SystemEventRetentionTests.Reconciler_SyncsTheConfiguredTtl_AsTheGraceOfEverySystemEventAsync"]}
+flowchart LR
+  A["Rewind or rebuild<br/>event written"] --> B{"Written since<br/>the release?"}
+  B -- yes --> C["Ephemeral, TTL stamped<br/>(SystemEvents:Ttl)"]
+  B -- "no, stored Sourced" --> D{"ReconcileHistorical<br/>OnStartup on?"}
+  D -- no --> K["Stays Sourced"]
+  D -- yes --> E["History walk<br/>reclassifies it"]
+  C --> F{"created_at older than<br/>the per-type grace?"}
+  E --> F
+  F -- no --> F
+  F -- yes --> G["Body reaped,<br/>pointer kept"]
+```
+
+```csharp{title="Keeping rewind and rebuild events for seven days" description="Whizbang:Ephemeral:SystemEvents:Ttl binds through AddWhizbangWorkers, and the registered resolver stamps the configured TTL on a new event." framework="NET10" category="Configuration" difficulty="INTERMEDIATE" tags=["ephemeral", "system-events", "ttl", "configuration"] tests=["SystemEventRetentionTests.SystemEventsTtl_BindsFromConfigurationAsync"]}
+var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
+  ["Whizbang:Ephemeral:SystemEvents:Ttl"] = "7.00:00:00",
+}).Build();
+var services = new ServiceCollection();
+services.AddSingleton<IMessageTypeCatalog>(new Whizbang.Core.Generated.GeneratedMessageTypeCatalog());
+services.TryAddWhizbangDefaults();
+services.AddSingleton<IConfiguration>(configuration);
+services.AddWhizbangWorkers();
+await using var provider = services.BuildServiceProvider();
+
+var info = provider.GetRequiredService<IEphemeralModeResolver>().Resolve(typeof(PerspectiveRebuildStarted));
+// info.TtlSeconds == 604800
+```
+
+### What it means for events already stored
+
+The events stored before this release are reclassified by the [history walk](#making-an-existing-type-ephemeral)
+only where `Whizbang:Ephemeral:ReconcileHistoricalOnStartup` is on, which is off by default. With it off they stay
+Sourced, and the drift is reported at startup as for any type that turned ephemeral. Once reclassified, an event older
+than the retention is reaped on the next cycle and a younger one when it ages past it.
+{verified: SystemEventRetentionSqlTests.HistoricalRewindEvents_AreReclassified_AndReapedOnlyOnceTheirRetentionHasPassedAsync}
+
+Being ephemeral, these events are no longer audited: an ephemeral type is audited only when it keeps its body
+([Audit](#audit)).
+
+## Pruning ancient pointers {#pruning-ancient-pointers}
+
+Reaping deletes an ephemeral event's body and keeps its pointer row in `wh_event_store`. The opt-in pointer prune
+(`Whizbang:Ephemeral:PointerPrune:Enabled`, publishing `ephemeral_deep_maintenance_enabled`) later deletes the pointers
+themselves. Its rule:
+
+- the event is ephemeral, older than the horizon (`ephemeral_pointer_retention_days`, never shorter than the
+  deduplication window), and its body is already reaped;
+- no perspective work for it is pending;
+- it is not the newest pointer of its stream. That one stays as the stream's tombstone: it keeps the stream flagged
+  ephemeral for the rebuild guard, and it is the target of the perspective cursor's last event id.
+
+The streams about to lose pointers fold their apply path first, so a pruned prefix is never lost unfolded.
+
+### A backlog drains a batch a cycle
+
+The prune is self-gated to `ephemeral_pointer_prune_interval_days`: when the interval has passed, one maintenance
+cycle claims the run by advancing a watermark, atomically, so one pod prunes per interval. It used to delete every
+qualifying pointer in one statement and then wait the whole interval, so pointers that came to qualify just after a
+run (their body reaped later, or their type reclassified later) waited a full interval, and a large backlog was one
+transaction that a timeout rolled back whole. A call now prunes at most `ephemeral_pointer_prune_batch_size` pointers
+(a `wh_settings` key, default 50,000), oldest first, folding only the streams of that batch. A full batch puts the
+watermark back where it was, so the next cycle is due again and reports `ok (more due, next cycle)`; the call that
+takes less than a batch leaves the watermark advanced, and the interval runs again from there.
+{verified: EphemeralPointerPruneSqlTests.Prune_ABacklogLargerThanABatch_DrainsOverSuccessiveCalls_ThenWaitsForTheIntervalAsync, EphemeralPointerPruneSqlTests.Prune_PointersThatDoNotQualify_StayWhileTheBacklogDrainsAsync}
+
+```mermaid{caption="Once due, the pointer prune takes a bounded batch per cycle and stays due until a batch comes back short; then the interval runs again." tests=["EphemeralPointerPruneSqlTests.Prune_ABacklogLargerThanABatch_DrainsOverSuccessiveCalls_ThenWaitsForTheIntervalAsync", "EphemeralPointerPruneSqlTests.Prune_SelfGate_SecondImmediateCallIsNotDueAsync"]}
+flowchart TD
+  A["Maintenance cycle"] --> B{"Enabled, and the<br/>interval has passed?"}
+  B -- no --> N["not due"]
+  B -- yes --> C["Claim: advance the watermark"]
+  C --> D["Take up to batch_size qualifying<br/>pointers, oldest first"]
+  D --> E["Fold their streams,<br/>delete the pointers"]
+  E --> F{"A full batch?"}
+  F -- yes --> G["Watermark put back:<br/>next cycle is due again"]
+  F -- no --> H["ok: the interval runs<br/>from this run"]
+  G --> A
+```
+
+What the prune would remove now is reported as the `prune_ancient_ephemeral_pointers` task of
+[`whizbang.maintenance.pending_rows`](../../operations/observability/metrics#pending-reclamation), while the prune is
+enabled and debug mode is off.
+{verified: EphemeralPointerPruneSqlTests.Pending_CountsWhatThePruneWouldRemove_OnlyWhileItIsEnabledAsync}
 
 ## Destruction hooks {#destruction-hooks}
 
