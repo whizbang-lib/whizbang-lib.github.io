@@ -2065,9 +2065,12 @@ each service database, rather than from the host's options. Each setting below i
 - **`debug_mode` is always published,** in both directions, from `Whizbang:WorkCoordinator:DebugMode`. A stale
   `true` would switch the purge off for good.
 - **A negative value is rejected at startup,** naming the key. A negative window would put the sweep's cutoff in
-  the future and make every row of the table eligible at once. `0` is allowed for a window. The completed-inbox
-  purge batch (`CompletedInboxPurgeBatchSize`) must be `1` or greater, since a batch of zero would never purge; a
-  value below `1` stored in SQL is treated as `1` ([the completed-inbox purge is bounded](../infrastructure/maintenance#completed-inbox-purge-is-bounded)).
+  the future and make every row of the table eligible at once. `0` is allowed for a window. The purge batches
+  (`CompletedInboxPurgeBatchSize`, `CompletedOutboxPurgeBatchSize`, `StuckInboxPurgeBatchSize`,
+  `CompletedPerspectiveEventPurgeBatchSize` and `DeduplicationPurgeBatchSize`) must be `1` or greater, since a batch
+  of zero would never purge; a value below `1` stored in SQL is treated as `1`
+  ([the completed-inbox purge is bounded](../infrastructure/maintenance#completed-inbox-purge-is-bounded),
+  [every purge is bounded](../infrastructure/maintenance#every-purge-is-bounded)).
 - **A failed write never fails the cycle.** It is logged as a warning naming the keys it was publishing, and the
   sweep keeps the values already stored.
 - **Both the EF Core and the Dapper engines publish them,** with the same statement. Rows the framework wrote
@@ -2079,6 +2082,10 @@ each service database, rather than from the host's options. Each setting below i
 | `MaintenanceWorkerOptions.Retention.DeduplicationDays` | `Whizbang__Workers__Maintenance__Retention__DeduplicationDays` | `30` | `dedup_retention_days` |
 | `MaintenanceWorkerOptions.Retention.StuckInboxDays` | `Whizbang__Workers__Maintenance__Retention__StuckInboxDays` | `7` | `stuck_inbox_retention_days` |
 | `MaintenanceWorkerOptions.Retention.CompletedInboxPurgeBatchSize` | `Whizbang__Workers__Maintenance__Retention__CompletedInboxPurgeBatchSize` | `50000` | `completed_inbox_purge_batch_size` (at least `1`) |
+| `MaintenanceWorkerOptions.Retention.CompletedOutboxPurgeBatchSize` | `Whizbang__Workers__Maintenance__Retention__CompletedOutboxPurgeBatchSize` | `50000` | `completed_outbox_purge_batch_size` (at least `1`) |
+| `MaintenanceWorkerOptions.Retention.StuckInboxPurgeBatchSize` | `Whizbang__Workers__Maintenance__Retention__StuckInboxPurgeBatchSize` | `50000` | `stuck_inbox_purge_batch_size` (at least `1`) |
+| `MaintenanceWorkerOptions.Retention.CompletedPerspectiveEventPurgeBatchSize` | `Whizbang__Workers__Maintenance__Retention__CompletedPerspectiveEventPurgeBatchSize` | `50000` | `completed_perspective_event_purge_batch_size` (at least `1`) |
+| `MaintenanceWorkerOptions.Retention.DeduplicationPurgeBatchSize` | `Whizbang__Workers__Maintenance__Retention__DeduplicationPurgeBatchSize` | `50000` | `deduplication_purge_batch_size` (at least `1`) |
 | `MaintenanceWorkerOptions.Retention.RecoveredDeadLetterDays` | `Whizbang__Workers__Maintenance__Retention__RecoveredDeadLetterDays` | `7` | `dead_letter_retention_days` |
 | `MaintenanceWorkerOptions.Retention.AbandonedStreamHours` | `Whizbang__Workers__Maintenance__Retention__AbandonedStreamHours` | `1` | `abandoned_stream_hours` |
 | `MaintenanceWorkerOptions.Retention.InstanceEvictionTombstoneHours` | `Whizbang__Workers__Maintenance__Retention__InstanceEvictionTombstoneHours` | `24` | `instance_eviction_retention_hours` |

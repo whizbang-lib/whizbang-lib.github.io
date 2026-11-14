@@ -2525,9 +2525,9 @@ uses it instead of its own reading. A reconcile recorded by a version without th
 judges by presence as before. If recording the answer fails, a Warning says so, the buckets wait out
 their answer timeout, and the reconcile judges the bundle without the commit's view.
 
-#### Recording an answer creates no temporary table {#per-bundle-work-table}
+#### Recording or reconciling an answer creates no temporary table {#per-bundle-work-table}
 
-{verified: RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_AfterTheSessionIsReset_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_ASecondCallOnTheConnection_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_TwiceInOneTransaction_AnswersEachBundleForItsOwnEventsAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBundle_ASecondCallOnTheConnection_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBundle_TwiceInOneTransaction_StartsFromAnEmptyWorkingTableAsync}
+{verified: RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_AfterTheSessionIsReset_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_ASecondCallOnTheConnection_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_TwiceInOneTransaction_AnswersEachBundleForItsOwnEventsAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBundle_ASecondCallOnTheConnection_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBundle_TwiceInOneTransaction_StartsFromAnEmptyWorkingTableAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBundle_AfterTheSessionIsReset_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBatch_AfterTheSessionIsReset_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.AdoptRedeliveredOrigin_AfterTheSessionIsReset_WritesNothingToTheSystemCatalogAsync, RedeliveryReconcileEquivalenceSqlTests.ReconcileBundles_GivesWhatTheWorkTableVersionGaveAsync, RedeliveryReconcileEquivalenceSqlTests.ReconcileBundleByFirstHop_GivesWhatTheWorkTableVersionGaveAsync, RedeliveryReconcileEquivalenceSqlTests.AdoptRedeliveredOrigin_GivesWhatTheWorkTableVersionGaveAsync, PerCallFunctionsCreateNoTemporaryTableTests.NoFunctionCreatesATemporaryTable_OutsideTheExemptOnesAsync}
 
 The commit-time answer runs once for every redelivery bundle a consumer absorbs, and answers to repair
 requests can arrive in bulk long after the requests left, since [repair waits for its
@@ -2560,10 +2560,27 @@ framework does not own the session. Behind a connection pool or a transaction po
 reach every other session. The test that holds the rule resets the session between two calls, as the pool
 does, and fails if the second call writes a single catalog row.
 
-The deferred reconcile still keeps its working table for the connection. It runs on the maintainer [as a
-batch](#redelivery-reconciles-run-as-a-batch), many bundles per call, so a table created once per batch is
-not a cost paid per bundle. Each call empties the table before it starts, so a second batch in the same
-transaction sees only its own rows.
+**The reconciles follow the same rule.** Since migration 420 the three functions that reconcile redelivered
+history with the event store, `wh_reconcile_redelivered_bundles` (the deferred reconcile, [a batch of
+bundles](#redelivery-reconciles-run-as-a-batch) per call), `wh_reconcile_redelivered_bundle_by_first_hop` (one
+bundle) and `wh_adopt_redelivered_origin`, gather a bundle's stored events into arrays with one statement and
+read them back with `unnest`. Before, each kept them in a temporary table (321 kept two of them for the
+connection), and the pool's reset made each a table created per bundle or per batch, with the costs above.
+Their locks, predicates, digest folds, epoch refolds and results are unchanged.
+
+A side-by-side test holds that last claim. It installs the definitions migration 336 shipped beside the
+current ones under another name, runs varied bundles from a seeded generator through both from the same
+state, each under a savepoint rolled back afterward, and compares what each returned and what each left in
+the event store, the stream digests, the sealed epochs and the settings. It also fails unless the trials
+adopted events, refused them by the first hop and as truncated, and refolded a sealed epoch, so a comparison
+over bundles that changed nothing cannot pass.
+
+**The rule is enforced across the schema, not per function.** A guard reads every migration the library
+ships, takes each function's last definition (the one a database runs), and fails when one creates a
+temporary table. Four are exempt by name, each because it never runs per message or per bundle: the
+association registration at startup, two one-time data migrations, and the operator's refile. A new function
+that creates a temporary table fails the build the day it is written, instead of being found by measuring a
+deployed service, as the answer and the reconciles were.
 
 ---
 
