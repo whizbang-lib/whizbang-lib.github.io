@@ -14,6 +14,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/LifecycleStage.cs
   - src/Whizbang.Core/Messaging/FireAtAttribute.cs
   - src/Whizbang.Core/Messaging/IReceptorInvoker.cs
+  - src/Whizbang.Core/Messaging/IReceptorFailureSink.cs
+  - src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs
   - src/Whizbang.Core/Messaging/IReceptorRegistry.cs
   - src/Whizbang.Core/Lifecycle/ILifecycleCoordinator.cs
   - src/Whizbang.Core/Lifecycle/ILifecycleTracking.cs
@@ -45,6 +47,9 @@ testReferences:
   - tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/DistributeStageOwnedCommandSendComponentTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/LifecycleInvocationHelperTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/LifecycleStageFailureIsolationTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerFailureIsolationTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/WorkerPipelineExtensionsCoverageTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/DetachedLifecycleWorkTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatchStrategyShutdownFlushTests.cs
   - tests/Whizbang.Core.Component.Tests/Shutdown/DetachedStagesShutdownTests.cs
@@ -352,6 +357,7 @@ The five Distribute stages fire on every work-coordinator flush, around the flus
 **Guarantees**:
 - Blocking - blocks the unit of work (not the entire queue) until completion
 - Runs before any work is sent to coordinator
+- A receptor that throws affects only its own message; see [When a Distribute receptor fails](#distribute-failures)
 
 #### `DistributeDetached`
 
@@ -392,6 +398,74 @@ The five Distribute stages fire on every work-coordinator flush, around the flus
 **Guarantees**:
 - Blocking - next step waits for completion
 - Work has been queued to coordinator
+- A receptor that throws affects only its own message; see [When a Distribute receptor fails](#distribute-failures)
+
+#### When a Distribute receptor fails {#distribute-failures}
+
+One receptor that throws at a Distribute stage costs only that receptor's own work. Every other receptor of the same
+message still runs, and so does every other message in the same flush. The failure is logged with the receptor, the
+message type and the message id, so you can find the message it belongs to.
+
+**Why it works this way.** Since the default outbox batch strategy began coalescing writes from many streams into one
+flush, a single flush holds messages from unrelated streams and, through the interval and batch strategies, from
+different callers. Before this, one throwing receptor stopped the stage for every message after it in the flush and
+was logged as one error that named none of them. A receptor on one stream could silently keep an unrelated stream's
+`PostDistributeInline` receptor from ever seeing its event.
+
+```mermaid{caption="Failure isolation in one flush: each message runs through the stage on its own, each receptor of a message runs on its own, and a failure is logged against its own receptor and message while the rest of the flush continues." tests=["LifecycleStageFailureIsolationTests.InlineStage_RunEveryReceptorAndLog_AFailingOutboxMessage_StillRunsTheRestOfTheBatchAsync", "ReceptorInvokerFailureIsolationTests.InvokeEveryReceptorAsync_FirstReceptorThrows_TheSecondStillRunsAndTheFailureIsReportedAsync"]}
+flowchart TD
+    F[Flush: messages A, B, C from different streams] --> MA[Message A]
+    F --> MB[Message B]
+    F --> MC[Message C]
+    MB --> R1[Receptor 1 throws]
+    MB --> R2[Receptor 2 runs]
+    R1 --> L[Error logged: receptor 1, message type, message B's id]
+    MA --> OK1[Receptors run]
+    MC --> OK2[Receptors run]
+    L --> NEXT[Flush continues]
+    R2 --> NEXT
+    OK1 --> NEXT
+    OK2 --> NEXT
+```
+
+**What still happens to the failing message.** Isolation stops the blast radius; it does not change what a failure means
+for the message that failed:
+
+| Where the flush runs | Stage | What a throwing receptor does to its own message |
+|---|---|---|
+| Outbox batch flush (the default stream-affinity path) | `PreDistributeInline`, `PostDistributeInline` | Nothing more: the message is stored and published as usual. Nothing in this path can refuse the write, and skipping the store would lose the message. |
+| Strategy flush (immediate, scoped, interval, batch) | `PreDistributeInline` | Unchanged: the first failure stops the stage, nothing in the flush is stored, and the exception reaches the flush's caller. Before the store a receptor can still refuse the write, so receptors after it do not act on messages that will not be stored. |
+| Strategy flush (immediate, scoped, interval, batch) | `PostDistributeInline` | Every message's receptors run, each failure is logged, and then the first failure is thrown to the flush's caller, as it always was. The messages are already stored. |
+| Any flush | `PreDistributeDetached`, `DistributeDetached`, `PostDistributeDetached` | Logged; nothing waits on a detached stage. |
+
+A cancellation is not a receptor failure: when the host stops, the flush ends instead of logging and moving on. A
+receptor that throws `OperationCanceledException` on its own, while the flush is not being canceled, is treated as that
+receptor's failure.
+
+When any receptor of a message fails, the message's [tags](../messages/message-tags.md) are not processed at that stage, the same as
+when the first failure was thrown.
+
+**The log entries.** Both are logged at `Error`, under the category of the flush that ran the stage
+(`Whizbang.Core.Workers.OutboxBatchFlush` for the outbox batch flush):
+
+```text
+Lifecycle receptor {ReceptorId} failed at {Stage} for {MessageType} message {MessageId}; every other receptor and message in the flush still ran
+Lifecycle stage {Stage} failed for {MessageType} message {MessageId}; every other message in the flush still ran
+```
+
+The first names the receptor that threw. The second is logged when the failure happened outside any receptor, such as a
+payload that could not be read, or when the registered `IReceptorInvoker` does not isolate its receptors. Each entry
+carries the exception, and each failure is counted in the `whizbang.lifecycle.receptor.errors` metric. See
+[Lifecycle receptor failed at a Distribute stage](../../operations/diagnostics/error-reference.md#distribute-receptor-failed)
+in the error reference.
+
+**Only the Distribute stages isolate receptors.** At every other stage the first receptor that throws is the message's
+outcome (a retry, a dead letter, or the caller's exception), and the receptors after it do not run against a message
+that failed.
+
+Source: [`LifecycleInvocationHelper`](https://github.com/whizbang-lib/whizbang/blob/develop/src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs),
+[`IReceptorInvoker.InvokeEveryReceptorAsync`](https://github.com/whizbang-lib/whizbang/blob/develop/src/Whizbang.Core/Messaging/IReceptorInvoker.cs),
+[`IReceptorFailureSink`](https://github.com/whizbang-lib/whizbang/blob/develop/src/Whizbang.Core/Messaging/IReceptorFailureSink.cs).
 
 ---
 

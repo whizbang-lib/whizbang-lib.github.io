@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Core/Archival/ArchiveLocationMismatchException.cs
   - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveStore.cs
   - src/Whizbang.Core/Dispatcher.cs
+  - src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs
   - src/Whizbang.Core/Workers/TransportPublishStrategy.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs
@@ -28,6 +29,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/SchemaBootstrapException.cs
   - src/Whizbang.Data.Postgres/SchemaBootstrapPhase.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/LifecycleStageFailureIsolationTests.cs
   - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamSealingSqlTests.cs
   - tests/Whizbang.Core.Tests/Archival/ArchiveLocationMismatchExceptionTests.cs
@@ -202,6 +204,34 @@ No IWorkCoordinatorStrategy registered. Cannot route messages to outbox.
 **Trigger**: A dispatch path needed to route messages through the outbox, but the work-coordinator infrastructure isn't wired into DI.
 
 **Fix**: Register the work coordinator during startup (part of the standard `AddWhizbang*` data-driver setup). If you see this in a test host, the fixture is missing the driver registration.
+
+### Lifecycle receptor failed at a Distribute stage {#distribute-receptor-failed}
+
+```text
+Lifecycle receptor {ReceptorId} failed at {Stage} for {MessageType} message {MessageId}; every other receptor and message in the flush still ran
+```
+
+**Source**: `LifecycleInvocationHelper` (logged at `Error` under the flush's logger category, `Whizbang.Core.Workers.OutboxBatchFlush` for the outbox batch flush)
+
+**Trigger**: A receptor registered at a Distribute stage (`PreDistributeInline`, `DistributeDetached`, `PostDistributeInline` and their detached counterparts) threw while a flush ran the stage. The entry carries the receptor's exception.
+
+**What happens next**: Every other receptor of the message, and every other message in the flush, still runs. What the failure does to its own message depends on the flush and the stage: see [When a Distribute receptor fails](../../fundamentals/lifecycle/lifecycle-stages.md#distribute-failures). In the outbox batch flush the message is still stored and published.
+
+**Fix**: Fix the receptor named in the entry; the exception says why it threw. If it should not fail the stage at all, catch and handle the error inside the receptor.
+
+### Lifecycle stage failed for a message {#distribute-message-failed}
+
+```text
+Lifecycle stage {Stage} failed for {MessageType} message {MessageId}; every other message in the flush still ran
+```
+
+**Source**: `LifecycleInvocationHelper` (logged at `Error` under the flush's logger category)
+
+**Trigger**: A Distribute stage failed for one message outside any receptor: its payload could not be read as `{MessageType}`, or the registered `IReceptorInvoker` does not isolate its receptors and one of them threw.
+
+**What happens next**: The rest of the flush still runs, as for [a failing receptor](#distribute-receptor-failed).
+
+**Fix**: For a payload that cannot be read, check that the message type is registered for serialization in the host that flushes it. For a custom `IReceptorInvoker`, implement `InvokeEveryReceptorAsync` so a failure names its receptor.
 
 ### IClaimedEmissionStore is not registered
 

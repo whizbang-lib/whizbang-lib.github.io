@@ -111,11 +111,70 @@ the table is rewritten after startup when the [table rewrite strategy](#table-re
 `[PerspectiveTableStorage(FillFactor = …)]` is queued the same way when a start changes the value (see
 [Physical Fields: free space for updates](../../fundamentals/perspectives/physical-fields#perspective-fillfactor)).
 The worker re-measures every queued table and rewrites only one whose size has crossed the bloat threshold, so a
-queued request on a compact table is left until it is worth a rewrite.
+queued request on a compact table is left until it is worth a rewrite. A perspective table whose fillfactor was
+**lowered** is the exception: it is rewritten once by an online strategy whatever its bloat (see
+[A lowered fillfactor is rewritten once](#fillfactor-decrease)).
 
 ```sql{title="Read the fillfactor and the queued rewrites" category="Operations" difficulty="BEGINNER"}
 SELECT relname, reloptions FROM pg_class WHERE relname = 'wh_perspective_cursors';
 SELECT setting_value FROM wh_settings WHERE setting_key = 'pending_table_rewrites';
+```
+
+### A lowered fillfactor is rewritten once {#fillfactor-decrease}
+
+{verified: FillFactorDecreaseRewriteTests.AFillFactorDecrease_OnACompactTable_IsRewrittenOnceOnline_AndAnUpdateOfAnOldRowIsHotAsync, FillFactorDecreaseRewriteTests.WithNoOnlineStrategy_TheRequestWaits_VacuumFullNeverRuns_AndTheStartSaysSoAsync, FillFactorDecreaseRewriteTests.WithTheRewritePolicyOff_NothingIsRewrittenAsync, FillFactorDecreaseRewriteTests.AFillFactorIncrease_IsNotOffered_ForTheBloatRuleAloneDecidesAsync, FillFactorDecreaseRewriteTests.TheRequest_RecordsTheDecreaseFromWhereThePagesWerePackedAsync, OnlineTableRewriteStepTests.AFillFactorDecrease_IsClearedOnceRewritten_ThoughTheTableGrewAsync, OnlineTableRewriteStepTests.AFillFactorDecrease_ThatWasNotRewritten_StaysQueuedAsync, TableRewriteStartupStepTests.VacuumFull_NeverTakesAFillFactorDecrease_AndTheStartSaysItWaitsAsync, TableRewriteStartupStepTests.NoRewritePermitted_AFillFactorDecreaseWaits_AndTheStartSaysSoAsync, MaintenanceWorkerTableRewriteTests.AFillFactorDecrease_IsNotReportedAsBloatAsync}
+
+A compact table that is given `[PerspectiveTableStorage(FillFactor = 90)]` gets almost nothing from it under the bloat
+rule: it never measures as bloated, so it is never rewritten, and the rows already stored stay on pages packed full
+until each one is moved by an update. Those are exactly the rows that matter, the ones updated now and then on pages
+that are already full. So a request the schema pass queues because it **lowered** a table's fillfactor is honored
+once, whatever the table's bloat:
+
+| The table's fillfactor | What happens to the queued request |
+|---|---|
+| lowered (100 to 90, say) | rewritten **once** by an [online rewrite](#online-rewrite) (pg_squeeze, or pg_repack in process), within the cycle's byte budget; cleared once the rewrite ran |
+| raised, or reset to a value at or above where the pages were packed | the bloat rule alone decides, as before |
+| lowered, with no online strategy chosen | waits; each start logs once which tables wait and what would rewrite them; `VACUUM FULL` never takes it |
+
+How it works, and why:
+
+- **The reason is recorded beside the queue.** The schema pass records the request through
+  `wh_request_fillfactor_rewrite(table, from, to)`, which queues it as `wh_request_table_rewrite` does and, while the
+  pages are packed fuller than the fillfactor in force, keeps a row in `wh_fillfactor_rewrite_requests` with the
+  fillfactor the pages were packed at and the one in force. A later change keeps the first value, since the pages are
+  still packed at it; a change back to it or above removes the row. `wh_tables_owed_fillfactor_rewrite()` lists the
+  queued tables with a row, and the maintenance cycle reads it beside `wh_tables_needing_rewrite()`, which is unchanged.
+- **Once, then cleared.** Rewritten at a lower fillfactor, a compact table grows, so the "cleared only when the ratio
+  dropped" rule that guards a bloat rewrite would keep the request forever. A lowered-fillfactor request is cleared once
+  its rewrite ran (`wh_clear_table_rewrite` deletes the row with the request), so the next cycle does not rewrite the
+  table again for the same change. A rewrite that did not run (its prerequisites were not met, or it failed) stays
+  queued, as any other does.
+- **Online only, never `VACUUM FULL`.** The table is compact, so taking an `ACCESS EXCLUSIVE` lock unattended for it is
+  never worth it, whatever `AllowTableRewrite` says. A table that is lowered and also bloated is offered for its bloat,
+  under the usual rules for every strategy.
+- **The same gate and budget.** It is done by the online rewrite step, so only when `TableRewriteStrategy` is
+  `PgSqueeze`, or `PgRepack` in process, only where that strategy's capabilities are `Ready`, only on the maintainer
+  duty's holder when the housekeeping gate admits the cycle, and only within `OnlineRewriteMaxBytesPerCycle`. With
+  `Auto`, `VacuumFull` or `None` nothing is rewritten. pg_repack in `External` mode leaves it to your job: list the
+  tables from `wh_tables_owed_fillfactor_rewrite()` as well as `wh_tables_needing_rewrite()`, and call
+  `wh_clear_table_rewrite` after each.
+
+**This revisits the decision of #1594.** It decided that a fillfactor change records a rewrite request and the
+rewriter acts on bloat alone, to be revisited once an online rewrite existed, because the only rewrite then was the
+blocking `VACUUM FULL`. pg_squeeze and pg_repack now run from the maintenance cycle within a byte budget, so one
+rewrite of such a table is cheap and does not block it, and #2300 replaces "wait for bloat" with "rewrite once" for a
+lowered fillfactor. A raised fillfactor keeps #1594's rule: its pages already have at least the room the new value asks
+for.
+
+When no online strategy is chosen, each start logs, for example:
+
+```text
+Rewrite step: wh_per_order, wh_per_item wait for one rewrite to apply their lowered fillfactor to the rows already stored. Only an online rewrite performs it: set Whizbang:Workers:Maintenance:TableRewriteStrategy to PgSqueeze, or to PgRepack with its client, and the maintenance cycle rewrites them within its budget. VACUUM FULL is never used for it; the requests stay queued
+```
+
+```sql{title="Read the tables owed a rewrite for a lowered fillfactor" category="Operations" difficulty="BEGINNER" tests=["FillFactorDecreaseRewriteTests.TheRequest_RecordsTheDecreaseFromWhereThePagesWerePackedAsync"]}
+SELECT * FROM wh_tables_owed_fillfactor_rewrite();
+SELECT table_name, from_fillfactor, to_fillfactor, requested_at FROM wh_fillfactor_rewrite_requests;
 ```
 
 ## BRIN indexes {#brin-indexes}
@@ -359,6 +418,7 @@ the operator's permission for a blocking rewrite at boot:
 | `PgSqueeze` | no | start fails with the capability verdict (it warns when the probe cannot tell) | start fails with the capability verdict (it warns when the probe cannot tell) |
 | `PgRepack`, `InProcess` | either | [online rewrite](#online-rewrite) through [pg_repack](#pg-repack) from the maintenance cycle | [online rewrite](#online-rewrite) through [pg_repack](#pg-repack) from the maintenance cycle |
 | `PgRepack`, `External` | either | nothing is started; [your job runs pg_repack](#pg-repack) | nothing is started; [your job runs pg_repack](#pg-repack) |
+| `Online` | either | from the maintenance cycle: pg_squeeze, else pg_repack in process, else a [blue-green rebuild](#blue-green-rewrite) of a perspective table | the same: `AllowTableRewrite` gates only `VACUUM FULL` |
 | `VacuumFull` | either | `VACUUM FULL` at boot | detect and report only |
 | `None` | either | nothing is rewritten | nothing is rewritten |
 
@@ -503,7 +563,8 @@ Candidates are re-measured whenever the queue is read, so a request whose table 
 {verified: OnlineTableRewriteStepTests.Rewrites_TheLargestBloatRatioFirstAsync, OnlineTableRewriteStepTests.Budget_SkipsATableThatWouldOverrunIt_AndTakesASmallerOneThatFitsAsync, OnlineTableRewriteStepTests.NotImproved_LeavesTheRequestQueuedAsync, OnlineTableRewriteStepTests.PgSqueezeNotReadyOnEveryDatabase_RewritesNothing_AndSaysWhereAsync, OnlineTableRewriteStepTests.PgRepack_RewritesTheLargestBloatRatioFirst_WithinTheBudgetAsync, OnlineTableRewriteStepTests.PgRepack_ClearsOnlyWhatImprovedAsync, OnlineTableRewriteStepTests.PgRepack_ClientNotReady_RewritesNothing_AndSaysWhyAsync}
 
 With `TableRewriteStrategy = PgSqueeze`, or `PgRepack` with its client [in process](#pg-repack), the maintenance cycle
-rewrites queued tables online. pg_squeeze (`squeeze.squeeze_table`) copies the table while it stays readable and
+rewrites queued tables online. `Online` does the same with whichever of the two is `Ready`, pg_squeeze first, and
+falls back to a [blue-green rebuild](#blue-green-rewrite) of a perspective table when neither is. pg_squeeze (`squeeze.squeeze_table`) copies the table while it stays readable and
 writable and holds an exclusive lock only for the final swap; pg_repack does the same from its client program, holding
 an ACCESS EXCLUSIVE lock only briefly at the start and the end. Both are bounded by the same budget. It runs as a [maintenance step](../../fundamentals/workers/maintenance-steps) named
 `online-table-rewrite`, so it runs where the rest of the cycle runs: on the holder of the maintainer duty, and only when
@@ -517,7 +578,8 @@ Each cycle:
    is turned off for, and a client the probe could not decide) rewrites nothing and logs why; the queue is kept.
    pg_repack in `External` mode does nothing here, not even a scan.
 2. **Takes the queued tables** (`pending_table_rewrites`, which the cycle's bloat detection fills) that still measure
-   over the bloat threshold, **largest bloat ratio first** (the [measured ratio](#how-bloat-is-measured) where the
+   over the bloat threshold, and those owed one rewrite for a [lowered fillfactor](#fillfactor-decrease),
+   **largest bloat ratio first** (the [measured ratio](#how-bloat-is-measured) where the
    table was queued with one), ties in name order.
 3. **Spends a byte budget.** A table is rewritten only when its heap fits what is left of
    `OnlineRewriteMaxBytesPerCycle`; one that does not fit is deferred to a later cycle, and the next smaller table that
@@ -528,7 +590,8 @@ Each cycle:
    `ANALYZE` and re-measures, with `pgstattuple_approx` while pgstattuple is `Ready`
    ([how bloat is measured](#how-bloat-is-measured)).
 5. **Clears the request only when the rewrite improved the table**: the re-measured ratio is lower than the ratio that
-   queued it. A rewrite that did not help, a table whose prerequisites were not met, and a call that failed all stay
+   queued it. A [lowered-fillfactor](#fillfactor-decrease) request is cleared once its rewrite ran, since rewriting a
+   compact table at a lower fillfactor makes it larger. A rewrite that did not help, a table whose prerequisites were not met, and a call that failed all stay
    queued for the next cycle, each with a warning naming the table.
 
 ```mermaid{caption="One maintenance cycle of the online rewrite: the strategy's capabilities must be Ready, tables go largest bloat first within the byte budget, and a request is cleared only when the rewrite improved the table." tests=["OnlineTableRewriteStepTests.PgSqueezeNotReadyOnEveryDatabase_RewritesNothing_AndSaysWhereAsync","OnlineTableRewriteStepTests.PgRepack_ClientNotReady_RewritesNothing_AndSaysWhyAsync","OnlineTableRewriteStepTests.Rewrites_TheLargestBloatRatioFirstAsync","OnlineTableRewriteStepTests.Budget_SkipsATableThatWouldOverrunIt_AndTakesASmallerOneThatFitsAsync","OnlineTableRewriteStepTests.NotImproved_LeavesTheRequestQueuedAsync","OnlineTableRewriteStepTests.Improved_ClearsTheRequestAsync","OnlineTableRewriteStepTests.PgRepack_ClearsOnlyWhatImprovedAsync"]}
@@ -611,6 +674,81 @@ than SQL. This was worked out from the extension's source and the platform's gen
 managed service: check the role with `SELECT rolreplication FROM pg_roles WHERE rolname = current_user` before
 choosing `PgSqueeze`. Where the role cannot be given `REPLICATION`, the prerequisite check says so for each table and
 the queue is kept; `VacuumFull` in a maintenance window remains the alternative.
+
+## Blue-green rewrite of a perspective table {#blue-green-rewrite}
+
+{verified: OnlineTableRewriteStepTests.Online_WithPgSqueezeReady_RewritesThroughIt_AndRebuildsNothingAsync, OnlineTableRewriteStepTests.Online_WithPgSqueezeNotReady_AndPgRepackReady_RepacksAsync, OnlineTableRewriteStepTests.Online_WithNoExtensionUsable_RebuildsThePerspectiveTable_AndAFrameworkTableWaitsAsync, OnlineTableRewriteStepTests.Online_RebuildsAtMostTheCycleLimit_LargestBloatFirstAsync, OnlineTableRewriteStepTests.Online_ATableWhoseDutyAnotherInstanceHolds_IsNotRebuiltAgain_AndStaysQueuedAsync, OnlineTableRewriteStepTests.Online_APerspectiveAlreadyRebuildingHere_IsNotRebuiltAgainAsync, OnlineTableRewriteStepTests.OnlyOnline_EverRebuildsAsync, TableRewriteStrategyTests.Auto_NeverResolvesToAnOnlineRewrite_ABlueGreenRebuildIncludedAsync, BlueGreenRebuildIntegrationTests.Online_WithNoExtension_RebuildsALoweredFillFactorTable_AtTheNewFillFactorAsync, BlueGreenRebuildIntegrationTests.Online_WithNoExtension_AFrameworkTableWaitsAsync, BlueGreenRebuildIntegrationTests.Online_SkipsATableWhoseDutyAnotherInstanceHolds_AndRebuildsItOnceReleasedAsync}
+
+On a server that allowlists neither pg_squeeze nor pg_repack, a rewrite request waits indefinitely, and `VACUUM FULL` is
+never run on its own. That is the right default for the framework's own tables, but a perspective table can be rewritten
+without any extension: Whizbang can rebuild it from its events, [blue-green](../../fundamentals/perspectives/rebuild#blue-green),
+into a shadow table that took the live table's storage settings first, swapped in under a lock bounded by
+`SwapLockTimeout`. With `TableRewriteStrategy = Online` the maintenance cycle uses the cheapest strategy the server allows:
+
+| Order | Strategy | Tables | Needs |
+|---|---|---|---|
+| 1 | pg_squeeze | any | the extension `Ready` |
+| 2 | pg_repack | any | the extension and its client `Ready`, the client run in process |
+| 3 | blue-green rebuild | perspective tables | nothing beyond Whizbang |
+| - | `VACUUM FULL` | never under `Online` | an operator, by hand, or `VacuumFull` with `AllowTableRewrite` |
+
+The rules, and why:
+
+- **Last, because a replay costs more.** A rebuild reads every event of the perspective and writes every row again,
+  which is more I/O than copying the rows, so it is used only where nothing cheaper is available. It still gives the
+  outcome a rewrite exists for: the table rewritten at its declared fillfactor, with no extension and no long lock.
+- **Explicit, never `Auto`.** `Online` is chosen on purpose, like `PgSqueeze`: `Auto` keeps decision #1671 and never
+  starts an online rewrite of any kind. `Online` requires no extension, so it never stops a start.
+- **Perspective tables only.** Only a table the perspective registry records exactly one perspective as writing
+  (`wh_perspective_registry.perspective_names`) can be rebuilt. A framework table, or one several perspectives share,
+  cannot be recreated from one perspective's events: it waits, and the cycle logs which tables wait and why.
+- **The same gate and budget.** It runs as the online rewrite does: on the maintainer duty's holder, when the
+  housekeeping gate admits the cycle, largest bloat first, within `OnlineRewriteMaxBytesPerCycle`. A request is one
+  rebuild, cleared as any other rewrite is (when the table improved, or once for a
+  [lowered fillfactor](#fillfactor-decrease)), and re-measured afterwards.
+- **One rebuild per cycle by default.** `BlueGreenRewriteMaxPerCycle` (default `1`) bounds how many perspectives one
+  cycle rebuilds, so several large ones are not replayed at once. A table left for the next cycle is logged with the
+  setting.
+- **Never two rebuilds of one table.** Two blue-green rebuilds of a table share its shadow, and creating the shadow drops
+  one left behind, so a second rebuild would destroy the first one's replay. Every blue-green rebuild, an operator's or
+  the cycle's, holds the table's duty `perspective-rebuild:<table>`
+  ([one blue-green rebuild per table](../../fundamentals/perspectives/rebuild#one-blue-green-rebuild-per-table)). The
+  cycle reads the role assignments (it never votes for the duty just to look) and passes over a table whose duty another
+  instance holds, or whose perspective this instance is already rebuilding, without spending the limit or the budget; its
+  request stays queued, since the rebuild in flight satisfies it for now. A rebuild that the cycle starts and that the
+  duty then refuses (another instance took it in between, or the elector cannot answer) fails, counts as that cycle's
+  rebuild, and stays queued.
+
+```json{title="Rewrite with whatever the server allows" description="Selects Online: pg_squeeze, else pg_repack, else a blue-green rebuild of a perspective table, one per cycle." category="Configuration" difficulty="INTERMEDIATE" tags=["storage", "table-rewrite", "blue-green", "maintenance", "configuration"] tests=["OnlineTableRewriteStepTests.BlueGreenRewriteMaxPerCycle_DefaultsToOne_AndBindsFromConfigurationAsync", "OnlineTableRewriteStepTests.Online_WithNoExtensionUsable_RebuildsThePerspectiveTable_AndAFrameworkTableWaitsAsync"]}
+{
+  "Whizbang": {
+    "Workers": {
+      "Maintenance": {
+        "TableRewriteStrategy": "Online",
+        "BlueGreenRewriteMaxPerCycle": 1
+      }
+    }
+  }
+}
+```
+
+The rebuild is recorded on its `PerspectiveRebuild*` events with the trigger `TableRewrite`.
+
+### Rewrite history {#rewrite-history}
+
+{verified: FillFactorDecreaseRewriteTests.TheRewriteHistory_RecordsEachRewrite_AndStaysBoundedAsync, DapperTableMaintenanceTests.CompleteTableRewrite_ClearsTheRequest_AndRecordsTheStrategyAsync, OnlineTableRewriteStepTests.TheStrategyThatCarriedOutTheRequest_IsRecordedAsync, TableRewriteStartupStepTests.ARewriteAtBoot_RecordsItsStrategyAsync}
+
+A request is deleted once it is carried out, so `wh_table_rewrite_history` records each completed rewrite: the table,
+the strategy (`VacuumFull`, `PgSqueeze`, `PgRepack` or `BlueGreenRebuild`), the reason (`Bloat` or
+`FillFactorDecrease`) and the bloat ratio before and after. Every strategy writes it the same way, through
+`wh_complete_table_rewrite`, which records the rewrite and clears the request in one call. The history keeps itself
+bounded: the write that adds a row deletes rows older than 90 days and all but the newest 1,000, so it needs no sweep of
+its own.
+
+```sql{title="Read what rewrote each table" category="Operations" difficulty="BEGINNER" tests=["FillFactorDecreaseRewriteTests.TheRewriteHistory_RecordsEachRewrite_AndStaysBoundedAsync"]}
+SELECT table_name, strategy, reason, bloat_before, bloat_after, completed_at
+FROM wh_table_rewrite_history ORDER BY completed_at DESC;
+```
 
 ## Rebuilding queue-table indexes {#queue-index-rebuild}
 {verified: QueueIndexReindexStepTests.Run_RebuildsOneIndexPerCycleAsync, QueueIndexReindexStepTests.Run_DropsEveryInvalidLeftoverFirst_ThenRebuildsAsync, QueueIndexReindexStepTests.Run_ARebuild_IsLoggedWithTheSizesAndTheEstimateAsync, QueueIndexReindexStepTests.Run_ARebuildThatDidNotRunOrFailed_IsLoggedAsync, QueueIndexReindexStepTests.Run_NothingOverTheLine_RebuildsNothingAsync, QueueIndexReindexSqlTests.TheStep_ShrinksABloatedQueueIndexAsync, QueueIndexReindexSqlTests.TheStep_DropsAnInvalidLeftover_AndStillRebuildsAsync}

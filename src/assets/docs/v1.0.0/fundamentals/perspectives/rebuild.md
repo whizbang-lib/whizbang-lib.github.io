@@ -106,7 +106,8 @@ var result = await rebuilder.RebuildBlueGreenAsync("OrderPerspective");
 How it runs:
 
 1. **Shadow table.** `wh_per_order_bg` is created with the live table's columns, defaults, constraints and
-   indexes (a shadow left by a failed rebuild is replaced).
+   indexes (a shadow left by a failed rebuild is replaced), and is then given the live table's
+   [storage settings](#blue-green-storage-settings) before anything is written to it.
 2. **Replay.** Every stream is replayed into the shadow table. The perspective store of the rebuild's own flow
    is redirected there (`PerspectiveTableRedirect`); every other flow, including the live perspective worker,
    keeps reading and writing the live table.
@@ -141,6 +142,58 @@ processed out of the phase's total while the rebuild runs.
 blue-green in place, as every driver did before, and logs a warning that it did.
 
 **Best for**: Production re-projections where reads must stay consistent.
+
+#### The rebuilt table keeps the live table's storage settings {#blue-green-storage-settings}
+
+{verified: PostgresPerspectiveTableSwapperTests.CreateShadow_CopiesTheLiveTablesStorageSettings_AndItsToastTablesAsync, PostgresPerspectiveTableSwapperTests.CreateShadow_OfATableWithNoStorageSettings_GivesTheShadowNoneAsync, PostgresPerspectiveTableSwapperTests.Swap_OfATableRebuiltAtItsFillFactor_LeavesRoomForAHotUpdateAsync, BlueGreenRebuildIntegrationTests.BlueGreen_TheSwappedTable_KeepsTheLiveTablesStorageSettingsAsync, JsonbColumnStorageIntegrationTests.ABlueGreenSwap_KeepsTheDeclaredStorageSettingsAsync, JsonbColumnStorageIntegrationTests.ABlueGreenSwap_OfAManuallyManagedTable_KeepsItsLiveSettingsAsync}
+
+PostgreSQL's `CREATE TABLE … (LIKE live INCLUDING ALL)` copies columns, defaults, constraints and indexes, but not
+the table's storage parameters. So after creating the shadow table, and before the replay writes a single page, the
+swapper copies the live table's `reloptions` onto it, and its TOAST relation's (`toast.*`) onto the shadow's TOAST
+relation. The swapped-in table therefore has the same `fillfactor` and autovacuum settings the live one had, and a table
+with none keeps none.
+
+- **Before the replay, not after.** A fillfactor applies only to the pages written while it is set. Copied after the
+  replay, it would arrive on a table whose every page the replay had already packed full, so updates to the rebuilt
+  rows could not be HOT until each row moved to a new page (see
+  [Free space for updates](physical-fields#perspective-fillfactor)). Copied first, the replay fills each page to the
+  declared fillfactor, which is the free space `[PerspectiveTableStorage(FillFactor = …)]` exists to reserve. Before
+  this, the next start's schema pass set the values again, but only after the rebuild had packed the pages.
+- **What is live, not what the model declares.** The swapper copies the values the live table holds rather than
+  recomputing them from the attribute. A table listed as [managed by hand](physical-fields#manually-managed-tables)
+  therefore keeps the values its operator set, and a table that follows its model already holds the model's values,
+  because every start brings it in line.
+- **Quoted by the server.** The `ALTER TABLE … SET (…)` statement is built by PostgreSQL itself with `format('%I = %L')`
+  from the catalog, so no option name or value is spliced into SQL text by the library.
+
+Both PostgreSQL drivers use the same swapper, so both keep the settings. After the swap the installed table is
+analyzed, outside the swap's transaction, so the planner reads its real size rather than that of a table never analyzed.
+
+#### One blue-green rebuild per table {#one-blue-green-rebuild-per-table}
+
+{verified: PerspectiveRebuilderBlueGreenTests.BlueGreen_HoldsTheTablesDuty_FromBeforeTheShadowUntilAfterTheSwapAsync, PerspectiveRebuilderBlueGreenTests.BlueGreen_WhenAnotherInstanceHoldsTheTablesDuty_FailsWithoutTouchingTheShadowAsync, PerspectiveRebuilderBlueGreenTests.BlueGreen_WhenTheDutyCannotBeVotedFor_FailsClosedAsync, PerspectiveRebuilderBlueGreenTests.BlueGreen_WithNoElector_Rebuilds_AndSaysOnceThatOnlyThisInstanceIsGuardedAsync, PerspectiveRebuilderBlueGreenTests.BlueGreen_ASecondRebuildOfTheTableOnThisInstance_IsRefusedBeforeItVotesAsync, PerspectiveRebuilderBlueGreenTests.BlueGreen_KeepsTheTablesDutyAliveWhileItRunsAsync, BlueGreenRebuildIntegrationTests.ARebuild_WhileAnotherInstanceHoldsTheTablesDuty_Fails_AndRunsOnceItIsReleasedAsync, BlueGreenRebuildIntegrationTests.TwoRebuildsOfOneTable_TheSecondFails_AndTheFirstCompletesAsync}
+
+Two blue-green rebuilds of the same table would share its shadow table, and creating the shadow drops one left behind,
+so a second rebuild started while the first replays would destroy the first one's work. Each blue-green rebuild
+therefore holds its table's **duty**, `perspective-rebuild:<table>` (for example `perspective-rebuild:wh_per_order`),
+from before it creates the shadow until the swap is done. The duty is won through the service's duty elector, the same
+role assignment every exclusive duty uses (see [capabilities and duties](../../operations/startup/capabilities-and-duties)),
+so it holds across every instance of the service, and a keepalive renews its lease for as long as the rebuild runs.
+The bare table name is enough: the role assignments are kept in the service's own schema.
+
+| When the rebuild asks for the duty | What happens, and why |
+|---|---|
+| it is granted | the rebuild runs, and releases the duty when the swap is done, or when it fails |
+| another instance holds it | the rebuild fails at once, touching nothing, with `another blue-green rebuild of wh_per_order is in flight` in `RebuildResult.Error`, as any rebuild that cannot start fails: run it again once the other has finished |
+| this instance is already rebuilding the table | the same failure, before anything is voted for: an elector grants a duty this instance already holds again, so the duty alone cannot keep two rebuilds on one instance apart |
+| the elector cannot answer, this instance is evicted, or it is paused, standing down or stopping | the rebuild fails closed, naming the refusal and its detail: the elector cannot confirm that no other instance is rebuilding the table |
+| no elector is registered | the rebuild runs, guarded on this instance alone, and the host logs once that this is so: with no elector there is no fleet to coordinate with |
+
+It is a duty and not an advisory lock on purpose: a session lock held across the many transactions of a rebuild can,
+behind a transaction-mode connection pooler, be taken on one server backend and released on another, and the framework
+holds every exclusive duty as a role assignment (#2044). The maintenance cycle's
+[blue-green rewrite](../../operations/infrastructure/storage-maintenance#blue-green-rewrite) reads the same duty and
+passes the table over while another instance holds it.
 
 ### In-Place
 
@@ -552,7 +605,7 @@ await dispatcher.SendAsync(new RebuildPerspectiveCommand(
 ```
 
 `RebuildOrigin` also carries a `RebuildTrigger`, which separates an operator's repair from the framework's
-own background work (`Requested`, `Migration`, `StartupScan`). `Unknown` is the zero value, so an event
+own background work (`Requested`, `Migration`, `StartupScan`, or `TableRewrite` when the maintenance cycle rewrote the perspective's table by a [blue-green rebuild](../../operations/infrastructure/storage-maintenance#blue-green-rewrite)). `Unknown` is the zero value, so an event
 stored before provenance existed does not claim somebody asked for it.
 
 ### Did it change anything? {#rebuild-row-digest}
