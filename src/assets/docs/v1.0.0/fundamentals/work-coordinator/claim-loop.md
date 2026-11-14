@@ -419,6 +419,26 @@ under a forced generic plan, and fails if any read of `wh_inbox_state` in the wa
 `idx_inbox_state_held_lanes` is not among them, or if the predicate is applied after the scan instead of on it.
 {verified: ClaimReofferPlanShapeTests.TheReOfferWalk_ReadsTheWorkTableOnlyThroughItsHeldLanesIndexAsync}
 
+### A held-back stream is claimed whole {#a-held-back-stream-is-claimed-whole}
+{verified: HeldBackStreamsClaimSqlTests.Claim_AnInteractiveEventBehindBackgroundPredecessorsOutsideTheWindow_TakesThePredecessorsWithItAsync, HeldBackStreamsClaimSqlTests.Claim_AStreamWithNoEarlierPendingEvent_IsClaimedAsBeforeAsync, HeldBackStreamsClaimSqlTests.Claim_ARowHeldBackBehindAPredecessorAPeerHolds_IsNotChargedAnAttemptAsync, HeldBackStreamsClaimSqlTests.Claim_AHeldBackRowAcquiredByAnEarlierClaim_IsNotRefundedAgainAsync}
+
+The acquisition reads each priority band through a window of its oldest rows, so its cost follows the batch. On a busy
+service that let an interactive event sit behind background events of its own stream that lay outside the background
+window: the interactive event was claimed on every lease and held back, its predecessors were never claimed, and each
+claim charged it an attempt until it was dead-lettered. Migration 411 changes two things.
+
+- **The claim takes a stream's earlier events with it.** For each stream the batch picked, the events received before
+  its first picked row that no live lease holds are taken too, whatever their priority, ahead of the picked rows and in
+  the stream's lane, at most as many as the stream's picked rows. They are read through the stream-order index, so a
+  stream with none (the common case) costs one empty probe. The batch bound is unchanged: the predecessors displace the
+  stream's later rows in that batch, which would only have waited for them.
+- **Waiting is not charged as an attempt.** A row the claim acquired that the store pass then held back is refunded the
+  attempt the claim counted, since a held-back row is never offered and the attempt bought nothing. Only rows the
+  current claim acquired are refunded; a row held back since an earlier claim was refunded by that claim.
+
+A row held back behind an event another live instance holds is still acquired and waits, since the claim cannot take a
+row under a live lease; it is no longer charged for waiting.
+
 ## The claim runs only what can find work {#the-claim-runs-only-what-can-find-work}
 {verified: ClaimFixedCostSqlTests.InboxReOffer_AnInstanceHoldingOneLane_WalksOnlyThatLane_AndOffersItsStreamAsync, ClaimFixedCostSqlTests.InboxReOffer_ALaneHoldingOnlyUnfetchableRows_IsStillWalked_AndOffersNothingAsync, ClaimFixedCostSqlTests.Claim_AnInstanceHoldingNothing_RunsNoReOfferWalkAsync, ClaimFixedCostSqlTests.PerspectiveReOffer_AnInstanceHoldingOneBucket_WalksOnlyThatBucket_AndOffersItsStreamAsync, ClaimFixedCostSqlTests.PerspectiveReOffer_TheIdleBucketWhileWithheld_IsNotOffered_AndNotWalkedAsync, ClaimFixedCostSqlTests.StorePass_ARowWhoseEventIsAlreadyStored_IsStamped_WithoutRunningTheCopyAsync, ClaimFixedCostSqlTests.StorePass_AfterAPassWithNoCandidate_AReadyRowIsStoredByTheNextClaimAsync, ClaimFixedCostSqlTests.StorePass_AnOrdinaryEvent_RunsNoCollectiveRoutingAsync, ClaimFixedCostSqlTests.StorePass_ACollectiveEvent_IsStillRoutedToTheCollectiveSinkAsync}
 
