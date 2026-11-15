@@ -326,7 +326,9 @@ host whose configuration turns one on fails at start through the standard option
 | `Whizbang:StreamIntegrity:CheckpointsEnabled` | Continuity checkpoints | `false` |
 | `Whizbang:StreamIntegrity:GapDetectionEnabled` | Gap detection | `false` |
 | `Whizbang:StreamIntegrity:AuditEnabled` | The scheduled digest audit | `false` |
-| `Whizbang:StreamIntegrity:EpochClosureEnabled` | Digest epoch closure | `false` |
+| `Whizbang:StreamIntegrity:Sealing:Enabled` (alias `EpochClosureEnabled` for one release) | Digest epoch sealing | `false` |
+| `Whizbang:StreamIntegrity:SealRecheck:Enabled` | The sealed-history re-check | `false` |
+| `Whizbang:StreamIntegrity:FullHistoryCompare:Enabled` | The full-history compare | `false` |
 | `Whizbang:StreamIntegrity:RepairDrainEnabled` | The paced repair drain | `false` |
 | `Whizbang:StreamIntegrity:BackfillOnSubscriptionGrowth` | Subscription-growth backfill (a redelivery of a new type's history) | `false` |
 | `Whizbang:StreamIntegrity:RepairMode` | Auto-repair | `ReportOnly` |

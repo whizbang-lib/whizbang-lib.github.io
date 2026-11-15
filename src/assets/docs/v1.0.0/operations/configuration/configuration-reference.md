@@ -1475,6 +1475,18 @@ How much of the historical metadata conversion one maintenance cycle does. **Con
 The `Retention` windows are database-side settings: each cycle publishes the ones you set to `wh_settings` before
 the sweep reads them, and leaves the ones you do not set alone. See [Database-side settings](#database-side-settings).
 
+### OperationalRetentionOptions {#operational-retention-options}
+
+How long the records cleanup and integrity keep about their own work rest before the maintenance cycle removes them. **Configure:** bound automatically from `Whizbang:OperationalRetention`. **Details:** [Operational Retention](../infrastructure/operational-retention).
+
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|--------------------|---------|
+| `Enabled` | `bool` | `true` | `Whizbang__OperationalRetention__Enabled` | Run the operational retention sweep in the maintenance cycle |
+| `Default` | `TimeSpan` | `14.00:00:00` | `Whizbang__OperationalRetention__Default` | Resting period of every category without its own. Must be positive (checked at host start) |
+| `RepairLedger`, `RewriteLog`, `Deliveries`, `Reports`, `PairHistory`, `RecheckRuns`, `Queues`, `MaintenanceRuns` | `TimeSpan?` | unset (the default) | `Whizbang__OperationalRetention__<Category>` | A category's own resting period. Must be positive when set (checked at host start). See [categories](../infrastructure/operational-retention#categories) |
+| `BatchSize` | `int` | `1000` | `Whizbang__OperationalRetention__BatchSize` | Rows removed per table per batch. Must be at least 1 (checked at host start) |
+| `MaxBatchesPerCycle` | `int` | `10` | `Whizbang__OperationalRetention__MaxBatchesPerCycle` | Batches one maintenance cycle runs at most. Must be at least 1 (checked at host start) |
+
 ## Stream Integrity
 
 ### StreamIntegrityOptions
@@ -1510,9 +1522,9 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `MaxCoverageGapReportsPerAudit` | `int` | `100` | `Whizbang__StreamIntegrity__MaxCoverageGapReportsPerAudit` | Cap on coverage-gap reports per audit cycle |
 | `MaxDivergenceReportsPerManifest` | `int` | `100` | `Whizbang__StreamIntegrity__MaxDivergenceReportsPerManifest` | Cap on divergence reports per manifest comparison |
 | `MaxGapReportsPerCheckpoint` | `int` | `100` | `Whizbang__StreamIntegrity__MaxGapReportsPerCheckpoint` | Cap on confirmed-gap reports per received checkpoint |
-| `FullSweepEveryNthAudit` | `int` | `7` | `Whizbang__StreamIntegrity__FullSweepEveryNthAudit` | Every Nth audit is a full sweep; ≤0 disables |
-| `FullSweepCron` | `string?` | `"0 3 * * *"` | `Whizbang__StreamIntegrity__FullSweepCron` | Cron for the full sweep; null/empty disables cron scheduling |
-| `MaxEpochVerificationsPerSweep` | `int` | `10000` | `Whizbang__StreamIntegrity__MaxEpochVerificationsPerSweep` | Cap on closed epochs recomputed per sweep |
+| `FullSweepEveryNthAudit` | `int` | `7` | `Whizbang__StreamIntegrity__FullSweepEveryNthAudit` | Fallback cadence of the opt-in checks: every Nth audit runs each enabled check whose schedule is not registered on the temporal engine; ≤0 disables the fallback. See [each check has its own schedule](/v1.0.0/resilience/stream-integrity#integrity-check-schedules) |
+| `FullSweepCron` | `string?` | `"0 3 * * *"` | `Whizbang__StreamIntegrity__FullSweepCron` | **Alias for one release** of `FullHistoryCompare:Schedule` and `SealRecheck:Schedule`; a section key wins. See [configuration aliases](/v1.0.0/resilience/stream-integrity#configuration-aliases) |
+| `MaxEpochVerificationsPerSweep` | `int` | `10000` | `Whizbang__StreamIntegrity__MaxEpochVerificationsPerSweep` | **Alias for one release** of `SealRecheck:MaxEpochsPerRun` |
 | `MaxDrillDownTypesPerAudit` | `int` | `10` | `Whizbang__StreamIntegrity__MaxDrillDownTypesPerAudit` | Storm cap on types escalated to stream-level requests |
 | `DivergenceReportCooldownMinutes` | `int` | `60` | `Whizbang__StreamIntegrity__DivergenceReportCooldownMinutes` | Minutes an unchanged divergence stays silent after reporting |
 | `RepairRequestBackoffSeconds` | `int` | `300` | `Whizbang__StreamIntegrity__RepairRequestBackoffSeconds` | Base seconds between repair requests per divergent bucket (doubles per attempt) |
@@ -1534,8 +1546,19 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `IntegrityDeliveryLeaseSeconds` | `int` | `300` | `Whizbang__StreamIntegrity__IntegrityDeliveryLeaseSeconds` | How long a leased integrity delivery stays invisible to another drain; covers a maintainer-duty failover that briefly overlaps two drains |
 | `MaxIntegrityDeliveryAttempts` | `int` | `5` | `Whizbang__StreamIntegrity__MaxIntegrityDeliveryAttempts` | Attempts before an integrity delivery is dropped with a Warning naming its type and error. Control-plane traffic is dropped, not dead-lettered: the next checkpoint, audit or repair cycle asks again |
 | `IntegrityDeliveryRetryBackoffSeconds` | `int` | `30` | `Whizbang__StreamIntegrity__IntegrityDeliveryRetryBackoffSeconds` | Wait before retrying a failed integrity delivery, doubled per further attempt and capped at one hour |
-| `EpochClosureEnabled` | `bool` | `true` | `Whizbang__StreamIntegrity__EpochClosureEnabled` | Advance the digest-epoch closure frontier on the maintenance cadence |
-| `MaxEpochClosuresPerMaintenanceCycle` | `int` | `64` | `Whizbang__StreamIntegrity__MaxEpochClosuresPerMaintenanceCycle` | Max epochs closed per maintenance cycle |
+| `EpochClosureEnabled` | `bool` | `true` | `Whizbang__StreamIntegrity__EpochClosureEnabled` | **Alias for one release** of `Sealing:Enabled` |
+| `MaxEpochClosuresPerMaintenanceCycle` | `int` | `64` | `Whizbang__StreamIntegrity__MaxEpochClosuresPerMaintenanceCycle` | **Alias for one release** of `Sealing:MaxClosuresPerCycle` |
+| `Sealing:Enabled` | `bool` | `true` | `Whizbang__StreamIntegrity__Sealing__Enabled` | Close and seal settled digest epochs on the maintenance cadence. See [sealing](/v1.0.0/resilience/stream-integrity#sealing) |
+| `Sealing:EpochWidth` | `long` | `100000` | `Whizbang__StreamIntegrity__Sealing__EpochWidth` | Sequence positions per epoch; pinned on a lane when it is first closed. Must be at least 1 (checked at host start) |
+| `Sealing:MaxClosuresPerCycle` | `int` | `64` | `Whizbang__StreamIntegrity__Sealing__MaxClosuresPerCycle` | Epochs closed per maintenance cycle across all lanes. Must be at least 1 (checked at host start) |
+| `SealRecheck:Enabled` | `bool` | `false` | `Whizbang__StreamIntegrity__SealRecheck__Enabled` | Recompute sealed epochs and compare each with its seal. See [the seal re-check](/v1.0.0/resilience/stream-integrity#seal-re-check) |
+| `SealRecheck:Schedule` | `string?` | `"0 3 * * *"` | `Whizbang__StreamIntegrity__SealRecheck__Schedule` | Cron of the re-check on the temporal engine, splayed per service; empty leaves it to the every-Nth-audit fallback |
+| `SealRecheck:Lookback` | `TimeSpan` | `30.00:00:00` | `Whizbang__StreamIntegrity__SealRecheck__Lookback` | Only epochs sealed within this are re-checked. Must be positive (checked at host start) |
+| `SealRecheck:RecheckEvery` | `TimeSpan` | `7.00:00:00` | `Whizbang__StreamIntegrity__SealRecheck__RecheckEvery` | Each epoch is re-checked at most once per interval. Must be positive (checked at host start) |
+| `SealRecheck:MaxEpochsPerRun` | `int` | `10000` | `Whizbang__StreamIntegrity__SealRecheck__MaxEpochsPerRun` | Epochs recomputed per run across all lanes. Must be at least 1 (checked at host start) |
+| `SealRecheck:OnDrift` | `SealDriftAction` | `Refold` | `Whizbang__StreamIntegrity__SealRecheck__OnDrift` | `Refold` rewrites a drifted seal from the store; `ReportOnly` counts and logs it only |
+| `FullHistoryCompare:Enabled` | `bool` | `false` | `Whizbang__StreamIntegrity__FullHistoryCompare__Enabled` | Heal the whole stored digest table and ask each origin for its full history. The routine windowed audit and heal are not gated by it. See [the full-history compare](/v1.0.0/resilience/stream-integrity#full-history-compare) |
+| `FullHistoryCompare:Schedule` | `string?` | `"0 3 * * *"` | `Whizbang__StreamIntegrity__FullHistoryCompare__Schedule` | Cron of the compare on the temporal engine, splayed per service; empty leaves it to the every-Nth-audit fallback |
 | `PublishReportEvents` | `bool` | `false` | `Whizbang__StreamIntegrity__PublishReportEvents` | Publish divergence/gap detections as durable events. Off (the default): unpublished report events are swept from the outbox each maintenance cycle |
 | `ReattributionEnabled` | `bool` | `true` | `Whizbang__StreamIntegrity__ReattributionEnabled` | Re-attribute this store's history received before origins were recorded to the services that wrote it. Runs on the maintainer under the housekeeping idle gate, and only when owned domains are registered. Also switches the [correction of events stored under an origin that does not own their type](/v1.0.0/resilience/stream-integrity#misattributed-origin-correction), which uses the batch settings below. See [re-attribution](/v1.0.0/resilience/stream-integrity#re-attribution) |
 | `ReattributionIntervalSeconds` | `int` | `60` | `Whizbang__StreamIntegrity__ReattributionIntervalSeconds` | Seconds between re-attribution passes. Must be at least 1 (checked at host start) |
