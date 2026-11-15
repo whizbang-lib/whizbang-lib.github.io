@@ -27,6 +27,8 @@ codeReferences:
   - src/Whizbang.Core/Minting/RedeliveryComposite.cs
   - src/Whizbang.Core/Messaging/RedeliveryAnswerWindow.cs
   - src/Whizbang.Core/Messaging/RedeliveryPump.cs
+  - src/Whizbang.Core/Messaging/RedeliveryAnswerPublication.cs
+  - src/Whizbang.Data.Postgres/Migrations/431_AWholeTypeAnswerIsJudgedWhole.sql
   - src/Whizbang.Core/Workers/SubscriptionExpansionWorker.cs
   - src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs
   - src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptor.cs
@@ -677,7 +679,10 @@ serving live traffic. The backfill is now a walk the requester paces:
 3. **The owner answers the window and then says where it stopped.** It ships the window's events in as few bundles as
    its size bounds allow, then sends a `BackfillWindowAnswer` with the last commit sequence the window covered and
    whether more remains. Repair answers are bundled the same way, across streams by scope
-   ([repair answers bundle across streams](#repair-answers-bundle-across-streams)).
+   ([repair answers bundle across streams](#repair-answers-bundle-across-streams)). The window's pages are one
+   answer: each page's last bundle is held back until the next page or the end, so the window's very last bundle,
+   sent just before the `BackfillWindowAnswer`, is the only one that says the answer ends
+   ([a whole-type answer is judged as a whole](#a-whole-type-answer-is-judged-as-a-whole)).
 4. **The answer moves the position.** The requester records it durably, and the next window starts after it. An
    answer with nothing more ends the backfill as complete.
 
@@ -2162,6 +2167,12 @@ requester the answer is directed at, and the scope.
 Answers to one requester for one tenant are serialized behind each other, which costs little: one bundle now carries
 what was up to hundreds of messages. A backfill keeps its own session (`BundleStreamId`), which wins over the answer key.
 
+Bundles leave in the order they were selected. Since #2311 the origin publishes an answer through
+`RedeliveryPump.BeginAnswer`, which holds back each page's last bundle until the next page is selected or the answer
+ends, then sends it ahead of the next page's bundles, so the order on the session is unchanged and only the answer's
+last bundle says nothing more follows ([a whole-type answer is judged as a whole](#a-whole-type-answer-is-judged-as-a-whole)).
+{verified: RedeliveryPumpWindowTests.BeginAnswer_OverSeveralPublishes_HoldsBackEachLastBundle_AndEndsOnlyOnCompleteAsync, RedeliveryRequestReceptorTests.Receptor_AnAnswerWhoseLastPageIsFull_StillEndsWithItsLastBundleAsync}
+
 {verified: RedeliveryPumpAnswerBundlingTests.AnswerSessionFor_IsDerived_AndSeparatesOrigins_Requesters_Topics_AndScopesAsync, RedeliveryPumpAnswerBundlingTests.AnswerSessionFor_WithoutATopic_ThrowsAsync, RedeliveryWindowAnswerTests.OrdinaryRequest_SelectedInPages_ShipsEveryPageOnOneSession_SoAStreamSplitAcrossPagesStaysInOrderAsync}
 
 #### Only a requester that asks gets the new shape {#accepts-stream-spanning-bundles}
@@ -2209,8 +2220,13 @@ them.
 and `AnsweredToCommitSequence` (inclusive, null = to the head) carry the bounds, in the request's units. The origin
 publishes answers through `RedeliveryPump.PublishAnswerAsync`, which stamps the window on every bundle it builds. A
 [paced backfill](#paced-backfill) page echoes the commit sequences that page covered: from the previous page's last
-event through its own last event, or through the window's ceiling when the page ran out.
-{verified: RedeliveryPumpWindowTests.PublishAnswer_EchoesTheAnsweredWindowOnEveryBundle_AndPublishSaysNoneAsync, RedeliveryWindowAnswerTests.OrdinaryRequest_EveryBundleEchoesTheRequestedWindowAsync, RedeliveryWindowAnswerTests.OrdinaryRequest_NamingEvents_EchoesTheRequestedWindowOnTheNamedAndTheFallbackBundlesAsync, RedeliveryWindowAnswerTests.Window_EachPagesBundlesEchoTheSequencesThatPageCoveredAsync, RedeliveryAnswerCoverageTests.Composite_SaysItsWindow_OnlyWhenTheOriginEchoedOneAsync, RedeliveryAnswerCoverageTests.Window_IsWholeHistory_OnlyWithNeitherBoundAsync}
+event through its own last event, or through the window's ceiling when the page ran out. Each bundle also says
+whether more of its answer follows (`RedeliveryComposite.AnswerContinues`, read back as
+`RedeliveryAnswerWindow.Continues`, #2311): true on every bundle of an answer but its last. Per-stream buckets are
+judged by each bundle as below whatever it says; the flag matters for the
+[type lane](#a-whole-type-answer-is-judged-as-a-whole). A bundle from an origin on an earlier release reads as the
+answer's last.
+{verified: RedeliveryPumpWindowTests.PublishAnswer_EveryBundleButTheLast_SaysTheAnswerContinuesAsync, RedeliveryPumpWindowTests.Publish_ThatAnswersNoWindow_SaysNothingContinuesAsync, RedeliveryPumpWindowTests.PublishAnswer_EchoesTheAnsweredWindowOnEveryBundle_AndPublishSaysNoneAsync, RedeliveryWindowAnswerTests.OrdinaryRequest_EveryBundleEchoesTheRequestedWindowAsync, RedeliveryWindowAnswerTests.OrdinaryRequest_NamingEvents_EchoesTheRequestedWindowOnTheNamedAndTheFallbackBundlesAsync, RedeliveryWindowAnswerTests.Window_EachPagesBundlesEchoTheSequencesThatPageCoveredAsync, RedeliveryAnswerCoverageTests.Composite_SaysItsWindow_OnlyWhenTheOriginEchoedOneAsync, RedeliveryAnswerCoverageTests.Window_IsWholeHistory_OnlyWithNeitherBoundAsync}
 
 **The coverage rule.** For a bundle that changed nothing, the receiver marks a bucket unhealable only when one of these
 holds:
@@ -2314,6 +2330,59 @@ bucket is marked, so the same whole-type request is not granted again and the or
 service already holds. An answer that stored something, one narrower than the request, or one that does not say its
 window leaves the type lane repairable; so does a bundle that carried one of the type's streams only in part (#2149). A
 stream of the type that is genuinely missing is still compared and repaired on its own by the stream-level drill-down.
+
+The mark is the whole answer's, not one bundle's (#2311): only the answer's last bundle can mark the type lane, and only
+when no bundle before it brought anything. A bundle that stored something answers the type lane, which then no later
+bundle of that answer can mark. See [a whole-type answer is judged as a whole](#a-whole-type-answer-is-judged-as-a-whole).
+
+### A whole-type answer is judged as a whole {#a-whole-type-answer-is-judged-as-a-whole}
+{verified: IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AMultiBundleAnswerWhoseFirstBundleChangedNothing_DoesNotMarkTheTypeLaneBeforeItsLastBundleAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AMultiBundleAnswerThatChangedNothingAnywhere_MarksTheTypeLaneOnItsLastBundleAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AnEarlierBundleThatStoredSomething_LeavesTheTypeLaneUnmarkedByTheLastAsync, RedeliveryPumpWindowTests.PublishAnswer_EveryBundleButTheLast_SaysTheAnswerContinuesAsync, RedeliveryPumpWindowTests.BeginAnswer_OverSeveralPublishes_HoldsBackEachLastBundle_AndEndsOnlyOnCompleteAsync, RedeliveryPumpWindowTests.BeginAnswer_ThatPublishesNothing_EndsWithoutABundleAsync, RedeliveryRequestReceptorTests.Receptor_AnAnswerOverSeveralPages_EndsOnlyWithItsLastBundleAsync, RedeliveryRequestReceptorTests.Receptor_AnAnswerWhoseLastPageIsFull_StillEndsWithItsLastBundleAsync, RedeliveryWindowAnswerTests.Window_OverSeveralPages_OnlyItsLastBundleEndsTheAnswerAsync}
+
+A whole-type answer is split into bundles by the origin's count and byte bounds and across the pages of its selection,
+and every bundle echoes the whole requested window. Before #2311 the first bundle to commit cleared the type lane's wait
+and, when it changed nothing, marked the type lane, although later bundles of the same answer still had events to
+store. The type then stopped being repaired on a real gap, even when every stream in that first bundle was carried
+whole, which the [partial-stream rule](#an-answer-marks-only-what-it-covered) (#2149) does not catch.
+
+**The origin says where the answer ends.** Each bundle carries `AnswerContinues`: true while more of the answer
+follows. The origin publishes through `RedeliveryPump.BeginAnswer`, which returns a `RedeliveryAnswerPublication`.
+Each page's bundles are sent at once except the last, which is held back until the next page shows the answer goes on
+(it is then sent as continuing) or the answer ends (`CompleteAsync` sends it as the last). So a last page that is
+exactly full, which only the next, empty, selection shows to be the last, still ends on the right bundle. The held
+bundle is bounded like any bundle, so the origin holds about one page of bodies, as before, and needs no extra
+selection. Ordinary answers and paced backfill windows both publish this way; `PublishAnswerAsync` is one such answer
+in a single call.
+
+**The receiver judges the type lane by the whole answer** (migration 431 adds `p_answer_continues` to
+`wh_integrity_record_bundle_answer`):
+
+| The bundle | The type lane |
+| --- | --- |
+| Continues the answer and changed nothing | Left waiting for the rest: neither answered nor marked |
+| Brought something, whether or not the answer continues | Answered, so no later bundle of the answer can mark it |
+| The answer's last, changed nothing, window covers the request, no partial stream of the type | Marked, as before |
+
+Why each choice:
+
+- **Wait, rather than mark and lift later.** Lifting a wrong mark when a later bundle stores something would still let
+  the type lane read as unchangeable between the two bundles. Leaving it waiting keeps it out of the grant paths for the
+  same reason any [answer pending](#repair-waits-for-its-answer) does, and the answer timeout covers an answer whose
+  last bundle never comes.
+- **No answer state on the receiver.** The rule needs nothing per answer: an earlier bundle that brought something
+  answers the type lane, and an answered type lane is no longer awaiting, which is exactly what stops the last bundle's
+  mark.
+- **Per-stream buckets are unchanged.** A stream carried whole in one bundle is judged by that bundle as before.
+- **Older origins are judged as before.** A bundle without the field reads as the answer's last.
+
+:::warning
+**Known limit: an answer's bundles are assumed to commit in order.** The rule relies on the last bundle committing after
+the others, which holds when every bundle of an answer rides one broker session
+([one session per answer](#answer-session-key)). An answer to a requester that files one stream per bundle, or one
+whose events carry several scopes, travels on more than one session, and its last bundle can commit first and mark the
+type lane early. Tracked in [whizbang#2340](https://github.com/whizbang-lib/whizbang/issues/2340). A related suspected
+gap, an answer to a request for named streams marking a whole-type request's type lane that happens to be waiting, is
+tracked in [whizbang#2341](https://github.com/whizbang-lib/whizbang/issues/2341).
+:::
 
 ### Repair waits for its answer {#repair-waits-for-its-answer}
 
