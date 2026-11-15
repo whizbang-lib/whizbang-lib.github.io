@@ -7229,141 +7229,153 @@
     "symbol": "_flushLedgerTallyAsync",
     "docs": "resilience/stream-integrity#derived-completion-meters"
   },
+  "_runMaintenanceCycleAsync": {
+    "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
+    "line": 398,
+    "symbol": "_runMaintenanceCycleAsync",
+    "docs": "operations/infrastructure/maintenance#a-failed-task-does-not-stop-the-cycle"
+  },
+  "_isolatedAsync": {
+    "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
+    "line": 465,
+    "symbol": "_isolatedAsync",
+    "docs": "operations/infrastructure/maintenance#a-failed-task-does-not-stop-the-cycle"
+  },
   "_sweepHandledLedgerAsync": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 523,
+    "line": 579,
     "symbol": "_sweepHandledLedgerAsync",
     "docs": "resilience/stream-integrity#repaired-events-and-receptors"
   },
   "_concludeExhaustedInboxRowsAsync": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1240,
+    "line": 1296,
     "symbol": "_concludeExhaustedInboxRowsAsync",
     "docs": "operations/observability/stuck-row-sentinel#exhausted-rows-are-concluded"
   },
   "_syncStreamTypePoliciesAsync": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1341,
+    "line": 1397,
     "symbol": "_syncStreamTypePoliciesAsync",
     "docs": "fundamentals/events/archive-store#the-policy-per-stream-type"
   },
   "_syncEventStoreMetadataSettingsAsync": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1361,
+    "line": 1417,
     "symbol": "_syncEventStoreMetadataSettingsAsync",
     "docs": "data/event-store#stored-metadata"
   },
   "_syncArchivedStreamRowPoliciesAsync": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1386,
+    "line": 1442,
     "symbol": "_syncArchivedStreamRowPoliciesAsync",
     "docs": "fundamentals/events/archive-store#perspective-rows"
   },
   "MaintenanceWorkerOptions": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1654,
+    "line": 1722,
     "symbol": "MaintenanceWorkerOptions",
     "docs": "fundamentals/work-coordinator/configuration-reference"
   },
   "TableRewriteStrategy": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1684,
+    "line": 1752,
     "symbol": "TableRewriteStrategy",
     "docs": "operations/infrastructure/storage-maintenance#table-rewrite-strategy"
   },
   "OnlineRewriteMaxBytesPerCycle": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1695,
+    "line": 1763,
     "symbol": "OnlineRewriteMaxBytesPerCycle",
     "docs": "operations/infrastructure/storage-maintenance#online-rewrite"
   },
   "BlueGreenRewriteMaxPerCycle": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1705,
+    "line": 1773,
     "symbol": "BlueGreenRewriteMaxPerCycle",
     "docs": "operations/infrastructure/storage-maintenance#blue-green-rewrite"
   },
   "ReindexBloatThreshold": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1715,
+    "line": 1783,
     "symbol": "ReindexBloatThreshold",
     "docs": "operations/infrastructure/storage-maintenance#queue-index-rebuild"
   },
   "TableRewrite": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1730,
+    "line": 1798,
     "symbol": "TableRewrite",
     "docs": "operations/infrastructure/storage-maintenance#rewrite-thresholds"
   },
   "MaintainOnReassignment": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1782,
+    "line": 1850,
     "symbol": "MaintainOnReassignment",
     "docs": "operations/startup/capabilities-and-duties#vacuum-on-acquiring-the-maintainer-duty"
   },
   "SkipAcquisitionVacuumWithin": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1795,
+    "line": 1863,
     "symbol": "SkipAcquisitionVacuumWithin",
     "docs": "operations/startup/capabilities-and-duties#vacuum-on-acquiring-the-maintainer-duty"
   },
   "StuckRowSentinelEnabled": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1820,
+    "line": 1888,
     "symbol": "StuckRowSentinelEnabled",
     "docs": "operations/observability/stuck-row-sentinel"
   },
   "StuckRowSentinelMaxAttempts": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1831,
+    "line": 1899,
     "symbol": "StuckRowSentinelMaxAttempts",
     "docs": "operations/observability/stuck-row-sentinel"
   },
   "StuckRowSentinelLimit": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1842,
+    "line": 1910,
     "symbol": "StuckRowSentinelLimit",
     "docs": "operations/observability/stuck-row-sentinel"
   },
   "ConcludeExhaustedInboxRows": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1854,
+    "line": 1922,
     "symbol": "ConcludeExhaustedInboxRows",
     "docs": "operations/observability/stuck-row-sentinel#exhausted-rows-are-concluded"
   },
   "ExhaustedInboxConcludeLimit": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1861,
+    "line": 1929,
     "symbol": "ExhaustedInboxConcludeLimit",
     "docs": "operations/observability/stuck-row-sentinel#exhausted-rows-are-concluded"
   },
   "DestructionRetryBackoffSeconds": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1869,
+    "line": 1937,
     "symbol": "DestructionRetryBackoffSeconds",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "MaxDestructionRetries": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1876,
+    "line": 1944,
     "symbol": "MaxDestructionRetries",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "OnDestroyFailure": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1884,
+    "line": 1952,
     "symbol": "OnDestroyFailure",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "Retention": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1937,
+    "line": 2005,
     "symbol": "Retention",
     "docs": "operations/configuration/configuration-reference#database-side-settings"
   },
   "Partitioning": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 1945,
+    "line": 2013,
     "symbol": "Partitioning",
     "docs": "operations/infrastructure/partitioned-ledgers#enabling-it"
   },
@@ -8035,13 +8047,13 @@
   },
   "RetentionSetting": {
     "file": "src/Whizbang.Core/Workers/RetentionSettingsBridge.cs",
-    "line": 80,
+    "line": 90,
     "symbol": "RetentionSetting",
     "docs": "operations/configuration/configuration-reference#database-side-settings"
   },
   "DebugModeSetting": {
     "file": "src/Whizbang.Core/Workers/RetentionSettingsBridge.cs",
-    "line": 128,
+    "line": 138,
     "symbol": "DebugModeSetting",
     "docs": "operations/infrastructure/partitioned-ledgers#enabling-it"
   },
