@@ -1354,6 +1354,39 @@ Measured on a store of 2.24 million events in 500,000 streams: 1,000 batches, 10
 of 103 ms per batch, p95 108 ms), and 234 MiB of WAL. Because the step is idle-gated like every maintenance step,
 that time is spread over the service's quiet periods rather than spent at startup.
 
+#### The heal is linear in its batch {#the-heal-is-linear-in-its-batch}
+
+{verified: StreamDigestHealPlanSqlTests.TheHealStatement_NeverRescansASetPerRow_ForANamedBatchAsync, StreamDigestHealPlanSqlTests.TheHealStatement_NeverRescansASetPerRow_ForTheWholeStoreAsync, StreamDigestHealPlanSqlTests.TheHealFunction_RunsTheStatementItsHelperReturnsAsync}
+
+`_wh_heal_stream_digests` compares two sets for the streams it is given: the buckets stored for them, and the buckets
+their events fold to. The planner cannot estimate the event filters (the ephemeral and at-most-once flag bits, the
+exempt audit types), so it believes the recomputed set is a single row. Any nested loop that rescans a materialized
+set on its inner side is then quadratic in practice. Before migration 446 the heal had two:
+
+- the removal of buckets with no events behind them was an anti join against the recomputed set, which the planner
+  ran as a nested loop: a 500-stream batch of about 12 thousand buckets took 25.8 seconds;
+- the result joined the update count, and the planner rescanned the update once per rewritten bucket.
+
+Either one pushed a batch past the client's 30 second command timeout. The [id-lane backfill](#id-lane-backfill)
+repeats a failed batch, so it repeated the same failure every cycle and never moved past it.
+
+Migration 446 keeps what the heal returns and changes, and writes the statement so that no plan can be quadratic:
+
+| Before | After | Why |
+| --- | --- | --- |
+| an inner join for drift, then an anti join for removal | one `FULL JOIN` of stored and recomputed buckets, read by both | PostgreSQL runs a full join only as a hash or merge join, never as a nested loop, so the cost follows the batch whatever the estimate says. The same batch now takes about 1 second. |
+| `CROSS JOIN (SELECT count(*) FROM updated)` in the result | the result reads only the rewritten buckets | a data-modifying CTE runs to completion whether or not anything reads it, so the join did nothing except invite the rescan |
+
+The statement lives in `_wh_heal_stream_digests_statement(named)`, and the heal runs exactly that text, so a test can
+plan it on its own. The test plans it for a named batch and for the whole store, and fails on any nested loop whose
+inner side scans a materialized CTE. A future change that brings such a loop back fails the test before it can stall
+a database.
+
+Why the plan is fixed by the statement's shape rather than by planner settings: turning nested loops off for the
+function would also turn off the keyed lookups the update and the insert rely on, replacing them with scans of the
+whole digest table. Better estimates are not available either: the filters are bit tests and a type-name list, which
+PostgreSQL has no statistics for.
+
 ## Scheduling, startup, and the repair policy ladder
 
 ### How the phases unfold from a cold start

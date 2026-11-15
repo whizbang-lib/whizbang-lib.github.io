@@ -88225,6 +88225,62 @@
         "linkSource": "XmlTag"
       }
     ],
+    "_runMaintenanceCycleAsync": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerTaskIsolationTests.cs",
+        "testMethod": "AFailedTask_IsLoggedByName_AndEveryLaterTaskStillRunsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerTaskIsolationTests.cs",
+        "testMethod": "TheMaintenanceCallFailing_NamesItInTheWarningAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerTaskIsolationTests.cs",
+        "testMethod": "TheDestructionReadFailing_GivesTheReapNothing_AndTheCycleGoesOnAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerTaskIsolationTests.cs",
+        "testMethod": "ATaskTheDatabaseReportsFailed_IsLoggedAsAWarningByNameAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerTaskIsolationTests.cs",
+        "testMethod": "TheLifecycleCleanup_WithNoRetention_CallsNothing_AndTheCycleGoesOnAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerTaskIsolationTests.cs",
+        "testMethod": "Cancellation_StillStopsTheCycleAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "_isolatedAsync": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerTaskIsolationTests.cs",
+        "testMethod": "AFailedTask_IsLoggedByName_AndEveryLaterTaskStillRunsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerTaskIsolationTests.cs",
+        "testMethod": "Cancellation_StillStopsTheCycleAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "_performMaintenanceAsync": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerTaskIsolationTests.cs",
+        "testMethod": "ATaskTheDatabaseReportsFailed_IsLoggedAsAWarningByNameAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerTaskIsolationTests.cs",
+        "testMethod": "TheDestructionReadFailing_GivesTheReapNothing_AndTheCycleGoesOnAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "_sweepHandledLedgerAsync": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerBestEffortStepsTests.cs",
@@ -88709,6 +88765,16 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/RetentionSettingsValidationTests.cs",
         "testMethod": "ACompletedInboxPurgeBatchBelowOne_IsRejectedByNameAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/RetentionSettingsValidationTests.cs",
+        "testMethod": "EveryOtherPurgeBatchBelowOne_IsRejectedByNameAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/RetentionSettingsValidationTests.cs",
+        "testMethod": "EveryPurgeBatchOfOne_IsAcceptedAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -184145,6 +184211,16 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/RetentionSettingsValidationTests.cs",
+        "testMethod": "EveryOtherPurgeBatchBelowOne_IsRejectedByNameAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/RetentionSettingsValidationTests.cs",
+        "testMethod": "EveryPurgeBatchOfOne_IsAcceptedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/RetentionSettingsValidationTests.cs",
         "testMethod": "ACompletedInboxPurgeBatchOfOne_IsAcceptedAsync",
         "linkSource": "XmlTag"
       },
@@ -202563,6 +202639,48 @@
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/MaintenanceTests.cs",
         "testMethod": "PerformMaintenance_RespectsConfigurableDeadLetterRetention_ViaWhSettingsAsync",
         "testLine": 749,
+        "testClass": "MaintenanceTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/MaintenanceTests.cs",
+        "testMethod": "PerformMaintenance_ABoundedPurge_DeletesAtMostItsBatch_AndTheRestOnTheNextCycleAsync",
+        "testLine": 832,
+        "testClass": "MaintenanceTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/MaintenanceTests.cs",
+        "testMethod": "PerformMaintenance_ABoundedPurgeSetBelowOne_StillDeletesOneRowPerCycleAsync",
+        "testLine": 854,
+        "testClass": "MaintenanceTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/MaintenanceTests.cs",
+        "testMethod": "PerformMaintenance_ABoundedPurgeWithNoSetting_DeletesUpToTheDefaultAsync",
+        "testLine": 870,
+        "testClass": "MaintenanceTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/MaintenanceTests.cs",
+        "testMethod": "Migration_SeedsEachPurgeBatchDefaultAsync",
+        "testLine": 886,
+        "testClass": "MaintenanceTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/MaintenanceTests.cs",
+        "testMethod": "PerformMaintenance_ATaskThatFails_IsReportedByName_AndTheTasksBeforeAndAfterItStillCommitAsync",
+        "testLine": 908,
+        "testClass": "MaintenanceTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/MaintenanceTests.cs",
+        "testMethod": "PerformMaintenance_TheDeduplicationTaskFailing_LeavesTheDeadLetterPurgeItsRetentionAsync",
+        "testLine": 937,
         "testClass": "MaintenanceTests",
         "linkSource": "Convention"
       }
@@ -222578,8 +222696,15 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Attributes/RowCapAttributeTests.cs",
-        "testMethod": "AttributeUsage_TargetsClassesOnlyAsync",
+        "testMethod": "PerProperty_WhenInitialized_KeysTheCapByThatPropertyAsync",
         "testLine": 44,
+        "testClass": "RowCapAttributeTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Attributes/RowCapAttributeTests.cs",
+        "testMethod": "AttributeUsage_TargetsClassesOnlyAsync",
+        "testLine": 55,
         "testClass": "RowCapAttributeTests",
         "linkSource": "Convention"
       }
@@ -361276,7 +361401,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1946,
+        "sourceLine": 2014,
         "sourceSymbol": "Partitioning",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -361405,7 +361530,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/RetentionSettingsBridge.cs",
-        "sourceLine": 100,
+        "sourceLine": 110,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -361472,7 +361597,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/RetentionSettingsBridge.cs",
-        "sourceLine": 99,
+        "sourceLine": 109,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -361539,14 +361664,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/RetentionSettingsBridge.cs",
-        "sourceLine": 81,
+        "sourceLine": 91,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/RetentionSettingsBridge.cs",
-        "sourceLine": 130,
+        "sourceLine": 140,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -361613,7 +361738,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/RetentionSettingsBridge.cs",
-        "sourceLine": 146,
+        "sourceLine": 156,
         "sourceSymbol": "DebugModeSetting",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -361770,7 +361895,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/RetentionSettingsBridge.cs",
-        "sourceLine": 129,
+        "sourceLine": 139,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -361823,7 +361948,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1938,
+        "sourceLine": 2006,
         "sourceSymbol": "Retention",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -362259,10 +362384,92 @@
         "linkSource": "XmlTag"
       }
     ],
+    "MaintenanceWorkerTaskIsolationTests.AFailedTask_IsLoggedByName_AndEveryLaterTaskStillRunsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
+        "sourceLine": 399,
+        "sourceSymbol": "_runMaintenanceCycleAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
+        "sourceLine": 466,
+        "sourceSymbol": "_isolatedAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MaintenanceWorkerTaskIsolationTests.TheMaintenanceCallFailing_NamesItInTheWarningAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
+        "sourceLine": 399,
+        "sourceSymbol": "_runMaintenanceCycleAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MaintenanceWorkerTaskIsolationTests.TheDestructionReadFailing_GivesTheReapNothing_AndTheCycleGoesOnAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
+        "sourceLine": 399,
+        "sourceSymbol": "_runMaintenanceCycleAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
+        "sourceLine": 484,
+        "sourceSymbol": "_performMaintenanceAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MaintenanceWorkerTaskIsolationTests.ATaskTheDatabaseReportsFailed_IsLoggedAsAWarningByNameAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
+        "sourceLine": 399,
+        "sourceSymbol": "_runMaintenanceCycleAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
+        "sourceLine": 483,
+        "sourceSymbol": "_performMaintenanceAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MaintenanceWorkerTaskIsolationTests.TheLifecycleCleanup_WithNoRetention_CallsNothing_AndTheCycleGoesOnAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
+        "sourceLine": 399,
+        "sourceSymbol": "_runMaintenanceCycleAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MaintenanceWorkerTaskIsolationTests.Cancellation_StillStopsTheCycleAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
+        "sourceLine": 399,
+        "sourceSymbol": "_runMaintenanceCycleAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
+        "sourceLine": 467,
+        "sourceSymbol": "_isolatedAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
     "MaintenanceWorkerBestEffortStepsTests.HandledLedger_IsSweptEveryCycle_ToTheRepairReceptorLookback_AtTheHostsTimeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 524,
+        "sourceLine": 580,
         "sourceSymbol": "_sweepHandledLedgerAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362271,14 +362478,14 @@
     "MaintenanceWorkerExhaustedInboxConclusionTests.ExhaustedDomainRow_IsMovedToTheDeadLetterStore_AsMaxAttemptsExceededAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1241,
+        "sourceLine": 1297,
         "sourceSymbol": "_concludeExhaustedInboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1862,
+        "sourceLine": 1930,
         "sourceSymbol": "ExhaustedInboxConcludeLimit",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -362287,7 +362494,7 @@
     "MaintenanceWorkerExhaustedInboxConclusionTests.ExhaustedControlPlaneRow_IsDropped_NeverStoredAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1241,
+        "sourceLine": 1297,
         "sourceSymbol": "_concludeExhaustedInboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362296,7 +362503,7 @@
     "MaintenanceWorkerExhaustedInboxConclusionTests.NoAttemptCeiling_ConcludesNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1241,
+        "sourceLine": 1297,
         "sourceSymbol": "_concludeExhaustedInboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362305,7 +362512,7 @@
     "MaintenanceWorkerExhaustedInboxConclusionTests.NoInboxDispatchOptions_ConcludesNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1241,
+        "sourceLine": 1297,
         "sourceSymbol": "_concludeExhaustedInboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362314,14 +362521,14 @@
     "MaintenanceWorkerExhaustedInboxConclusionTests.Disabled_ConcludesNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1241,
+        "sourceLine": 1297,
         "sourceSymbol": "_concludeExhaustedInboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1855,
+        "sourceLine": 1923,
         "sourceSymbol": "ConcludeExhaustedInboxRows",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -362330,7 +362537,7 @@
     "MaintenanceWorkerExhaustedInboxConclusionTests.NoDeadLetterStore_LeavesDomainRows_AndStillDropsControlPlaneAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1241,
+        "sourceLine": 1297,
         "sourceSymbol": "_concludeExhaustedInboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362339,7 +362546,7 @@
     "MaintenanceWorkerExhaustedInboxConclusionTests.UnregisteredDeadLetterStore_LeavesDomainRowsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1241,
+        "sourceLine": 1297,
         "sourceSymbol": "_concludeExhaustedInboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362348,7 +362555,7 @@
     "MaintenanceWorkerExhaustedInboxConclusionTests.AFailedMove_IsLogged_AndTheNextRowIsStillConcludedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1241,
+        "sourceLine": 1297,
         "sourceSymbol": "_concludeExhaustedInboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362357,7 +362564,7 @@
     "MaintenanceWorkerExhaustedInboxConclusionTests.AMoveThatFindsTheRowGone_IsNotReportedAsConcludedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1241,
+        "sourceLine": 1297,
         "sourceSymbol": "_concludeExhaustedInboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362366,7 +362573,7 @@
     "MaintenanceWorkerExhaustedInboxConclusionTests.AFailedDrop_IsLogged_AndDoesNotFailTheCycleAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1241,
+        "sourceLine": 1297,
         "sourceSymbol": "_concludeExhaustedInboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362375,7 +362582,7 @@
     "MaintenanceWorkerExhaustedInboxConclusionTests.WithoutARegisteredIdentity_TheMoveUsesTheDefaultGenerationAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1241,
+        "sourceLine": 1297,
         "sourceSymbol": "_concludeExhaustedInboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362384,7 +362591,7 @@
     "MaintenanceWorkerExhaustedInboxConclusionTests.NoExhaustedRows_ConcludesNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1241,
+        "sourceLine": 1297,
         "sourceSymbol": "_concludeExhaustedInboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362393,7 +362600,7 @@
     "MaintenanceWorkerExhaustedInboxConclusionTests.AConcludedDomainRow_IsCountedAsADeadLetterArrivalAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1241,
+        "sourceLine": 1297,
         "sourceSymbol": "_concludeExhaustedInboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362402,7 +362609,7 @@
     "MaintenanceWorkerExhaustedInboxConclusionTests.CancellationDuringAMove_PropagatesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1241,
+        "sourceLine": 1297,
         "sourceSymbol": "_concludeExhaustedInboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362411,7 +362618,7 @@
     "MaintenanceWorkerExhaustedInboxConclusionTests.CancellationDuringADrop_PropagatesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1241,
+        "sourceLine": 1297,
         "sourceSymbol": "_concludeExhaustedInboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362420,7 +362627,7 @@
     "MaintenanceWorkerStreamTypePolicySyncTests.EveryTick_StoresTheConfiguredPolicies_EvenWhenTheSweepIsDeferredAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1342,
+        "sourceLine": 1398,
         "sourceSymbol": "_syncStreamTypePoliciesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362436,7 +362643,7 @@
     "MaintenanceWorkerStreamTypePolicySyncTests.NoTypesConfigured_StoresAnEmptySet_SoAStaleRowIsRemovedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1342,
+        "sourceLine": 1398,
         "sourceSymbol": "_syncStreamTypePoliciesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362452,7 +362659,7 @@
     "MaintenanceWorkerStreamTypePolicySyncTests.AFailedWrite_IsLogged_AndTheCycleRunsOnAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1342,
+        "sourceLine": 1398,
         "sourceSymbol": "_syncStreamTypePoliciesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362468,7 +362675,7 @@
     "MaintenanceWorkerStreamTypePolicySyncTests.Cancellation_Propagates_FromThePolicyWriteAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1342,
+        "sourceLine": 1398,
         "sourceSymbol": "_syncStreamTypePoliciesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362484,7 +362691,7 @@
     "MaintenanceWorkerEventStoreMetadataSyncTests.EveryTick_PublishesTheSettings_EvenWhenTheSweepIsDeferredAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1362,
+        "sourceLine": 1418,
         "sourceSymbol": "_syncEventStoreMetadataSettingsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362493,7 +362700,7 @@
     "MaintenanceWorkerEventStoreMetadataSyncTests.NoOptionsRegistered_PublishesTheDefaultsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1362,
+        "sourceLine": 1418,
         "sourceSymbol": "_syncEventStoreMetadataSettingsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362502,7 +362709,7 @@
     "MaintenanceWorkerEventStoreMetadataSyncTests.AFailedWrite_IsLogged_AndTheCycleRunsOnAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1362,
+        "sourceLine": 1418,
         "sourceSymbol": "_syncEventStoreMetadataSettingsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362511,7 +362718,7 @@
     "MaintenanceWorkerEventStoreMetadataSyncTests.OptionsThatFailValidation_AreLogged_AndTheCycleRunsOnAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1362,
+        "sourceLine": 1418,
         "sourceSymbol": "_syncEventStoreMetadataSettingsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362520,7 +362727,7 @@
     "MaintenanceWorkerEventStoreMetadataSyncTests.Cancellation_Propagates_FromTheWriteAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1362,
+        "sourceLine": 1418,
         "sourceSymbol": "_syncEventStoreMetadataSettingsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362529,7 +362736,7 @@
     "MaintenanceWorkerArchivedStreamRowsSyncTests.EveryTick_PublishesThePolicies_EvenWhenTheSweepIsDeferredAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1387,
+        "sourceLine": 1443,
         "sourceSymbol": "_syncArchivedStreamRowPoliciesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362538,7 +362745,7 @@
     "MaintenanceWorkerArchivedStreamRowsSyncTests.NoOptionsRegistered_PublishesTheDeclaredPoliciesOnlyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1387,
+        "sourceLine": 1443,
         "sourceSymbol": "_syncArchivedStreamRowPoliciesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362547,7 +362754,7 @@
     "MaintenanceWorkerArchivedStreamRowsSyncTests.AFailedWrite_IsLogged_AndTheCycleRunsOnAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1387,
+        "sourceLine": 1443,
         "sourceSymbol": "_syncArchivedStreamRowPoliciesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362556,7 +362763,7 @@
     "MaintenanceWorkerArchivedStreamRowsSyncTests.OptionsThatCannotBeBound_AreLogged_AndTheCycleRunsOnAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1387,
+        "sourceLine": 1443,
         "sourceSymbol": "_syncArchivedStreamRowPoliciesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362565,7 +362772,7 @@
     "MaintenanceWorkerArchivedStreamRowsSyncTests.Cancellation_Propagates_FromTheWriteAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1387,
+        "sourceLine": 1443,
         "sourceSymbol": "_syncArchivedStreamRowPoliciesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -362574,7 +362781,7 @@
     "QueueIndexReindexStepTests.Choose_AnIndexIsChosenOnlyWhenItsRatioExceedsTheThresholdAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -362604,7 +362811,7 @@
     "QueueIndexReindexStepTests.Run_TheThresholdIsTheOptionsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -362634,7 +362841,7 @@
     "QueueIndexReindexStepTests.Run_AThresholdOfZero_DoesNothing_NotEvenASurveyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -362664,7 +362871,7 @@
     "QueueIndexReindexStepTests.TheThreshold_DefaultsToThree_AndBindsFromConfigurationAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -362694,7 +362901,7 @@
     "QueueIndexReindexStepTests.TheThreshold_IsValidatedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -362731,7 +362938,7 @@
     "QueueIndexReindexStepTests.AnInvalidThresholdInConfiguration_FailsWhenTheOptionsAreReadAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -362761,7 +362968,7 @@
     "QueueIndexReindexStepTests.Choose_TheSizeFloorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -362791,7 +362998,7 @@
     "QueueIndexReindexStepTests.Choose_TheMostReclaimableBytesFirst_NotTheHighestRatioAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -362821,7 +363028,7 @@
     "QueueIndexReindexStepTests.Choose_TiesAreTakenByNameAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -362851,7 +363058,7 @@
     "QueueIndexReindexStepTests.Choose_SkipsAnUnknownRatioAndAnInvalidIndexAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -362881,7 +363088,7 @@
     "QueueIndexReindexStepTests.TheRatio_IsSizeOverExpected_AndUnknownWithoutAnExpectedSizeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -362911,7 +363118,7 @@
     "QueueIndexReindexStepTests.Run_RebuildsOneIndexPerCycleAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -362941,7 +363148,7 @@
     "QueueIndexReindexStepTests.Run_WhenTheClaimIsLost_NothingIsSurveyedOrRebuiltAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -362971,7 +363178,7 @@
     "QueueIndexReindexStepTests.Run_WithNoClaimStore_SkipsAndSaysWhyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363001,7 +363208,7 @@
     "QueueIndexReindexStepTests.Run_WithNoCoordinator_DoesNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363031,7 +363238,7 @@
     "QueueIndexReindexStepTests.TheClaimWindow_IsHalfTheMaintenanceIntervalAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363061,7 +363268,7 @@
     "QueueIndexReindexStepTests.TheClaimKey_NamesTheWindowAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363091,7 +363298,7 @@
     "QueueIndexReindexStepTests.Run_DropsEveryInvalidLeftoverFirst_ThenRebuildsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363121,7 +363328,7 @@
     "QueueIndexReindexStepTests.Run_DropsOnlyInvalidIndexesNamedAsALeftoverAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363151,7 +363358,7 @@
     "QueueIndexReindexStepTests.TheLeftoverName_IsWhatAConcurrentRebuildNamesItsCopiesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363181,7 +363388,7 @@
     "QueueIndexReindexStepTests.Run_WhileABuildIsInProgress_NothingIsDroppedOrRebuiltAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363211,7 +363418,7 @@
     "QueueIndexReindexStepTests.Run_ALeftoverThatIsNotDropped_IsLogged_AndTheRebuildStillRunsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363241,7 +363448,7 @@
     "QueueIndexReindexStepTests.Run_ARebuild_IsLoggedWithTheSizesAndTheEstimateAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363271,7 +363478,7 @@
     "QueueIndexReindexStepTests.Run_ARebuildThatDidNotRunOrFailed_IsLoggedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363301,7 +363508,7 @@
     "QueueIndexReindexStepTests.Run_NothingOverTheLine_RebuildsNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363331,7 +363538,7 @@
     "QueueIndexReindexStepTests.Run_CancellationPropagatesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363361,7 +363568,7 @@
     "QueueIndexReindexStepTests.Run_CancellationDuringADrop_PropagatesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363391,7 +363598,7 @@
     "QueueIndexReindexStepTests.AddWhizbangWorkers_RegistersTheStepOnceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1716,
+        "sourceLine": 1784,
         "sourceSymbol": "ReindexBloatThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363421,7 +363628,7 @@
     "WorkTableVacuumOnAcquisitionTests.Role_IsTheMaintainerDutyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1783,
+        "sourceLine": 1851,
         "sourceSymbol": "MaintainOnReassignment",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363437,7 +363644,7 @@
     "WorkTableVacuumOnAcquisitionTests.MaintainOnReassignment_DefaultsToOnAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1783,
+        "sourceLine": 1851,
         "sourceSymbol": "MaintainOnReassignment",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363453,7 +363660,7 @@
     "WorkTableVacuumOnAcquisitionTests.AFirstAssignment_Vacuums_AndOnlyOncePerProcessAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1783,
+        "sourceLine": 1851,
         "sourceSymbol": "MaintainOnReassignment",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363469,7 +363676,7 @@
     "WorkTableVacuumOnAcquisitionTests.AReassignment_Vacuums_EvenAfterAFirstAssignmentDidAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1783,
+        "sourceLine": 1851,
         "sourceSymbol": "MaintainOnReassignment",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363485,7 +363692,7 @@
     "WorkTableVacuumOnAcquisitionTests.AReassignment_WithMaintainOnReassignmentOff_DoesNotVacuum_AndSaysWhyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1783,
+        "sourceLine": 1851,
         "sourceSymbol": "MaintainOnReassignment",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363501,7 +363708,7 @@
     "WorkTableVacuumOnAcquisitionTests.AReassignment_WithTheFlagOff_StillLeavesTheFirstAssignmentOwedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1783,
+        "sourceLine": 1851,
         "sourceSymbol": "MaintainOnReassignment",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363517,7 +363724,7 @@
     "WorkTableVacuumOnAcquisitionTests.ATableTheConnectionCannotVacuum_IsNamedInAWarningAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1783,
+        "sourceLine": 1851,
         "sourceSymbol": "MaintainOnReassignment",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363533,7 +363740,7 @@
     "WorkTableVacuumOnAcquisitionTests.ATableSkippedWithoutAReason_IsStillNamedInAWarningAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1783,
+        "sourceLine": 1851,
         "sourceSymbol": "MaintainOnReassignment",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363549,7 +363756,7 @@
     "WorkTableVacuumOnAcquisitionTests.AGrantLostBeforeTheVacuum_DoesNotVacuum_AndLeavesTheFirstAssignmentOwedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1783,
+        "sourceLine": 1851,
         "sourceSymbol": "MaintainOnReassignment",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363565,7 +363772,7 @@
     "WorkTableVacuumOnAcquisitionTests.WithNoWorkCoordinator_ThereIsNothingToVacuumAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1783,
+        "sourceLine": 1851,
         "sourceSymbol": "MaintainOnReassignment",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363581,7 +363788,7 @@
     "WorkTableVacuumOnAcquisitionTests.Constructor_RefusesNullsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1783,
+        "sourceLine": 1851,
         "sourceSymbol": "MaintainOnReassignment",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363597,7 +363804,7 @@
     "WorkTableVacuumOnAcquisitionTests.OnAcquiredAsync_RefusesANullGrantAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1783,
+        "sourceLine": 1851,
         "sourceSymbol": "MaintainOnReassignment",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363613,14 +363820,14 @@
     "WorkTableVacuumOnAcquisitionTests.SkipAcquisitionVacuumWithin_DefaultsToTenMinutesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1783,
+        "sourceLine": 1851,
         "sourceSymbol": "MaintainOnReassignment",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1796,
+        "sourceLine": 1864,
         "sourceSymbol": "SkipAcquisitionVacuumWithin",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363636,7 +363843,7 @@
     "WorkTableVacuumOnAcquisitionTests.EveryAcquisition_AsksTheCoordinatorToSkipTablesVacuumedWithinTheWindowAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1783,
+        "sourceLine": 1851,
         "sourceSymbol": "MaintainOnReassignment",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363652,7 +363859,7 @@
     "WorkTableVacuumOnAcquisitionTests.ATableVacuumedWithinTheWindow_IsCountedAsRecent_NotWarnedAboutAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1783,
+        "sourceLine": 1851,
         "sourceSymbol": "MaintainOnReassignment",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363668,7 +363875,7 @@
     "WorkTableVacuumOnAcquisitionTests.ACoordinatorWithoutTheWindow_VacuumsEveryTable_AsBeforeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1783,
+        "sourceLine": 1851,
         "sourceSymbol": "MaintainOnReassignment",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363684,21 +363891,21 @@
     "MaintenanceWorkerStuckRowSentinelTests.MaintenanceTick_SentinelDisabled_DoesNotInvokeSentinelMethodsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1821,
+        "sourceLine": 1889,
         "sourceSymbol": "StuckRowSentinelEnabled",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1834,
+        "sourceLine": 1902,
         "sourceSymbol": "StuckRowSentinelMaxAttempts",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1845,
+        "sourceLine": 1913,
         "sourceSymbol": "StuckRowSentinelLimit",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363707,14 +363914,14 @@
     "MaintenanceWorkerStuckRowSentinelTests.MaintenanceTick_NoStuckRows_EmitsNoSentinelWarningsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1822,
+        "sourceLine": 1890,
         "sourceSymbol": "StuckRowSentinelEnabled",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1833,
+        "sourceLine": 1901,
         "sourceSymbol": "StuckRowSentinelMaxAttempts",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363723,14 +363930,14 @@
     "MaintenanceWorkerStuckRowSentinelTests.MaintenanceTick_StuckOutboxRow_EmitsWarningPerRowAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1832,
+        "sourceLine": 1900,
         "sourceSymbol": "StuckRowSentinelMaxAttempts",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1843,
+        "sourceLine": 1911,
         "sourceSymbol": "StuckRowSentinelLimit",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363746,7 +363953,7 @@
     "MaintenanceWorkerStuckRowSentinelTests.MaintenanceTick_MultipleStuckRows_OneWarningEachAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1844,
+        "sourceLine": 1912,
         "sourceSymbol": "StuckRowSentinelLimit",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -363769,7 +363976,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/RetentionSettingsBridge.cs",
-        "sourceLine": 173,
+        "sourceLine": 183,
         "sourceSymbol": "List",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -363792,7 +363999,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/RetentionSettingsBridge.cs",
-        "sourceLine": 183,
+        "sourceLine": 193,
         "sourceSymbol": "List",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -363831,9 +364038,41 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/RetentionSettingsBridge.cs",
-        "sourceLine": 174,
+        "sourceLine": 184,
         "sourceSymbol": "List",
         "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Configuration/EphemeralOptionsValidator.cs",
+        "sourceLine": 15,
+        "sourceSymbol": "EphemeralOptionsValidator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "RetentionSettingsValidationTests.EveryOtherPurgeBatchBelowOne_IsRejectedByNameAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorkerOptionsValidator.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MaintenanceWorkerOptionsValidator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Configuration/EphemeralOptionsValidator.cs",
+        "sourceLine": 15,
+        "sourceSymbol": "EphemeralOptionsValidator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "RetentionSettingsValidationTests.EveryPurgeBatchOfOne_IsAcceptedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorkerOptionsValidator.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MaintenanceWorkerOptionsValidator",
+        "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
@@ -519807,6 +520046,54 @@
         "linkSource": "Convention"
       }
     ],
+    "MaintenanceTests.PerformMaintenance_ABoundedPurge_DeletesAtMostItsBatch_AndTheRestOnTheNextCycleAsync": [
+      {
+        "sourceFile": "src/Whizbang.Testing/MaintenanceTestDriver.cs",
+        "sourceSymbol": "Maintenance",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "MaintenanceTests.PerformMaintenance_ABoundedPurgeSetBelowOne_StillDeletesOneRowPerCycleAsync": [
+      {
+        "sourceFile": "src/Whizbang.Testing/MaintenanceTestDriver.cs",
+        "sourceSymbol": "Maintenance",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "MaintenanceTests.PerformMaintenance_ABoundedPurgeWithNoSetting_DeletesUpToTheDefaultAsync": [
+      {
+        "sourceFile": "src/Whizbang.Testing/MaintenanceTestDriver.cs",
+        "sourceSymbol": "Maintenance",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "MaintenanceTests.Migration_SeedsEachPurgeBatchDefaultAsync": [
+      {
+        "sourceFile": "src/Whizbang.Testing/MaintenanceTestDriver.cs",
+        "sourceSymbol": "Maintenance",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "MaintenanceTests.PerformMaintenance_ATaskThatFails_IsReportedByName_AndTheTasksBeforeAndAfterItStillCommitAsync": [
+      {
+        "sourceFile": "src/Whizbang.Testing/MaintenanceTestDriver.cs",
+        "sourceSymbol": "Maintenance",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "MaintenanceTests.PerformMaintenance_TheDeduplicationTaskFailing_LeavesTheDeadLetterPurgeItsRetentionAsync": [
+      {
+        "sourceFile": "src/Whizbang.Testing/MaintenanceTestDriver.cs",
+        "sourceSymbol": "Maintenance",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "RegistryTest.RegisterModels_WithValidRegistrar_StoresCallbackAsync": [
       {
         "sourceFile": "src/Whizbang.Testing/StreamGroupRegistryTestSeam.cs",
@@ -542551,6 +542838,14 @@
         "linkSource": "Convention"
       }
     ],
+    "RowCapAttributeTests.PerProperty_WhenInitialized_KeysTheCapByThatPropertyAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/RowCapAttribute.cs",
+        "sourceSymbol": "RowCapAttribute",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "RowCapAttributeTests.AttributeUsage_TargetsClassesOnlyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Attributes/RowCapAttribute.cs",
@@ -547114,12 +547409,12 @@
     }
   ],
   "metadata": {
-    "generated": "2026-11-14T12:01:05.576Z",
-    "sourceFiles": 2409,
-    "testFiles": 11919,
-    "totalLinks": 25975,
-    "codeSymbols": 3605,
-    "testMethods": 22370,
+    "generated": "2026-11-15T00:14:26.011Z",
+    "sourceFiles": 2373,
+    "testFiles": 4263,
+    "totalLinks": 25993,
+    "codeSymbols": 3608,
+    "testMethods": 22385,
     "linkHealthFindings": 105
   }
 }
