@@ -1712,6 +1712,27 @@ deployed function body still matches its migration. Values are SQL fragments, qu
 cast where one is needed. Tokens are UPPER_SNAKE names between double underscores, a token may not be a
 substring of another, and `__SCHEMA__` is the schema placeholder, not a constant.
 
+A constant may take one argument, for a rule that names the columns of whichever row a statement reads. It is
+defined as `__TOKEN__(p) = value`, and a migration writes `__TOKEN__(alias)`; every word `p` in the value is replaced
+by the alias, then the constants the value itself writes are substituted:
+
+```sql{
+title: "A constant with an argument"
+description: "The digest eligibility rule, defined once and written for each row alias a statement reads."
+category: "Configuration"
+difficulty: "ADVANCED"
+tags: ["migrations", "constants", "tokens"]
+}
+-- constants.txt
+__DIGEST_ELIGIBLE__(e) = (COALESCE(e.flags, 0) & 8 = 0 AND COALESCE(e.flags, 0) & 32 = 0 AND split_part(e.event_type, ',', 1) <> ALL(__DIGEST_EXEMPT_TYPES__))
+
+-- a migration, inside a row trigger
+IF __DIGEST_ELIGIBLE__(NEW) THEN
+```
+
+C# SQL that must agree with the migrations reads such a constant through `MigrationConstants.Apply`, never its own
+copy ([one eligibility rule](../../resilience/stream-integrity#one-eligibility-rule)).
+
 Two checks hold the rule. `scripts/Lint-MigrationSql.ps1` fails a migration numbered 148 or later that
 writes one of the values raw, or writes a token the file does not define. `MigrationConstantsTests` fails the
 build if any migration, whatever its number, writes a token nothing defines, and proves the provider hands

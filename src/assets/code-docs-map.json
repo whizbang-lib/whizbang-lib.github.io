@@ -3043,7 +3043,7 @@
   },
   "MigrationConstants": {
     "file": "src/Whizbang.Data.Postgres/MigrationConstants.cs",
-    "line": 16,
+    "line": 22,
     "symbol": "MigrationConstants",
     "docs": "operations/infrastructure/migrations#constants"
   },
@@ -4553,6 +4553,12 @@
     "symbol": "DbContextSchemaInitializationRunner",
     "docs": "data/turnkey-initialization"
   },
+  "DigestRuleSql": {
+    "file": "src/Whizbang.Data.EFCore.Postgres/DigestRuleSql.cs",
+    "line": 13,
+    "symbol": "DigestRuleSql",
+    "docs": "resilience/stream-integrity#one-eligibility-rule"
+  },
   "EFCoreAppSignalTransactionSource": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreAppSignalTransactionSource.cs",
     "line": 22,
@@ -4723,79 +4729,79 @@
   },
   "SyncRetentionSettingsAsync": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-    "line": 284,
+    "line": 281,
     "symbol": "SyncRetentionSettingsAsync",
     "docs": "operations/configuration/configuration-reference#database-side-settings"
   },
   "SyncStreamTypePoliciesAsync": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-    "line": 299,
+    "line": 296,
     "symbol": "SyncStreamTypePoliciesAsync",
     "docs": "fundamentals/events/archive-store#the-policy-per-stream-type"
   },
   "RecordHousekeepingDeferralAsync": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-    "line": 323,
+    "line": 320,
     "symbol": "RecordHousekeepingDeferralAsync",
     "docs": "operations/workers/housekeeping-arbitration#the-ceiling-survives-a-restart"
   },
   "ClearHousekeepingDeferralAsync": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-    "line": 337,
+    "line": 334,
     "symbol": "ClearHousekeepingDeferralAsync",
     "docs": "operations/workers/housekeeping-arbitration#the-ceiling-survives-a-restart"
   },
   "FROM": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-    "line": 3281,
+    "line": 3264,
     "symbol": "FROM",
     "docs": "fundamentals/perspectives/perspective-sync#applied-ledger"
   },
   "UnstartedLeaseRelease": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-    "line": 3699,
+    "line": 3682,
     "symbol": "UnstartedLeaseRelease",
     "docs": "fundamentals/work-coordinator/batched-flushers"
   },
   "authored": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-    "line": 3753,
+    "line": 3736,
     "symbol": "authored",
     "docs": "resilience/stream-integrity"
   },
   "RecordOffloadClaimAsync": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-    "line": 3884,
+    "line": 3868,
     "symbol": "RecordOffloadClaimAsync",
     "docs": "resilience/stream-integrity"
   },
   "WindowedStreamDigestSql": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-    "line": 4776,
+    "line": 4754,
     "symbol": "WindowedStreamDigestSql",
     "docs": "resilience/stream-integrity#windowed-manifests"
   },
   "UnstoredDeadLetters": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-    "line": 5025,
+    "line": 4998,
     "symbol": "UnstoredDeadLetters",
     "docs": "extending/internals/outbox-batch-strategy#when-a-flush-fails"
   },
   "_storeUnstoredDeadLettersAsync": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-    "line": 5045,
+    "line": 5018,
     "symbol": "_storeUnstoredDeadLettersAsync",
     "docs": "extending/internals/inbox-batch-strategy#when-a-flush-fails"
   },
   "_instanceId": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-    "line": 5601,
+    "line": 5574,
     "symbol": "_instanceId",
     "docs": "fundamentals/events/event-store-serialization"
   },
   "here": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-    "line": 5827,
+    "line": 5800,
     "symbol": "here",
     "docs": "messaging/work-coordinator#local-service-identity"
   },
@@ -14693,10 +14699,10 @@
     "symbol": "AnswersWindow",
     "docs": "resilience/stream-integrity#an-answer-marks-only-what-it-covered"
   },
-  "RedeliveryAnswerWindow": {
+  "AnswerContinues": {
     "file": "src/Whizbang.Core/Minting/RedeliveryComposite.cs",
     "line": 155,
-    "symbol": "RedeliveryAnswerWindow",
+    "symbol": "AnswerContinues",
     "docs": "resilience/stream-integrity#an-answer-marks-only-what-it-covered"
   },
   "AppendAndWaitEventStoreDecorator": {
@@ -17063,6 +17069,18 @@
     "symbol": "BackfillWindowAnswer",
     "docs": "resilience/stream-integrity#paced-backfill"
   },
+  "RedeliveryAnswerPublication": {
+    "file": "src/Whizbang.Core/Messaging/RedeliveryAnswerPublication.cs",
+    "line": 25,
+    "symbol": "RedeliveryAnswerPublication",
+    "docs": "resilience/stream-integrity#a-whole-type-answer-is-judged-as-a-whole"
+  },
+  "Continues": {
+    "file": "src/Whizbang.Core/Messaging/RedeliveryAnswerWindow.cs",
+    "line": 32,
+    "symbol": "Continues",
+    "docs": "resilience/stream-integrity#an-answer-marks-only-what-it-covered"
+  },
   "RedeliveryPumpOptions": {
     "file": "src/Whizbang.Core/Messaging/RedeliveryPump.cs",
     "line": 19,
@@ -17093,10 +17111,10 @@
     "symbol": "PublishWindowAnswerAsync",
     "docs": "resilience/stream-integrity#paced-backfill"
   },
-  "stream": {
+  "BeginAnswer": {
     "file": "src/Whizbang.Core/Messaging/RedeliveryPump.cs",
     "line": 217,
-    "symbol": "stream",
+    "symbol": "BeginAnswer",
     "docs": "resilience/stream-integrity#an-answer-marks-only-what-it-covered"
   },
   "RedeliveredBundle": {

@@ -10,6 +10,10 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IntegrityCheckOptions.cs
   - src/Whizbang.Data.Postgres/Migrations/450_SealedEpochsRecordWhenTheyWereSealed.sql
   - src/Whizbang.Data.EFCore.Postgres/IntegritySweepScheduler.cs
+  - src/Whizbang.Data.Postgres/Migrations/447_HeldFoldIsMaintainedAsRowsChange.sql
+  - src/Whizbang.Data.Postgres/Migrations/448_DigestPathsShareOneEligibilityRule.sql
+  - src/Whizbang.Data.Postgres/Migrations/constants.txt
+  - src/Whizbang.Data.EFCore.Postgres/DigestRuleSql.cs
   - src/Whizbang.Data.Postgres/Migrations/214_AtMostOnceEventsCarryAFlag.sql
   - src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs
   - src/Whizbang.Core/Messaging/IntegrityDomainOwnership.cs
@@ -126,6 +130,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/IntegrityCheckOptionsTests.cs
   - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerCheckGatingTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SealRecheckRotationSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedHeldFoldCostSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/DigestEligibilitySqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/DigestEligibilityGuardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileCoordinatorTests.cs
   - tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcileBatchTests.cs
@@ -1252,6 +1259,60 @@ records changes nothing consumers verify (migration 263)
 {verified: StreamDigestTableSqlTests.TruncateStreamPrefix_APrefixOfOnlyAnAuditRecord_IsNotAMutationOfFoldedHistoryAsync, StreamDigestTableSqlTests.TruncateStreamPrefix_APrefixHoldingAnAuditRecord_LeavesTheDigestEqualToAFreshFoldAsync}. Payloads, metadata and the order of arrival play no part, which is why a
 crypto-shredded or re-serialized event digests the same.
 
+### One eligibility rule {#one-eligibility-rule}
+
+{verified: DigestEligibilityGuardTests.NoDigestFunction_WritesTheEligibilityRuleByHandAsync, DigestEligibilityGuardTests.NoCSharpSql_WritesTheEligibilityRuleByHandAsync, DigestEligibilityGuardTests.TheConstants_ExpandToTheRule_UnderTheAliasGivenAsync, DigestEligibilityGuardTests.TheGuard_FlagsAHandWrittenRule_AndPassesTheConstantOrAMarkedFlagTestAsync, DigestEligibilitySqlTests.TheSeed_LeavesOutAtMostOnceAndExemptEvents_AsEveryOtherFoldDoesAsync, DigestEligibilitySqlTests.TheConsumersCheckpointCount_LeavesOutAtMostOnceEvents_AsTheOriginsCountDoesAsync, DigestEligibilitySqlTests.DigestBucketsWithNoEligibleEvents_AreRemoved_AndBucketsWithEventsKeptAsync}
+
+The table above is one rule, and it is written once. Every fold, answer, heal, checkpoint and cleanup path writes it
+as a [migration constant](../operations/infrastructure/migrations#constants) that takes the row's alias:
+
+| Constant | Counts an event when | Used by |
+| --- | --- | --- |
+| `__DIGEST_ELIGIBLE__(alias)` | It is not ephemeral (`flags & 8`), not delivered at most once (`flags & 32`), and not an [exempt type](#audit-records-not-digested) | Every digest fold, answer, heal, seal, unfold and the [held fold](#the-held-fold-is-maintained-as-rows-change) |
+| `__INTEGRITY_COUNTED__(alias)` | It is not delivered at most once and not an exempt type | Both halves of a continuity checkpoint count |
+
+```sql{
+title: "The rule written as its constant"
+description: "A digest fold names the row it reads; the constant expands to the flag tests and the exempt list at apply time."
+category: "Configuration"
+difficulty: "ADVANCED"
+tags: ["stream-integrity", "migrations", "constants", "digests"]
+}
+-- a migration
+FROM __SCHEMA__.wh_event_store es
+WHERE es.stream_id = ANY(p_streams)
+  AND __DIGEST_ELIGIBLE__(es)
+
+-- what runs
+  AND (COALESCE(es.flags, 0) & 8 = 0 AND COALESCE(es.flags, 0) & 32 = 0
+       AND split_part(es.event_type, ',', 1) <> ALL(ARRAY['Whizbang.Core.SystemEvents.EventAudited', ...]))
+```
+
+The work coordinator's C# SQL reads the same text through `MigrationConstants.Apply("__DIGEST_ELIGIBLE__(es)")`, so it
+binds no list of its own.
+
+Before migration 448 the rule was copied by hand into each site, and five copies differed: the digest seed had no
+at-most-once test and no exempt filter, the consumer's checkpoint count had no at-most-once test, and the reclassify,
+at-most-once flagging, archive and purge unfolds had no exempt filter. Two paths could count one event differently,
+and a later heal or comparison then reported a difference that nothing caused. Migration 448 redefines every site
+with the constant, and also removes, once, the digest buckets that hold no counted event: the leftovers of migration
+210, which deleted rewind events without touching their digests and which the heal otherwise reported as
+`drift_removed` on every sweep.
+
+Why each choice:
+
+- **A constant, not a SQL function.** A function call hides the flag and type tests from the planner, which then
+  misestimates every fold that uses it; migration 446 fixed exactly that kind of plan. A constant is substituted at
+  apply time, so each statement holds plain SQL and keeps the plan it had.
+- **Two constants, because a checkpoint counts differently.** A checkpoint counts what was received, and an ephemeral
+  event was received live whether or not its body has been reaped since. Ephemeral events are therefore counted by
+  checkpoints and left out of digests. Both constants share the at-most-once and exempt tests, so the two halves of a
+  checkpoint (the origin's window and the consumer's count) now agree.
+- **A guard, not a convention.** `DigestEligibilityGuardTests` fails the build on a flag test or the exempt list
+  written by hand in any function that folds, compares or stores digests, or in C# SQL. A flag test that selects rows
+  to change rather than counting them (the rows still to flag at most once, the events still Sourced) is allowed
+  when the line above it says so (`-- not the digest rule: ...`).
+
 ### How at-most-once events are excluded {#at-most-once-exclusion}
 
 The delivery guarantee of a schedule occurrence lives on the outbox row's metadata, and the outbox
@@ -1259,7 +1320,7 @@ row is deleted once processed, so the integrity queries cannot read it there. In
 is flagged when it is spawned: `_wh_spawn_occurrence` sets `EventFlags.AtMostOnce` (bit 32) on the
 outbox row, and the emit chain copies `flags` to `wh_event_store`. Every place that must leave
 at-most-once events out tests `flags & 32` on the event-store row, exactly as ephemeral events are
-tested with `flags & 8`. The bit costs no stored bytes, and the digest, checkpoint and verify
+tested with `flags & 8`, through the [one eligibility rule](#one-eligibility-rule). The bit costs no stored bytes, and the digest, checkpoint and verify
 queries no longer join the event body at all.
 
 Before migration 214 the exclusions read a metadata key that the event store never stored, so no
@@ -3561,7 +3622,7 @@ key and touches only the buckets the bundle changed.
 
 #### Events held without an origin sequence {#events-held-without-an-origin-sequence}
 
-{verified: HeldWithoutOriginSequenceTests.PlacedFoldEqualToTheOrigin_MatchesAsync, HeldWithoutOriginSequenceTests.EventsHeldWithoutASequence_ThatCompleteTheWindow_MatchAsync, HeldWithoutOriginSequenceTests.OnlySequencelessEventsHeld_ThatAreTheWindow_MatchAsync, HeldWithoutOriginSequenceTests.MoreMissingThanTheSequencelessEventsCanCover_IsADeficit_WithTheHeldDigestAsync, HeldWithoutOriginSequenceTests.CountsThatFitButDigestsThatDiffer_AreUndecidedAsync, HeldWithoutOriginSequenceTests.NothingHeldWithoutASequence_ShortPlacedFold_IsADeficitAsBeforeAsync, HeldWithoutOriginSequenceTests.NothingHeldWithoutASequence_EqualOrLargerPlacedFold_DiffersAsBeforeAsync, IntegrityManifestReceptorTests.WindowedStream_EventsHeldWithoutAnOriginSequence_AreNoDeficit_AndTheFalseRowClearsAsync, IntegrityManifestReceptorTests.WindowedStream_AMissingEventBeyondTheHeldOnes_IsStillADeficit_WithTheHeldDigestAsync, IntegrityManifestReceptorTests.WindowedStream_UndecidedBucket_IsNeitherReportedNorRepaired_AndItsRowIsDroppedAsync, IntegrityManifestReceptorTests.WindowedStream_UndecidedBuckets_AreCountedOnTheUnplacedCounterAsync, IntegrityManifestReceptorTests.WindowedStream_MatchingBuckets_NeverAskForHeldEventsAsync, IntegrityManifestReceptorTests.UnwindowedStream_NeverAsksForHeldEventsAsync, IntegrityManifestReceptorTests.WindowedType_HeldEventsCompletingTheWindow_AdvanceTheSealAsync, IntegrityManifestReceptorTests.WindowedType_ADeficitTheHeldEventsMayFill_IsNotBulkBackfilledAsync, IntegrityManifestReceptorTests.WindowedType_ADeficitBeyondTheHeldEvents_IsBulkBackfilledByWhatIsMissingAsync, IntegrityCheckpointReceptorTests.AShortWindow_TheEventsHeldWithoutASequenceCanFill_IsNoGapAsync, IntegrityCheckpointReceptorTests.AFullWindow_NeverAsksForTheEventsHeldWithoutASequenceAsync, IntegrityCheckpointReceptorTests.AWindowShortByMoreThanTheEventsHeldWithoutASequence_IsStillAGapAsync, IntegrityCheckpointReceptorTests.APendingGap_TheEventsHeldWithoutASequenceFillOnTheRecount_HealsAndForgetsTheLaneAsync, UnsequencedReceivedDigestSqlTests.ByStream_FoldsOnlyTheOriginsSequencelessEventsOfTheNamedStreams_AsTheDigestFoldsDoAsync, UnsequencedReceivedDigestSqlTests.ByType_FoldsPerTenantAndType_AcrossStreamsAsync, UnsequencedReceivedDigestSqlTests.ByStream_UnderAGenericPlan_ReadsTheNamedStreamsRows_NotTheOriginsLaneAsync, UnsequencedReceivedDigestSqlTests.ByType_UnderAGenericPlan_ReadsTheOriginsSequencelessRows_NotItsSequencedLaneAsync}
+{verified: HeldWithoutOriginSequenceTests.PlacedFoldEqualToTheOrigin_MatchesAsync, HeldWithoutOriginSequenceTests.EventsHeldWithoutASequence_ThatCompleteTheWindow_MatchAsync, HeldWithoutOriginSequenceTests.OnlySequencelessEventsHeld_ThatAreTheWindow_MatchAsync, HeldWithoutOriginSequenceTests.MoreMissingThanTheSequencelessEventsCanCover_IsADeficit_WithTheHeldDigestAsync, HeldWithoutOriginSequenceTests.CountsThatFitButDigestsThatDiffer_AreUndecidedAsync, HeldWithoutOriginSequenceTests.NothingHeldWithoutASequence_ShortPlacedFold_IsADeficitAsBeforeAsync, HeldWithoutOriginSequenceTests.NothingHeldWithoutASequence_EqualOrLargerPlacedFold_DiffersAsBeforeAsync, IntegrityManifestReceptorTests.WindowedStream_EventsHeldWithoutAnOriginSequence_AreNoDeficit_AndTheFalseRowClearsAsync, IntegrityManifestReceptorTests.WindowedStream_AMissingEventBeyondTheHeldOnes_IsStillADeficit_WithTheHeldDigestAsync, IntegrityManifestReceptorTests.WindowedStream_UndecidedBucket_IsNeitherReportedNorRepaired_AndItsRowIsDroppedAsync, IntegrityManifestReceptorTests.WindowedStream_UndecidedBuckets_AreCountedOnTheUnplacedCounterAsync, IntegrityManifestReceptorTests.WindowedStream_MatchingBuckets_NeverAskForHeldEventsAsync, IntegrityManifestReceptorTests.UnwindowedStream_NeverAsksForHeldEventsAsync, IntegrityManifestReceptorTests.WindowedType_HeldEventsCompletingTheWindow_AdvanceTheSealAsync, IntegrityManifestReceptorTests.WindowedType_ADeficitTheHeldEventsMayFill_IsNotBulkBackfilledAsync, IntegrityManifestReceptorTests.WindowedType_ADeficitBeyondTheHeldEvents_IsBulkBackfilledByWhatIsMissingAsync, IntegrityCheckpointReceptorTests.AShortWindow_TheEventsHeldWithoutASequenceCanFill_IsNoGapAsync, IntegrityCheckpointReceptorTests.AFullWindow_NeverAsksForTheEventsHeldWithoutASequenceAsync, IntegrityCheckpointReceptorTests.AWindowShortByMoreThanTheEventsHeldWithoutASequence_IsStillAGapAsync, IntegrityCheckpointReceptorTests.APendingGap_TheEventsHeldWithoutASequenceFillOnTheRecount_HealsAndForgetsTheLaneAsync, UnsequencedReceivedDigestSqlTests.ByStream_FoldsOnlyTheOriginsSequencelessEventsOfTheNamedStreams_AsTheDigestFoldsDoAsync, UnsequencedReceivedDigestSqlTests.ByType_FoldsPerTenantAndType_AcrossStreamsAsync, UnsequencedReceivedDigestSqlTests.ByStream_UnderAGenericPlan_ReadsTheNamedStreamsRows_NotTheOriginsLaneAsync}
 
 Until a redelivery fills it, an event that carries its origin but not the origin's commit sequence (the re-attributed
 history above) sits in no window. Windowed comparisons count a consumer's events by that sequence: the checkpoint
@@ -3585,7 +3646,8 @@ Where it applies:
 - **Windowed stream comparisons** fold the sequence-less events of the streams that disagree, one row per stream. The
   read is paid only when a bucket disagrees, and it is bounded by the chunk's streams.
 - **Windowed type comparisons** fold the sequence-less events of the disagreeing types, one row per (tenant, type),
-  read through the origin lane index as that origin's sequence-less range, never its sequenced lane. A bulk backfill
+  read from a fold maintained as the rows change ([below](#the-held-fold-is-maintained-as-rows-change)), never from
+  the held rows themselves. A bulk backfill
   the type deficit triggers is sized by what is missing beyond the held events, and a deficit the held events may
   fill triggers none.
 - **Checkpoint counts**, and the recount that confirms a pending gap, add the held sequence-less events of a type to
@@ -3611,6 +3673,65 @@ Why each choice:
   sequence-less events, so a healthy comparison costs what it did.
 
 Existing false deficit rows clear on the next comparison of their bucket.
+
+#### The held fold is maintained as rows change {#the-held-fold-is-maintained-as-rows-change}
+
+{verified: UnsequencedHeldFoldCostSqlTests.ByType_ALargeHistory_CostsWhatASmallOneDoes_ForTheSameNewWorkAsync, UnsequencedHeldFoldCostSqlTests.ByType_UnderAGenericPlan_ReadsOnlyTheUnsettledRowsOfTheEventStore_NeverItsHistoryAsync, UnsequencedHeldFoldCostSqlTests.EveryKindOfChange_LeavesTheAnswerEqualToAFoldOfTheRowsAsync, UnsequencedHeldFoldCostSqlTests.ABacklogLargerThanOneFold_IsFoldedOverSeveralAnswers_AndEveryAnswerIsExactAsync, UnsequencedHeldFoldCostSqlTests.ARebuild_FoldsTheRowsTheTrackingNeverSaw_AndAnswersAsTheRowsDoAsync, UnsequencedHeldFoldCostSqlTests.ATruncatedEventStore_HoldsNothingWithoutASequenceAsync}
+
+The type-level answer above (one row per tenant and type of the events held from an origin without its sequence) used
+to fold the held rows on every call. A service can hold millions of them while it waits for redeliveries, so each call
+read all of them, as a parallel scan whose worker time statement statistics do not show. Its cost grew with the held
+history, which the integrity cost rule forbids: steady-state integrity work costs what changed, never what is stored.
+
+Since migration 447 the fold is kept up to date as the rows change:
+
+```mermaid{caption="Every write that changes the held set records a change; the next answer folds the changes into the totals and subtracts the rows still inside the settle window." tests=["UnsequencedHeldFoldCostSqlTests.EveryKindOfChange_LeavesTheAnswerEqualToAFoldOfTheRowsAsync", "UnsequencedHeldFoldCostSqlTests.ByType_UnderAGenericPlan_ReadsOnlyTheUnsettledRowsOfTheEventStore_NeverItsHistoryAsync", "UnsequencedHeldFoldCostSqlTests.ABacklogLargerThanOneFold_IsFoldedOverSeveralAnswers_AndEveryAnswerIsExactAsync"]}
+flowchart LR
+  W[Any write to wh_event_store] -->|row trigger, held rows only| C[(wh_unsequenced_digest_changes)]
+  C -->|folded by the next answer| T[(wh_unsequenced_digest_totals)]
+  T --> A[wh_unsequenced_received_type_digests]
+  C --> A
+  R[Held rows younger than the settle window] -->|partial index| A
+```
+
+| Piece | What it holds | Cost |
+| --- | --- | --- |
+| `wh_unsequenced_digest_totals` | One row per (origin, tenant, type): the XOR of the digest lanes and the count of the eligible held events | O(types) to read |
+| `wh_unsequenced_digest_changes` | One row each time an eligible event joins (+1) or leaves (-1) the held set | One insert per change |
+| `idx_event_store_unsequenced_received` | The held rows only, by (origin, created_at) | Reads only the rows inside the settle window |
+| `wh_unsequenced_received_type_digests(origin, types, settle)` | The answer: totals, plus pending changes, minus the held rows younger than `settle` | O(types) + changes since the last answer + unsettled rows |
+| `wh_rebuild_unsequenced_digests()` | Recomputes the totals from the rows | Once, in migration 447 |
+
+Measured by the scaling test, with the same 25 new rows on each store:
+
+| Store | Before 447 | After 447 |
+| --- | --- | --- |
+| 1,000 held rows | 1,025 rows read, 28 blocks | 107 rows read, 118 blocks |
+| 20,000 held rows | 20,025 rows read, 545 blocks | 115 rows read, 118 blocks |
+
+The plan-shape test reads 5 event-store rows (the ones inside the settle window) on the 20,000-row store, where the
+scan read all 20,000.
+
+Why each choice:
+
+- **Row triggers, not a call in each write path.** Inserts, deletes by every cleanup path, sequence adoption by a
+  redelivery, re-attribution, at-most-once flagging, reclassification and rescoping all change the held set. A trigger
+  covers every one of them, including paths written later, so no author has to remember to keep the fold right. A
+  `WHEN` clause skips every row that is not and was not held, so the ordinary receive path, whose rows carry their
+  sequence, pays nothing.
+- **An insert-only change log, folded by the reader.** Writers never update a shared totals row, so two writers of the
+  same type never wait on each other and cannot deadlock on lock order. The answer folds a bounded batch of the
+  origin's changes first, skipping any another answer is folding; whatever is not folded is read as pending, so the
+  answer is exact either way.
+- **The settle window from the rows, not from the log.** Rows younger than the window are subtracted, read through a
+  partial index of held rows by creation time. That keeps the answer exact for any settle window, including the
+  checkpoint's zero, without the log having to know which windows callers will ask for.
+- **The change log is vacuumed by row count.** Every change row is deleted by the fold that takes it in. Until vacuum
+  reclaims them, the next fold walks those dead rows, so autovacuum runs on the log after 1,000 deleted rows instead of
+  a fraction of the table.
+- **A TRUNCATE empties both tables,** so an emptied store holds nothing without a sequence.
+
+The by-stream fold is unchanged: it is already bounded by the named streams.
 
 #### Events this service authored {#pre-stamp-history-first-hop}
 
