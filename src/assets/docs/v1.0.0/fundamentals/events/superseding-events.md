@@ -273,22 +273,25 @@ subscriber to acknowledge.
 
 ### Redelivered copies {#redelivered-copies}
 
-{verified: RedeliveredSupersedingChildTests.ARedeliveredSupersedingChild_CarriesTheKeyAndGroupItsOriginStoredAsync, RedeliveredSupersedingChildTests.ATypedCompositesSupersedingChild_CarriesItsKeyAndGroup_AsADirectDeliveryDoesAsync, RedeliveredSupersedingCopySqlTests.ARestoredOlderCopy_IsQueuedOnArrival_AndTheNewestCopyIsNeverQueuedOrReapedAsync, RedeliveredSupersedingCopySqlTests.CopiesWithoutTheOriginsSequence_AreStillOrderedByVersion_AsBeforeAsync, SupersedingOrderGuardTests.NoFunctionOrdersTheCopiesOfASupersedingKey_ByTheirStoredVersionAsync}
+{verified: RedeliveredSupersedingChildTests.ARedeliveredSupersedingChild_CarriesTheKeyAndGroupItsOriginStoredAsync, RedeliveredSupersedingChildTests.ATypedCompositesSupersedingChild_CarriesItsKeyAndGroup_AsADirectDeliveryDoesAsync, RedeliveredSupersedingCopySqlTests.ARedeliveredOlderCopy_IsNeverStored_IsRecordedSatisfied_AndNoPerspectiveSeesItAsync, RedeliveredSupersedingCopySqlTests.ARedeliveredCopyNewerThanTheHeldOne_IsRestoredAsBeforeAsync, RedeliveredSupersedingCopySqlTests.CopiesWithoutTheOriginsSequence_AreStillOrderedByVersion_AsBeforeAsync, RedeliveryReconcilerTests.Reconcile_ACopyANewerHeldCopySupersedes_IsCountedSatisfied_AndNotADeficitAsync, SupersedingOrderGuardTests.NoFunctionOrdersTheCopiesOfASupersedingKey_ByTheirStoredVersionAsync}
 
 When a subscriber reaps an older copy before its producer does, the integrity comparison reads the subscriber as short
-and a [redelivery](../../resilience/stream-integrity) restores the copy. Two things keep that restored copy from
+and a [redelivery](../../resilience/stream-integrity) carries the copy again. Three rules keep that copy from ever
 becoming the newest:
 
 - **It carries its key and group.** A redelivery bundle's children are stamped with the superseding key and group the
   way the live receive path stamps them, read from the carried payload, and so are the children of a typed composite.
-  Before, they carried none, so a restored copy was stored unkeyed and was never reaped again.
-- **The copies of a key are ordered by their origin's commit sequence.** The restored copy is stored at the
-  subscriber's next version, above the newest copy. Which copy is newer is decided by `_wh_supersedes`: for two copies
-  received from the same origin, both carrying the origin's commit sequence, the origin's order; otherwise the stored
-  version, as for every locally written event. The queue, the history walk and the reaper all ask it, so a restored
-  older copy is queued as superseded on arrival and the newest copy is never queued or reaped.
+- **A copy older than the one held is never stored again.** When the subscriber already holds a newer copy of the same
+  key, the redelivered copy is settled in the inbox as satisfied (`repair satisfied: a newer copy of its superseding key
+  is held`) instead of stored. Nothing claims, copies or applies it, so no perspective is offered it after the newest.
+  The bundle reconcile counts it as present (never a deficit) and apart, in `superseded_satisfied_count`, and the
+  reconciler counts it on `whizbang.stream_integrity.redelivered_copies_superseded`. A redelivered copy newer than the
+  held one is restored as before.
+- **Newer means the origin's order.** Which copy is newer is decided by `_wh_supersedes`: for two copies received from
+  the same origin, both carrying the origin's commit sequence, the origin's order; otherwise the stored version, as for
+  every locally written event. The restore check, the queue, the history walk and the reaper all ask it.
 
-```mermaid{caption="A subscriber reaps the older copy first; the redelivered copy keeps its key and origin sequence, is queued as superseded on arrival, and the newest copy stays." tests=["RedeliveredSupersedingCopySqlTests.ARestoredOlderCopy_IsQueuedOnArrival_AndTheNewestCopyIsNeverQueuedOrReapedAsync", "RedeliveredSupersedingChildTests.ARedeliveredSupersedingChild_CarriesTheKeyAndGroupItsOriginStoredAsync"]}
+```mermaid{caption="A subscriber reaps the older copy first; the redelivered copy keeps its key and origin sequence, is settled as satisfied instead of stored, and the newest copy stays." tests=["RedeliveredSupersedingCopySqlTests.ARedeliveredOlderCopy_IsNeverStored_IsRecordedSatisfied_AndNoPerspectiveSeesItAsync", "RedeliveredSupersedingChildTests.ARedeliveredSupersedingChild_CarriesTheKeyAndGroupItsOriginStoredAsync"]}
 sequenceDiagram
   participant O as Origin
   participant S as Subscriber
@@ -296,19 +299,18 @@ sequenceDiagram
   S->>S: reaper removes copy 1
   S-->>O: digest compare reads a deficit, asks for the stream
   O->>S: redelivery: copy 1 with key k and origin seq 10
-  S->>S: stored at the next version, queued as superseded (seq 10 < 20)
-  S->>S: reaper removes copy 1 again; copy 2 stays the newest
+  S->>S: copy 2 (seq 20) is held, so copy 1 is settled as satisfied, not stored
+  S->>S: no perspective is offered copy 1; copy 2 stays the newest
 ```
 
 | Choice | Reason | Verified |
 |---|---|---|
-| Copies from one origin are ordered by the origin's commit sequence, not by the version this store gave them. | The version a subscriber gives a restored copy says only when it arrived here. The origin's sequence is the order the copies were written in, and it travels with every received and redelivered event. | {verified: RedeliveredSupersedingCopySqlTests.ARestoredOlderCopy_IsQueuedOnArrival_AndTheNewestCopyIsNeverQueuedOrReapedAsync} |
+| A copy older than the held one is settled, not stored. | Stored, it would sit above the newest by version and be applied after it, so a perspective would show the stale state. Settled as satisfied, it is neither applied nor read as missing. | {verified: RedeliveredSupersedingCopySqlTests.ARedeliveredOlderCopy_IsNeverStored_IsRecordedSatisfied_AndNoPerspectiveSeesItAsync} |
 | Without the origin's sequence on both copies, the stored version decides. | A local event, or a received one whose sequence is not known yet, has no origin order to compare; for them the stored order is the write order, as before. | {verified: RedeliveredSupersedingCopySqlTests.CopiesWithoutTheOriginsSequence_AreStillOrderedByVersion_AsBeforeAsync} |
 | One comparison function, enforced by a guard. | The queue, the history walk and the reaper each compared versions themselves; one of them disagreeing would reap the newest copy. A function that orders the copies of a key by comparing versions fails the build. | {verified: SupersedingOrderGuardTests.NoFunctionOrdersTheCopiesOfASupersedingKey_ByTheirStoredVersionAsync} |
 
-The restored copy is still stored at the subscriber's next version, so a reader that orders a stream's events by version
-sees it after the newest copy until the reaper removes it again. Until superseding digests count the key rather than
-each copy, the comparison can read the reap as a deficit again on a later audit.
+Streams that already hold a stale copy stored above the newest, by an earlier version, are not changed by this rule;
+they need the one-time repair tracked separately.
 
 ## History stored before the declaration {#history-stored-before-the-declaration}
 

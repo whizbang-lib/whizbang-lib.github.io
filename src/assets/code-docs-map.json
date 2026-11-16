@@ -13891,163 +13891,163 @@
   },
   "RecordRepairedEvents": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 617,
+    "line": 627,
     "symbol": "RecordRepairedEvents",
     "docs": "resilience/stream-integrity#repaired-events-and-receptors"
   },
   "UpdateBackfillGauges": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 640,
+    "line": 650,
     "symbol": "UpdateBackfillGauges",
     "docs": "resilience/stream-integrity#paced-backfill"
   },
   "UpdateLedgerBacklog": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 655,
+    "line": 665,
     "symbol": "UpdateLedgerBacklog",
     "docs": "resilience/stream-integrity#repair-backlog-and-eta"
   },
   "RecordBucketsMarkedUnhealable": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 668,
+    "line": 678,
     "symbol": "RecordBucketsMarkedUnhealable",
     "docs": "resilience/stream-integrity#repair-backlog-and-eta"
   },
   "UpdateVerifiedPercent": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 685,
+    "line": 695,
     "symbol": "UpdateVerifiedPercent",
     "docs": "resilience/stream-integrity#derived-completion-meters"
   },
   "UpdateRepairProgress": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 700,
+    "line": 710,
     "symbol": "UpdateRepairProgress",
     "docs": "resilience/stream-integrity#derived-completion-meters"
   },
   "LedgerGaugeSnapshot": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 747,
+    "line": 757,
     "symbol": "LedgerGaugeSnapshot",
     "docs": "resilience/stream-integrity"
   },
   "AnswerPendingBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 762,
+    "line": 772,
     "symbol": "AnswerPendingBuckets",
     "docs": "resilience/stream-integrity#integrity-gauges"
   },
   "AnsweredBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 766,
+    "line": 776,
     "symbol": "AnsweredBuckets",
     "docs": "resilience/stream-integrity#integrity-gauges"
   },
   "IntegrityDeliveriesPending": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 770,
+    "line": 780,
     "symbol": "IntegrityDeliveriesPending",
     "docs": "resilience/stream-integrity#integrity-gauges"
   },
   "OldestIntegrityDeliveryAgeSeconds": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 774,
+    "line": 784,
     "symbol": "OldestIntegrityDeliveryAgeSeconds",
     "docs": "resilience/stream-integrity#integrity-gauges"
   },
   "UnhealedDeficitEvents": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 779,
+    "line": 789,
     "symbol": "UnhealedDeficitEvents",
     "docs": "resilience/stream-integrity#integrity-gauges"
   },
   "UnhealableBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 784,
+    "line": 794,
     "symbol": "UnhealableBuckets",
     "docs": "resilience/stream-integrity#integrity-gauges"
   },
   "DeficitBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 790,
+    "line": 800,
     "symbol": "DeficitBuckets",
     "docs": "resilience/stream-integrity#unhealed-buckets-by-kind"
   },
   "SurplusBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 795,
+    "line": 805,
     "symbol": "SurplusBuckets",
     "docs": "resilience/stream-integrity#unhealed-buckets-by-kind"
   },
   "DigestMismatchBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 800,
+    "line": 810,
     "symbol": "DigestMismatchBuckets",
     "docs": "resilience/stream-integrity#unhealed-buckets-by-kind"
   },
   "UnknownKindBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 805,
+    "line": 815,
     "symbol": "UnknownKindBuckets",
     "docs": "resilience/stream-integrity#unhealed-buckets-by-kind"
   },
   "OriginSeal": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 818,
+    "line": 828,
     "symbol": "OriginSeal",
     "docs": "resilience/stream-integrity"
   },
   "BackfillGaugeSnapshot": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 822,
+    "line": 832,
     "symbol": "BackfillGaugeSnapshot",
     "docs": "resilience/stream-integrity#paced-backfill"
   },
   "BackfillRemaining": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 837,
+    "line": 847,
     "symbol": "BackfillRemaining",
     "docs": "resilience/stream-integrity#paced-backfill"
   },
   "LedgerBacklogSnapshot": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 844,
+    "line": 854,
     "symbol": "LedgerBacklogSnapshot",
     "docs": "resilience/stream-integrity#repair-backlog-and-eta"
   },
   "LedgerBacklogCount": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 864,
+    "line": 874,
     "symbol": "LedgerBacklogCount",
     "docs": "resilience/stream-integrity#repair-backlog-and-eta"
   },
   "LedgerBacklogStates": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 871,
+    "line": 881,
     "symbol": "LedgerBacklogStates",
     "docs": "resilience/stream-integrity#repair-backlog-and-eta"
   },
   "LedgerBucketKinds": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 893,
+    "line": 903,
     "symbol": "LedgerBucketKinds",
     "docs": "resilience/stream-integrity#unhealed-buckets-by-kind"
   },
   "IntegrityVerifiedReading": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 915,
+    "line": 925,
     "symbol": "IntegrityVerifiedReading",
     "docs": "resilience/stream-integrity#derived-completion-meters"
   },
   "OriginVerifiedPercent": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 933,
+    "line": 943,
     "symbol": "OriginVerifiedPercent",
     "docs": "resilience/stream-integrity#derived-completion-meters"
   },
   "RepairProgressReading": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 940,
+    "line": 950,
     "symbol": "RepairProgressReading",
     "docs": "resilience/stream-integrity#derived-completion-meters"
   },
@@ -17119,49 +17119,49 @@
   },
   "RedeliveredBundle": {
     "file": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-    "line": 49,
+    "line": 52,
     "symbol": "RedeliveredBundle",
     "docs": "resilience/stream-integrity#redelivery-reconciles-run-as-a-batch"
   },
   "IntegrityBundleAnswer": {
     "file": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-    "line": 66,
+    "line": 69,
     "symbol": "IntegrityBundleAnswer",
     "docs": "resilience/stream-integrity#repair-waits-for-its-answer"
   },
   "Deferred": {
     "file": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-    "line": 94,
+    "line": 97,
     "symbol": "Deferred",
     "docs": "resilience/stream-integrity#integrity-work-runs-on-the-maintainer"
   },
   "RedeliveryReconciler": {
     "file": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-    "line": 121,
+    "line": 124,
     "symbol": "RedeliveryReconciler",
     "docs": "resilience/stream-integrity#pre-stamp-history"
   },
   "found": {
     "file": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-    "line": 126,
+    "line": 129,
     "symbol": "found",
     "docs": "resilience/stream-integrity#integrity-work-runs-on-the-maintainer"
   },
   "HandleDeferredAsync": {
     "file": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-    "line": 250,
+    "line": 253,
     "symbol": "HandleDeferredAsync",
     "docs": "resilience/stream-integrity#integrity-work-runs-on-the-maintainer"
   },
   "HandleDeferredBatchAsync": {
     "file": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-    "line": 372,
+    "line": 375,
     "symbol": "HandleDeferredBatchAsync",
     "docs": "resilience/stream-integrity#redelivery-reconciles-run-as-a-batch"
   },
   "origin": {
     "file": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-    "line": 554,
+    "line": 559,
     "symbol": "origin",
     "docs": "resilience/stream-integrity#pre-stamp-history"
   },
