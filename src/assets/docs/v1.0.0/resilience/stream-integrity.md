@@ -7,6 +7,9 @@ order: 4
 description: Cross-service anti-entropy — continuity checkpoints, digest audits, and idempotent re-delivery repair; report-only by default, self-healing as the opt-in
 tags: 'stream-integrity, anti-entropy, re-delivery, backfill, digest, manifest, continuity, checkpoint, repair, cross-service, bootstrap'
 codeReferences:
+  - src/Whizbang.Core/Messaging/IntegrityCheckOptions.cs
+  - src/Whizbang.Data.Postgres/Migrations/450_SealedEpochsRecordWhenTheyWereSealed.sql
+  - src/Whizbang.Data.EFCore.Postgres/IntegritySweepScheduler.cs
   - src/Whizbang.Data.Postgres/Migrations/214_AtMostOnceEventsCarryAFlag.sql
   - src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs
   - src/Whizbang.Core/Messaging/IntegrityDomainOwnership.cs
@@ -120,6 +123,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/409_RepairedEventsRunOnlyReceptorsThatNeverRan.sql
   - src/Whizbang.Data.Postgres/Migrations/375_LedgerRowsWithoutAWindowAreRechecked.sql
 testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/IntegrityCheckOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerCheckGatingTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/SealRecheckRotationSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileCoordinatorTests.cs
   - tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcileBatchTests.cs
@@ -3024,21 +3030,127 @@ drain never claims their ledger rows ([which rows the drain claims](#drain-claim
 comparing a *windowed* manifest is a deficit **in that window** — the repair request carries the
 range, so the origin re-ships a slice, never a stream's whole history.
 
-### The scheduled sweep and the seal backstop
+### Sealing, the seal re-check and the full-history compare {#sealing-and-rechecks}
 
-The full sweep moves off the every-Nth-audit counter onto the temporal engine
-(`FullSweepCron`, default `"0 3 * * *"`): the heaviest verification runs at a configured idle
-hour, with the default minute replaced by a **stable per-service splay** (FNV-1a of the service
-name — `string.GetHashCode` is randomized per process and would re-randomize the very collisions
-the splay prevents). The counter stands down only once the schedule actually registered
-(`IntegritySweepScheduleState.CronActive`); no engine, a disabled cron, or a registration failure
-all leave `FullSweepEveryNthAudit` in charge — the sweep is never silently lost.
+Sealing verified history and re-checking sealed history are different jobs with different costs, so each has its own
+configuration section (#2353):
 
-Each sweep also runs the **seal backstop** (`verify_digest_epochs`, bounded by
-`MaxEpochVerificationsPerSweep`): every closed epoch recomputed from the store, compared
-bucket-for-bucket, refolded on drift. Non-zero drift means an unaccounted write path touched
-sealed history — logged as the alarm it is. Epochs holding an unsettled arrival are skipped
-whole, exactly like closure.
+| Section (`Whizbang:StreamIntegrity:`) | Default | What it does | Cost grows with |
+|---|---|---|---|
+| `Sealing` | **on** | Closes and seals settled digest epochs on the maintenance cadence | Nothing: one fold per epoch, once |
+| `SealRecheck` | **off** | Recomputes sealed epochs from the store and compares each with its seal | Sealed history (bounded by its lookback) |
+| `FullHistoryCompare` | **off** | Heals the whole stored digest table and asks each origin for its full history | All history |
+
+Turning a re-check off never stops sealing, and never stops the routine audit, which compares only the open window
+above each seal and keeps its windowed heal. Both re-checks are the "suspenders" on the seals' belt: answers trust
+sealed epochs without re-verifying them, which is what keeps them cheap, and a re-check is what would catch a seal that
+disagrees with what is stored, which only an unaccounted write path produces. Because they grow with history, they are
+opt-in and sized by the operator.
+
+```mermaid{caption="Sealing runs every maintenance cycle and the windowed audit every audit; the two opt-in checks run on their own schedules only when enabled." tests=["IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_WithTheDefaults_RunsNeitherCheck_AndStillAsksWindowedAsync", "IntegritySweepSchedulingTests.Start_WithBothChecksOn_RegistersOneScheduleEach_OnItsOwnCronAsync", "MaintenanceWorkerEpochClosureTests.MaintenanceCycle_CountsTheEpochsItSealedAsync"]}
+flowchart LR
+  M[Maintenance cycle] -->|Sealing on| S[Close settled epochs; record sealed_at per epoch]
+  A[Audit cycle] --> W[Windowed compare above each seal, always]
+  R[SealRecheck schedule] -->|on| C[Re-check epochs sealed within Lookback, each at most once per RecheckEvery]
+  F[FullHistoryCompare schedule] -->|on| H[Heal the whole digest table; ask each origin from 0]
+```
+
+#### Sealing {#sealing}
+{verified: IntegrityCheckOptionsTests.Sealing_IsOnByDefault_WithTheEpochWidthAndCapItHadAsync, MaintenanceWorkerEpochClosureTests.MaintenanceCycle_ClosesWithTheSealingSection_WidthIncludedAsync, MaintenanceWorkerEpochClosureTests.MaintenanceCycle_CountsTheEpochsItSealedAsync, DigestEpochSqlTests.Coordinator_CloseDigestEpochsAsync_WithAWidth_SetsItForLanesClosedFromNowOnAsync}
+
+| Key | Default | Meaning |
+|---|---|---|
+| `Sealing:Enabled` | `true` | Close and seal epochs. Off only on engines that serve no integrity manifests |
+| `Sealing:EpochWidth` | `100000` | Sequence positions per epoch. Written to the store's `integrity_epoch_width` before each closure pass; a lane pins the width in effect when it is first closed, so a later change affects only lanes met afterwards. Must be at least 1 |
+| `Sealing:MaxClosuresPerCycle` | `64` | Epochs closed per maintenance cycle across all lanes. Must be at least 1 |
+
+**Why the width is pinned per lane.** An epoch is `floor(sequence / width)`; a new width would remap every boundary a
+lane already sealed and make its folds meaningless. Before #2353 the width had no configuration path at all, only the
+`wh_settings` row.
+
+#### The seal re-check {#seal-re-check}
+{verified: IntegrityCheckOptionsTests.SealRecheck_IsOffByDefault_WithTheDocumentedLimitsAsync, SealRecheckRotationSqlTests.Closing_RecordsWhenEachEpochWasSealed_EmptyEpochsIncludedAsync, SealRecheckRotationSqlTests.Recheck_ResumesPastWhatItChecked_NeverRestartingAtTheFirstEpochAsync, SealRecheckRotationSqlTests.VerifyDigestEpochs_RotatesThroughTheEpochs_InsteadOfRestartingAtZeroAsync, SealRecheckRotationSqlTests.Recheck_LeavesEpochsSealedBeforeTheLookbackAloneAsync, SealRecheckRotationSqlTests.Recheck_ChecksAnEpochAtMostOncePerInterval_ThenAgainAsync, SealRecheckRotationSqlTests.Recheck_ADriftedEpoch_IsRefoldedOrOnlyReported_AsAskedAsync, SealRecheckRotationSqlTests.Recheck_AnEpochWithAnUnsettledArrival_IsSkippedAndStaysFirstAsync, SealRecheckRotationSqlTests.TheBackfill_RecordsEpochsSealedBeforeTheRecordExisted_AtTheirFoldTimeAsync}
+
+| Key | Default | Meaning |
+|---|---|---|
+| `SealRecheck:Enabled` | `false` | Run the re-check |
+| `SealRecheck:Schedule` | `"0 3 * * *"` | Cron on the temporal engine, splayed per service when its minute is `0`. Empty: the every-Nth-audit fallback |
+| `SealRecheck:Lookback` | `30.00:00:00` | Only epochs sealed within this are re-checked; older ones are trusted as sealed. Must be positive |
+| `SealRecheck:RecheckEvery` | `7.00:00:00` | Each epoch is re-checked at most once per interval. Must be positive |
+| `SealRecheck:MaxEpochsPerRun` | `10000` | Epochs recomputed per run across all lanes. Must be at least 1 |
+| `SealRecheck:OnDrift` | `Refold` | `Refold` rewrites a drifted seal from the store; `ReportOnly` counts and logs it and leaves the seal for an operator |
+
+Each sealed epoch, empty epochs included, records when it was sealed and when it was last re-checked
+(`wh_digest_epoch_seals`, migration 450). A run takes the epochs sealed within the lookback that are due, never
+re-checked first and then least recently re-checked, up to its cap. An epoch holding an arrival younger than the settle
+window is skipped whole, as closure skips it, and stays first in line.
+
+**Why a record per epoch, not a cursor.** Before #2353 `verify_digest_epochs` walked every lane from epoch 0 on every
+call and stopped at its cap, so past 10,000 epochs the later ones were never re-checked and every run paid again for
+the first ones. A single cursor would fix the restart but could not express a lookback by time or a per-epoch interval.
+One row per epoch answers both, and is bounded by epochs, never by events. The row is written by a trigger on the
+frontier, so the closure function is not copied; it cannot live on `wh_digest_epochs`, because a refold deletes and
+rewrites those rows and an empty epoch has none.
+
+**Why the old entry rotates too.** `verify_digest_epochs(now, settle, max)` keeps its arity for any caller still using
+it, and is now the re-check over every sealed epoch with no interval: it rotates through the epochs instead of
+restarting at 0.
+
+#### The full-history compare {#full-history-compare}
+{verified: IntegrityCheckOptionsTests.FullHistoryCompare_IsOffByDefault_OnTheNightlyScheduleAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_WithTheDefaults_RunsNeitherCheck_AndStillAsksWindowedAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_WithTheFullHistoryCompareOn_HealsAndAsksForTheWholeHistoryAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_WithTheSealRecheckOn_RechecksWithTheConfiguredLimits_AndStaysWindowedAsync, IntegrityAuditWorkerBranchCoverageTests.RunCheckOnce_TheSealRecheck_RechecksOnly_AndAsksNoOriginAsync, IntegrityAuditWorkerBranchCoverageTests.RunCheckOnce_ADisabledCheck_RunsNothingAtAllAsync, IntegrityAuditWorkerBranchCoverageTests.RunSweepOnce_WithBothChecksOff_RunsNothingAtAllAsync}
+
+| Key | Default | Meaning |
+|---|---|---|
+| `FullHistoryCompare:Enabled` | `false` | Run the compare: heal this service's own digest table against a full recompute, and ask each origin for its full history instead of the window above the seal |
+| `FullHistoryCompare:Schedule` | `"0 3 * * *"` | Cron on the temporal engine, splayed per service. Empty: the every-Nth-audit fallback |
+
+The routine windowed heal and the windowed audit are not gated by this section.
+
+#### Each check has its own schedule {#integrity-check-schedules}
+{verified: IntegritySweepSchedulingTests.Start_WithBothChecksOn_RegistersOneScheduleEach_OnItsOwnCronAsync, IntegritySweepSchedulingTests.Start_WithTheDefaults_RegistersNothing_SoNeitherCheckRunsAsync, IntegritySweepSchedulingTests.Start_WithOnlyTheSealRecheckOn_RegistersOnlyItsScheduleAsync, IntegritySweepSchedulingTests.SweepReceptor_RunsTheCheckTheOccurrenceNamesAsync, IntegritySweepSchedulingTests.SweepReceptor_AnOccurrenceNamingNoCheck_RunsTheFullHistoryCompareAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_LeavesACheckToItsSchedule_OnceTheScheduleIsRegisteredAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_RunsEachCheckWhoseScheduleIsNotRegistered_AndOnlyThatOneAsync}
+
+Each enabled check registers its own schedule on the temporal engine: the full-history compare under the key
+`wh-integrity-sweep` (the key the sweep always had) and the re-check under `wh-seal-recheck`. Each occurrence names its
+check (`ScheduledIntegritySweep.Check`); an occurrence scheduled before #2353 names none and runs the full-history
+compare. The default minute `0` is replaced by a stable per-service splay (FNV-1a of the service name), so a fleet
+sharing one database server does not run in unison. On a host without the temporal engine, or whose registration
+failed, each enabled check runs on every `FullSweepEveryNthAudit`-th audit cycle instead (default 7); once a check's
+schedule is registered, the counter stands down for that check only. A schedule left behind for a check that was turned
+off runs nothing.
+
+**Why one schedule per check.** The re-check is local and bounded by its lookback; the compare asks every origin for
+everything. Sharing one cron would tie the cheaper check to the costlier one's timing.
+
+#### What each check reports {#integrity-check-metrics}
+{verified: IntegrityAuditWorkerBranchCoverageTests.TheSealRecheck_CountsEpochsAndDrift_AndTimesTheRun_WithNoStreamOrTenantTagsAsync, IntegrityAuditWorkerBranchCoverageTests.TheFullHistoryCompare_CountsDrift_AndTimesTheRunAsync, IntegrityAuditWorkerBranchCoverageTests.TheSealRecheck_WithoutMetrics_StillRunsAndLogsAsync}
+
+Meter `Whizbang.StreamIntegrity`, tagged by `check` (`seal_recheck` or `full_history_compare`) and nothing else:
+
+| Instrument | Kind | Meaning |
+|---|---|---|
+| `whizbang.stream_integrity.epochs_sealed` | counter | Epochs the maintenance closure pass sealed (untagged) |
+| `whizbang.stream_integrity.epochs_rechecked` | counter | Sealed epochs the re-check recomputed |
+| `whizbang.stream_integrity.check_drift_found` | counter | Drift a check found: epochs for the re-check, buckets for the compare. Non-zero means an unaccounted write path |
+| `whizbang.stream_integrity.check_duration` | histogram (s) | One run of a check, end to end |
+
+A refolded epoch also counts as `digest_drift_healed{kind="epoch-refolded"}`, as before; a report-only drift does not,
+because nothing was healed, and it logs that the seal was left as sealed.
+
+#### Configuration aliases {#configuration-aliases}
+{verified: IntegrityCheckOptionsTests.TheOldKeys_StillReachTheNewSettingsAsync, IntegrityCheckOptionsTests.ANewKey_WinsOverItsAlias_WhenBothAreSetAsync, IntegrityCheckOptionsTests.TheAliases_ReadAndWriteTheSectionsInCodeAsync, DapperStreamIntegrityRefusalTests.TheOldSealingKey_StillTurnsSealingOn_AndIsRefusedUnderItsNewNameAsync}
+
+The keys these sections replace keep working for one release. A section key wins when both are set.
+
+| Old key | Now |
+|---|---|
+| `EpochClosureEnabled` | `Sealing:Enabled` |
+| `MaxEpochClosuresPerMaintenanceCycle` | `Sealing:MaxClosuresPerCycle` |
+| `MaxEpochVerificationsPerSweep` | `SealRecheck:MaxEpochsPerRun` |
+| `FullSweepCron` | `FullHistoryCompare:Schedule` and `SealRecheck:Schedule` (the old cron scheduled both) |
+
+**Upgrade.** Both re-checks are now **off by default**. Before #2353 the full sweep (the whole-store heal, the
+full-history ask and the seal backstop) ran nightly, or on every seventh audit. A service that wants them back sets
+`Whizbang:StreamIntegrity:SealRecheck:Enabled` and `Whizbang:StreamIntegrity:FullHistoryCompare:Enabled` to `true`.
 
 ### Origin generation — seals survive legitimate mutation {#origin-generation}
 
@@ -3094,7 +3206,8 @@ Now a generation bump says **how far** history was rewritten:
 
 **The rewrite log is bounded.** `wh_integrity_origin_rewrites` keeps the last `integrity_origin_rewrite_log_rows`
 generations (a `wh_settings` row, default 10,000), and `integrity_origin_rewrite_log_from` records the generation the
-log started at when migration 396 ran. A consumer whose recorded generation is older than either cannot be vouched
+log starts at. Since #2354 it also loses generations older than the `RewriteLog` resting period, and its start moves up
+with them ([the rewrite log keeps its start honest](../operations/infrastructure/operational-retention#the-rewrite-log-keeps-its-start-honest)). A consumer whose recorded generation is older than either cannot be vouched
 for and resets as before. Both are [database-side settings](../operations/configuration/configuration-reference#database-side-settings)
 set in SQL only. 093's `integrity_seal_generation_guard` stays with its arity, as the floorless call, so an earlier
 release still running during a rolling deploy resolves it and resets as it always did.
