@@ -31,6 +31,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Core/Workers/StartupRewindSet.cs
   - src/Whizbang.Core/Workers/RewindRepeatGuard.cs
+  - src/Whizbang.Core/Workers/PerspectiveCursorCache.cs
+  - src/Whizbang.Data.Postgres/Migrations/452_StaleCopiesAboveTheNewestAreRewalked.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/ReplayEventOrderTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindOptionsTests.cs
@@ -55,6 +57,10 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/RewindRepeatGuardTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.RewindRepeat.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRewindLoopTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Cursors/PerspectiveCursorOneOrderSqlTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.OneOrder.cs
+  - tests/Whizbang.Core.Tests/Workers/PerspectiveCursorCacheReplayedThroughTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindWriteCheckTests.cs
 ---
 
 # Perspective Rewind
@@ -291,6 +297,55 @@ stream and the trigger.
 - **Bounded memory.** At most 10,000 streams are remembered per worker; past that the memory is cleared, which costs at
   most one more rewind per stream.
 
+### One order for a stream {#one-order-for-a-stream}
+
+{verified: PerspectiveRewindLoopTests.AStuckCursorOnTheHighestIdAtTheLowestVersion_ConvergesAfterOneRewind_AndARequeuedCopyIsNotRewoundAsync, PerspectiveRewindWriteCheckTests.ARewind_ReportsTheReplayedEventLastByVersion_NotTheHighestIdAsync, PerspectiveCursorOneOrderSqlTests, PerspectiveWorkerDeepPathDrainTests.DrainMode_ACursorFlaggedForARewind_IsRewound_NotAppliedLiveAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_AnEventTheStoredReplayFrontierCovers_IsCompletedWithoutARewindAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_AfterAReplayFromTheStart_AnEventBelowItsFrontier_IsNotRewoundAgainAsync, PerspectiveCursorCacheReplayedThroughTests}
+
+A stream's events have one order: their **version**, the position the local store appended each at, which is the
+order a replay folds in. A replay's **commit-sequence frontier** (the highest commit sequence it read) says how far it
+read. Every decision about a cursor uses these two, and nothing else.
+
+**Why it matters.** A stream can hold events whose ids disagree with their versions: older copies of an event, stored
+after a newer one (a redelivery that landed above the newest). The newest event then has the highest id and the
+lowest version. When different steps used different orders, such a stream rewound forever (#2366):
+
+1. A rewind reported the largest id it applied together with the largest commit sequence it applied: a position no
+   event has.
+2. `complete_perspective_cursor_work` set the cursor to that id unconditionally, moving it back to the highest-id
+   event at the lowest version, and flagged a pending row as a straggler because its id sorted lower.
+3. The drain path judged a copy queued again against the mixed position, found an inversion, and rewound. The
+   rewind reported the same mixed position, and the cycle repeated.
+
+**The rule, at each step:**
+
+| Step | What it does now |
+| --- | --- |
+| A rewind's report | The replayed event last by version, with the replay's commit-sequence frontier. The row's checkpoint stays at the id frontier, which the runner's idempotency filter compares against. |
+| The cursor completion (both paths) | Never moves the cursor back by version. The immediate path (`complete_perspective_cursor_work`) and the batched path (`update_perspective_cursors`) agree. |
+| A straggler | A pending row below the cursor **by version**, never by id. A row a completed replay read is never a straggler. |
+| The rewind flag | Cleared only once the cursor is at or past its trigger by version, or a completed replay read the trigger. |
+| The drain path | Honors the flag: a flagged cursor is resolved by a rewind, never by applying its pending events live and clearing the flag. |
+
+**What a replay read stays read.** A rewind from the stream's start reads every event stamped at or below its frontier
+(a commit sequence is assigned only after the event commits, so none can be missing). The cursor stores that frontier
+(`wh_perspective_cursors.replayed_through_commit_sequence`, never lowered), and the worker holds it in its cursor cache.
+A work row for an event at or below it, whether the rewind's own row not yet flushed or the same event queued again
+under a new row, is completed without a rewind. Because the frontier is stored, this holds after a restart and after a
+rewind on the claimed path too, not only in the memory of the instance that ran the rewind
+([a rewind covers what it replayed](#a-rewind-covers-what-it-replayed) is the per-instance half). A rewind from a
+snapshot reads only the events after the snapshot's id, which says nothing about a stamp below its frontier, so it
+records none. On a flagged cursor, such covered rows are the one exception: they complete, and only the rest wait for
+the rewind.
+
+**Cursors already stuck.** Migration 452 settles every cursor left in the stuck shape on deploy: flagged for a trigger
+stored after the cursor's event (a higher version) whose id sorts below it, so it was flagged only by id order, and
+whose own work row is already retired (the rule a flag with no work left is settled by, as in
+[batched flushers](../work-coordinator/batched-flushers#perspective-cursors)). Each such cursor moves to the last
+event of its stream by version that sits before the first event still pending for it, never back and never past
+pending work, and its flag is cleared. A flag whose trigger is still pending, or sits below the cursor by version, is
+left for the rewind it asks for. `wh_settle_id_ordered_rewind_flags()` runs once in the migration and is idempotent.
+The [repeat guard](#a-repeated-rewind-is-settled) stays as a backstop.
+
 ### Collective events in a rewind {#collective-events}
 
 {verified: CollectiveReplayRunnerTests.ARewindWithoutASnapshot_FoldsTheCollectivesFromTheStreamsStart_WithoutMovingTheCheckpointAsync, CollectiveReplayRunnerTests.ARewindFromASnapshot_FoldsTheCollectivesCommittedAfterTheSnapshotsEventAsync, CollectiveReplayRebuildIntegrationTests.Rewind_FromASnapshot_FoldsTheCollectivesCommittedAfterItAsync, CollectiveReplayRebuildIntegrationTests.Rewind_FromASnapshot_DoesNotFoldAgainACollectiveCommittedBeforeItAsync, CollectiveReplayRunnerTests.ARewindsCatchUpPasses_FoldEachCollectiveOnce_AndNeverAnchorTheReadOnOneAsync}
@@ -317,6 +372,8 @@ migration 275 records no mark and keeps the snapshot-event rule. See
 ### Frontier checkpoint
 
 The replay checkpoints at the **frontier** — the *maximum* event id and *maximum* local `commit_sequence` applied — not the origin-order-last event's stamp. The idempotency floor's meaning is "everything at or below this is applied", and under origin-order replay the final event applied can carry a *lower* local stamp than a backfilled straggler it slotted. A below-floor checkpoint would also be refused by the perspective store's cross-pod lost-update guard, silently discarding the very correction the rewind computed. The catch-up anchor advances the same way (max id of the read window), so a refetch never re-serves the window's tail. Pinned by `ReconcileRewindScenarioTests` (`RewindReplay_BackfilledStraggler_SlotsIntoOriginOrder_NewerWriterWinsAsync`, `Reconcile_OlderConflictingWriterBackfilled_DeclaredRewindRestoresIntendedOrderAsync`, `Reconcile_LateInitializer_DeclaredRewindMergesBothWritersInOriginOrderAsync`) and `ReconcileRewindDeclarationSqlTests`.
+
+The row's checkpoint is the id frontier; the **cursor** the rewind reports is not. It is the replayed event last by version, with the commit-sequence frontier ([one order for a stream](#one-order-for-a-stream)).
 
 ## Overwrite-only perspectives {#overwrite-only}
 
