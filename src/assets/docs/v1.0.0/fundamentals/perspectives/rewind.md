@@ -299,7 +299,7 @@ stream and the trigger.
 
 ### One order for a stream {#one-order-for-a-stream}
 
-{verified: PerspectiveRewindLoopTests.AStuckCursorOnTheHighestIdAtTheLowestVersion_ConvergesAfterOneRewind_AndARequeuedCopyIsNotRewoundAsync, PerspectiveRewindWriteCheckTests.ARewind_ReportsTheReplayedEventLastByVersion_NotTheHighestIdAsync, PerspectiveCursorOneOrderSqlTests, PerspectiveWorkerDeepPathDrainTests.DrainMode_ACursorFlaggedForARewind_IsRewound_NotAppliedLiveAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_AnEventTheStoredReplayFrontierCovers_IsCompletedWithoutARewindAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_AfterAReplayFromTheStart_AnEventBelowItsFrontier_IsNotRewoundAgainAsync, PerspectiveCursorCacheReplayedThroughTests}
+{verified: PerspectiveRewindLoopTests.AStuckCursorOnTheHighestIdAtTheLowestVersion_ConvergesAfterOneRewind_AndARequeuedCopyIsNotRewoundAsync, PerspectiveRewindLoopTests.AStuckCursorRepairedOnDeploy_IsResolvedByExactlyOneRewind_AndNeverASecondAsync, PerspectiveRewindWriteCheckTests.ARewind_ReportsTheReplayedEventLastByVersion_NotTheHighestIdAsync, PerspectiveCursorOneOrderSqlTests, PerspectiveWorkerDeepPathDrainTests.DrainMode_ACursorFlaggedForARewind_IsRewound_NotAppliedLiveAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_AnEventTheStoredReplayFrontierCovers_IsCompletedWithoutARewindAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_AfterAReplayFromTheStart_AnEventBelowItsFrontier_IsNotRewoundAgainAsync, PerspectiveCursorCacheReplayedThroughTests}
 
 A stream's events have one order: their **version**, the position the local store appended each at, which is the
 order a replay folds in. A replay's **commit-sequence frontier** (the highest commit sequence it read) says how far it
@@ -337,13 +337,15 @@ snapshot reads only the events after the snapshot's id, which says nothing about
 records none. On a flagged cursor, such covered rows are the one exception: they complete, and only the rest wait for
 the rewind.
 
-**Cursors already stuck.** Migration 452 settles every cursor left in the stuck shape on deploy: flagged for a trigger
-stored after the cursor's event (a higher version) whose id sorts below it, so it was flagged only by id order, and
-whose own work row is already retired (the rule a flag with no work left is settled by, as in
-[batched flushers](../work-coordinator/batched-flushers#perspective-cursors)). Each such cursor moves to the last
-event of its stream by version that sits before the first event still pending for it, never back and never past
-pending work, and its flag is cleared. A flag whose trigger is still pending, or sits below the cursor by version, is
-left for the rewind it asks for. `wh_settle_id_ordered_rewind_flags()` runs once in the migration and is idempotent.
+**Cursors already stuck.** Migration 452 repairs every cursor left in the stuck shape on deploy: flagged for a
+trigger stored after the cursor's event (a higher version) whose id sorts below it. The repair only places the
+cursor: it moves to the last event of its stream by version that sits before the first event still pending for it,
+never back and never past pending work. It **keeps the flag**. A genuine late arrival the receive chain flagged has the
+same id and version shape, and an older build may have retired its work row by a live apply that changed nothing, so a
+flag the repair cleared could be a rewind still owed. The fixed code resolves each kept flag with exactly one rewind,
+and nothing rewinds the stream again. A pair left with no pending work gets its trigger queued, so that rewind runs at
+once instead of waiting for the stream's next event (and holding a blocking [startup scan](#startup-scan) meanwhile).
+`wh_settle_id_ordered_rewind_flags()` runs once in the migration and is idempotent.
 The [repeat guard](#a-repeated-rewind-is-settled) stays as a backstop.
 
 ### Collective events in a rewind {#collective-events}
