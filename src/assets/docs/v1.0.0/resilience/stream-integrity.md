@@ -7,6 +7,7 @@ order: 4
 description: Cross-service anti-entropy — continuity checkpoints, digest audits, and idempotent re-delivery repair; report-only by default, self-healing as the opt-in
 tags: 'stream-integrity, anti-entropy, re-delivery, backfill, digest, manifest, continuity, checkpoint, repair, cross-service, bootstrap'
 codeReferences:
+  - src/Whizbang.Data.Postgres/Migrations/459_UnchangedOriginsAreNotAsked.sql
   - src/Whizbang.Data.Postgres/Migrations/458_FullHistoryCompareRunsInSlices.sql
   - src/Whizbang.Core/Messaging/IntegrityCheckOptions.cs
   - src/Whizbang.Data.Postgres/Migrations/450_SealedEpochsRecordWhenTheyWereSealed.sql
@@ -129,6 +130,10 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/375_LedgerRowsWithoutAWindowAreRechecked.sql
   - src/Whizbang.Data.EFCore.Postgres/UnsequencedDigestCompactionStep.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAskMemoSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/TwoServiceAskSkipTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.AskSkip.cs
+  - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerAskSkipTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestTableSqlTests.Slices.cs
   - tests/Whizbang.Core.Tests/Messaging/IntegrityCheckOptionsTests.cs
   - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerCheckGatingTests.cs
@@ -3149,6 +3154,90 @@ repairs — it just never certifies. The seal is GREATEST-monotonic (a replayed 
 never re-open verified history), and steady-state audits ask windowed **from the seal**; the
 sweep deliberately asks full history — it is trust-but-verify for exactly the state the seals
 assume is fine, and a windowed sweep would be circular trust.
+
+### Unchanged origins are not asked {#unchanged-origins-are-not-asked}
+
+{verified: IntegrityAskMemoSqlTests.AfterAFullMatch_AnUnchangedOrigin_IsSkippedUntilTheBound_ThenAskedAgainAsync, IntegrityAskMemoSqlTests.AnyOfTheFourMoving_AsksAsync, TwoServiceAskSkipTests.AnIdlePair_IsAskedOncePerMaximumSkip_NotOncePerAuditAsync, TwoServiceAskSkipTests.AnEventThatSettlesAfterTheMatch_AndNeverArrived_IsFoundByTheBoundedAskAsync}
+
+The routine audit asks each origin for the window above the seal, and both sides fold that window. In a quiet fleet it
+is the same empty window every cycle, and on a measured deployment those comparisons were about 13% of all statement
+time (#2349). The window above the seal can change only when the origin emits, when this service receives, or when the
+origin rewrites its history. So after a full match the consumer remembers, beside the seal, four values, and skips the
+ask while none of them moved:
+
+| Remembered at the last full match | Moves when |
+|---|---|
+| The seal | a window above it verified, or the generation guard lowered it |
+| The origin generation recorded beside the seal | an answer carried a new generation (the origin rewrote history) |
+| The origin's last checkpoint position | the origin emitted (any checkpoint after it announces a higher position) |
+| The highest position this service holds from the origin | this service received from it, or lost the event at the top |
+
+A full match is a type-level compare of the window above the seal that advanced the seal (every type matched, one chunk,
+no resume cursor), or an origin's reply that it has nothing settled above the seal (below). A compare that disagrees
+forgets the memo, so the next audit asks again and the repair is verified on the next cycle, not an hour later.
+
+```mermaid{caption="Each audit asks the store whether the origin moved since the last full match; the store answers skip only while all four values are as remembered and the last ask is younger than MaxAskSkipMinutes." tests=["IntegrityAuditWorkerBranchCoverageTests.AnUnchangedOrigin_IsNotAsked_AndTheCycleStillReachedItAsync", "IntegrityAuditWorkerBranchCoverageTests.EveryOtherDecision_Asks_AndTagsTheAskWithItsReasonAsync", "IntegrityManifestReceptorTests.ManifestReceptor_ACleanCompleteWindow_IsRememberedAsAFullMatchAsync", "IntegrityManifestReceptorTests.ManifestReceptor_AWindowThatDisagrees_ForgetsTheMatchAsync"]}
+flowchart LR
+  A[Audit cycle, per origin] --> D{Memo of a full match?}
+  D -->|no| ASK[Ask from the seal]
+  D -->|yes| M{Seal, generation, checkpoint, highest held unchanged?}
+  M -->|no| ASK
+  M -->|yes| B{Last ask younger than MaxAskSkipMinutes?}
+  B -->|no| ASK
+  B -->|yes| SKIP[Skip; count manifest_asks_skipped]
+  ASK --> C{Compare}
+  C -->|full match| R[Remember the four values]
+  C -->|a type disagrees| F[Forget the memo]
+```
+
+**The bound.** An unchanged origin is still asked at least once per `MaxAskSkipMinutes` (default 60, under
+`Whizbang:StreamIntegrity`; 0 or less asks every cycle, as before), measured from the last ask on the audit's own clock.
+It is what finds the changes none of the four values tracks: an event the origin emitted before the match that was
+still inside its settle window then, settles later, and never reached this service (its checkpoint position was
+announced before the match, and nothing arrived here); and a rewrite of the origin's history, whose new generation this
+service learns only from an answer. The first is also found sooner by the [continuity checkpoints](#phase-b-continuity-checkpoints-fast-drop-detection)
+when the gap detector is on. The full-history compare never consults the memo: it re-verifies history below the seal,
+which an unchanged open window says nothing about.
+{verified: IntegrityAuditWorkerBranchCoverageTests.ABoundOfZero_AsksEveryCycle_WithoutConsultingTheMemoAsync, IntegrityAuditWorkerBranchCoverageTests.TheFullHistoryCompare_AlwaysAsks_WithoutConsultingTheMemoAsync, IntegrityAuditWorkerBranchCoverageTests.Options_MaxAskSkipMinutes_DefaultsToOneHourAsync}
+
+**The origin says so.** An origin with nothing settled at or above the asked start folds nothing (the windowed read takes
+the settled head first and returns before the fold), and a type-level ask is now answered with an empty manifest marked
+`NothingSettledAbove`, its `ComputedThrough` equal to the start, instead of silence. Silence cannot be told from a lost
+answer; the reply is how a consumer whose seal is already at the origin's head records its first full match. A
+drill-down page and a ledger re-check stay silent, as before. A consumer that predates the field compares the reply as
+a quiet window; an origin that predates it stays silent, and the consumer keeps asking each cycle until the next real
+match.
+{verified: IntegrityManifestReceptorTests.RequestReceptor_NothingSettledAboveTheStart_SaysSoInTheReply_AndCountsItAsync, IntegrityManifestReceptorTests.RequestReceptor_NothingSettledAboveAStreamLevelStart_StaysSilentAsync, IntegrityManifestReceptorTests.ManifestReceptor_NothingSettledAbove_FoldsNothing_AndIsRememberedAsAFullMatchAsync}
+
+**Design choices.**
+
+- *The memo is kept only while everything held from the origin lies below the seal.* An event held at or above the seal
+  is not yet verified (it was still settling when the window was answered); remembering the match would leave it
+  unverified until the bound. Such a match is not remembered, and the audit keeps asking until the seal passes it.
+  {verified: IntegrityAskMemoSqlTests.AMatch_WhileThisStoreHoldsEventsAtOrAboveTheSeal_IsNotRememberedAsync}
+- *A reply that the origin has nothing above a start above the seal is not a match.* The history between the seal and
+  that start was not compared. {verified: IntegrityManifestReceptorTests.ManifestReceptor_NothingSettledAbove_AWindowStartingAboveTheSeal_IsNotRememberedAsync}
+- *The memo lives beside the seal and never creates a seal row.* The seal guard reads a missing row as first contact,
+  so a row made by the memo would turn the first answer's generation into a change and discard it. The last ask is kept
+  on the origin's checkpoint row instead. {verified: IntegrityAskMemoSqlTests.AnOriginWithNoSeal_IsAlwaysAsked_AndGetsNoRowAsync}
+- *The highest position held is read from the origin lane index.* The decision runs once per origin per audit and reads
+  the top of one range of `idx_event_store_origin_lane`, never the event store, even under a generic plan.
+  {verified: IntegrityAskMemoSqlTests.TheHighestPositionHeld_IsReadThroughTheOriginLaneIndex_UnderAGenericPlanAsync}
+- *A skipped origin counts as reached.* A cycle that skipped every origin is not retried on the startup window as if it
+  had nobody to ask. {verified: IntegrityAuditWorkerBranchCoverageTests.AnUnchangedOrigin_IsNotAsked_AndTheCycleStillReachedItAsync}
+- *Not done: an open-window digest on every checkpoint.* It would let both sides compare without an ask, but it changes
+  the checkpoint's wire shape and puts a fold on the origin's checkpoint path for every consumer; the memo needs no
+  protocol change.
+
+**With the default cadence.** `AuditIntervalMinutes` defaults to a day, longer than the default bound, so a default
+audit always asks; the skip saves work where audits run more often than `MaxAskSkipMinutes` (a shortened interval, the
+startup audit and its retries).
+
+**Watching it.** `whizbang.stream_integrity.manifest_asks_skipped{origin}` counts skipped asks;
+`whizbang.stream_integrity.manifests_requested` carries `reason` (`nothing_remembered`, `moved`, `bound_reached`,
+`every_cycle` or `sweep`); on the origin, `whizbang.stream_integrity.manifest_answers_unchanged{level}` counts asks
+answered without a fold. Migration 459 adds the memo columns to `wh_integrity_seals` and `last_asked_at` to
+`wh_integrity_known_origins`.
 
 ### Deficit repairs; mismatch alarms {#deficit-repairs-mismatch-alarms}
 
