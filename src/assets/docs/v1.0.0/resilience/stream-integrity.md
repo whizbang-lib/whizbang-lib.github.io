@@ -3706,8 +3706,8 @@ Measured by the scaling test, with the same 25 new rows on each store:
 
 | Store | Before 447 | After 447 |
 | --- | --- | --- |
-| 1,000 held rows | 1,025 rows read, 28 blocks | 107 rows read, 118 blocks |
-| 20,000 held rows | 20,025 rows read, 545 blocks | 115 rows read, 118 blocks |
+| 1,000 held rows | 1,025 rows read, 28 blocks | 107 rows read, 120 blocks |
+| 20,000 held rows | 20,025 rows read, 545 blocks | 115 rows read, 120 blocks |
 
 The plan-shape test reads 5 event-store rows (the ones inside the settle window) on the 20,000-row store, where the
 scan read all 20,000.
