@@ -28,6 +28,8 @@ codeReferences:
   - src/Whizbang.Offloads.AzureBlob/AzureBlobMessageBodyStore.cs
   - src/Whizbang.Data.Postgres/SchemaBootstrapException.cs
   - src/Whizbang.Data.Postgres/SchemaBootstrapPhase.cs
+  - src/Whizbang.Core/Messaging/StreamIntegrityOptionsValidator.cs
+  - src/Whizbang.Core/Workers/OperationalRetentionOptions.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/LifecycleStageFailureIsolationTests.cs
   - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherTests.cs
@@ -37,6 +39,8 @@ testReferences:
   - tests/Whizbang.Offloads.AzureBlob.Tests/AzureBlobMessageBodyStoreValidationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaBootstrapPhaseTests.cs
   - tests/Whizbang.Core.Tests/Schema/SchemaBootstrapRetryTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/IntegrityCheckOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Workers/OperationalRetentionOptionsTests.cs
 ---
 
 # Runtime Error Reference
@@ -469,6 +473,49 @@ This instance stood down, so no schema initialization runs on it and nothing is 
 **What happens next**: Nothing was applied: no bootstrap closure, no election, no stored-form rewrite, no pass. The verdict is the same one the hosted start acts on, so calling again gives the same answer until the binary is upgraded. **Why it throws rather than return**: code that called it expects the schema to be ready afterwards, and it is not, so it must not carry on as if it were.
 
 **Fix**: Deploy a binary at or above the version that applied the changes the reason names. During a rolling deployment this is expected on the older instances: the orchestrator replaces them once the newer ones are ready. If no newer release should exist, `wh_schema_versions` lists every version recorded against this database and `wh_schema_migrations.applied_version_id` says [who applied each change](../infrastructure/migrations#applied-version-id); find the deployment that ran the newer one. To keep an older build serving a schema it did not create, see [the incompatibility override](../startup/rolling-upgrades#the-incompatibility-override). In blocking initialization (`NonBlockingSchemaInit = false`) this refusal [exits](../startup/instance-exits) as `SchemaIncompatible`, exit code 5.
+
+---
+
+## Configuration
+
+### A sealing or seal re-check setting below its floor {#sealing-setting-below-its-floor}
+{verified: IntegrityCheckOptionsTests.Validate_ALimitBelowItsFloor_FailsNamingTheKeyAsync, IntegrityCheckOptionsTests.Validate_TheDefaults_SucceedAsync}
+
+```text
+Whizbang:StreamIntegrity:Sealing:EpochWidth must be at least 1 (was 0); it is how many sequence positions one sealed epoch covers, and an epoch below one position covers nothing (#2353).
+Whizbang:StreamIntegrity:Sealing:MaxClosuresPerCycle must be at least 1 (was 0); it bounds the epochs one maintenance cycle seals, ...
+Whizbang:StreamIntegrity:SealRecheck:MaxEpochsPerRun must be at least 1 (was 0); it bounds the epochs one re-check run recomputes, ...
+Whizbang:StreamIntegrity:SealRecheck:Lookback must be positive (was 00:00:00); it is how far back, by seal time, the re-check reaches, ...
+Whizbang:StreamIntegrity:SealRecheck:RecheckEvery must be positive (was 00:00:00); it is how often one epoch may be re-checked, ...
+```
+
+**Source**: `StreamIntegrityOptionsValidator`, through the options pipeline (`ValidateOnStart`), as an `OptionsValidationException`.
+
+**Trigger**: A key under [`Sealing` or `SealRecheck`](../../resilience/stream-integrity#sealing-and-rechecks) set below its floor.
+
+**What happens next**: The host fails at start; nothing runs with the broken value. Every failing key is listed at once.
+
+**Fix**: Set the key to a value at or above its floor, or remove it to use the default.
+
+---
+
+### An operational retention setting below its floor {#operational-retention-setting-below-its-floor}
+{verified: OperationalRetentionOptionsTests.Validate_AValueBelowItsFloor_FailsNamingTheKeyAsync, OperationalRetentionOptionsTests.TheValidator_IsCheckedAtHostStartAsync}
+
+```text
+Whizbang:OperationalRetention:Default must be positive (was 00:00:00); a record that rests for no time is removed as it is written.
+Whizbang:OperationalRetention:<Category> must be positive when set (was -00:00:01); leave it unset to use Whizbang:OperationalRetention:Default.
+Whizbang:OperationalRetention:BatchSize must be at least 1 (was 0); a batch below one removes nothing.
+Whizbang:OperationalRetention:MaxBatchesPerCycle must be at least 1 (was 0); a cycle below one batch removes nothing.
+```
+
+**Source**: `OperationalRetentionOptionsValidator`, through the options pipeline (`ValidateOnStart`), as an `OptionsValidationException`.
+
+**Trigger**: A key under [`Whizbang:OperationalRetention`](../infrastructure/operational-retention#configuration) set below its floor.
+
+**What happens next**: The host fails at start; the operational retention sweep never runs with the broken value.
+
+**Fix**: Set the key to a positive duration (or a count of at least 1), or remove a category override to use the default.
 
 ---
 
