@@ -25,7 +25,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs
   - src/Whizbang.Data.Dapper.Postgres/EventEnvelopeJsonbAdapter.cs
   - src/Whizbang.Data.Postgres/Migrations/295_SupersedingEvents.sql
-  - src/Whizbang.Data.Postgres/Migrations/449_RedeliveredCopiesKeepTheOriginsOrder.sql
+  - src/Whizbang.Data.Postgres/Migrations/454_RedeliveredCopiesKeepTheOriginsOrder.sql
   - src/Whizbang.Core/Messaging/CompositeInboxFanout.cs
   - src/Whizbang.Generators/MessageTypeCatalogGenerator.cs
   - src/Whizbang.Generators/SupersedingEventAnalyzer.cs
@@ -38,7 +38,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/358_StreamsRememberWhenTheyStarted.sql
   - src/Whizbang.Core/Perspectives/PerspectiveRowStart.cs
   - src/Whizbang.Data.Postgres/StreamStartSql.cs
-  - src/Whizbang.Data.Postgres/Migrations/452_StaleCopiesAboveTheNewestAreRewalked.sql
+  - src/Whizbang.Data.Postgres/Migrations/455_StaleCopiesAboveTheNewestAreRewalked.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/RedeliveredSupersedingChildTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveredSupersedingCopySqlTests.cs
@@ -319,8 +319,8 @@ they need the one-time repair tracked separately.
 
 {verified: SupersedingHistoryReconcileSqlTests.Repair_AStreamHoldingOlderCopiesAboveItsNewest_QueuesTheCopies_OnceTheWalkRestartsAsync}
 
-Before migration 449, a redelivered older copy was stored at the end of the consumer's stream, above the newest copy
-by version, and the history walk of its type had already completed under the version order. Migration 452 restarts
+Before migration 454, a redelivered older copy was stored at the end of the consumer's stream, above the newest copy
+by version, and the history walk of its type had already completed under the version order. Migration 455 restarts
 every completed superseding walk (`wh_restart_superseding_history_walks()`), so the
 [history reconcile](#history-stored-before-the-declaration) walks each type once more under the origin's order: it
 stamps the key on any copy that lacks one and queues every copy a held copy supersedes, wherever it sits by version.

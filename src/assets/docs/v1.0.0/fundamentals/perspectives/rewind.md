@@ -32,7 +32,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/StartupRewindSet.cs
   - src/Whizbang.Core/Workers/RewindRepeatGuard.cs
   - src/Whizbang.Core/Workers/PerspectiveCursorCache.cs
-  - src/Whizbang.Data.Postgres/Migrations/452_StaleCopiesAboveTheNewestAreRewalked.sql
+  - src/Whizbang.Data.Postgres/Migrations/455_StaleCopiesAboveTheNewestAreRewalked.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/ReplayEventOrderTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindOptionsTests.cs
@@ -337,7 +337,7 @@ snapshot reads only the events after the snapshot's id, which says nothing about
 records none. On a flagged cursor, such covered rows are the one exception: they complete, and only the rest wait for
 the rewind.
 
-**Cursors already stuck.** Migration 452 repairs every cursor left in the stuck shape on deploy: flagged for a
+**Cursors already stuck.** Migration 455 repairs every cursor left in the stuck shape on deploy: flagged for a
 trigger stored after the cursor's event (a higher version) whose id sorts below it. The repair only places the
 cursor: it moves to the last event of its stream by version that sits before the first event still pending for it,
 never back and never past pending work. It **keeps the flag**. A genuine late arrival the receive chain flagged has the

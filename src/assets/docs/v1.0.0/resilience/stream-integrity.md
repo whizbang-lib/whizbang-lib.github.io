@@ -10,8 +10,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IntegrityCheckOptions.cs
   - src/Whizbang.Data.Postgres/Migrations/450_SealedEpochsRecordWhenTheyWereSealed.sql
   - src/Whizbang.Data.EFCore.Postgres/IntegritySweepScheduler.cs
-  - src/Whizbang.Data.Postgres/Migrations/447_HeldFoldIsMaintainedAsRowsChange.sql
-  - src/Whizbang.Data.Postgres/Migrations/448_DigestPathsShareOneEligibilityRule.sql
+  - src/Whizbang.Data.Postgres/Migrations/452_HeldFoldIsMaintainedAsRowsChange.sql
+  - src/Whizbang.Data.Postgres/Migrations/453_DigestPathsShareOneEligibilityRule.sql
   - src/Whizbang.Data.Postgres/Migrations/constants.txt
   - src/Whizbang.Data.EFCore.Postgres/DigestRuleSql.cs
   - src/Whizbang.Data.Postgres/Migrations/214_AtMostOnceEventsCarryAFlag.sql
@@ -1295,10 +1295,10 @@ WHERE es.stream_id = ANY(p_streams)
 The work coordinator's C# SQL reads the same text through `MigrationConstants.Apply("__DIGEST_ELIGIBLE__(es)")`, so it
 binds no list of its own.
 
-Before migration 448 the rule was copied by hand into each site, and five copies differed: the digest seed had no
+Before migration 453 the rule was copied by hand into each site, and five copies differed: the digest seed had no
 at-most-once test and no exempt filter, the consumer's checkpoint count had no at-most-once test, and the reclassify,
 at-most-once flagging, archive and purge unfolds had no exempt filter. Two paths could count one event differently,
-and a later heal or comparison then reported a difference that nothing caused. Migration 448 redefines every site
+and a later heal or comparison then reported a difference that nothing caused. Migration 453 redefines every site
 with the constant, and also removes, once, the digest buckets that hold no counted event: the leftovers of migration
 210, which deleted rewind events without touching their digests and which the heal otherwise reported as
 `drift_removed` on every sweep.
@@ -2930,7 +2930,7 @@ refolds the epoch that sequence falls in. A hundred thousand one-event bundles w
 most of them of the same few epochs.
 
 The drain hands every redelivery reconcile in a lease to one store call, `wh_reconcile_redelivered_bundles`
-(migration 335, behind `IWorkCoordinator.ReconcileRedeliveredBundlesAsync`; since migration 449 its counting form,
+(migration 335, behind `IWorkCoordinator.ReconcileRedeliveredBundlesAsync`; since migration 454 its counting form,
 `wh_reconcile_redelivered_bundles_counting_satisfied`, which also counts the
 [copies settled as satisfied](../fundamentals/events/superseding-events#redelivered-copies)):
 
@@ -3689,7 +3689,7 @@ to fold the held rows on every call. A service can hold millions of them while i
 read all of them, as a parallel scan whose worker time statement statistics do not show. Its cost grew with the held
 history, which the integrity cost rule forbids: steady-state integrity work costs what changed, never what is stored.
 
-Since migration 447 the fold is kept up to date as the rows change:
+Since migration 452 the fold is kept up to date as the rows change:
 
 ```mermaid{caption="Every write that changes the held set records a change; the next answer folds the changes into the totals and subtracts the rows still inside the settle window." tests=["UnsequencedHeldFoldCostSqlTests.EveryKindOfChange_LeavesTheAnswerEqualToAFoldOfTheRowsAsync", "UnsequencedHeldFoldCostSqlTests.ByType_UnderAGenericPlan_ReadsOnlyTheUnsettledRowsOfTheEventStore_NeverItsHistoryAsync", "UnsequencedHeldFoldCostSqlTests.ABacklogLargerThanOneFold_IsFoldedOverSeveralAnswers_AndEveryAnswerIsExactAsync"]}
 flowchart LR
@@ -3706,11 +3706,11 @@ flowchart LR
 | `wh_unsequenced_digest_changes` | One row each time an eligible event joins (+1) or leaves (-1) the held set | One insert per change |
 | `idx_event_store_unsequenced_received` | The held rows only, by (origin, created_at) | Reads only the rows inside the settle window |
 | `wh_unsequenced_received_type_digests(origin, types, settle)` | The answer: totals, plus pending changes, minus the held rows younger than `settle` | O(types) + changes since the last answer + unsettled rows |
-| `wh_rebuild_unsequenced_digests()` | Recomputes the totals from the rows | Once, in migration 447 |
+| `wh_rebuild_unsequenced_digests()` | Recomputes the totals from the rows | Once, in migration 452 |
 
 Measured by the scaling test, with the same 25 new rows on each store:
 
-| Store | Before 447 | After 447 |
+| Store | Before 452 | After 452 |
 | --- | --- | --- |
 | 1,000 held rows | 1,025 rows read, 28 blocks | 107 rows read, 120 blocks |
 | 20,000 held rows | 20,025 rows read, 545 blocks | 115 rows read, 120 blocks |

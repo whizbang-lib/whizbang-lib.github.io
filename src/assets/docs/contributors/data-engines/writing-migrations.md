@@ -167,7 +167,7 @@ fails that re-run.
 
 A function that must return something new therefore gets a new name, named for what it returns, and the existing
 function keeps its result and its behavior. Callers move to the new name. The old function keeps answering a service on
-the previous release during a rolling deploy. Migration 449 did this for the two redelivery reconciles: the forms that
+the previous release during a rolling deploy. Migration 454 did this for the two redelivery reconciles: the forms that
 also count copies settled as satisfied are `wh_reconcile_redelivered_bundle_counting_satisfied` and
 `wh_reconcile_redelivered_bundles_counting_satisfied`, and `wh_reconcile_redelivered_bundle_by_first_hop` and
 `wh_reconcile_redelivered_bundles` are unchanged.
