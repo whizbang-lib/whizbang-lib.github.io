@@ -274,7 +274,7 @@ subscriber to acknowledge.
 
 ### Redelivered copies {#redelivered-copies}
 
-{verified: RedeliveredSupersedingChildTests.ARedeliveredSupersedingChild_CarriesTheKeyAndGroupItsOriginStoredAsync, RedeliveredSupersedingChildTests.ATypedCompositesSupersedingChild_CarriesItsKeyAndGroup_AsADirectDeliveryDoesAsync, RedeliveredSupersedingCopySqlTests.ARedeliveredOlderCopy_IsNeverStored_IsRecordedSatisfied_AndNoPerspectiveSeesItAsync, RedeliveredSupersedingCopySqlTests.ARedeliveredCopyNewerThanTheHeldOne_IsRestoredAsBeforeAsync, RedeliveredSupersedingCopySqlTests.CopiesWithoutTheOriginsSequence_AreStillOrderedByVersion_AsBeforeAsync, RedeliveryReconcilerTests.Reconcile_ACopyANewerHeldCopySupersedes_IsCountedSatisfied_AndNotADeficitAsync, SupersedingOrderGuardTests.NoFunctionOrdersTheCopiesOfASupersedingKey_ByTheirStoredVersionAsync}
+{verified: RedeliveredSupersedingChildTests.ARedeliveredSupersedingChild_CarriesTheKeyAndGroupItsOriginStoredAsync, RedeliveredSupersedingChildTests.ATypedCompositesSupersedingChild_CarriesItsKeyAndGroup_AsADirectDeliveryDoesAsync, RedeliveredSupersedingCopySqlTests.ARedeliveredOlderCopy_IsNeverStored_IsRecordedSatisfied_AndNoPerspectiveSeesItAsync, RedeliveredSupersedingCopySqlTests.ARedeliveredCopyNewerThanTheHeldOne_IsRestoredAsBeforeAsync, RedeliveredSupersedingCopySqlTests.AnOlderCopyArrivingForTheFirstTime_AfterTheNewest_IsNeverStored_AndIsRecordedSatisfiedAsync, TwoServiceIntegrityConvergenceTests.AnOlderRedeliveredCopy_IsNeverStoredOrApplied_AndThePairConvergesWithNoFurtherResendAsync, RedeliveredSupersedingCopySqlTests.CopiesWithoutTheOriginsSequence_AreStillOrderedByVersion_AsBeforeAsync, RedeliveryReconcilerTests.Reconcile_ACopyANewerHeldCopySupersedes_IsCountedSatisfied_AndNotADeficitAsync, SupersedingOrderGuardTests.NoFunctionOrdersTheCopiesOfASupersedingKey_ByTheirStoredVersionAsync}
 
 When a subscriber reaps an older copy before its producer does, the integrity comparison reads the subscriber as short
 and a [redelivery](../../resilience/stream-integrity) carries the copy again. Three rules keep that copy from ever
@@ -282,11 +282,13 @@ becoming the newest:
 
 - **It carries its key and group.** A redelivery bundle's children are stamped with the superseding key and group the
   way the live receive path stamps them, read from the carried payload, and so are the children of a typed composite.
-- **A copy older than the one held is never stored again.** When the subscriber already holds a newer copy of the same
-  key, the redelivered copy is settled in the inbox as satisfied (`repair satisfied: a newer copy of its superseding key
-  is held`) instead of stored. Nothing claims, copies or applies it, so no perspective is offered it after the newest.
-  The bundle reconcile counts it as present (never a deficit) and apart, in `superseded_satisfied_count`, and the
-  reconciler counts it on `whizbang.stream_integrity.redelivered_copies_superseded`. A redelivered copy newer than the
+- **A copy older than the one held is never stored.** When the subscriber already holds a newer copy of the same key,
+  an older copy is settled in the inbox as satisfied (`repair satisfied: a newer copy of its superseding key is held`)
+  instead of stored. That holds whichever path brings it and whether or not it arrived before: an integrity
+  redelivery, an operator's redelivery, or a live receive that arrives after the newest. Nothing claims, copies or applies it, so no perspective is offered it after the newest.
+  The bundle reconcile counts a redelivered one as present (never a deficit) and apart, in `superseded_satisfied_count`
+  (`wh_reconcile_redelivered_bundles_counting_satisfied`, a new function so the result of the earlier reconcile never
+  changes), and the reconciler counts it on `whizbang.stream_integrity.redelivered_copies_superseded`. A redelivered copy newer than the
   held one is restored as before.
 - **Newer means the origin's order.** Which copy is newer is decided by `_wh_supersedes`: for two copies received from
   the same origin, both carrying the origin's commit sequence, the origin's order; otherwise the stored version, as for

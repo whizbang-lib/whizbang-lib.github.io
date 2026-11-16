@@ -2930,7 +2930,9 @@ refolds the epoch that sequence falls in. A hundred thousand one-event bundles w
 most of them of the same few epochs.
 
 The drain hands every redelivery reconcile in a lease to one store call, `wh_reconcile_redelivered_bundles`
-(migration 335, behind `IWorkCoordinator.ReconcileRedeliveredBundlesAsync`):
+(migration 335, behind `IWorkCoordinator.ReconcileRedeliveredBundlesAsync`; since migration 449 its counting form,
+`wh_reconcile_redelivered_bundles_counting_satisfied`, which also counts the
+[copies settled as satisfied](../fundamentals/events/superseding-events#redelivered-copies)):
 
 - each bundle gets what reconciling it alone would give it: the same origin and sequence fills, the same
   [first-hop check](#pre-stamp-history-first-hop), the same counts per bucket;

@@ -321,7 +321,7 @@ lowest version. When different steps used different orders, such a stream rewoun
 | Step | What it does now |
 | --- | --- |
 | A rewind's report | The replayed event last by version, with the replay's commit-sequence frontier. The row's checkpoint stays at the id frontier, which the runner's idempotency filter compares against. |
-| The cursor completion (both paths) | Never moves the cursor back by version. The immediate path (`complete_perspective_cursor_work`) and the batched path (`update_perspective_cursors`) agree. |
+| The cursor completion (both paths) | Never moves the cursor back by version, and creates a missing cursor at the reported event when the store holds it. The immediate path (`complete_perspective_cursor_work`) and the batched path (`update_perspective_cursors`) agree; before, the immediate path only updated, so a stream completed only there never had a cursor. |
 | A straggler | A pending row below the cursor **by version**, never by id. A row a completed replay read is never a straggler. |
 | The rewind flag | Cleared only once the cursor is at or past its trigger by version, or a completed replay read the trigger. |
 | The drain path | Honors the flag: a flagged cursor is resolved by a rewind, never by applying its pending events live and clearing the flag. |
@@ -344,8 +344,13 @@ never back and never past pending work. It **keeps the flag**. A genuine late ar
 same id and version shape, and an older build may have retired its work row by a live apply that changed nothing, so a
 flag the repair cleared could be a rewind still owed. The fixed code resolves each kept flag with exactly one rewind,
 and nothing rewinds the stream again. A pair left with no pending work gets its trigger queued, so that rewind runs at
-once instead of waiting for the stream's next event (and holding a blocking [startup scan](#startup-scan) meanwhile).
-`wh_settle_id_ordered_rewind_flags()` runs once in the migration and is idempotent.
+once instead of waiting for the stream's next event (and holding a blocking [startup scan](#startup-scan) meanwhile);
+a trigger whose processed row is not purged yet (debug mode keeps it) has that row made pending again. The queueing is
+bounded: one row per stuck pair with no pending work, none for any other cursor. `wh_settle_id_ordered_rewind_flags()`
+runs once in the migration and is idempotent: a re-run finds every placed cursor out of the shape and queues nothing.
+
+{verified: PerspectiveCursorOneOrderSqlTests.Repair_QueuesOneRowPerStuckPairWithNoPendingWork_NothingElse_AndARerunQueuesNothingAsync, PerspectiveCursorOneOrderSqlTests.Repair_ATriggerWhoseProcessedRowIsNotYetPurged_IsQueuedAgainOnThatRowAsync, PerspectiveCursorOneOrderSqlTests.Repair_AGenuineLateArrivalWhoseRowIsRetired_KeepsItsFlag_AndQueuesItsRewindAsync}
+
 The [repeat guard](#a-repeated-rewind-is-settled) stays as a backstop.
 
 ### Collective events in a rewind {#collective-events}
