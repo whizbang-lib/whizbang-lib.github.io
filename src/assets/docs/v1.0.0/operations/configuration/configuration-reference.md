@@ -460,6 +460,20 @@ Two timeouts are not per connection:
 
 `Whizbang:Postgres:CommandTimeoutSeconds` directly under the section is retired: it never reached a command, and one value for every connection would put a query timeout on schema initialization. Startup logs a warning naming the per-connection keys when it is set. {verified: PostgresOptionsConfigurationTests.RetiredCommandTimeoutSeconds_IsReportedAtStartupAsync}
 
+#### Transaction-mode poolers {#transaction-mode-poolers}
+
+A connection that goes through a transaction-mode pooler (for example the PgBouncer built into a managed Postgres server) says so with `Whizbang:Postgres:<connection>:TransactionPooler`, keyed by the connection's name like its timeout. {verified: PostgresTransactionPoolerTests.AConnectionMarkedAsBehindAPooler_StopsTheResetOnCloseAsync}
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `Whizbang:Postgres:<connection>:TransactionPooler` | `bool` | `false` | `Whizbang__Postgres__db__TransactionPooler` | `true` sets `No Reset On Close=true` on that connection's pool, so a connection returning to the pool no longer sends `DISCARD ALL` |
+
+**Why.** Npgsql resets a pooled session with `DISCARD ALL` each time a connection returns to its pool, so the next borrower starts from a clean session. Behind a transaction-mode pooler that reset does nothing useful: the pooler hands out a different server session for every transaction, and it already resets the sessions it reuses. It is still one statement per return; on a measured deployment it was the largest single statement by count, about 155 per second across 20 databases while the services were idle.
+
+**Why it is off by default.** Against a direct server, the reset is what stops one borrower's session state (a `SET`, a temporary table, an advisory lock held by mistake) from reaching the next. W! cannot tell from a connection string whether a pooler sits behind the host, so the safe behavior stays the default and the operator states the topology. {verified: PostgresTransactionPoolerTests.WithoutTheKey_TheSessionIsResetAsBeforeAsync}
+
+Set it only for a connection that does go through the pooler: usually `db`, never `db-direct` (LISTEN/NOTIFY, the commit-order stamper and the pinned worker pool need a session of their own, so they must not go through a transaction pooler) and never `db-init`. Auto-prepare stays off, as it is by default: prepared statements do not survive a transaction pooler that swaps the server session underneath them. The EF Core driver applies the key to both pools its registration builds. {verified: EFCoreServiceRegistrationGeneratorCoverageTests.Generator_EachPool_HonorsItsTransactionPoolerKeyAsync} The Dapper driver uses the connection string it is given as it is, so a Dapper service behind a transaction pooler writes `No Reset On Close=true` into that string.
+
 ### ConnectionPool (root section)
 
 The generated DbContext registration reads a root-level `ConnectionPool` section (environment form `ConnectionPool__<Key>`) and applies the values to the Npgsql connection string:
@@ -903,7 +917,8 @@ How often the [`Whizbang.TableStatistics` meter](../observability/metrics#table-
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `CollectionInterval` | `TimeSpan` | `00:00:30` | `Whizbang__TableStatistics__CollectionInterval` | How often each instance reads the tables' sizes, rows, bloat, unused indexes and queue depths into the gauges. Each reading is one catalog statement for every table, so it costs the same whatever the tables hold. Greater than zero. See [How the values are refreshed](../observability/metrics#table-statistics-refresh) |
+| `CollectionInterval` | `TimeSpan` | `00:05:00` | `Whizbang__TableStatistics__CollectionInterval` | How often each instance reads the tables' sizes, rows, bloat, unused indexes and queue depths into the gauges. Each reading is one catalog statement for every table, so it costs the same whatever the tables hold. Greater than zero. See [How the values are refreshed](../observability/metrics#table-statistics-refresh) |
+| `CollectionJitter` | `double` | `0.2` | `Whizbang__TableStatistics__CollectionJitter` | The most each wait between readings is lengthened at random, as a fraction of `CollectionInterval`, so a fleet started together spreads its readings. 0 gives a fixed interval; values outside 0 to 1 are held to that range. See [How the values are refreshed](../observability/metrics#table-statistics-refresh) |
 | `MaxTrackedTables` | `int` | `500` | `Whizbang__TableStatistics__MaxTrackedTables` | The most tables reported by name. Past it, the smallest tables are summed under `table_name="other"`, so totals stay right. At least 1 |
 | `EventTypeSampleInterval` | `TimeSpan` | `00:15:00` | `Whizbang__TableStatistics__EventTypeSampleInterval` | How often one instance samples the event store by event type. `00:00:00` turns the sample off; negative is refused. See [Bytes per event type](../observability/metrics#event-type-bytes) |
 | `EventTypeSamplePercent` | `double` | `1` | `Whizbang__TableStatistics__EventTypeSamplePercent` | The share of the event body table's pages one sample reads, greater than 0 and at most 100. Cost and accuracy for rare types both grow with it |

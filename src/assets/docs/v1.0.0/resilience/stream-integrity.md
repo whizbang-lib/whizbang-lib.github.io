@@ -537,8 +537,9 @@ sequence) for the types they subscribe to, and compare.
 - Detects the incident class **within one to two checkpoint intervals**, not at the next nightly
   audit.
 - Near-zero origin cost: one `GROUP BY` over the stamped window per interval; checkpoints are
-  doorbell-sized control messages. Checkpoints publish even when the window is empty — a missing
-  checkpoint (3× interval) is itself a **liveness alarm**.
+  doorbell-sized control messages. A checkpoint goes out when the window moved; while it did not, a
+  heartbeat goes out every `CheckpointHeartbeatMinutes` (15 by default), and a missing heartbeat is
+  itself a **liveness alarm** (see [Checkpoints go out on change](#checkpoints-go-out-on-change)).
 - Subscription subsets are handled by construction — buckets are per *type*, so a consumer only
   compares types it consumes. At-most-once schedule occurrences are excluded from the counts (a
   non-delivered at-most-once occurrence is its declared behavior, not a gap).
@@ -2624,6 +2625,38 @@ Each choice below is locked by the test beside it, which fails if the behavior f
 | Its index is built concurrently after the migrations | A `CREATE INDEX` in a migration would block every ledger write until it committed | {verified: IntegrityAnswerPendingCountSqlTests.Count_OnceTheIndexIsBuilt_IsAnsweredFromItAsync} |
 | An engine with no ledger counts nothing | Nothing awaits an answer where nothing is requested | {verified: WorkCoordinatorDefaultsTests.IntegrityCountAnswerPendingAsync_WithoutProviderSupport_CountsNothingAsync} |
 
+### Idle pollers back off {#idle-pollers-back-off}
+
+{verified: RepairDrainWorkerTests.ExecuteAsync_AnIdleLedger_WaitsLongerUpToTheCeiling_AndAClaimReturnsItToOneSecondAsync, SubscriptionBackfillWorkerTests.ExecuteAsync_WithNothingRunning_WaitsLongerUpToTheCeiling_AndARunningBackfillReturnsItToOneSecondAsync, RepairDrainWorkerTests.Options_IdlePollCeilingSeconds_DefaultsTo60Async}
+
+The paced repair drain and the subscription backfill both tick once a second on the maintainer, because their pacing
+(a token bucket of rows or events per second) needs a one-second step while they have work. Without work, that step
+only reads: the drain counts the buckets awaiting an answer and claims nothing, and the backfill reads an empty list of
+running backfills. On a measured 16-service deployment with no work anywhere those two reads were about 26 statements a
+second, a cost that grows with the number of services, not with the work.
+
+So each one waits longer while it finds nothing: one second, then two, four and so on, doubling up to
+`IdlePollCeilingSeconds` (60 by default, under `Whizbang:StreamIntegrity`). The first tick that finds work returns the
+wait to one second, and the pacing from then on is exactly as before. A ceiling of 1 or less keeps the one-second tick.
+A tick that fails is not known to be idle, so it keeps the one-second step.
+
+| Poller | Finds work when | Probe name |
+|---|---|---|
+| Paced repair drain | it claims a row, or buckets are still awaiting their answer | `repair-drain` |
+| Subscription backfill | a backfill is running (not yet completed or ended) | `subscription-backfill` |
+
+**Why a ceiling and not a wake-up signal.** A new deficit or backfill is recorded by a comparison or a subscription
+change that may run on another instance, so there is no in-process signal that reliably reaches the maintainer. The
+ceiling bounds the delay instead: new work waits at most `IdlePollCeilingSeconds` to start, which is small next to the
+time a repair answer takes anyway. An idle service then reads once a minute per poller, not once a second.
+
+**Each tick is counted.** `whizbang.probes.ticks{probe, outcome}` (meter `Whizbang.Probes`) counts every tick as `work`
+or `idle`, so a dashboard shows each poller's rate and how much of it is idle.
+
+**Not changed, and why.** Role leases are renewed on `RenewInterval` because a renewal must land inside the lease; a
+longer wait while idle would let leases lapse, so their cadence is the lease's to set, not the idle state's. The
+doorbell ring runs only after a write that queued a doorbell, and checks the queue before ringing, so it does not poll.
+
 ### What resets the repair ladder {#what-resets-the-repair-ladder}
 
 {verified: IntegrityRepairAnswerSqlTests.Report_TheLocalDigestMoved_ResetsTheLadder_AndLiftsTheMarkAsync, IntegrityRepairAnswerSqlTests.Report_TheDeficitGrew_ResetsTheLadder_AndLiftsTheMarkAsync, IntegrityRepairAnswerSqlTests.Report_OnlyTheOriginsDigestMoved_KeepsTheAttempts_AndTheMarkAsync, IntegrityManifestReceptorTests.ManifestReceptor_StreamLevelReport_CarriesEachDeficitsSize_SoTheLedgerCanTellAGrowingDeficitAsync}
@@ -2988,6 +3021,35 @@ cleanup sweep and below dead-letter recovery.
 rates. With one shared budget, whichever requester asked first after the ceiling would take the forced pass and re-arm
 the ceiling for all of them, so a requester on a slower tick could be starved for as long as the load lasted. Each
 requester's ceiling is measured from its own first deferral and re-armed only by its own completed pass.
+
+### Checkpoints go out on change {#checkpoints-go-out-on-change}
+
+{verified: IntegrityCheckpointWorkerTests.RunCheckpointOnce_AnUnmovedWindow_WaitsForTheHeartbeat_AndAMovedOneGoesAtOnceAsync, IntegrityCheckpointWorkerTests.RunCheckpointOnce_AnOriginQuietForLessThanItsHeartbeat_IsNotStaleAsync, IntegrityCheckpointWorkerTests.Options_CheckpointHeartbeatMinutes_DefaultsTo15Async}
+
+Every `CheckpointIntervalSeconds` the origin advances its checkpoint watermark. A checkpoint is published only when that
+advance moved the window (its upper commit sequence is above its lower one), or when `CheckpointHeartbeatMinutes`
+(default 15) have passed since the last checkpoint this instance sent. The first cycle after a start always sends. A
+heartbeat of 0 sends every cycle, as before.
+
+**Why.** An idle origin used to send a checkpoint every minute to every consumer, each one stored, claimed and recounted
+on the consumer. On a measured 16-service deployment that was 1.41 messages a second with nothing written anywhere, two
+thirds of all idle inbox traffic, and a cost that grew with time and the number of services. A checkpoint over an
+unmoved window counts nothing, so skipping it loses no comparison; the consumer only needs to hear that the origin is
+alive, and a slow heartbeat says that. Cost now grows with writes.
+
+**Liveness.** A consumer calls an origin stale once its heartbeat plus two checkpoint intervals have passed without a
+checkpoint from it (17 minutes with the defaults), widened by any deferral of the integrity delivery queue as before. A
+lost origin is therefore noticed within about 17 minutes rather than 3; a lost *event* is still noticed within one or
+two intervals, because a window that moved is sent at once. The one case that waits longer is the two-cycle
+confirmation of a deficit when the origin falls idle right after the window that carried it: the confirming checkpoint
+is then the next heartbeat, so that gap is confirmed within `CheckpointHeartbeatMinutes` instead of one interval.
+
+**During a rolling deploy.** A consumer still on the previous release calls an origin stale after three intervals, so
+while the fleet is mixed it may log the liveness warning for an idle origin that has moved to heartbeats. The warning
+is a log line only; it clears once that consumer is upgraded.
+
+**Every cycle still advances.** The watermark advance stays on every interval, because it is what picks one winner per
+window among instances and what a moved window is measured against.
 
 ### Checkpoints are not idle-gated {#checkpoints-are-not-idle-gated}
 
@@ -3741,13 +3803,18 @@ The by-stream fold is unchanged: it is already bounded by the named streams.
 
 ##### The change log stays bounded {#the-change-log-stays-bounded}
 
-{verified: UnsequencedDigestCompactionSqlTests.Compaction_FoldsEveryOriginsChanges_InBoundedBatches_AndLeavesWhatARebuildComputesAsync, UnsequencedDigestCompactionSqlTests.UnderSteadyWritesWithNoAnswerAsked_TheLogNeverHoldsMoreThanOneCyclesChangesAsync, UnsequencedDigestCompactionStepTests.ARun_FoldsAtMostItsBatchesOfChanges_AndTheNextRunTakesTheRestAsync}
+{verified: UnsequencedDigestCompactionSqlTests.Compaction_FoldsEveryOriginsChanges_InBoundedBatches_AndLeavesWhatARebuildComputesAsync, UnsequencedDigestCompactionSqlTests.UnderSteadyWritesWithNoAnswerAsked_TheLogNeverHoldsMoreThanOneCyclesChangesAsync, UnsequencedDigestCompactionStepTests.ARun_FoldsAtMostItsBatchesOfChanges_AndTheNextRunTakesTheRestAsync, DapperUnsequencedDigestCompactionStepTests.ARun_FoldsAtMostItsBatchesOfChanges_AndTheNextRunTakesTheRestAsync, DapperUnsequencedDigestCompactionStepTests.AddWhizbangPostgres_RegistersTheStepAsync}
 
 An answer folds only its own origin's changes. An origin that no consumer audits, or one audited rarely, would let its
 changes pile up: the log would grow without bound, and the next answer for that origin would begin with the whole
 backlog. The maintenance cycle therefore runs `UnsequencedDigestCompactionStep`, which calls
 `wh_compact_unsequenced_digest_changes(limit)`: it folds the oldest pending changes of every origin into the totals
 and deletes them, at most 10 batches of 10,000 changes per run, stopping early when a batch comes back short.
+Both drivers run it: the EF Core driver as `UnsequencedDigestCompactionStep`, the Dapper driver as
+`DapperUnsequencedDigestCompactionStep`, and both call the one shared fold (`UnsequencedDigestCompaction`), because the
+row triggers that write the log are in the schema whichever driver writes the events. Both tables are classified in the
+[operational table registry](../operations/infrastructure/operational-retention#every-table-is-classified): the log is
+work in flight, removed by the fold, and the totals are bounded by origins, tenants and types.
 
 - **Oldest first, across origins.** The log's identity orders the changes, so a bounded batch always takes the ones
   that have waited longest, whichever origin they belong to.
