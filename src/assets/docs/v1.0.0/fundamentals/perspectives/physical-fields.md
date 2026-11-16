@@ -8,6 +8,8 @@ category: Perspectives
 codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/169_Fold.sql
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/SearchContainsRewriter.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/SplitDocumentProjectionRewriter.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/SplitDocumentProjectionRegistry.cs
   - src/Whizbang.Data.EFCore.Postgres/Functions/FoldedContainsTranslator.cs
   - src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangSearchDbFunctions.cs
   - src/Whizbang.Generators.Shared/Models/PhysicalColumnSql.cs
@@ -619,6 +621,24 @@ works with the model shapes this page shows:
 
 Only rows a query materializes are hydrated. An entity your code adds or attaches for an update on the
 same `DbContext` is left tracked, and `SaveChanges` writes it as usual.
+
+A query whose result is the document rather than the row, `Query.Select(r => r.Data)`, is the shape a GraphQL
+list field over a lens returns. Its documents are never tracked rows, so for a `Split` model the generator also
+registers the promoted columns and a copy built from the same rules, and the query reads the columns beside the
+document and applies the copy on the client. Filtering, sorting and paging before the projection, and `Skip`,
+`Take` or an element operator such as `FirstOrDefault` after it, keep it filled; a count is unaffected. A filter
+written over the projected document after other operators, where the projection is no longer the query's result,
+reads the document as before.
+
+```csharp{title="A projected Split document" description="The promoted fields arrive from their columns." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "split", "physical-fields", "linq"] tests=["SplitModeProductionTests.ProjectedDocument_HasThePromotedFieldsAsync", "SplitModeProductionTests.ProjectedDocument_WithFilterSortAndPaging_HasThePromotedFieldsAsync"]}
+var page = await lens.Query
+  .Where(r => r.Data.Price > 10m)
+  .OrderByDescending(r => r.Data.Price)
+  .Select(r => r.Data)
+  .Skip(0).Take(25)
+  .ToListAsync();
+// page[i].Category and page[i].Price come from their columns
+```
 
 Snapshots hold the promoted fields as well. Before it writes a Split row, the runner clears the promoted
 fields so the document leaves them out. For a record, and for a class with an `init`-only promoted field,
