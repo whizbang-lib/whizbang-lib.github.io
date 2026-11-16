@@ -79,6 +79,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/SchemaMigrationDeferral.cs
   - scripts/Capture-LegacyMigrationLedger.ps1
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkPlanShapeTests.HeldInbox.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ConcurrentIndexBuildTests.Replaces.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationReversalTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigratorStallLimitTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
@@ -1233,12 +1235,13 @@ holds a lock that blocks every write to the table until the build commits. On a 
 but it cannot run inside a transaction at all. So a framework index on such a table is never created by a migration.
 It is declared in `ConcurrentIndexBuild.FrameworkIndexes` and built after the migrations by the `framework-index-build`
 [maintenance step](../../fundamentals/workers/maintenance-steps#framework-index-build), which the EF Core Postgres
-driver registers. There are two:
+driver registers. There are three:
 
 | Index | Table | What reads it |
 | --- | --- | --- |
 | `idx_event_store_type_commit_sequence` | `wh_event_store` | The [paced subscription backfill](../../resilience/stream-integrity#paced-backfill-index), reading one type's history in commit order |
 | `idx_integrity_ledger_answer_pending` | `wh_integrity_ledger` | The paced repair drain's count of the [repair answers it is waiting for](../../resilience/stream-integrity#outstanding-repair-answers-are-capped), on every tick it has tokens to spend |
+| `idx_inbox_state_held_lanes_covering` | `wh_inbox_state` | `claim_work`'s re-offer of the inbox rows an instance holds (see [below](#the-inbox-held-lanes-index-covers-the-walk)); replaces `idx_inbox_state_held_lanes` |
 
 The ledger is far smaller than the event store, but the drain's claims and the comparisons write to it continuously,
 so its index is kept out of the migration (371) for the same reason: a build inside the migration's transaction would
@@ -1253,6 +1256,7 @@ hold every one of those writes until it committed.
 | No index | Builds it with `CREATE INDEX CONCURRENTLY`, outside any transaction, with no timeout |
 | An invalid index and no build in progress | Drops it with `DROP INDEX CONCURRENTLY`, then builds it |
 | A build that fails | Logs a Warning, drops the invalid index the build left (only when no build is working on it) and reports the failure; the next cycle tries again |
+| An index it replaces, once this one is valid | Drops the replaced one with `DROP INDEX CONCURRENTLY`; never before, and not when the build failed |
 
 **Why each rule.**
 
@@ -1287,6 +1291,33 @@ SELECT c.relname, i.indisvalid
 FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
 WHERE c.relname IN ('idx_event_store_type_commit_sequence', 'idx_integrity_ledger_answer_pending');
 ```
+
+### The inbox held-lanes index covers the walk {#the-inbox-held-lanes-index-covers-the-walk}
+
+{verified: ClaimWorkPlanShapeTests.ClaimWork_ReofferingHeldInbox_WalksTheCoveringIndex_IndexOnlyAsync, ConcurrentIndexBuildTests.TheHeldLanesIndex_IsRebuiltCovering_AndTheInboxStateKeepsItsIndexCountAsync, ConcurrentIndexBuildTests.Ensure_AnIndexThatReplacesAnother_DropsTheOldOne_OnceTheNewOneIsValidAsync, ConcurrentIndexBuildTests.Ensure_WhenTheNewIndexFailsToBuild_KeepsTheOneItReplacesAsync}
+
+`claim_work` re-offers the inbox rows an instance holds by walking its lanes one stream at a time, each step a single
+probe of `idx_inbox_state_held_lanes` that was written to read every column it tests from the index. Migration 349
+added a test on `chain_emitted_at`, which that index does not hold, so each probe became an index scan that visits the
+table for every entry it reads, including the held rows it passes over (rows whose lease ran out while the working set
+was full). Measured on one poll holding 200 live rows: 3,779 heap and index blocks for the walk with 4,000 rows passed
+over, and the entries read grew from 8,166 to 12,576 when those doubled (#2345).
+
+`idx_inbox_state_held_lanes_covering` has the same key and adds `chain_emitted_at` to the included columns, so the
+walk is index-only again: an entry on an all-visible heap page costs only its share of an index page.
+
+What it does not change: the walk still reads every passed-over entry, because an expired lease is a test against the
+clock that no index key can skip, and a page the same poll changed (the acquisition re-leases up to a batch of expired
+rows before the walk runs) is still visited. In the measured shape the table was small enough that the re-lease touched
+nearly every page, and the walk made 3,383 heap fetches with the covering index. Whether the walk should offer an
+instance its own expired rows instead of passing over them is an open question on #2345.
+
+- **Built concurrently, under a new name.** `wh_inbox_state` grows with the work in flight, and a build inside a
+  migration's transaction would hold every claim and settle until it committed. A valid index under an existing name is
+  never rebuilt, so the changed index takes a new name.
+- **The old index goes only after the new one is valid.** Until then the walk still needs it; a failed build keeps it.
+  The table therefore keeps its index count, which is a gated property of the claim's write cost.
+- **Reads work meanwhile.** Until the step has run, the walk uses the old index exactly as before.
 
 ## The stored-form rewrite
 
