@@ -7,6 +7,7 @@ order: 4
 description: Cross-service anti-entropy — continuity checkpoints, digest audits, and idempotent re-delivery repair; report-only by default, self-healing as the opt-in
 tags: 'stream-integrity, anti-entropy, re-delivery, backfill, digest, manifest, continuity, checkpoint, repair, cross-service, bootstrap'
 codeReferences:
+  - src/Whizbang.Data.Postgres/Migrations/458_FullHistoryCompareRunsInSlices.sql
   - src/Whizbang.Core/Messaging/IntegrityCheckOptions.cs
   - src/Whizbang.Data.Postgres/Migrations/450_SealedEpochsRecordWhenTheyWereSealed.sql
   - src/Whizbang.Data.EFCore.Postgres/IntegritySweepScheduler.cs
@@ -128,6 +129,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/375_LedgerRowsWithoutAWindowAreRechecked.sql
   - src/Whizbang.Data.EFCore.Postgres/UnsequencedDigestCompactionStep.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestTableSqlTests.Slices.cs
   - tests/Whizbang.Core.Tests/Messaging/IntegrityCheckOptionsTests.cs
   - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerCheckGatingTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SealRecheckRotationSqlTests.cs
@@ -2056,7 +2058,9 @@ drivers):
 Two deliberate omissions. Requests from peers (`RequestIntegrityManifest` in the inbox) are still
 answered when this service's own audit is off: a service that does not audit can still be audited.
 And `RebuildPerspectiveCommand` is never swept, because an operator issues the same command by hand;
-a stale auto-rebuild left over from an `AutoRepairCapped` period is indistinguishable from one.
+a stale auto-rebuild left over from an `AutoRepairCapped` period (before #2344 the audit's repair was sent as that
+command) is indistinguishable from one. Since #2344 the audit repairs in its own service and sends nothing; see
+[the integrity audit repairs in its own service](/v1.0.0/fundamentals/perspectives/rebuild#auto-repair-is-local).
 
 A feature that is on is never touched: the sweep names only the types of features that are off, so
 with everything enabled it does nothing, and with the defaults it drops repair traffic (report-only)
@@ -3226,14 +3230,41 @@ it, and is now the re-check over every sealed epoch with no interval: it rotates
 restarting at 0.
 
 #### The full-history compare {#full-history-compare}
-{verified: IntegrityCheckOptionsTests.FullHistoryCompare_IsOffByDefault_OnTheNightlyScheduleAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_WithTheDefaults_RunsNeitherCheck_AndStillAsksWindowedAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_WithTheFullHistoryCompareOn_HealsAndAsksForTheWholeHistoryAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_WithTheSealRecheckOn_RechecksWithTheConfiguredLimits_AndStaysWindowedAsync, IntegrityAuditWorkerBranchCoverageTests.RunCheckOnce_TheSealRecheck_RechecksOnly_AndAsksNoOriginAsync, IntegrityAuditWorkerBranchCoverageTests.RunCheckOnce_ADisabledCheck_RunsNothingAtAllAsync, IntegrityAuditWorkerBranchCoverageTests.RunSweepOnce_WithBothChecksOff_RunsNothingAtAllAsync}
+{verified: IntegrityCheckOptionsTests.FullHistoryCompare_IsOffByDefault_OnTheNightlyScheduleAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_WithTheDefaults_RunsNeitherCheck_AndStillAsksWindowedAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_WithTheFullHistoryCompareOn_HealsASliceAndAsksFromTheLookbackAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_WithTheSealRecheckOn_RechecksWithTheConfiguredLimits_AndStaysWindowedAsync, IntegrityAuditWorkerBranchCoverageTests.RunCheckOnce_TheSealRecheck_RechecksOnly_AndAsksNoOriginAsync, IntegrityAuditWorkerBranchCoverageTests.RunCheckOnce_ADisabledCheck_RunsNothingAtAllAsync, IntegrityAuditWorkerBranchCoverageTests.RunSweepOnce_WithBothChecksOff_RunsNothingAtAllAsync}
 
 | Key | Default | Meaning |
 |---|---|---|
-| `FullHistoryCompare:Enabled` | `false` | Run the compare: heal this service's own digest table against a full recompute, and ask each origin for its full history instead of the window above the seal |
+| `FullHistoryCompare:Enabled` | `false` | Run the compare: heal this service's own digest table against a recompute, and ask each origin for its history below the seal as well as above it |
 | `FullHistoryCompare:Schedule` | `"0 3 * * *"` | Cron on the temporal engine, splayed per service. Empty: the every-Nth-audit fallback |
+| `FullHistoryCompare:Lookback` | `90.00:00:00` | How far back the compare reaches. The heal covers streams last written within it; the ask starts at the oldest epoch sealed within it |
+| `FullHistoryCompare:MaxPerRun` | `10000` | Streams one run heals. The next run resumes after the last of them |
 
 The routine windowed heal and the windowed audit are not gated by this section.
+
+##### Bounded by a lookback, healed in slices {#full-history-compare-slices}
+{verified: StreamDigestTableSqlTests.ASlice_HealsAtMostMaxPerRunStreams_AndTheNextResumesAfterItAsync, StreamDigestTableSqlTests.AStreamLastWrittenBeforeTheLookback_IsNotHealedAsync, StreamDigestTableSqlTests.APhantomBucket_OfAStreamTheLedgerDoesNotRecord_IsRemovedAsync, StreamDigestTableSqlTests.TheAsksStart_IsTheOldestEpochSealedWithinTheLookback_NeverAboveTheSealAsync, IntegrityAuditWorkerTests.SweepCycle_AsksFromTheLookback_AndHealsOneSliceAsync, IntegrityAuditWorkerTests.SweepCycle_RecordsTheSlice_AndThePassItCompletesAsync, IntegrityCheckOptionsTests.FullHistoryCompare_IsOffByDefault_OnTheNightlyScheduleAsync}
+
+Until #2361 the compare healed the whole digest table in one statement and asked each origin for its whole history, so
+a run grew with the store. Now:
+
+- **The heal works in slices.** One run takes the next `MaxPerRun` stream ids in key order after a cursor stored in
+  `wh_settings` (`integrity_full_history_compare_cursor`), read from both the stream lifecycle ledger and the digest
+  table, so a phantom bucket of a stream the ledger no longer records is still in a slice. It heals the streams last
+  written within `Lookback`, and those the ledger cannot date, then stores where it stopped. A run that reads fewer than
+  `MaxPerRun` ids reached the end: the pass is complete and the next run starts again from the first stream.
+- **The ask starts at the lookback.** The ask to each origin is windowed from the first sequence of the oldest epoch
+  of that origin's lane sealed within `Lookback`, never above the seal, so a clean answer still advances it. With no
+  epoch sealed within the lookback the ask is the routine one, from the seal.
+
+| Choice | Why |
+|---|---|
+| A lookback, not the whole history. | History older than the lookback is sealed: the sealed-history re-check covers it, epoch by epoch, on its own bounded schedule. The compare is for what the seals have not yet proved stable. |
+| Slices by stream, resumed from a stored cursor. | A run's cost is bounded by `MaxPerRun` whatever the store's size, so it fits the idle maintenance budget, and a restart loses no progress. Each slice reads at most `MaxPerRun` entries of two key-ordered indexes. |
+| The lookback filters the slice; no index on the last write time. | `last_appended_bucket` is written on the outbox emit path, the hottest write in the framework; an index on it would cost every append. A stream outside the lookback still uses one place in its slice. |
+| The start is never above the seal. | The comparator advances the seal only for a window that starts at or below it; a start above the seal would verify nothing it could certify. |
+
+What it reports: `whizbang.stream_integrity.compare_streams_covered` (streams the slices took),
+`compare_slices` (runs), `compare_passes_completed` and `compare_pass_runs` (a histogram of the runs one pass took).
 
 #### Each check has its own schedule {#integrity-check-schedules}
 {verified: IntegritySweepSchedulingTests.Start_WithBothChecksOn_RegistersOneScheduleEach_OnItsOwnCronAsync, IntegritySweepSchedulingTests.Start_WithTheDefaults_RegistersNothing_SoNeitherCheckRunsAsync, IntegritySweepSchedulingTests.Start_WithOnlyTheSealRecheckOn_RegistersOnlyItsScheduleAsync, IntegritySweepSchedulingTests.SweepReceptor_RunsTheCheckTheOccurrenceNamesAsync, IntegritySweepSchedulingTests.SweepReceptor_AnOccurrenceNamingNoCheck_RunsTheFullHistoryCompareAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_LeavesACheckToItsSchedule_OnceTheScheduleIsRegisteredAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_RunsEachCheckWhoseScheduleIsNotRegistered_AndOnlyThatOneAsync}

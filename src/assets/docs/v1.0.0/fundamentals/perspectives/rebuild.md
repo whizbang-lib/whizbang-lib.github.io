@@ -36,6 +36,9 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/DapperPostgresPerspectiveCheckpointCompleter.cs
   - src/Whizbang.Data.Postgres/RebuildPerspectiveCommandReceptor.cs
   - src/Whizbang.Data.Postgres/RebuildCommandReceptorRegistrar.cs
+  - src/Whizbang.Data.Postgres/PerspectiveRebuildRequestHandler.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveRebuildRequestHandler.cs
+  - src/Whizbang.Core/Workers/IntegrityAuditWorker.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/RebuildCreatedAtIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveSnapshotFloorTests.cs
@@ -63,6 +66,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindWriteCheckTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CollectiveReplayRebuildIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/RewindDeletedArchiveTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRebuilderIntegrationTests.AuditRepair.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/IntegrityAuditWorkerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -519,6 +524,25 @@ reference.
 
 Code that constructs the receptor directly imports `Whizbang.Data.Postgres` (it was in
 `Whizbang.Data.EFCore.Postgres` before #1959). Hosts that only send the command change nothing.
+
+### The integrity audit repairs in its own service {#auto-repair-is-local}
+
+The integrity audit finds coverage gaps: settled history a perspective of **this** service never folded. At
+`IntegrityRepairMode.AutoRepairCapped` it repairs each one (up to `MaxAutoRebuildsPerAudit` per cycle) by running a
+rebuild of that stream **in its own service**, through the same handling the command's receptor runs:
+`IPerspectiveRebuildRequestHandler`, which both data layers register. The routing is the receptor's: with a multi-stream
+store the stream is rebuilt by the instance that owns it, a whole-perspective blue-green rebuild goes to the background
+queue, otherwise it runs where it was asked. Nothing is put on the transport.
+
+An operator's `RebuildPerspectiveCommand` is unchanged: it is a system command, broadcast to every service, and each
+service rebuilds what it hosts.
+
+| Choice | Why | |
+|---|---|---|
+| The audit's repair runs in-process, through the shared handler, and is never sent. | The audit found the gap in its own perspective, so it always owns what it repairs. A command sent through the dispatcher is broadcast, so every other service hosting a perspective of that name rebuilt a stream it never found missing, and each one's own audit then did the same again (#2344). | {verified: PerspectiveRebuilderIntegrationTests.TheAuditsRepair_RebuildsItsOwnGap_AndPutsNothingOnTheWireAsync, IntegrityAuditWorkerTests.LocalGaps_ReportAndRepairCappedInThisServiceAsync} |
+| An operator's command stays broadcast. | An operator names a perspective without knowing which service hosts it, asks for every perspective with `null`, or names one that two services host. Only a broadcast reaches all of them. | {verified: RebuildCommandReceptorRegistrarTests} |
+| One handler type, used by the receptor and the audit. | The selection, the stream filter and the routing to owners or the queue are written once, so the two paths cannot drift apart. | {verified: PerspectiveRebuilderIntegrationTests.TheAuditsRepair_RebuildsItsOwnGap_AndPutsNothingOnTheWireAsync} |
+| A host with no rebuild handling reports the gap and repairs nothing. | Sending the command instead would hand the repair to other services, the very thing the first row rules out. The report says no rebuild was asked for, and a warning names the missing registration. | {verified: IntegrityAuditWorkerTests.AutoRepair_WithNoRebuildHandling_ReportsTheGapAsNotRepairedAndSendsNothingAsync} |
 
 ### Large stream selections {#large-stream-selections}
 

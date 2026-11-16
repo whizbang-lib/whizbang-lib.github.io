@@ -326,6 +326,13 @@ lowest version. When different steps used different orders, such a stream rewoun
 | The rewind flag | Cleared only once the cursor is at or past its trigger by version, or a completed replay read the trigger. |
 | The drain path | Honors the flag: a flagged cursor is resolved by a rewind, never by applying its pending events live and clearing the flag. |
 
+**Why the immediate path creates a missing cursor.** The instant completion strategy reports every completion through
+`complete_perspective_cursor_work` and never through the batched `update_perspective_cursors`. When only the batched
+path created cursors, a stream completed instantly never got one: every apply read from the stream's start, and no
+inversion or late arrival could be judged against a position. Both paths now create the same cursor, at the reported
+event, and only when the store holds that event.
+{verified: PerspectiveCursorOneOrderSqlTests.CompleteCursor_AStreamWithNoCursor_GetsTheSameCursorOnTheImmediateAndTheBatchedPathAsync, PerspectiveCursorOneOrderSqlTests.CompleteCursorWork_AStreamWithNoCursor_GetsOneAtTheReportedEventAsync, PerspectiveCursorOneOrderSqlTests.CompleteCursorWork_AnEventTheStoreDoesNotHold_CreatesNoCursorAsync}
+
 **What a replay read stays read.** A rewind from the stream's start reads every event stamped at or below its frontier
 (a commit sequence is assigned only after the event commits, so none can be missing). The cursor stores that frontier
 (`wh_perspective_cursors.replayed_through_commit_sequence`, never lowered), and the worker holds it in its cursor cache.
