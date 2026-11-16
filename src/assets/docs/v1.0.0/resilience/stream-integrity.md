@@ -126,6 +126,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/408_ASealFallsOnlyAsFarAsARewriteReached.sql
   - src/Whizbang.Data.Postgres/Migrations/409_RepairedEventsRunOnlyReceptorsThatNeverRan.sql
   - src/Whizbang.Data.Postgres/Migrations/375_LedgerRowsWithoutAWindowAreRechecked.sql
+  - src/Whizbang.Data.EFCore.Postgres/UnsequencedDigestCompactionStep.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/IntegrityCheckOptionsTests.cs
   - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerCheckGatingTests.cs
@@ -269,6 +270,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerRepairTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HandledLedgerSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RepairDrainRecordsBeforeSendingTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedDigestCompactionSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedDigestCompactionStepTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedHeldFoldWriteCostSqlTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -3732,6 +3736,50 @@ Why each choice:
 - **A TRUNCATE empties both tables,** so an emptied store holds nothing without a sequence.
 
 The by-stream fold is unchanged: it is already bounded by the named streams.
+
+##### The change log stays bounded {#the-change-log-stays-bounded}
+
+{verified: UnsequencedDigestCompactionSqlTests.Compaction_FoldsEveryOriginsChanges_InBoundedBatches_AndLeavesWhatARebuildComputesAsync, UnsequencedDigestCompactionSqlTests.UnderSteadyWritesWithNoAnswerAsked_TheLogNeverHoldsMoreThanOneCyclesChangesAsync, UnsequencedDigestCompactionStepTests.ARun_FoldsAtMostItsBatchesOfChanges_AndTheNextRunTakesTheRestAsync}
+
+An answer folds only its own origin's changes. An origin that no consumer audits, or one audited rarely, would let its
+changes pile up: the log would grow without bound, and the next answer for that origin would begin with the whole
+backlog. The maintenance cycle therefore runs `UnsequencedDigestCompactionStep`, which calls
+`wh_compact_unsequenced_digest_changes(limit)`: it folds the oldest pending changes of every origin into the totals
+and deletes them, at most 10 batches of 10,000 changes per run, stopping early when a batch comes back short.
+
+- **Oldest first, across origins.** The log's identity orders the changes, so a bounded batch always takes the ones
+  that have waited longest, whichever origin they belong to.
+- **Shared, never repeated.** Like an answer's fold, the compaction skips changes another fold holds instead of
+  waiting for them, so every instance can run it and concurrent runs divide the work.
+- **The answer stays exact either way.** What the compaction has not reached yet is read as pending by the next answer,
+  exactly as before.
+
+##### What the triggers cost a write {#what-the-triggers-cost-a-write}
+
+{verified: UnsequencedHeldFoldWriteCostSqlTests.AnOrdinaryEvent_WritesNothingMore_AndAHeldEvent_WritesOneChangeRowAsync}
+
+The row triggers are on the event store's write path, so their cost is stated per event written. The same insert runs
+with the triggers and without:
+
+| Event written | Change rows | WAL | Time |
+| --- | --- | --- | --- |
+| With its origin's sequence, or with no origin (the ordinary receive and append paths) | 0 | none measurable (-14 bytes, noise) | none measurable (-0.3 us, noise) |
+| Held: from an origin, without its sequence | 1 | about 308 bytes | about 32 us |
+
+An ordinary event is filtered out by the triggers' `WHEN` clause before the trigger function runs, so it writes
+nothing. A held event writes one change row (its heap tuple and two index entries), which is what the answer later
+folds instead of re-reading the event. Measured over 2,000-event inserts on a shared test server, so the WAL and time
+are indicative; the change-row counts are exact and asserted.
+
+##### What was not built, and why {#held-fold-not-built}
+
+- **No bulk backfill of origin sequences for the held rows.** A consumer cannot learn an origin's commit sequence for
+  an event it already holds: only a redelivery from the origin carries it, and a redelivery that brings one already
+  adopts it into the stored row (which leaves the held set through the triggers). A separate backfill would have to
+  ask the origin for every held event, which is what redelivery adoption already does for the events that matter.
+- **No "held rows left" metric.** The held set drains as redeliveries adopt sequences, and the totals already count it
+  per origin and type (`wh_unsequenced_digest_totals.event_count`), so a separate gauge would report a number that is
+  one query away and would add a scan of its own to produce.
 
 #### Events this service authored {#pre-stamp-history-first-hop}
 

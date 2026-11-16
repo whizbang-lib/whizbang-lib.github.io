@@ -17,6 +17,9 @@ codeReferences:
   - src/Whizbang.Core/Observability/WorkerDbMechanisms.cs
   - src/Whizbang.Core/Startup/GatedHostedService.cs
   - src/Whizbang.Data.Postgres/WhizbangCommand.cs
+  - src/Whizbang.Data.Postgres/AttributedDbConnection.cs
+  - src/Whizbang.Data.Postgres/CoordinatorConnectionScope.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.cs
   - src/Whizbang.Data.Postgres/Notifications/WorkerDbMechanisms.cs
   - src/Whizbang.Data.EFCore.Postgres/Observability/WhizbangCommandAttributionInterceptor.cs
   - src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangDbContextOptionsExtensions.cs
@@ -26,6 +29,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/WorkerDbMechanismsTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/DbMechanismWorkerScopeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Observability/WhizbangCommandAttributionTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperCommandAttributionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupHostedServiceAuditTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgSharedNotifyConnectionCoverageTests.cs
 ---
@@ -67,6 +71,8 @@ Nobody has to remember to tag anything.
   `CreateCoordinatorCommand()`, which annotate the text as it is set and record the statement when the command is
   disposed (the one point every execution path passes). The commands EF Core runs for the framework pass through
   `WhizbangCommandAttributionInterceptor`, which `UseWhizbangFunctions()` registers once on every framework context.
+  Dapper creates its own commands from the connection it is handed, so the Dapper coordinator hands it
+  `CoordinatorConnectionScope.Attributed`, a connection whose every command is an attributed one; no driver does less.
 - **A narrower scope wins.** Code inside a worker can open `DbMechanismScope.Begin(DbMechanism.X)` for a stretch of
   work that belongs to another mechanism; disposing it restores the worker's own.
 
@@ -102,5 +108,3 @@ that, and the hosted-service audit fails if the connection ever names a mechanis
 - Duration on the raw path runs from the command text being set to the command being disposed, so it includes the
   time the caller spends reading the result. That is the time the statement held its connection, which is what
   matters for pool pressure.
-- The Dapper data path does not yet create its commands through the attributed factory; its statements are neither
-  annotated nor counted.

@@ -38,6 +38,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/358_StreamsRememberWhenTheyStarted.sql
   - src/Whizbang.Core/Perspectives/PerspectiveRowStart.cs
   - src/Whizbang.Data.Postgres/StreamStartSql.cs
+  - src/Whizbang.Data.Postgres/Migrations/452_StaleCopiesAboveTheNewestAreRewalked.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/RedeliveredSupersedingChildTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveredSupersedingCopySqlTests.cs
@@ -311,6 +312,24 @@ sequenceDiagram
 
 Streams that already hold a stale copy stored above the newest, by an earlier version, are not changed by this rule;
 they need the one-time repair tracked separately.
+
+### Stale copies already stored {#stale-copies-already-stored}
+
+{verified: SupersedingHistoryReconcileSqlTests.Repair_AStreamHoldingOlderCopiesAboveItsNewest_QueuesTheCopies_OnceTheWalkRestartsAsync}
+
+Before migration 449, a redelivered older copy was stored at the end of the consumer's stream, above the newest copy
+by version, and the history walk of its type had already completed under the version order. Migration 452 restarts
+every completed superseding walk (`wh_restart_superseding_history_walks()`), so the
+[history reconcile](#history-stored-before-the-declaration) walks each type once more under the origin's order: it
+stamps the key on any copy that lacks one and queues every copy a held copy supersedes, wherever it sits by version.
+The reaper then removes them past its usual gates. Nothing needs to be run by hand.
+
+- **The walker, not a new scan.** The walk is already paced, bounded per window, resumable after a crash and shared
+  across instances, and the ordering rule lives in one function (`_wh_supersedes`), so the repair is the walk run
+  again rather than a second walker that could disagree with it.
+- **A stream looping on a rewind recovers either way.** Until the copies are reaped, a perspective asked to rewind
+  the same stream again for the same trigger, with nothing stored since, settles the repeat instead of replaying it
+  ([rewind](../perspectives/rewind#a-repeated-rewind-is-settled)).
 
 ## History stored before the declaration {#history-stored-before-the-declaration}
 

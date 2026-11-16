@@ -30,6 +30,7 @@ codeReferences:
   - src/Whizbang.Core/Archival/IArchivedStreamExtents.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Core/Workers/StartupRewindSet.cs
+  - src/Whizbang.Core/Workers/RewindRepeatGuard.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/ReplayEventOrderTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindOptionsTests.cs
@@ -51,6 +52,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/StartupRewindSetTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerStartupRewindBarrierTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerStartupAndMaintenanceTests.cs
+  - tests/Whizbang.Core.Tests/Workers/RewindRepeatGuardTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.RewindRepeat.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRewindLoopTests.cs
 ---
 
 # Perspective Rewind
@@ -263,6 +267,29 @@ So the runner checks first. When a batch holds an event **strictly below** the r
 The rows that triggered a rewind stay pending until the completion flush deletes them, and the same events can be delivered again under new work rows. The cooldown cache recognizes a row only by its work id, so a redelivered row used to read as fresh, sit behind the cursor, and trigger another full replay on every lap of the drain loop.
 
 The worker now remembers which events a completed rewind was run for, per stream and perspective. When any of them comes back, it is taken out of the batch before the inversion check: its rows are completed and its lifecycle signaled with nothing applied, and the worker logs that the events were already replayed. Only those events are covered. An event the rewind was not run for keeps its own inversion check, even when it sorts below where the rewind left the stream. The memory is bounded per stream and perspective, and forgotten with the stream's other cached state.
+
+### A repeated rewind is settled {#a-repeated-rewind-is-settled}
+
+{verified: PerspectiveWorkerDeepPathChannelTests.Rewind_AskedAgainOnAnUnchangedStream_IsSettledWithoutReplaying_CountedAndWarnedOnceAsync, PerspectiveWorkerDeepPathChannelTests.Rewind_AskedAgainAfterAnEventWasStored_ReplaysAgainAsync, PerspectiveWorkerDeepPathChannelTests.Rewind_OnAStreamWhoseVersionIsUnknown_AlwaysReplaysAsync, PerspectiveWorkerDeepPathChannelTests.Rewind_ThatDidNotComplete_IsNotRememberedAsAnOutcomeAsync, RewindRepeatGuardTests}
+
+A rewind replays the stream's events. Asked again for the same trigger on a stream with nothing stored since the last
+completed rewind, it reads the same events in the same order and can only reach the same state. A stream something
+keeps flagging (for example one holding older copies stored after its newest, which replay in the same order every
+time) would otherwise rewind forever: a full replay and a rewind-started and rewind-completed pair each time.
+
+The worker remembers, per stream and perspective, the trigger and the stream's last version of its last completed
+rewind. A request that matches both is settled with that rewind's completion without replaying: its rows complete and
+the cursor's flag clears as they would after the rewind, `whizbang.perspective.rewind_repeats` counts it, and once the
+repeats reach `PerspectiveRewindOptions.RepeatWarningThreshold` (10 by default) one warning names the perspective, the
+stream and the trigger.
+
+- **Same input, not same output.** Comparing the result would mean running the replay to find out it was pointless.
+  The input (trigger and last version) is known before it runs, and a deterministic replay of the same input cannot
+  differ.
+- **Only when the version is known.** A stream whose last version the store cannot give is always replayed, and so is
+  any rewind that did not complete: nothing proves those inputs unchanged.
+- **Bounded memory.** At most 10,000 streams are remembered per worker; past that the memory is cleared, which costs at
+  most one more rewind per stream.
 
 ### Collective events in a rewind {#collective-events}
 
