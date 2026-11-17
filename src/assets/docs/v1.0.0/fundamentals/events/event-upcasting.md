@@ -19,11 +19,13 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
   - src/Whizbang.Core/Perspectives/PerspectiveSnapshotOptions.cs
+  - src/Whizbang.Generators/MessageJsonContextGenerator.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/EventUpcasterPipelineTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EventUpcasterRegistrationTests.cs
   - tests/Whizbang.Core.Tests/Messaging/UpcastingEventStoreDecoratorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/RekeyThroughRebuildTests.cs
+  - tests/Whizbang.Core.Tests/Serialization/MemberInitializerReadTests.cs
 ---
 
 # Event upcasting
@@ -51,7 +53,8 @@ Reach for an upcaster when **stored events** need to project differently than
 they were written, and you want that correction to survive every future
 projection rebuild:
 
-- A new field must be backfilled with a default for old events.
+- A new field must be backfilled for old events with a value that depends on the
+  event (a fixed default needs no upcaster; see below).
 - An old event type should project as a newer type.
 - Old events must be re-keyed onto a different stream (e.g. moving a per-item
   saga event off the saga stream onto its own per-item stream — see
@@ -60,6 +63,29 @@ projection rebuild:
 Do **not** use it for forward-only changes you can make in the producer, or for
 one-off data fixes (those belong in a migration). Upcasting is for the *read
 model of history*.
+
+### A new field with a fixed default
+
+A field whose old events should all read the same value needs only an
+initializer. An event stored before the field existed has no key for it, and the
+generated reader leaves a member the document lacks as its initializer set it:
+the empty list, not `null`; `true`, not `false`.
+
+```csharp{title="A field added with a default" description="Events stored before the field existed read the initializer's value." framework="NET10" category="Messaging" difficulty="BEGINNER" tags=["event-upcasting", "versioning", "serialization", "defaults"] tests=["MemberInitializerReadTests.AnEventStoredBeforeAMemberExisted_ReadsTheMembersDeclaredDefaultAsync", "MemberInitializerReadTests.AMemberTheDocumentHolds_ReadsTheDocumentsValueAsync"]}
+public sealed class ItemsExcluded : IEvent {
+  [StreamId] public Guid StreamId { get; init; }
+  public IReadOnlyList<Guid> ItemIds { get; init; } = [];
+
+  // Added later: events stored before this read [] and true.
+  public IReadOnlyList<Guid> ExcludedIds { get; init; } = [];
+  public bool NotifyOnCreate { get; init; } = true;
+}
+```
+
+A member a construction must set reads as its type's default when its key is
+missing: a positional constructor parameter, a `required` or `[JsonRequired]`
+member, and an init-only member declared by a generic type or a struct. Give
+such a field a nullable type, or backfill it with an upcaster.
 
 ## The `IEventUpcaster` contract
 
