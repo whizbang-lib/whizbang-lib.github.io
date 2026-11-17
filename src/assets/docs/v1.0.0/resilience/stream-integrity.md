@@ -14,6 +14,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/490_IntegritySealReading.sql
   - src/Whizbang.Data.Postgres/Migrations/491_DeficitRowsKeepTheirTrace.sql
   - src/Whizbang.Data.Postgres/Migrations/492_SealReadingCountsTheOpenWindow.sql
+  - src/Whizbang.Data.Postgres/Migrations/493_RedeliveredBucketsShortAgainAreCounted.sql
+  - src/Whizbang.Data.Postgres/Migrations/494_CutsAwaitingTheSeal.sql
+  - src/Whizbang.Core/Messaging/IntegrityHistoryMoved.cs
   - dashboards/grafana/whizbang-integrity.json
   - dashboards/prometheus/whizbang-integrity-alerts.yml
   - src/Whizbang.Data.Postgres/Migrations/450_SealedEpochsRecordWhenTheyWereSealed.sql
@@ -141,6 +144,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityObservabilityMetricsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegritySealReadingSqlTests.cs
   - tests/Whizbang.Documentation.Component.Tests/IntegrityDashboardTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/TwoServiceHistoryMovedReasonTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CutsAwaitingSealSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAskMemoSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TwoServiceAskSkipTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.AskSkip.cs
@@ -4944,7 +4949,7 @@ fails when a span writes any other attribute or the list gains one that names a 
 
 ### Integrity instruments {#integrity-instruments}
 
-{verified: StreamIntegrityObservabilityMetricsTests.BeforeAnyReading_NoSeriesIsReported_NeverAZeroAsync, StreamIntegrityObservabilityMetricsTests.WhetherEachCheckIsOn_IsOneSeriesPerCheckAsync, StreamIntegrityObservabilityMetricsTests.WhenACheckLastRan_IsItsUnixTime_PerCheckAsync, StreamIntegrityObservabilityMetricsTests.ASealReading_IsTheFrontierAndAgePerLane_AndTheRecheckCoverageAsync, StreamIntegrityObservabilityMetricsTests.EveryIntegrityInstrumentsAttribute_IsBounded_NoneNamesAStreamOrATenantAsync, StreamIntegrityObservabilityMetricsTests.SealLowered_AndCarriedCompactions_ExistAtZeroForEveryValue_AndCountByItAsync, IntegritySealReadingSqlTests.TheReading_IsEachLanesFrontierAndAge_AndTheRecheckCoverageAsync, IntegritySealReadingSqlTests.TheReading_CountsEachLanesOpenWindow_ReadsTheGeneration_AndCountsCarriedBucketsAsync, IntegrityManifestReceptorTests.ManifestReceptor_GenerationChanged_CountsTheSealLoweredAsARewriteAsync, StreamPrefixTruncatorArchiveStoreTests.ACutThatHappened_IsCountedAsACarriedCompaction_ByKind_AndARefusalIsNotAsync, MaintenanceWorkerIntegrityBacklogTests.TheMaintainer_PublishesTheSealReading_OnItsClock_OverTheRecheckWindowAsync, MaintenanceWorkerIntegrityBacklogTests.AnInstanceThatLosesItsTurn_OrFailsTheRead_WithdrawsTheSealReadingAsync}
+{verified: StreamIntegrityObservabilityMetricsTests.BeforeAnyReading_NoSeriesIsReported_NeverAZeroAsync, StreamIntegrityObservabilityMetricsTests.WhetherEachCheckIsOn_IsOneSeriesPerCheckAsync, StreamIntegrityObservabilityMetricsTests.WhenACheckLastRan_IsItsUnixTime_PerCheckAsync, StreamIntegrityObservabilityMetricsTests.ASealReading_IsTheFrontierAndAgePerLane_AndTheRecheckCoverageAsync, StreamIntegrityObservabilityMetricsTests.EveryIntegrityInstrumentsAttribute_IsBounded_NoneNamesAStreamOrATenantAsync, StreamIntegrityObservabilityMetricsTests.SealLowered_AndCarriedCompactions_ExistAtZeroForEveryValue_AndCountByItAsync, IntegritySealReadingSqlTests.TheReading_IsEachLanesFrontierAndAge_AndTheRecheckCoverageAsync, IntegritySealReadingSqlTests.TheReading_CountsEachLanesOpenWindow_ReadsTheGeneration_AndCountsCarriedBucketsAsync, IntegrityManifestReceptorTests.ManifestReceptor_GenerationChanged_CountsTheSealLoweredByTheOriginsReasonAsync, StreamPrefixTruncatorArchiveStoreTests.ACutThatHappened_IsCountedAsACarriedCompaction_ByKind_AndARefusalIsNotAsync, StreamPrefixTruncatorArchiveStoreTests.ACutTheSealHolds_IsRecordedAsAwaitingIt_ByTask_AndAnyOtherAnswerForgetsItAsync, CutsAwaitingSealSqlTests.AStreamHeldByTheSeal_IsCountedPerTask_UntilItsCutAnswersOtherwiseAsync, MaintenanceMetricsEligibleTests.AReading_IsOneSeriesPerTask_WithItsCap_AndAWithdrawnOneIsNoneAsync, IntegrityRepairAnswerSqlTests.ShortAfterAnswer_CountsEachFilledBucketOncePerAnswer_AndNothingElseAsync, IntegrityManifestReceptorTests.ManifestReceptor_DeficitsAfterAnAnswer_AreCountedAsRedeliveredThenReapedAsync, TwoServiceHistoryMovedReasonTests.AHistoryMovedByARuleChange_AndOneMovedByARewrite_AreCountedApartAsync, IntegrityManifestReceptorTests.RequestReceptor_SaysWhyHistoryMoved_SinceTheGenerationTheAskerKnowsAsync, MaintenanceWorkerIntegrityBacklogTests.TheMaintainer_PublishesTheSealReading_OnItsClock_OverTheRecheckWindowAsync, MaintenanceWorkerIntegrityBacklogTests.AnInstanceThatLosesItsTurn_OrFailsTheRead_WithdrawsTheSealReadingAsync}
 
 #2365 adds the instruments the plan's observability section still lacked. Existing names are kept: the pair guard's
 (`pair_state`, `pair_halted_seconds`, `pair_halts`, `pair_halt_alerts`, `rule_fingerprint_info`, see
@@ -4963,8 +4968,10 @@ the pair guard, #2362) and the re-checks' counters (`epochs_rechecked`, `check_d
 | `open_window_events` | `origin_service_id`, `capped` | Per lane, the events above the epoch frontier, waiting to be sealed, counted up to 100,000 (`capped=true`: at least that many). The local lane counts its own events by commit sequence; an origin's lane counts by the origin's sequence. |
 | `origin_generation` | none | This service's origin generation: it moves when the service rewrites history its consumers verified (a reclassification, a refold), and each consumer then lowers its seal. One series per service. |
 | `carried_streams` | `capped` | Stream digest buckets that still carry the per-stream detail of a cut (#2363: a cut carries its digest), counted up to 100,000. Falls as the resting period rolls the detail off. |
-| `seal_lowered` (counter) | `reason` | Seals this service lowered for an origin: `rewrite` when the origin's generation moved, so verified history was rewritten. `rule_change` exists at zero: a change of eligibility rules reaches a consumer as a rewrite today, because a manifest does not say why history moved. |
+| `seal_lowered` (counter) | `reason` | Seals this service lowered for an origin, by the reason the origin's answer gives (`IntegrityManifest.HistoryMovedReason`): `rule_change` when the origin's eligibility rules changed after the generation this service knew, `rewrite` when its history was rewritten under the same rules, `unknown` when an origin on an older release gives no reason. |
+| `redelivered_then_reaped` (counter) | none | Deficit buckets a redelivery answer filled that a later comparison found short again: one turn of the resync loop, where what repair delivered is lost again, usually to this service's own cleanup. Counted once per answer from the ledger (`counted_short_at`, migration 493); a bucket the answer could not change (unhealable) is not counted. Target 0. |
 | `carried_compactions` (counter) | `kind` | Cuts that removed events and carried their digest: `truncate` (a prefix truncate) or `archive`. |
+| `whizbang.maintenance.eligible_not_yet_deleted` | `task`, `capped` | Streams due for a cut (`truncate` or `archive`) that the seal gate holds: this service's seal, or a consumer's when `Sealing:CutWaitsForConsumers` is on. The truncator records a stream when its cut answers `awaiting_seal` and forgets it on any other answer (`wh_integrity_cuts_awaiting_seal`, migration 494); the maintainer duty's holder counts it per task, each count stopping at 100,000 index entries. |
 
 The coverage and the per-lane gauges, the generation and the carried buckets come from one read,
 `wh_integrity_seal_reading` (migrations 490 and 492): one row per lane of the epoch frontier, one pass over the seal
@@ -4979,10 +4986,19 @@ lane, state, reason, check or kind. `StreamIntegrityObservabilityMetricsTests.Ev
 reads every series the `Whizbang.StreamIntegrity` meter reports, the pair guard's included, and fails on any attribute
 outside that set.
 
-Not built yet, pending a definition: `redelivered_then_reaped_total`, `eligible_not_yet_deleted` and the cleanup lag
-extension of `whizbang.maintenance.pending_rows` to the ephemeral body reap, the superseded reaper, end of life and the
-version-cap truncate (the [pending reclamation](../operations/observability/metrics#pending-reclamation) reading counts
-only tasks an index serves, and these have none today).
+**Why history moved rides the answer.** An origin notes its rule fingerprint beside its generation on every manifest
+answer (`wh_settings`: `integrity_rules_fingerprint`, and `integrity_rules_changed_generation`, the generation it first
+answered with after the fingerprint changed). An answer to an ask that names an earlier generation says `rule_change`
+when the rules changed after that generation and `rewrite` otherwise. The field is optional: the rule semantics version
+does not change, and an origin that predates it is counted as `unknown`. `TwoServiceHistoryMovedReasonTests` locks both
+reasons across two services.
+
+**The cleanup lag of four tasks is not counted.** `whizbang.maintenance.pending_rows` counts only the tasks whose
+predicate an index serves, so a reading costs the same however large the backlog is
+([pending reclamation](../operations/observability/metrics#pending-reclamation), #2289). The ephemeral body reap, the
+superseded reaper, end of life and the version-cap truncate have no such index, and an unbounded count on a sampling
+cadence would make the meter the heaviest statement on the database, so they are left out rather than guessed.
+`eligible_not_yet_deleted` covers the part of their lag the seal gate holds back.
 
 ### Integrity dashboard and alerts {#integrity-dashboard-and-alerts}
 
@@ -4991,7 +5007,7 @@ only tasks an index serves, and these have none today).
 The repository ships a Grafana dashboard, `dashboards/grafana/whizbang-integrity.json`, beside the
 [storage dashboard](../operations/observability/storage-dashboard), and a Prometheus rule file,
 `dashboards/prometheus/whizbang-integrity-alerts.yml` (load it with `rule_files:`, or convert it to a
-`PrometheusRule`). The dashboard has four rows: service pairs, deficit and repair, seals and re-checks, and the sweeps.
+`PrometheusRule`). The dashboard has four rows: service pairs, deficit and repair (with the redelivered-then-lost-again loop), seals and re-checks, and the sweeps (with the cuts the seal holds).
 Its data source and service are variables; every query follows `$job`.
 
 | Alert | Fires when | Default threshold |
