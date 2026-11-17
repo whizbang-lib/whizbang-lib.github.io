@@ -12,6 +12,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IntegrityCheckOptions.cs
   - src/Whizbang.Core/Observability/IntegrityTracing.cs
   - src/Whizbang.Data.Postgres/Migrations/490_IntegritySealReading.sql
+  - src/Whizbang.Data.Postgres/Migrations/491_DeficitRowsKeepTheirTrace.sql
+  - src/Whizbang.Data.Postgres/Migrations/492_SealReadingCountsTheOpenWindow.sql
   - dashboards/grafana/whizbang-integrity.json
   - dashboards/prometheus/whizbang-integrity-alerts.yml
   - src/Whizbang.Data.Postgres/Migrations/450_SealedEpochsRecordWhenTheyWereSealed.sql
@@ -4896,7 +4898,7 @@ real rewrites below the seal.
 
 ### Integrity traces {#integrity-traces}
 
-{verified: IntegrityTracingTests.AnAnswer_JoinsTheTraceTheRequestCarried_AndNamesItsRequestAsync, IntegrityTracingTests.ARequest_CarriesItsOwnSpan_SoTheAnswerIsItsChildAsync, IntegrityTracingTests.AMalformedTraceParent_IsIgnored_AndTheSpanStartsUnderTheAmbientOneAsync, IntegrityTracingTests.EverySpanAttribute_IsOnTheBoundedList_AndNoneNamesAStreamOrATenantAsync, TwoServiceIntegrityTraceTests.ALossFoundByAnAudit_IsRepairedInOneTrace_AcrossBothServicesAsync}
+{verified: TwoServiceIntegrityTraceTests.WithTheDrainOn_TheAuditTheAnswerAndTheRepair_AreStillOneTraceAsync, RepairDrainWorkerTests.DrainTick_ARequestStartsInTheTraceOfTheAuditThatRecordedItsRowAsync, IntegrityRepairAnswerSqlTests.RecordTrace_TheClaimCarriesEachRowsTrace_AndALaterComparisonReplacesItAsync, IntegrityTracingTests.AnAnswer_JoinsTheTraceTheRequestCarried_AndNamesItsRequestAsync, IntegrityTracingTests.ARequest_CarriesItsOwnSpan_SoTheAnswerIsItsChildAsync, IntegrityTracingTests.AMalformedTraceParent_IsIgnored_AndTheSpanStartsUnderTheAmbientOneAsync, IntegrityTracingTests.EverySpanAttribute_IsOnTheBoundedList_AndNoneNamesAStreamOrATenantAsync, TwoServiceIntegrityTraceTests.ALossFoundByAnAudit_IsRepairedInOneTrace_AcrossBothServicesAsync}
 
 Integrity work has its own `ActivitySource`, **`Whizbang.Integrity`** (#2365), so a gap can be followed from the audit
 that found it to the repair that stored it, across both services, in one trace. Subscribe it with the turnkey
@@ -4923,10 +4925,15 @@ predates the fields carries neither, and the receiver's span starts as a root; a
 ignored the same way, so a bad link never fails the work it describes. The request id is also the way to tie a
 bundle to its request in logs.
 
-With the paced [repair drain](#repair-waits-for-its-answer) on (the default), the audit records a deficit in the
-ledger and the drain sends the request later, in a trace of its own (`integrity.repair_request`, kind `drain`): the
-ledger does not keep the audit's trace. The origin's answer and the repair join the drain's trace. With the drain off,
-the audit sends the request inline, and one trace runs from the audit cycle to the repair.
+**The drain path keeps the trace** (migration 491). With the paced [repair drain](#repair-waits-for-its-answer) on
+(the default), a comparison records a deficit in the ledger and the drain sends the request later, from another scope.
+So the comparison records its own `traceparent` and the manifest ask's id on each deficit row it recorded
+(`wh_integrity_ledger.trace_parent`, `trace_request_id`; a later comparison of the bucket replaces them), and the drain
+starts each request's span (`integrity.repair_request`, kind `drain`) under the trace of the first row of its group that
+has one. The origin's answer and the repair then join it, so one trace still runs from the audit cycle to the repair,
+whichever way the request is sent. A comparison with no span records nothing (no extra statement), and its rows' requests
+start traces of their own. `TwoServiceIntegrityTraceTests.WithTheDrainOn_TheAuditTheAnswerAndTheRepair_AreStillOneTraceAsync`
+locks it; with the drain off the audit sends the request inline, under its own span.
 
 **Spans carry no stream, tenant or event identity.** Their attributes are a bounded list
 (`IntegrityTracing.Attributes`): `whizbang.integrity.kind`, `.peer` (the other service), `.request_id`, `.check`, the
@@ -4937,11 +4944,11 @@ fails when a span writes any other attribute or the list gains one that names a 
 
 ### Integrity instruments {#integrity-instruments}
 
-{verified: StreamIntegrityObservabilityMetricsTests.BeforeAnyReading_NoSeriesIsReported_NeverAZeroAsync, StreamIntegrityObservabilityMetricsTests.WhetherEachCheckIsOn_IsOneSeriesPerCheckAsync, StreamIntegrityObservabilityMetricsTests.WhenACheckLastRan_IsItsUnixTime_PerCheckAsync, StreamIntegrityObservabilityMetricsTests.ASealReading_IsTheFrontierAndAgePerLane_AndTheRecheckCoverageAsync, StreamIntegrityObservabilityMetricsTests.EveryIntegrityInstrumentsAttribute_IsBounded_NoneNamesAStreamOrATenantAsync, IntegritySealReadingSqlTests.TheReading_IsEachLanesFrontierAndAge_AndTheRecheckCoverageAsync, MaintenanceWorkerIntegrityBacklogTests.TheMaintainer_PublishesTheSealReading_OnItsClock_OverTheRecheckWindowAsync, MaintenanceWorkerIntegrityBacklogTests.AnInstanceThatLosesItsTurn_OrFailsTheRead_WithdrawsTheSealReadingAsync}
+{verified: StreamIntegrityObservabilityMetricsTests.BeforeAnyReading_NoSeriesIsReported_NeverAZeroAsync, StreamIntegrityObservabilityMetricsTests.WhetherEachCheckIsOn_IsOneSeriesPerCheckAsync, StreamIntegrityObservabilityMetricsTests.WhenACheckLastRan_IsItsUnixTime_PerCheckAsync, StreamIntegrityObservabilityMetricsTests.ASealReading_IsTheFrontierAndAgePerLane_AndTheRecheckCoverageAsync, StreamIntegrityObservabilityMetricsTests.EveryIntegrityInstrumentsAttribute_IsBounded_NoneNamesAStreamOrATenantAsync, StreamIntegrityObservabilityMetricsTests.SealLowered_AndCarriedCompactions_ExistAtZeroForEveryValue_AndCountByItAsync, IntegritySealReadingSqlTests.TheReading_IsEachLanesFrontierAndAge_AndTheRecheckCoverageAsync, IntegritySealReadingSqlTests.TheReading_CountsEachLanesOpenWindow_ReadsTheGeneration_AndCountsCarriedBucketsAsync, IntegrityManifestReceptorTests.ManifestReceptor_GenerationChanged_CountsTheSealLoweredAsARewriteAsync, StreamPrefixTruncatorArchiveStoreTests.ACutThatHappened_IsCountedAsACarriedCompaction_ByKind_AndARefusalIsNotAsync, MaintenanceWorkerIntegrityBacklogTests.TheMaintainer_PublishesTheSealReading_OnItsClock_OverTheRecheckWindowAsync, MaintenanceWorkerIntegrityBacklogTests.AnInstanceThatLosesItsTurn_OrFailsTheRead_WithdrawsTheSealReadingAsync}
 
 #2365 adds the instruments the plan's observability section still lacked. Existing names are kept: the pair guard's
 (`pair_state`, `pair_halted_seconds`, `pair_halts`, `pair_halt_alerts`, `rule_fingerprint_info`, see
-[the pair guard](#the-pair-guard)) and the re-checks' counters (`epochs_rechecked`, `check_drift_found`,
+the pair guard, #2362) and the re-checks' counters (`epochs_rechecked`, `check_drift_found`,
 `check_duration`) already answer the plan's `recheck_epochs_checked_total`, `recheck_drift_total` and
 `recheck_duration`, and an origin's refusals are `redelivery_requests_ignored` by `reason` (`pair_halted`,
 `own_request`).
@@ -4953,9 +4960,16 @@ fails when a span writes any other attribute or the list gains one that names a 
 | `recheck_coverage_ratio` | `check` | The share of the epochs sealed within `SealRecheck:Lookback` that were re-checked within `SealRecheck:RecheckEvery`. No series when nothing was sealed within the lookback. |
 | `epoch_frontier` | `origin_service_id` | Per lane, the sequence below which every digest epoch is sealed. The empty id is the local lane. |
 | `seal_age_seconds` | `origin_service_id` | Per lane, seconds since the epoch frontier last advanced. It grows between closures; one that keeps growing while events arrive means sealing stopped. |
+| `open_window_events` | `origin_service_id`, `capped` | Per lane, the events above the epoch frontier, waiting to be sealed, counted up to 100,000 (`capped=true`: at least that many). The local lane counts its own events by commit sequence; an origin's lane counts by the origin's sequence. |
+| `origin_generation` | none | This service's origin generation: it moves when the service rewrites history its consumers verified (a reclassification, a refold), and each consumer then lowers its seal. One series per service. |
+| `carried_streams` | `capped` | Stream digest buckets that still carry the per-stream detail of a cut (#2363: a cut carries its digest), counted up to 100,000. Falls as the resting period rolls the detail off. |
+| `seal_lowered` (counter) | `reason` | Seals this service lowered for an origin: `rewrite` when the origin's generation moved, so verified history was rewritten. `rule_change` exists at zero: a change of eligibility rules reaches a consumer as a rewrite today, because a manifest does not say why history moved. |
+| `carried_compactions` (counter) | `kind` | Cuts that removed events and carried their digest: `truncate` (a prefix truncate) or `archive`. |
 
-The last three come from one read, `wh_integrity_seal_reading` (migration 490): one row per lane of the epoch frontier
-and one pass over the seal record within the lookback, both bounded by epochs, never by events. Like the
+The coverage and the per-lane gauges, the generation and the carried buckets come from one read,
+`wh_integrity_seal_reading` (migrations 490 and 492): one row per lane of the epoch frontier, one pass over the seal
+record within the lookback, and bounded counts through `idx_event_store_commit_sequence`,
+`idx_event_store_origin_lane` and `idx_stream_digests_carried_at`, each stopping at 100,000 entries. Like the
 [repair backlog](#repair-backlog-and-eta), only the instance holding the maintainer duty reads and reports it, and an
 instance that loses the duty, or whose read fails, withdraws it: no series, never a zero.
 
@@ -4965,13 +4979,14 @@ lane, state, reason, check or kind. `StreamIntegrityObservabilityMetricsTests.Ev
 reads every series the `Whizbang.StreamIntegrity` meter reports, the pair guard's included, and fails on any attribute
 outside that set.
 
-Not built yet (the plan's section 2.7 lists them): `redelivered_then_reaped_total`, `open_window_events`,
-`seal_lowered_total`, `origin_generation`, `carried_streams`, `carried_compactions_total`, and the cleanup lag
-extension of `whizbang.maintenance.pending_rows` with `eligible_not_yet_deleted`.
+Not built yet, pending a definition: `redelivered_then_reaped_total`, `eligible_not_yet_deleted` and the cleanup lag
+extension of `whizbang.maintenance.pending_rows` to the ephemeral body reap, the superseded reaper, end of life and the
+version-cap truncate (the [pending reclamation](../operations/observability/metrics#pending-reclamation) reading counts
+only tasks an index serves, and these have none today).
 
 ### Integrity dashboard and alerts {#integrity-dashboard-and-alerts}
 
-{verified: IntegrityDashboardTests.EveryMetricTheDashboardNames_IsDeclaredByAMeterInTheLibraryAsync, IntegrityDashboardTests.EveryMetricTheAlertRulesName_IsDeclaredByAMeterInTheLibraryAsync, IntegrityDashboardTests.TheRules_CoverEveryIntegrityCondition_TheIssueAsksForAsync, IntegrityDashboardTests.TheHaltedPairAlert_FiresAtTheGuardsDefaultThresholdAsync, IntegrityDashboardTests.TheRetentionAlert_FiresAtTwiceTheDefaultRestingPeriodAsync}
+{verified: IntegrityDashboardTests.EveryMetricTheDashboardNames_IsDeclaredByAMeterInTheLibraryAsync, IntegrityDashboardTests.EveryMetricTheAlertRulesName_IsDeclaredByAMeterInTheLibraryAsync, IntegrityDashboardTests.TheRules_CoverEveryIntegrityCondition_TheIssueAsksForAsync, IntegrityDashboardTests.TheHaltedPairAlert_FiresOnTheGuardsOwnAlertCounter_WithNoThresholdOfItsOwnAsync, IntegrityDashboardTests.TheRetentionAlert_FiresAtTwiceTheDefaultRestingPeriodAsync}
 
 The repository ships a Grafana dashboard, `dashboards/grafana/whizbang-integrity.json`, beside the
 [storage dashboard](../operations/observability/storage-dashboard), and a Prometheus rule file,
@@ -4981,7 +4996,7 @@ Its data source and service are variables; every query follows `$job`.
 
 | Alert | Fires when | Default threshold |
 | --- | --- | --- |
-| `WhizbangIntegrityPairHalted` | a pair has been halted at least as long as `PairGuard:HaltedAlertAfter` | 2 hours (7200 s) |
+| `WhizbangIntegrityPairHalted` | the pair guard counted a pair halted past `PairGuard:HaltedAlertAfter` in the last hour (`pair_halt_alerts`) | the guard's own setting, 2 hours by default |
 | `WhizbangIntegritySustainedDeficit` | `unhealed_deficit_events` above 0 for 2 hours | 0 |
 | `WhizbangIntegrityRepairExhausted` | buckets past their repair budget for an hour | 0 |
 | `WhizbangIntegrityRecheckDrift` | a check found drift in the last hour | 0 |
@@ -4990,10 +5005,14 @@ Its data source and service are variables; every query follows `$job`.
 | `WhizbangOperationalRetentionBehind` | the oldest operational record is past twice the default resting period: the retention sweep is not keeping up | 28 days |
 | `WhizbangArchiveOrphanSweepRefused` | the archive's orphan sweep refused to delete in the last hour | 0 |
 
-**The thresholds are the library's defaults, locked to them.** The halted-pair alert fires at
-`IntegrityPairGuardOptions.HaltedAlertAfter`'s default (owner decision Q5: two hours) and the retention alert at twice
-`OperationalRetentionOptions.Default`; a test reads each from the options and fails if the rule file says otherwise.
-A service that changes either setting changes the matching rule beside it. **A renamed metric fails the build:**
+**The halted-pair alert follows the service's own setting.** It fires on the pair guard's counter `pair_halt_alerts`,
+which the guard adds to once a pair has stayed halted past `PairGuard:HaltedAlertAfter`, so the rule writes no duration
+and a service that changes the setting needs no rule edit. It fires for an hour after each count; the dashboard's
+halted-pair panel says whether the pair is still halted.
+`IntegrityDashboardTests.TheHaltedPairAlert_FiresOnTheGuardsOwnAlertCounter_WithNoThresholdOfItsOwnAsync` fails if the rule
+names `pair_halted_seconds` or not the counter. **The retention alert is locked to the default:** it fires at twice
+`OperationalRetentionOptions.Default`; a test reads it from the options and fails if the rule file says otherwise, and a
+service that changes the resting period changes the rule beside it. **A renamed metric fails the build:**
 `IntegrityDashboardTests` derives every metric name the library declares, under the name Prometheus exposes it by, and
 fails when the dashboard or a rule names one that does not exist, so a panel can never go silently blank or an alert
 silently unfireable.
