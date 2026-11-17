@@ -34,6 +34,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveCursorCache.cs
   - src/Whizbang.Data.Postgres/Migrations/455_StaleCopiesAboveTheNewestAreRewalked.sql
   - src/Whizbang.Core/Perspectives/StreamReadAnchor.cs
+  - src/Whizbang.Core/Perspectives/ReplayFloor.cs
+  - src/Whizbang.Core/Perspectives/FoldedVersionPrefix.cs
   - src/Whizbang.Data.Postgres/Migrations/485_FlaggedCursorsBelowTheirStreamAreQueued.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/ReplayEventOrderTests.cs
@@ -66,6 +68,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRewindLoopTests.IdOrder.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreReadAfterVersionTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/StreamReadAnchorTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/ReplayFloorTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/FoldedVersionPrefixTests.cs
 ---
 
 # Perspective Rewind
@@ -144,14 +148,37 @@ try {
 }
 ```
 
-### Snapshot selection
+### Snapshot selection {#snapshot-selection}
 
-Inside `RewindAndRunAsync`, the runner asks the [snapshot store](snapshots.md) for the nearest safe restore point before the late event, then replays from there:
+{verified: ReplayFloorTests, FoldedVersionPrefixTests, PerspectiveRewindLoopTests.AStreamWhoseFirstEventHasTheHighestId_WithASnapshotThere_ConvergesAfterOneRewindAsync, PerspectiveRewindLoopTests.TwoServices_AConsumerStreamWhoseFirstEventHasTheHighestId_ConvergesAfterOneRewind_AndAuditCyclesNeverRewindItAgainAsync}
 
-- When the trigger's `commit_sequence` is known, it prefers `GetLatestSnapshotBeforeCommitSequenceAsync` (fully deterministic against the live-apply path).
-- Otherwise it falls back to `GetLatestSnapshotBeforeAsync(streamId, perspectiveName, triggeringEventId)`.
-- If no qualifying snapshot exists (or the snapshot's serialization version is stale), it performs a **full replay** from event zero.
+Inside `RewindAndRunAsync`, the runner restores the nearest snapshot that sits before the late event **in the order the
+replay folds the stream** ([replay ordering](#replay-ordering)), then replays from there:
+
+- **What a snapshot holds.** A snapshot is taken at the event with the highest version it holds, and it holds every
+  event of the stream up to that version. A live apply snapshots at the highest version it applied. A rewind snapshots
+  at the highest version it read, and its intermediate snapshots are taken only where the fold so far is every event up
+  to some version (a fold in origin order can hold version 5 before version 4).
+- **The candidate.** The store returns the newest snapshot below the late event's version
+  (`GetSnapshotFloorAsync`). Commit sequence and event id run backward against the stream for retroactively stamped
+  rows and can name a snapshot later than the trigger (#1355).
+- **The check.** The runner reads the stream as a full replay reads it and asks `ReplayFloor.Qualifies`: the events the
+  snapshot holds must be exactly the first ones in replay order, and the late event must come after them. A
+  single-origin stream replays in origin order, which can put an event above the snapshot's version before one it
+  holds; such a snapshot holds a fold the replay never produces.
+- If the candidate does not qualify, or none exists, or its serialization version is stale, the runner performs a
+  **full replay**. It never falls back to a floor chosen in another order: that answer arrives exactly when the floor
+  cannot be placed, and a wrong restore point leaves a read model with nothing pending to repair.
 - When that replay needs archived history and the stream's archive was deleted, it refuses instead of replaying (see [A deleted archive](#deleted-archive)).
+
+**Why the floor follows the replay's order (#2379).** A producer emitted three Started events and then a Completed
+one within two seconds. The broker dead-lettered the Started events and recovery delivered them up to 85 minutes later,
+so the consumer stored Completed at version 1 and the Started events at versions 2 to 4. A replay had folded version 2
+then version 1 in origin order and snapshotted the result at version 1. Placed by version alone, that snapshot was a
+floor for a trigger at version 2: the rewind restored it and folded the Started events after Completed. Judged by the
+replay's order it is not (version 2 comes before version 1 there), the rewind replays in full, and the row ends as the
+producer's order gives it: three Started, then Completed. The cost is one extra read of the stream for each rewind
+that has a candidate snapshot.
 
 The runner logs the decision it actually made at **Warning** (`Restoring … from snapshot at …` versus `… performing full replay …`). This is the authoritative record of the snapshot-vs-full outcome — the worker-emitted `replay_source`/`has_snapshot` observability signals report something subtly different (see [Snapshot-usage caveat](#snapshot-usage-caveat)).
 
@@ -256,6 +283,13 @@ Each apply pass orders its batch in two steps (`ReplayEventOrder`).
 | No origins (local events only) | Pure local order |
 
 {verified: ReplayEventOrderTests.Order_WhenCommitSequencesRunBackwardAgainstVersions_FollowsTheStreamsVersionsAsync, ReplayEventOrderTests.Order_WhenOneOriginStampsEveryEvent_FollowsOriginOrderOverVersionOrderAsync, ReplayEventOrderTests.Order_WhenAnOriginsEventsArriveOutOfOrderAmongLocalEvents_PutsThemInOriginOrderInTheirSlotsAsync, ReplayEventOrderTests.Order_WhenTwoOriginsInterleave_EachFollowsItsOwnOriginOrder_AndTheInterleavingIsArrivalAsync, ReplayEventOrderTests.Order_WhenStreamVersionsDecideTheLocalOrder_OriginEventsStillTakeOriginOrderInTheirSlotsAsync, ReplayEventOrderTests.Order_AMixedStream_GivesTheSameResultForEveryArrangementOfTheBatchAsync, ReplayEventOrderTests.Order_WhenOneOriginsSequencesTieInAMixedStream_BreaksOnTheIdAsync, PerspectiveApplyIdempotencyTests.RewindAndRun_StampsRunBackwardAgainstTheStream_FoldsInStreamOrderAsync}
+
+**An origin's event with no origin position (#2379)** is still that origin's event. A producer that publishes before
+its stamper reaches the row sends a position of 0; such an event is dealt into its origin's places too, merged among the
+positioned ones on its id, which the origin minted in the order it produced its events: it goes before the first
+positioned event whose id sorts after its own. Before, it kept its arrival place, so an older event delivered late (from
+a dead letter, say) replayed after the newer one it preceded.
+{verified: ReplayEventOrderTests.Order_WhenAnEventHasNoOriginSequence_TakesItsPlaceInTheOriginByIdAsync, ReplayEventOrderTests.Order_OneOriginsEventsWithNoOriginPosition_TakeTheirPlacesByIdAsync, ReplayEventOrderTests.Order_UnpositionedEventsOfAnOrigin_MergeByIdAmongItsPositionedOnesAsync, LastInReplayOrderTests}
 
 Cross-origin events on one stream have **no defined total order** (concurrent writers, per-origin sequence spaces: the numbers collide by design), so origin sequences are only ever compared *within* one origin, and the places between origins are never reordered. Before #2257 a mixed stream fell back to local order entirely, so a single origin's reordered events in a stream that also held local events replayed in arrival order. The purge marker stays the backstop for what replay cannot reorder: see [purge stays purged](perspectives-with-actions#purge-stays-purged).
 
@@ -373,11 +407,12 @@ once a snapshot existed at version 1: the read after the snapshot's id returned 
 stayed on version 2, the pending work stayed pending, and the next pass refused the live write and rewound again, about
 900 times a minute. Now one rewind replays versions 2 onward and settles the stream.
 
-The row's ordering guard is not part of this. A model that opts into
-[event-id ordering](versioned-apply) still refuses a write whose event id sorts below the one it holds: a rewind that
-folds older Started events after a Completed one with a higher id leaves the row Completed, and the rewind still
-completes its work and moves the cursor to the stream's last version, so nothing rewinds it again.
-{verified: PerspectiveRewindLoopTests.AStreamWhoseFirstEventHasTheHighestId_WithASnapshotThere_ConvergesAfterOneRewindAsync}
+Converging is not enough: the row must be the fold in the producer's order. The floor therefore follows the
+replay's order too ([snapshot selection](#snapshot-selection)), and an origin's events without an origin position take
+their places by id ([replay ordering](#replay-ordering)). The regression tests assert the row equals the fold in
+producer order (three Started, then Completed) after exactly one rewind, and that it differs from the fold in stored
+order.
+{verified: PerspectiveRewindLoopTests.AStreamWhoseFirstEventHasTheHighestId_WithASnapshotThere_ConvergesAfterOneRewindAsync, PerspectiveRewindLoopTests.TwoServices_AConsumerStreamWhoseFirstEventHasTheHighestId_ConvergesAfterOneRewind_AndAuditCyclesNeverRewindItAgainAsync}
 
 **Streams left looping.** A looping stream that still has pending work needs nothing on upgrade: its next claim
 settles it with one rewind. One whose work was retired keeps its cursor below its stream's last version, flagged, with
