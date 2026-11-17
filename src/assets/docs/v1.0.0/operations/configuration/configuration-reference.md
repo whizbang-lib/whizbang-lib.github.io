@@ -683,6 +683,7 @@ builder.Services.AddWhizbangAzureBlobArchive(builder.Configuration);
 | `CompressionLevel` | `int` | `4` | `Whizbang__Archive__AzureBlob__CompressionLevel` | Brotli quality, 0 to 11 ([why 4](../../fundamentals/events/archive-store#azure-blob-configuration)) |
 | `MaxEventsPerChunk` | `int` | `10000` | `Whizbang__Archive__AzureBlob__MaxEventsPerChunk` | Most events one archive object holds; 1 or more |
 | `AccessTier` | `AccessTier?` | `null` (the account's default) | `Whizbang__Archive__AzureBlob__AccessTier` | Tier every archive object is written at: `Hot`, `Cool` or `Cold`; `Archive` is refused at startup ([why](../../fundamentals/events/archive-store#access-tier)) |
+| `DeleteAfter` | `TimeSpan?` | `null` (deletions run at once) | `Whizbang__Archive__AzureBlob__DeleteAfter` | How long a queued archive object deletion waits before the object is deleted, for storage without soft delete; above zero when set, and at least the database's restore window. Also turns on the daily orphan sweep ([deletion delay](../deployment/restoring-an-environment-with-an-archive#a-deletion-delay)) {verified: AzureBlobArchiveRegistrationTests.Configuration_DeleteAfter_IsOffByDefault_AndBindsATimeSpanAsync} |
 
 ### Archive and stream lifecycle {#archive-and-stream-lifecycle-options}
 
