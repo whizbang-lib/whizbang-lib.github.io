@@ -14,6 +14,7 @@ tags: >-
   migrations, schema, hash-tracking, blue-green, rollback, preview,
   database, ddl, perspective-tracking, data-migration, wh-settings
 codeReferences:
+  - src/Whizbang.Data.Postgres/Migrations/476_UnusedCoordinationTablesAreDropped.sql
   - src/Whizbang.Data.Postgres/StartupVerdictBinding.cs
   - src/Whizbang.Data.Postgres/SchemaInitializationStages.cs
   - src/Whizbang.Data.Dapper.Postgres/PostgresSchemaInitializer.cs
@@ -79,6 +80,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/SchemaMigrationDeferral.cs
   - scripts/Capture-LegacyMigrationLedger.ps1
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/UnusedTablesAreDroppedTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkPlanShapeTests.ExpiredLeases.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkPlanShapeTests.HeldInbox.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ConcurrentIndexBuildTests.Replaces.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationReversalTests.cs
@@ -1235,13 +1238,14 @@ holds a lock that blocks every write to the table until the build commits. On a 
 but it cannot run inside a transaction at all. So a framework index on such a table is never created by a migration.
 It is declared in `ConcurrentIndexBuild.FrameworkIndexes` and built after the migrations by the `framework-index-build`
 [maintenance step](../../fundamentals/workers/maintenance-steps#framework-index-build), which the EF Core Postgres
-driver registers. There are three:
+driver registers. There are four:
 
 | Index | Table | What reads it |
 | --- | --- | --- |
 | `idx_event_store_type_commit_sequence` | `wh_event_store` | The [paced subscription backfill](../../resilience/stream-integrity#paced-backfill-index), reading one type's history in commit order |
 | `idx_integrity_ledger_answer_pending` | `wh_integrity_ledger` | The paced repair drain's count of the [repair answers it is waiting for](../../resilience/stream-integrity#outstanding-repair-answers-are-capped), on every tick it has tokens to spend |
 | `idx_inbox_state_held_lanes_covering` | `wh_inbox_state` | `claim_work`'s re-offer of the inbox rows an instance holds (see [below](#the-inbox-held-lanes-index-covers-the-walk)); replaces `idx_inbox_state_held_lanes` |
+| `idx_inbox_state_lease_order` | `wh_inbox_state` | `claim_work`'s reads of the inbox leases that ran out: the [owner's renewal](../../fundamentals/work-coordinator/claim-loop#an-owner-renews-the-leases-it-let-run-out), acquisition's expired lanes and the expired guard (see [below](#the-inbox-lease-order-index)); replaces `idx_inbox_state_expired` |
 
 The ledger is far smaller than the event store, but the drain's claims and the comparisons write to it continuously,
 so its index is kept out of the migration (371) for the same reason: a build inside the migration's transaction would
@@ -1289,7 +1293,8 @@ interrupted concurrent build` (Information), `an index build is in progress on i
 ```sql{title="Are the framework indexes built and valid?" category="Operations" difficulty="BEGINNER"}
 SELECT c.relname, i.indisvalid
 FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
-WHERE c.relname IN ('idx_event_store_type_commit_sequence', 'idx_integrity_ledger_answer_pending');
+WHERE c.relname IN ('idx_event_store_type_commit_sequence', 'idx_integrity_ledger_answer_pending',
+                    'idx_inbox_state_held_lanes_covering', 'idx_inbox_state_lease_order');
 ```
 
 ### The inbox held-lanes index covers the walk {#the-inbox-held-lanes-index-covers-the-walk}
@@ -1318,6 +1323,38 @@ instance its own expired rows instead of passing over them is an open question o
 - **The old index goes only after the new one is valid.** Until then the walk still needs it; a failed build keeps it.
   The table therefore keeps its index count, which is a gated property of the claim's write cost.
 - **Reads work meanwhile.** Until the step has run, the walk uses the old index exactly as before.
+
+
+### The inbox lease-order index {#the-inbox-lease-order-index}
+
+{verified: ClaimWorkPlanShapeTests.ClaimWork_RenewingExpiredLeases_ReadsThemThroughTheLeaseOrderIndexAsync, ConcurrentIndexBuildTests.TheHeldLanesIndex_IsRebuiltCovering_AndTheInboxStateKeepsItsIndexCountAsync}
+
+`idx_inbox_state_expired` (migration 162) was keyed `(priority, lease_expiry, received_at)` over leased pending rows.
+Every read it served asks for leases that ran out, `lease_expiry < now`, and with priority leading that is not a range
+of the index: each read walked every held row of its priority band and tested the expiry on each. Its replacement,
+`idx_inbox_state_lease_order`, is keyed `(lease_expiry, received_at, message_id)` over the same rows and carries the
+holder, priority, kind, stream, partition and schedule, so a read of expired leases is a range that stops where the
+live leases begin, in the order acquisition's expired lanes and the owner's renewal take them (#2345). It is built
+under its new name and the old index is dropped only once it is valid, so the table keeps its index count.
+
+## Unused tables are dropped {#unused-tables-are-dropped}
+
+{verified: UnusedTablesAreDroppedTests.AfterTheMigrations_ThePartitionAssignmentsTable_DoesNotExistAsync, UnusedTablesAreDroppedTests.AnUpgradedDatabaseThatStillHasThePartitionAssignmentsTable_LosesItAsync, UnusedTablesAreDroppedTests.TheInfrastructureSchema_DeclaresNoPartitionAssignmentsTableAsync, UnusedTablesAreDroppedTests.AfterTheMigrations_NoFrameworkFunctionReadsOrWritesTheReceptorProcessingTableAsync}
+
+Two tables from the first schema had no writer: `wh_partition_assignments` (the claim ranks from the live instances or
+the [published partition assignment](../../fundamentals/work-coordinator/claim-loop#ranking-who-counts-as-alive)) and
+`wh_receptor_processing` (receptors keep no per-event record). Migration 476 removes them from use:
+
+- **`wh_partition_assignments` is dropped.** The infrastructure schema no longer declares it, because a table the
+  bootstrap declares is created again on every start that applies it, after the migration dropped it. The migration
+  drops it with `DROP TABLE IF EXISTS`, so an upgraded database loses it and a re-run finds nothing to do.
+- **Nothing reads or writes `wh_receptor_processing`.** `claim_work` probed it on every poll, and the instance release
+  paths, the stream purge, the queue-statistics refresh and the rewind cleanup touched it. Each of those functions is
+  redefined without it, and `claim_orphaned_receptor_work` is dropped. Every function is replaced before anything is
+  dropped, in the migration's one transaction, so no function names a missing object at any point of an upgrade.
+- **The receptor-processing table itself is kept.** Migration 031 creates an index on it at the top level, so a
+  database migrating from empty, and a re-run of every migration over its own earlier run, need it to exist when 031
+  runs; a shipped migration is never edited. It holds no rows and is read by nothing.
 
 ## The stored-form rewrite
 
