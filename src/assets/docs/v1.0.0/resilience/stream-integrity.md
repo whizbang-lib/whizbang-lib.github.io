@@ -1383,7 +1383,7 @@ Why each choice:
 Integrity runs for a service pair only while both apply the same rules to the event types they share. Every receptor
 asks the guard before it acts:
 
-```mermaid
+```mermaid {caption="The pair guard: an integrity message is acted on only while both services apply the same rules to the types they share" tests=["TwoServicePairGuardTests.ASharedTypesRulesDiffer_ThePairIsHaltedOnBothSides_WithTheReason_AndResumesOnceTheyMatchAsync","TwoServicePairGuardTests.TheSameRules_ThePairProceeds_AndTheLossIsRepairedAsync"]}
 flowchart LR
   M[Integrity message<br/>with the sender's rules] --> G{Same rules over<br/>the shared types?}
   G -- yes --> A[Compare, repair,<br/>redeliver as usual]
