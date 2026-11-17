@@ -15,6 +15,8 @@ tags: >-
   database, ddl, perspective-tracking, data-migration, wh-settings
 codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/476_UnusedCoordinationTablesAreDropped.sql
+  - src/Whizbang.Data.Postgres/Migrations/477_ReceptorProcessingTableIsDropped.sql
+  - src/Whizbang.Data.Postgres/RetiredReceptorTable.cs
   - src/Whizbang.Data.Postgres/StartupVerdictBinding.cs
   - src/Whizbang.Data.Postgres/SchemaInitializationStages.cs
   - src/Whizbang.Data.Dapper.Postgres/PostgresSchemaInitializer.cs
@@ -81,6 +83,8 @@ codeReferences:
   - scripts/Capture-LegacyMigrationLedger.ps1
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/UnusedTablesAreDroppedTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/UnusedTablesAreDroppedTests.ReceptorTable.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperRetiredReceptorTableTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkPlanShapeTests.ExpiredLeases.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkPlanShapeTests.HeldInbox.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ConcurrentIndexBuildTests.Replaces.cs
@@ -1339,22 +1343,29 @@ under its new name and the old index is dropped only once it is valid, so the ta
 
 ## Unused tables are dropped {#unused-tables-are-dropped}
 
-{verified: UnusedTablesAreDroppedTests.AfterTheMigrations_ThePartitionAssignmentsTable_DoesNotExistAsync, UnusedTablesAreDroppedTests.AnUpgradedDatabaseThatStillHasThePartitionAssignmentsTable_LosesItAsync, UnusedTablesAreDroppedTests.TheInfrastructureSchema_DeclaresNoPartitionAssignmentsTableAsync, UnusedTablesAreDroppedTests.AfterTheMigrations_NoFrameworkFunctionReadsOrWritesTheReceptorProcessingTableAsync}
+{verified: UnusedTablesAreDroppedTests.AfterTheMigrations_ThePartitionAssignmentsTable_DoesNotExistAsync, UnusedTablesAreDroppedTests.AnUpgradedDatabaseThatStillHasThePartitionAssignmentsTable_LosesItAsync, UnusedTablesAreDroppedTests.TheInfrastructureSchema_DeclaresNoPartitionAssignmentsTableAsync, UnusedTablesAreDroppedTests.AfterTheMigrations_NoFrameworkFunctionReadsOrWritesTheReceptorProcessingTableAsync, UnusedTablesAreDroppedTests.TheDropReverses_AndAppliesAgainAsync, UnusedTablesAreDroppedTests.AFreshDatabase_EndsWithNoReceptorProcessingTableAsync, UnusedTablesAreDroppedTests.AnUpgradedDatabase_EndsWithNoReceptorProcessingTableAsync, UnusedTablesAreDroppedTests.ReRunningTheBootstrapAfterTheDrop_DoesNotRecreateTheReceptorProcessingTableAsync, UnusedTablesAreDroppedTests.AReplayThatRunsMigration031Again_GetsTheTableForIt_AndEndsWithoutItAsync, UnusedTablesAreDroppedTests.TheReceptorTableDropReverses_AndAppliesAgainAsync, DapperRetiredReceptorTableTests.AFreshDatabase_EndsWithNoReceptorProcessingTableAsync, DapperRetiredReceptorTableTests.APassThatRunsMigration031Again_GetsTheTableForIt_AndEndsWithoutItAsync, DapperRetiredReceptorTableTests.ReRunningTheBootstrapAfterTheDrop_DoesNotRecreateItAsync, NamedSchemaMigrationReplayTests.EveryMigrationReRunsOverItsOwnEarlierRunAsync}
 
 Two tables from the first schema had no writer: `wh_partition_assignments` (the claim ranks from the live instances or
 the [published partition assignment](../../fundamentals/work-coordinator/claim-loop#ranking-who-counts-as-alive)) and
-`wh_receptor_processing` (receptors keep no per-event record). Migration 476 removes them from use:
+`wh_receptor_processing` (receptors keep no per-event record). Both are gone:
 
-- **`wh_partition_assignments` is dropped.** The infrastructure schema no longer declares it, because a table the
-  bootstrap declares is created again on every start that applies it, after the migration dropped it. The migration
-  drops it with `DROP TABLE IF EXISTS`, so an upgraded database loses it and a re-run finds nothing to do.
-- **Nothing reads or writes `wh_receptor_processing`.** `claim_work` probed it on every poll, and the instance release
-  paths, the stream purge, the queue-statistics refresh and the rewind cleanup touched it. Each of those functions is
-  redefined without it, and `claim_orphaned_receptor_work` is dropped. Every function is replaced before anything is
-  dropped, in the migration's one transaction, so no function names a missing object at any point of an upgrade.
-- **The receptor-processing table itself is kept.** Migration 031 creates an index on it at the top level, so a
-  database migrating from empty, and a re-run of every migration over its own earlier run, need it to exist when 031
-  runs; a shipped migration is never edited. It holds no rows and is read by nothing.
+- **Their readers go first.** `claim_work` probed `wh_receptor_processing` on every poll (475), and the instance release
+  paths, the stream purge, the queue-statistics refresh and the rewind cleanup touched it. Migration 476 redefines each
+  of those functions without it and drops `claim_orphaned_receptor_work`, so by the time a table is dropped no function
+  names it.
+- **`wh_partition_assignments` is dropped by 476.** The infrastructure schema no longer declares it, because a table the
+  bootstrap declares is created again on every pass that applies the bootstrap, after the migration dropped it.
+- **`wh_receptor_processing` is dropped by 477, and the bootstrap creates it only until then.** Migration 031 creates an
+  index on it at the top level, and a shipped migration is never edited, so the table has to exist whenever 031 runs:
+  on a database migrating from empty, and on any pass that runs 031 again (an upgrade whose recorded hashes predate the
+  current files; the replay of every migration over its own earlier run stands for it). The bootstrap therefore creates
+  the table only while the drop migration's ledger row does not record the hash the drop has now. Until it does, the
+  drop has yet to run on this pass, or runs again on it, and removes the table once 031 is done; once it does, the drop
+  stays skipped and so does the table. Each driver compares the hash it records itself, so the check is the ledger's
+  own. The bootstrap finds the drop by its name after the number (`_ReceptorProcessingTableIsDropped`).
+
+Every drop is `DROP ... IF EXISTS`, so an upgraded database loses the table whatever it holds and a re-run finds nothing
+to do. Each migration's down script restores what it removed, empty.
 
 ## The stored-form rewrite
 

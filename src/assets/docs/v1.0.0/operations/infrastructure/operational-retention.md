@@ -235,7 +235,7 @@ its explanation.
 | Bounded by | Tables |
 |---|---|
 | Lanes, epochs and seals | `wh_digest_epoch_frontiers`, `wh_digest_epoch_seals`, `wh_digest_epochs`, `wh_integrity_seals` |
-| Streams | `wh_active_streams`, `wh_apply_fold_watermarks`, `wh_archive_manifest`, `wh_event_archive`, `wh_event_archive_cursors`, `wh_event_archive_rows`, `wh_perspective_cursors`, `wh_perspective_snapshots`, `wh_receptor_processing`, `wh_stream_digests`, `wh_stream_lifecycle`, `wh_stream_purge_markers` |
+| Streams | `wh_active_streams`, `wh_apply_fold_watermarks`, `wh_archive_manifest`, `wh_event_archive`, `wh_event_archive_cursors`, `wh_event_archive_rows`, `wh_perspective_cursors`, `wh_perspective_snapshots`, `wh_stream_digests`, `wh_stream_lifecycle`, `wh_stream_purge_markers` |
 | Event data | `wh_event_body`, `wh_event_store`, `wh_offload_claims` (offloaded bodies, expire after `PassiveExpiry`) |
 | Types and origins | `wh_unsequenced_digest_totals` (one row per origin, tenant and type), `wh_consumed_types`, `wh_definition_lineage`, `wh_integrity_domain_claims`, `wh_integrity_known_origins`, `wh_integrity_pending_gaps`, `wh_subscription_backfills`, `wh_type_definitions`, `wh_type_history_walks` |
 | Instances and roles | `wh_instance_capabilities`, `wh_managed_object_declarations`, `wh_notify_state`, `wh_role_assignments`, `wh_role_candidates`, `wh_service_instances` |
@@ -257,6 +257,5 @@ its explanation.
   dead cursor also held the signal log's retention back. Finished `wh_subscription_backfills` rows stay **State**: a
   backfill is inserted only if none exists for its owner and type, so the finished row is the "already done" marker,
   and removing it would start the backfill again. {verified: OperationalTableRegistryGuardTests.TheDecidedTables_AreClassifiedAsDecidedAsync, OperationalRetentionSweepSqlTests.AFinishedSubscriptionBackfill_IsNeverSwept_ItIsTheAlreadyDoneMarkerAsync, OperationalRetentionSweepSqlTests.ASignalCursor_OfAGoneInstance_GoesPastTheRetention_ALivePodsNeverAsync}
-- **`wh_partition_assignments`** had no reader or writer and is dropped (migration 476). **`wh_receptor_processing`** has no
-  reader or writer either since migration 476; the table itself stays because migration 031 indexes it (see
-  [unused tables are dropped](migrations#unused-tables-are-dropped)).
+- **`wh_partition_assignments`** and **`wh_receptor_processing`** had no writer and are dropped (migrations 476 and 477;
+  see [unused tables are dropped](migrations#unused-tables-are-dropped)).
