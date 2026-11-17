@@ -7,6 +7,8 @@ order: 4
 description: Cross-service anti-entropy — continuity checkpoints, digest audits, and idempotent re-delivery repair; report-only by default, self-healing as the opt-in
 tags: 'stream-integrity, anti-entropy, re-delivery, backfill, digest, manifest, continuity, checkpoint, repair, cross-service, bootstrap'
 codeReferences:
+  - src/Whizbang.Data.Postgres/Migrations/465_CutsCarryTheirDigest.sql
+  - src/Whizbang.Data.Postgres/Migrations/466_SupersedingTypesCountTheKey.sql
   - src/Whizbang.Data.Postgres/Migrations/459_UnchangedOriginsAreNotAsked.sql
   - src/Whizbang.Data.Postgres/Migrations/458_FullHistoryCompareRunsInSlices.sql
   - src/Whizbang.Core/Messaging/IntegrityCheckOptions.cs
@@ -130,6 +132,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/375_LedgerRowsWithoutAWindowAreRechecked.sql
   - src/Whizbang.Data.EFCore.Postgres/UnsequencedDigestCompactionStep.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CleanupIntegrityMatrixTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CutsCarryTheirDigestSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CutsCarryTheirDigestCoordinatorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAskMemoSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TwoServiceAskSkipTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.AskSkip.cs
@@ -1470,6 +1475,106 @@ Why the plan is fixed by the statement's shape rather than by planner settings: 
 function would also turn off the keyed lookups the update and the insert rely on, replacing them with scans of the
 whole digest table. Better estimates are not available either: the filters are bit tests and a type-name list, which
 PostgreSQL has no statistics for.
+
+## Cleanup and integrity {#cleanup-and-integrity}
+
+{verified: CleanupIntegrityMatrixTests.CleanupAndIntegrity_Converge_AndAGenuineLossBesideTheCleanupIsStillRepairedAsync}
+
+Cleanup removes history; integrity compares digests across services. A deliberate removal on one side must never read as
+damage on the other, or integrity sends the removed history back and cleanup removes it again, forever. The rule that
+keeps the two apart: **the digest follows what should exist, never when it was deleted.** Physical deletion is timing,
+local to each service, and it never changes a digest, a seal or the origin generation.
+
+Cleanup comes in two shapes, and each has one way of staying invisible:
+
+| Shape | Paths | How it stays invisible |
+|---|---|---|
+| Rule-shaped | the ephemeral body reap and pointer prune, at-most-once occurrences, audit records, superseded copies | the rule decides what counts, the same on every service, so a path removes only what was never counted, or, for a superseding type, a copy whose key is still counted ([superseding events](../fundamentals/events/superseding-events#the-digest-counts-the-key)) |
+| Cut-shaped | a prefix truncate, close the books, an archive, a purge, an end-of-life cut | the cut [carries the digest](#cuts-carry-their-digest) of what it removes |
+
+The [cleanup-and-integrity matrix](#cleanup-integrity-matrix) runs every cleanup path against every integrity mechanism
+over two real stores and holds each combination to it.
+
+### Cuts carry their digest {#cuts-carry-their-digest}
+
+{verified: CutsCarryTheirDigestSqlTests.Truncate_CarriesWhatItRemoves_TheDigestStaysAndNothingIsRefoldedOrBumpedAsync, CutsCarryTheirDigestSqlTests.TypeAnswer_IsTheSameBeforeAndAfterACut_SealedOrOpenAsync, CutsCarryTheirDigestSqlTests.EpochRecheck_AfterACut_FindsNoDrift_AndStillFindsADamagedSealAsync}
+
+A cut moves the digest contribution of what it removes instead of subtracting it:
+
+- the stream's bucket keeps its digest, which is the **comparable digest**: the live events plus the carried part. The
+  removed part is recorded beside it (`carried_lo`, `carried_hi`, `carried_count`, `carried_id_lo`, `carried_id_hi`,
+  `carried_at`);
+- the epoch each removed event sat in records it in `wh_digest_epoch_removed`, so an epoch's fold is its surviving
+  events plus what was removed from it;
+- nothing is refolded and the origin generation is not bumped.
+
+Every answer therefore reads exactly what it read before the cut: the bucket tables, the sealed epochs, the open window
+and the recomputed folds (which add the carried part). A service that cut its history and one that did not still answer
+alike, whichever side cut.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The carried part sits on the bucket that already exists, and the removed part on one row per lane, tenant, type and epoch. | The cost of "I no longer keep this" grows with cut streams and epochs, never with events. | {verified: CutsCarryTheirDigestSqlTests.Truncate_CarriesWhatItRemoves_TheDigestStaysAndNothingIsRefoldedOrBumpedAsync} |
+| The removed rows are their own table, not columns on `wh_digest_epochs`. | A refold deletes and rewrites an epoch's rows, and an epoch not sealed yet has none; the removed part has to outlive both. | {verified: CutsCarryTheirDigestSqlTests.Refold_OfAnEpochACutTouched_KeepsTheRemovedPartInTheSealAsync} |
+| The heal compares a bucket with its live fold plus its carried part, and keeps a bucket whose whole stream was cut. | Such a bucket is the stream's digest, not a phantom; an event lost without being carried is still drift. | {verified: CutsCarryTheirDigestSqlTests.Heal_FindsACarriedBucketTrue_AndStillFindsAnUnaccountedLossAsync, CutsCarryTheirDigestSqlTests.Heal_ABucketWhoseWholeStreamWasCut_IsKept_NotReportedAsAPhantomAsync} |
+| A truncate records the stream's floor (`truncated_through_version`). | Nothing at or below it is held here, so nothing is stored below it again. | {verified: CutsCarryTheirDigestSqlTests.Truncate_WritesTheStreamsFloorAsync} |
+| A restore takes its events back out of what their archive carried; a stream archived before carrying existed folds them back in, as before. | The restore leaves every digest and seal where it was. | {verified: CutsCarryTheirDigestSqlTests.ArchiveWhole_KeepsTheBucketCarried_AndARestoreTakesItBack_NothingBumpedAsync, CutsCarryTheirDigestSqlTests.Restore_OfAStreamArchivedBeforeCutsCarried_FoldsItBackAsBeforeAsync} |
+| A purged stream keeps its buckets, carried, and its purge marker is its tombstone: a redelivered event of it is refused at the inbox (`repair refused: stream purged`). | The purge removes deduplication too, so without the tombstone a resend would bring the stream back. | {verified: CutsCarryTheirDigestSqlTests.Purge_KeepsTheBucketCarried_AndARedeliveryOfThePurgedStreamIsRefusedAsync} |
+| The carried detail is never re-verifiable once its events are gone. | It is trusted like a sealed epoch, by design; the [seal gate](#a-cut-waits-for-the-seal) makes sure it was verified before it was removed. | {verified: CleanupIntegrityMatrixTests.CleanupAndIntegrity_Converge_AndAGenuineLossBesideTheCleanupIsStillRepairedAsync} |
+
+### A cut waits for the seal {#a-cut-waits-for-the-seal}
+
+{verified: CutsCarryTheirDigestSqlTests.Truncate_OfHistoryAboveTheSeal_WaitsForIt_WhenTheGateIsOn_AndProceedsWhenItIsOffAsync, CutsCarryTheirDigestSqlTests.Truncate_OfReceivedHistory_WaitsForTheConsumersSeal_WhenItAuditsThatOriginAsync, CutsCarryTheirDigestSqlTests.Truncate_OfLocalHistory_WaitsForEveryConsumersReportedSeal_OnlyWhenThatSettingIsOnAsync}
+
+A cut removes only history this service has sealed. Asked for above the seal, it removes nothing and returns
+`awaiting_seal`; the end-of-life step asks again on its next cycle, as it does after any refusal.
+
+- Every event the cut would remove sits below the sealed frontier of its lane.
+- A received event also sits below this service's verified seal for its origin, when it audits that origin.
+- With `Whizbang:StreamIntegrity:Sealing:CutWaitsForConsumers` on (off by default), a local event also sits below the
+  lowest seal a consumer reported in the last 7 days. A consumer reports its seal with every windowed type-level audit
+  request, recorded in `wh_integrity_consumer_seals`.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The gate follows `Sealing:Enabled`: the maintenance cycle writes it to the store (`integrity_cut_waits_for_seal`) every cycle, and the store rewrites it only when it changes. | Nothing is sealed while sealing is off, so a cut that waited would wait forever. A host without stream integrity writes nothing and its cuts never wait. | {verified: MaintenanceWorkerEpochClosureTests.SealingOn_ACutWaitsForTheSeal_AndForConsumersOnlyWhenAskedAsync, MaintenanceWorkerEpochClosureTests.SealingOff_ACutNeverWaits_AndNothingIsClosedAsync, MaintenanceWorkerEpochClosureTests.NoIntegrityOptionsRegistered_WritesNoCutGateAsync} |
+| A purge never waits. | It is an operator's decision, made in the operator's transaction; what it removes is carried all the same, and the open window's answer keeps it through the removed rows. | {verified: CutsCarryTheirDigestSqlTests.TypeAnswer_IsTheSameBeforeAndAfterACut_SealedOrOpenAsync} |
+| Waiting for consumers is a setting, off by default. | It guarantees every consumer verified the history while the origin could still resend it, at the cost of making this service's cuts wait for its slowest consumer. Only reports from the last 7 days count, so a consumer that stopped asking holds nothing back for long. | {verified: CutsCarryTheirDigestSqlTests.Truncate_OfLocalHistory_WaitsForEveryConsumersReportedSeal_OnlyWhenThatSettingIsOnAsync, CutsCarryTheirDigestCoordinatorTests.AWindowedTypeAsk_RecordsTheConsumersSeal_OnTheOriginAsync} |
+
+### Carried detail rests, then rolls off {#carried-detail-rests-then-rolls-off}
+
+{verified: CutsCarryTheirDigestSqlTests.CarriedDetail_PastItsRestingPeriod_RollsOff_AndTheHealThenLeavesTheBucketAloneAsync, MaintenanceWorkerOperationalRetentionTests.TheCycle_RollsOffCarriedDetail_WithItsOwnRest_InBoundedBatches_AndCountsItAsync}
+
+The per-stream carried detail is operational data: it is kept so a recent cut can be investigated and its bucket
+re-checked, for the `CarriedDetail` resting period of [operational retention](../operations/infrastructure/operational-retention#categories)
+(14 days by default), then cleared by the maintenance cycle in bounded batches. The bucket's comparable digest stays, so
+the stream still answers as it did, and the epochs keep the removed part. The heal leaves a bucket whose detail rolled
+off alone: its events can no longer account for its digest.
+
+### The cleanup-and-integrity matrix {#cleanup-integrity-matrix}
+
+{verified: CleanupIntegrityMatrixTests.CleanupAndIntegrity_Converge_AndAGenuineLossBesideTheCleanupIsStillRepairedAsync}
+
+`CleanupIntegrityMatrixTests` runs each (cleanup path, side, integrity mechanism) pair over two real Postgres stores, an
+origin and a consumer, with the real integrity receptors and the real receive path between them. Each case seeds the
+same history on both sides, seals it and audits it clean, runs the cleanup on the origin, the consumer or both, then
+runs the mechanism for three cycles with the cleanup run again between cycles. It asserts that the cleanup is invisible
+(no repair request, no divergence report, no redelivered event stored again, no drift found by the heal or the epoch
+re-check) and, beside it, a **positive control**: a genuine loss of the same type is found and, where the mechanism
+repairs, repaired. Every case also checks the invariant: each stored digest equals a fresh fold over the events still
+eligible to count, plus what cuts carried.
+
+| Cleanup | Outcome on every side and mechanism |
+|---|---|
+| Ephemeral body reap, pointer prune, at-most-once occurrences, audit records | never counted, so never seen |
+| Superseded reap | the key is counted once, whichever copies each side still holds |
+| Reclassify to ephemeral, rewind bookkeeping | a rule change: counted the same once both sides run the same rule |
+| Prefix truncate, close the books, prefix archive, whole archive, purge | carried: every answer and seal is what it was before the cut |
+| Archive then restore | nothing changes |
+
+The pairs that cannot meet are left out, with the reason: a never-counted kind has no sealed epoch to check, and the
+rewind bookkeeping records live on the local lane and never travel, so only the origin's own heal and epoch re-check
+apply to them.
 
 ## Scheduling, startup, and the repair policy ladder
 

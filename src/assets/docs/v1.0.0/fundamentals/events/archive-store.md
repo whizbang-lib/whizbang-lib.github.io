@@ -271,6 +271,7 @@ the archive.
 | `no_carry_forward`, `cursor_behind` | A prefix the truncate refused; nothing moved. |
 | `not_past_first_version` | A prefix through a version below 1; nothing moved ([the archive rules](#the-archive-rules)). |
 | `snapshot_in_range` | A prefix that reaches the newest snapshot a perspective holds for the stream; nothing moved ([the archive rules](#the-archive-rules)). |
+| `awaiting_seal` | The batch reaches history this service has not sealed yet; nothing moved, and the caller asks again once the epochs close ([a cut waits for the seal](../../resilience/stream-integrity#a-cut-waits-for-the-seal)). |
 | `restored`, `nothing_archived`, `version_conflict` | A restore's outcomes (below). |
 
 ## Tombstones
