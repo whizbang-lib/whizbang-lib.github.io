@@ -39051,6 +39051,11 @@
         "linkSource": "XmlTag"
       },
       {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcilerTests.cs",
+        "testMethod": "Reconcile_ACopyANewerHeldCopySupersedes_IsCountedSatisfied_AndNotADeficitAsync",
+        "linkSource": "XmlTag"
+      },
+      {
         "testFile": "tests/Whizbang.Core.Tests/Workers/PerspectiveRowSweepTests.cs",
         "testMethod": "Sweeps_RunEvenWithNoGuardRegistered_TheWiringThatWasMissingAsync",
         "linkSource": "XmlTag"
@@ -41412,6 +41417,21 @@
       {
         "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationConstantsTests.cs",
         "testMethod": "Parse_RejectsTheShapesThatWouldMisfireAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationConstantsTests.cs",
+        "testMethod": "Parse_ReadsAConstantWithAnArgument_UnderItsTokenAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationConstantsTests.cs",
+        "testMethod": "Parse_RejectsAnArgumentThatIsNotOneLowerCaseName_AndAnArgumentFormDefinedTwiceAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationConstantsTests.cs",
+        "testMethod": "Apply_AConstantWithAnArgument_NamesTheAlias_AndSubstitutesTheConstantsItsValueWritesAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -56654,6 +56674,18 @@
         "linkSource": "XmlTag"
       }
     ],
+    "DigestRuleSql": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/DigestEligibilityGuardTests.cs",
+        "testMethod": "NoCSharpSql_WritesTheEligibilityRuleByHandAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/DigestEligibilitySqlTests.cs",
+        "testMethod": "TheConsumersCheckpointCount_LeavesOutAtMostOnceEvents_AsTheOriginsCountDoesAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "EFCoreAppSignalTransactionSource": [
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreAppSignalTransactionSourceTests.cs",
@@ -60981,8 +61013,13 @@
     ],
     "UnsequencedByTypeSql": [
       {
-        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedReceivedDigestSqlTests.cs",
-        "testMethod": "ByType_UnderAGenericPlan_ReadsTheOriginsSequencelessRows_NotItsSequencedLaneAsync",
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedHeldFoldCostSqlTests.cs",
+        "testMethod": "ByType_UnderAGenericPlan_ReadsOnlyTheUnsettledRowsOfTheEventStore_NeverItsHistoryAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedHeldFoldCostSqlTests.cs",
+        "testMethod": "ByType_ALargeHistory_CostsWhatASmallOneDoes_ForTheSameNewWorkAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -66654,6 +66691,27 @@
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryRequestReceptorTests.PartialStreams.cs",
         "testMethod": "Receptor_AStreamCutAtTheOriginsCap_IsNamedPartialAsync",
         "testLine": 59,
+        "testClass": "RedeliveryRequestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryRequestReceptorTests.WholeAnswer.cs",
+        "testMethod": "Receptor_AnAnswerOverSeveralPages_EndsOnlyWithItsLastBundleAsync",
+        "testLine": 19,
+        "testClass": "RedeliveryRequestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryRequestReceptorTests.WholeAnswer.cs",
+        "testMethod": "Receptor_AnAnswerWhoseLastPageIsFull_StillEndsWithItsLastBundleAsync",
+        "testLine": 30,
+        "testClass": "RedeliveryRequestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryRequestReceptorTests.WholeAnswer.cs",
+        "testMethod": "Receptor_AnAnswerThatSelectsNothing_PublishesNoBundleAsync",
+        "testLine": 43,
         "testClass": "RedeliveryRequestReceptorTests",
         "linkSource": "Convention"
       }
@@ -76631,6 +76689,31 @@
       {
         "testFile": "tests/Whizbang.Transports.Component.Tests/InProcessTransportTests.cs",
         "testMethod": "PublishAsync_ConcurrentPublishes_AllHandlersInvokedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "PublishAnswer_EveryBundleButTheLast_SaysTheAnswerContinuesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "Publish_ThatAnswersNoWindow_SaysNothingContinuesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "BeginAnswer_OverSeveralPublishes_HoldsBackEachLastBundle_AndEndsOnlyOnCompleteAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "BeginAnswer_ThatPublishesNothing_EndsWithoutABundleAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "BeginAnswer_RefusesAMissingTopic_AndAPublishOfNoListAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -123361,6 +123444,31 @@
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectivePrepareCompleteIntegrationTests.cs",
         "testMethod": "ARowTheDatabaseRejects_FailsAsThePerPairPathFailsAsync",
         "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "PublishAnswer_EveryBundleButTheLast_SaysTheAnswerContinuesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "Publish_ThatAnswersNoWindow_SaysNothingContinuesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "BeginAnswer_OverSeveralPublishes_HoldsBackEachLastBundle_AndEndsOnlyOnCompleteAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "BeginAnswer_ThatPublishesNothing_EndsWithoutABundleAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "BeginAnswer_RefusesAMissingTopic_AndAPublishOfNoListAsync",
+        "linkSource": "XmlTag"
       }
     ],
     "RunRebuildFromLatestSnapshotAsync": [
@@ -140863,6 +140971,11 @@
         "linkSource": "XmlTag"
       },
       {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcilerTests.cs",
+        "testMethod": "Reconcile_ACopyANewerHeldCopySupersedes_IsCountedSatisfied_AndNotADeficitAsync",
+        "linkSource": "XmlTag"
+      },
+      {
         "testFile": "tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowOutboxFlushFailureTests.cs",
         "testMethod": "FlushFailsOnceForSomeStreams_EveryAcceptedMessageIsStoredAsync",
         "linkSource": "XmlTag"
@@ -157412,11 +157525,6 @@
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedReceivedDigestSqlTests.cs",
         "testMethod": "ByStream_UnderAGenericPlan_ReadsTheNamedStreamsRows_NotTheOriginsLaneAsync",
         "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedReceivedDigestSqlTests.cs",
-        "testMethod": "ByType_UnderAGenericPlan_ReadsTheOriginsSequencelessRows_NotItsSequencedLaneAsync",
-        "linkSource": "XmlTag"
       }
     ],
     "EnsureIntegritySealGenerationAsync": [
@@ -167825,6 +167933,50 @@
         "linkSource": "XmlTag"
       }
     ],
+    "RedeliveryAnswerPublication": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "PublishAnswer_EveryBundleButTheLast_SaysTheAnswerContinuesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "Publish_ThatAnswersNoWindow_SaysNothingContinuesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "BeginAnswer_OverSeveralPublishes_HoldsBackEachLastBundle_AndEndsOnlyOnCompleteAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "BeginAnswer_ThatPublishesNothing_EndsWithoutABundleAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "BeginAnswer_RefusesAMissingTopic_AndAPublishOfNoListAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Continues": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityTypeLaneAnswerSqlTests.WholeAnswer.cs",
+        "testMethod": "RecordBundleAnswer_AMultiBundleAnswerWhoseFirstBundleChangedNothing_DoesNotMarkTheTypeLaneBeforeItsLastBundleAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityTypeLaneAnswerSqlTests.WholeAnswer.cs",
+        "testMethod": "RecordBundleAnswer_AMultiBundleAnswerThatChangedNothingAnywhere_MarksTheTypeLaneOnItsLastBundleAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityTypeLaneAnswerSqlTests.WholeAnswer.cs",
+        "testMethod": "RecordBundleAnswer_AnEarlierBundleThatStoredSomething_LeavesTheTypeLaneUnmarkedByTheLastAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "RedeliveryPump": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpTests.cs",
@@ -167975,6 +168127,33 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.cs",
         "testMethod": "PublishWindowAnswer_WithoutATimeToLive_LeavesTheBrokerExpiryAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "BeginAnswer": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "PublishAnswer_EveryBundleButTheLast_SaysTheAnswerContinuesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "Publish_ThatAnswersNoWindow_SaysNothingContinuesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "BeginAnswer_OverSeveralPublishes_HoldsBackEachLastBundle_AndEndsOnlyOnCompleteAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "BeginAnswer_ThatPublishesNothing_EndsWithoutABundleAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.WholeAnswer.cs",
+        "testMethod": "BeginAnswer_RefusesAMissingTopic_AndAPublishOfNoListAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -168153,6 +168332,11 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcilerTests.cs",
         "testMethod": "Reconcile_WithMetrics_CountsAdoptedEventsAndUnhealableBucketsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcilerTests.cs",
+        "testMethod": "Reconcile_ACopyANewerHeldCopySupersedes_IsCountedSatisfied_AndNotADeficitAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -275097,7 +275281,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 324,
+        "sourceLine": 321,
         "sourceSymbol": "RecordHousekeepingDeferralAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -275127,7 +275311,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 338,
+        "sourceLine": 335,
         "sourceSymbol": "ClearHousekeepingDeferralAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -275150,7 +275334,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 605,
+        "sourceLine": 602,
         "sourceSymbol": "SyncMixedStreamAllowancesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -275282,7 +275466,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 587,
+        "sourceLine": 584,
         "sourceSymbol": "GetStateBasedStreamIdsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -276529,7 +276713,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3099,
+        "sourceLine": 3082,
         "sourceSymbol": "GetEphemeralBodiesAboutToReapAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -278318,7 +278502,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 418,
+        "sourceLine": 415,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -278334,7 +278518,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 418,
+        "sourceLine": 415,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -278350,7 +278534,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 418,
+        "sourceLine": 415,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -278366,7 +278550,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 418,
+        "sourceLine": 415,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -278382,7 +278566,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 418,
+        "sourceLine": 415,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -278398,7 +278582,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 418,
+        "sourceLine": 415,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -278414,7 +278598,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 418,
+        "sourceLine": 415,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -278430,7 +278614,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 418,
+        "sourceLine": 415,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -278980,7 +279164,7 @@
     "MigrationConstantsTests.TheConstantsFile_DefinesEveryTokenTheMigrationsWriteAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Postgres/MigrationConstants.cs",
-        "sourceLine": 17,
+        "sourceLine": 23,
         "sourceSymbol": "MigrationConstants",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -278989,7 +279173,7 @@
     "MigrationConstantsTests.TheNoRewindFloorMarker_IsSpelledTheSameInTheMigrationsAndInCoreAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Postgres/MigrationConstants.cs",
-        "sourceLine": 17,
+        "sourceLine": 23,
         "sourceSymbol": "MigrationConstants",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -278998,7 +279182,7 @@
     "MigrationConstantsTests.TheMigrationsTheProviderHandsOut_CarryNoTokens_AndTheValuesAreInPlaceAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Postgres/MigrationConstants.cs",
-        "sourceLine": 17,
+        "sourceLine": 23,
         "sourceSymbol": "MigrationConstants",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -279007,7 +279191,7 @@
     "MigrationConstantsTests.Apply_ReplacesTokens_AndLeavesTheSchemaPlaceholderAndPlainTextAloneAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Postgres/MigrationConstants.cs",
-        "sourceLine": 17,
+        "sourceLine": 23,
         "sourceSymbol": "MigrationConstants",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -279016,7 +279200,7 @@
     "MigrationConstantsTests.UnknownTokens_NamesATypo_AndIgnoresTheSchemaPlaceholdersAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Postgres/MigrationConstants.cs",
-        "sourceLine": 17,
+        "sourceLine": 23,
         "sourceSymbol": "MigrationConstants",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -279025,7 +279209,7 @@
     "MigrationConstantsTests.Parse_ReadsCommentsBlanksAndDefinitions_InOrderAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Postgres/MigrationConstants.cs",
-        "sourceLine": 17,
+        "sourceLine": 23,
         "sourceSymbol": "MigrationConstants",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -279034,7 +279218,34 @@
     "MigrationConstantsTests.Parse_RejectsTheShapesThatWouldMisfireAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Postgres/MigrationConstants.cs",
-        "sourceLine": 17,
+        "sourceLine": 23,
+        "sourceSymbol": "MigrationConstants",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MigrationConstantsTests.Parse_ReadsAConstantWithAnArgument_UnderItsTokenAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/MigrationConstants.cs",
+        "sourceLine": 23,
+        "sourceSymbol": "MigrationConstants",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MigrationConstantsTests.Parse_RejectsAnArgumentThatIsNotOneLowerCaseName_AndAnArgumentFormDefinedTwiceAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/MigrationConstants.cs",
+        "sourceLine": 23,
+        "sourceSymbol": "MigrationConstants",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MigrationConstantsTests.Apply_AConstantWithAnArgument_NamesTheAlias_AndSubstitutesTheConstantsItsValueWritesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/MigrationConstants.cs",
+        "sourceLine": 23,
         "sourceSymbol": "MigrationConstants",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -291543,7 +291754,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 285,
+        "sourceLine": 282,
         "sourceSymbol": "SyncRetentionSettingsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -291559,7 +291770,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 285,
+        "sourceLine": 282,
         "sourceSymbol": "SyncRetentionSettingsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -291575,7 +291786,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 285,
+        "sourceLine": 282,
         "sourceSymbol": "SyncRetentionSettingsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -291591,7 +291802,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 285,
+        "sourceLine": 282,
         "sourceSymbol": "SyncRetentionSettingsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -291607,7 +291818,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 285,
+        "sourceLine": 282,
         "sourceSymbol": "SyncRetentionSettingsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -292272,7 +292483,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 401,
+        "sourceLine": 398,
         "sourceSymbol": "RecordStartupHeartbeatAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -293574,7 +293785,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 401,
+        "sourceLine": 398,
         "sourceSymbol": "RecordStartupHeartbeatAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -293597,7 +293808,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 401,
+        "sourceLine": 398,
         "sourceSymbol": "RecordStartupHeartbeatAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -293620,7 +293831,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 401,
+        "sourceLine": 398,
         "sourceSymbol": "RecordStartupHeartbeatAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -293650,7 +293861,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 401,
+        "sourceLine": 398,
         "sourceSymbol": "RecordStartupHeartbeatAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -293680,7 +293891,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 401,
+        "sourceLine": 398,
         "sourceSymbol": "RecordStartupHeartbeatAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -296268,7 +296479,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 300,
+        "sourceLine": 297,
         "sourceSymbol": "SyncStreamTypePoliciesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -308867,6 +309078,24 @@
         "linkSource": "XmlTag"
       }
     ],
+    "DigestEligibilityGuardTests.NoCSharpSql_WritesTheEligibilityRuleByHandAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/DigestRuleSql.cs",
+        "sourceLine": 14,
+        "sourceSymbol": "DigestRuleSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DigestEligibilitySqlTests.TheConsumersCheckpointCount_LeavesOutAtMostOnceEvents_AsTheOriginsCountDoesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/DigestRuleSql.cs",
+        "sourceLine": 15,
+        "sourceSymbol": "DigestRuleSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
     "EFCoreAppSignalTransactionSourceTests.Postgres_RegistersTheContextsTransactionSource_WithNoApplicationWiringAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreAppSignalTransactionSource.cs",
@@ -312689,7 +312918,7 @@
     "EFCoreWorkCoordinatorSchemaTests.GetSchemaWithFallback_WhenSchemaIsValid_ReturnsSchemaAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 163,
+        "sourceLine": 160,
         "sourceSymbol": "ResolveSchema",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -312698,7 +312927,7 @@
     "EFCoreWorkCoordinatorSchemaTests.GetSchemaWithFallback_WhenSchemaIsNull_LogsWarningAndReturnsDefaultAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 163,
+        "sourceLine": 160,
         "sourceSymbol": "ResolveSchema",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -312707,7 +312936,7 @@
     "EFCoreWorkCoordinatorSchemaTests.GetSchemaWithFallback_WhenSchemaIsEmpty_LogsWarningAndReturnsDefaultAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 163,
+        "sourceLine": 160,
         "sourceSymbol": "ResolveSchema",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -312716,7 +312945,7 @@
     "EFCoreWorkCoordinatorSchemaTests.GetSchemaWithFallback_WhenSchemaIsWhitespace_LogsWarningAndReturnsDefaultAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 163,
+        "sourceLine": 160,
         "sourceSymbol": "ResolveSchema",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -312725,7 +312954,7 @@
     "EFCoreWorkCoordinatorSchemaTests.GetSchemaWithFallback_WhenLoggerIsNull_DoesNotThrowAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 163,
+        "sourceLine": 160,
         "sourceSymbol": "ResolveSchema",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -312734,7 +312963,7 @@
     "EFCoreWorkCoordinatorSchemaTests.ResolveSchema_WhenModelMapsEntityToSchema_ReturnsThatSchemaAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 163,
+        "sourceLine": 160,
         "sourceSymbol": "ResolveSchema",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -312743,7 +312972,7 @@
     "EFCoreWorkCoordinatorSchemaTests.ResolveSchema_WhenModelDoesNotMapEntity_LogsWarningAndReturnsDefaultAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 163,
+        "sourceLine": 160,
         "sourceSymbol": "ResolveSchema",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -312752,7 +312981,7 @@
     "EFCoreWorkCoordinatorSchemaTests.ResolveSchema_WhenModelIsNull_ThrowsArgumentNullExceptionAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 163,
+        "sourceLine": 160,
         "sourceSymbol": "ResolveSchema",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -312761,7 +312990,7 @@
     "EFCoreWorkCoordinatorSchemaTests.BuildSchemaQualifiedName_WhenSchemaIsPublic_ReturnsUnqualifiedNameAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 163,
+        "sourceLine": 160,
         "sourceSymbol": "ResolveSchema",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -312770,7 +312999,7 @@
     "EFCoreWorkCoordinatorSchemaTests.BuildSchemaQualifiedName_WhenSchemaIsEmpty_ReturnsUnqualifiedNameAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 163,
+        "sourceLine": 160,
         "sourceSymbol": "ResolveSchema",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -312779,7 +313008,7 @@
     "EFCoreWorkCoordinatorSchemaTests.BuildSchemaQualifiedName_WhenSchemaIsWhitespace_ReturnsUnqualifiedNameAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 163,
+        "sourceLine": 160,
         "sourceSymbol": "ResolveSchema",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -312788,7 +313017,7 @@
     "EFCoreWorkCoordinatorSchemaTests.BuildSchemaQualifiedName_WhenSchemaIsCustom_ReturnsQuotedSchemaQualifiedNameAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 163,
+        "sourceLine": 160,
         "sourceSymbol": "ResolveSchema",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -312797,7 +313026,7 @@
     "EFCoreWorkCoordinatorSchemaTests.BuildSchemaQualifiedName_WhenSchemaIsReservedWord_ReturnsQuotedSchemaAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 163,
+        "sourceLine": 160,
         "sourceSymbol": "ResolveSchema",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313038,7 +313267,7 @@
     "UnsequencedReceivedDigestSqlTests.ByStream_UnderAGenericPlan_ReadsTheNamedStreamsRows_NotTheOriginsLaneAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 2863,
+        "sourceLine": 2859,
         "sourceSymbol": "UnsequencedByStreamSql",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313051,18 +313280,20 @@
         "linkSource": "XmlTag"
       }
     ],
-    "UnsequencedReceivedDigestSqlTests.ByType_UnderAGenericPlan_ReadsTheOriginsSequencelessRows_NotItsSequencedLaneAsync": [
+    "UnsequencedHeldFoldCostSqlTests.ByType_UnderAGenericPlan_ReadsOnlyTheUnsettledRowsOfTheEventStore_NeverItsHistoryAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 2892,
+        "sourceLine": 2886,
         "sourceSymbol": "UnsequencedByTypeSql",
         "sourceType": "Method",
         "linkSource": "XmlTag"
-      },
+      }
+    ],
+    "UnsequencedHeldFoldCostSqlTests.ByType_ALargeHistory_CostsWhatASmallOneDoes_ForTheSameNewWorkAsync": [
       {
-        "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2993,
-        "sourceSymbol": "ComputeUnsequencedReceivedDigestsAsync",
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
+        "sourceLine": 2887,
+        "sourceSymbol": "UnsequencedByTypeSql",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       }
@@ -313070,7 +313301,7 @@
     "PerspectiveAppliedLedgerSqlTests.AnEventFromAnotherService_AwaitedHere_CompletesOnlyAfterThisServicesPerspectiveAppliesItAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3282,
+        "sourceLine": 3265,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313079,7 +313310,7 @@
     "PerspectiveAppliedLedgerSqlTests.ACollectiveEvent_IsAppliedForAnyPerspective_WhenTheSinkCompletesItAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3282,
+        "sourceLine": 3265,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313088,7 +313319,7 @@
     "PerspectiveAppliedLedgerSqlTests.AStoredEventThePerspectiveDoesNotHandle_IsNotApplicableAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3282,
+        "sourceLine": 3265,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313097,7 +313328,7 @@
     "PerspectiveAppliedLedgerSqlTests.ByStreamAndPosition_ResolvesTheLocalVersionAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3282,
+        "sourceLine": 3265,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313106,7 +313337,7 @@
     "PerspectiveAppliedLedgerSqlTests.DebugModeCompletion_RecordsTheApplyOnce_AndARetainedRowIsNotPendingAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3282,
+        "sourceLine": 3265,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313115,7 +313346,7 @@
     "PerspectiveAppliedLedgerSqlTests.ACompletion_PrunesLedgerRowsOlderThanAnHourAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3282,
+        "sourceLine": 3265,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313124,7 +313355,7 @@
     "InquiriesJsonTests.BuildInquiriesJson_WritesEveryFlagInBothStatesAndTheOptionalArraysAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3312,
+        "sourceLine": 3295,
         "sourceSymbol": "BuildInquiriesJson",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313133,7 +313364,7 @@
     "EFCoreFlusherMethodsTests.RenewHeldLeasesAsync_ARowAnotherInstanceHolds_IsReportedAndLeftAloneAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3664,
+        "sourceLine": 3647,
         "sourceSymbol": "RenewHeldLeasesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313142,7 +313373,7 @@
     "InboxGracefulReleaseSqlTests.ReleaseUnprocessed_RefundsTheClaimAttemptAndClearsTheLeaseAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3700,
+        "sourceLine": 3683,
         "sourceSymbol": "ReleaseUnprocessedInboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313158,7 +313389,7 @@
     "InboxGracefulReleaseSqlTests.ConsumerVanishesWithoutReleasing_StillPaysTheAttemptAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3700,
+        "sourceLine": 3683,
         "sourceSymbol": "ReleaseUnprocessedInboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313174,7 +313405,7 @@
     "InboxGracefulReleaseSqlTests.RepeatedOverClaim_DoesNotAccumulateAttemptsOnUntouchedRowsAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3700,
+        "sourceLine": 3683,
         "sourceSymbol": "ReleaseUnprocessedInboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313190,7 +313421,7 @@
     "InboxGracefulReleaseSqlTests.ReleaseUnprocessed_NeverDrivesAttemptsNegativeAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3700,
+        "sourceLine": 3683,
         "sourceSymbol": "ReleaseUnprocessedInboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313206,7 +313437,7 @@
     "InboxGracefulReleaseSqlTests.ReleaseUnprocessed_DoesNotTouchAnotherInstancesClaimAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3700,
+        "sourceLine": 3683,
         "sourceSymbol": "ReleaseUnprocessedInboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313222,7 +313453,7 @@
     "InboxGracefulReleaseSqlTests.Coordinator_ReleaseUnprocessedInbox_RefundsThroughTheRealCallPathAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3700,
+        "sourceLine": 3683,
         "sourceSymbol": "ReleaseUnprocessedInboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313238,7 +313469,7 @@
     "InboxGracefulReleaseSqlTests.Coordinator_ReleaseUnprocessedInbox_EmptyList_IsANoOpAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3700,
+        "sourceLine": 3683,
         "sourceSymbol": "ReleaseUnprocessedInboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313254,7 +313485,7 @@
     "BoundedAcquisitionRewriteSqlTests.ClaimOrphanedInbox_PicksAPendingCommandBeforeAnyEventWhateverTheBacklogAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3724,
+        "sourceLine": 3707,
         "sourceSymbol": "ReleaseUnstartedLeasesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313270,7 +313501,7 @@
     "BoundedAcquisitionRewriteSqlTests.ClaimOrphanedInbox_ManyStreams_KeepsTheBreadthFirstOrderAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3724,
+        "sourceLine": 3707,
         "sourceSymbol": "ReleaseUnstartedLeasesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313286,7 +313517,7 @@
     "BoundedAcquisitionRewriteSqlTests.ClaimOrphanedInbox_FewFatStreams_TakesTheSameRowsPerStreamAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3724,
+        "sourceLine": 3707,
         "sourceSymbol": "ReleaseUnstartedLeasesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313302,7 +313533,7 @@
     "BoundedAcquisitionRewriteSqlTests.ClaimOrphanedInbox_IdleRank_TakesAnotherResiduesRowsOnlyWhenStealingIsAllowedAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3724,
+        "sourceLine": 3707,
         "sourceSymbol": "ReleaseUnstartedLeasesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313318,7 +313549,7 @@
     "BoundedAcquisitionRewriteSqlTests.ClaimOrphanedInbox_Steal_SkipsAStreamAnotherInstanceIsMidDrainAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3724,
+        "sourceLine": 3707,
         "sourceSymbol": "ReleaseUnstartedLeasesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313334,7 +313565,7 @@
     "BoundedAcquisitionRewriteSqlTests.ClaimWork_BoundsAcquisitionByRowsNotByStreamsAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3724,
+        "sourceLine": 3707,
         "sourceSymbol": "ReleaseUnstartedLeasesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313350,7 +313581,7 @@
     "BoundedAcquisitionRewriteSqlTests.ClaimWork_ReemitsCommandsAheadOfEventsAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3724,
+        "sourceLine": 3707,
         "sourceSymbol": "ReleaseUnstartedLeasesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313366,7 +313597,7 @@
     "BoundedAcquisitionRewriteSqlTests.ClaimWork_PerspectiveBoundOfZero_LeasesNoNewPerspectiveWorkButKeepsReemittingHeldWorkAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3724,
+        "sourceLine": 3707,
         "sourceSymbol": "ReleaseUnstartedLeasesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313382,7 +313613,7 @@
     "BoundedAcquisitionRewriteSqlTests.ReleaseUnstartedLeases_ReturnsOnlyTheNamedStreamsRefundsTheAttemptAndOpensThemToSiblingsAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3724,
+        "sourceLine": 3707,
         "sourceSymbol": "ReleaseUnstartedLeasesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313398,7 +313629,7 @@
     "BoundedAcquisitionRewriteSqlTests.Coordinator_ReleaseUnstartedLeases_WithNothingToRelease_ReturnsZerosWithoutARoundTripAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3724,
+        "sourceLine": 3707,
         "sourceSymbol": "ReleaseUnstartedLeasesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313414,7 +313645,7 @@
     "BoundedAcquisitionRewriteSqlTests.Coordinator_ReleaseUnstartedLeases_ReturnsWhatTheFunctionReleasedAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3724,
+        "sourceLine": 3707,
         "sourceSymbol": "ReleaseUnstartedLeasesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313430,7 +313661,7 @@
     "BoundedAcquisitionRewriteSqlTests.ReleaseUnstartedLeases_NeverTouchesAnotherInstancesLeasesAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3724,
+        "sourceLine": 3707,
         "sourceSymbol": "ReleaseUnstartedLeasesAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313446,7 +313677,7 @@
     "SelectRedeliveryEventsTests.Select_OrdersFiltersAndExcludes_ByContractAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3754,
+        "sourceLine": 3737,
         "sourceSymbol": "SelectRedeliveryEventsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313462,7 +313693,7 @@
     "SelectRedeliveryEventsTests.Select_HonorsStreamTypeSequenceFiltersAndCapAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3754,
+        "sourceLine": 3737,
         "sourceSymbol": "SelectRedeliveryEventsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313478,7 +313709,7 @@
     "SelectRedeliveryEventsTests.Select_EventIds_SelectsOnlyThoseEvents_WithinTheOtherFiltersAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3754,
+        "sourceLine": 3737,
         "sourceSymbol": "SelectRedeliveryEventsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313494,7 +313725,7 @@
     "SelectRedeliveryEventsTests.Select_KeysetContinuation_PagesWithoutOverlapOrLossAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3754,
+        "sourceLine": 3737,
         "sourceSymbol": "SelectRedeliveryEventsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313510,7 +313741,7 @@
     "SelectRedeliveryEventsTests.Select_AuthoredBy_ShipsOnlyEventsTheAnsweringServiceWroteAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3754,
+        "sourceLine": 3737,
         "sourceSymbol": "SelectRedeliveryEventsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313526,7 +313757,7 @@
     "SelectRedeliveryEventsTests.Select_WithoutAuthoredBy_KeepsTheEarlierSelectionAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3754,
+        "sourceLine": 3737,
         "sourceSymbol": "SelectRedeliveryEventsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313542,7 +313773,7 @@
     "SelectRedeliveryEventsTests.Select_ByCommitSequence_WalksStampedRowsInCommitOrderAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3754,
+        "sourceLine": 3737,
         "sourceSymbol": "SelectRedeliveryEventsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313565,7 +313796,7 @@
     "SelectRedeliveryEventsTests.Select_ByCommitSequence_WithoutEventTypes_IsRefusedAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3754,
+        "sourceLine": 3737,
         "sourceSymbol": "SelectRedeliveryEventsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313581,7 +313812,7 @@
     "SelectRedeliveryEventsTests.HeadCommitSequence_IsTheHighestStampedSequenceOfTheTypesAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3754,
+        "sourceLine": 3737,
         "sourceSymbol": "SelectRedeliveryEventsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313604,7 +313835,7 @@
     "IntegrityAuditClaimTests.FirstClaimWins_SiblingWithinWindowLosesAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3885,
+        "sourceLine": 3869,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313613,7 +313844,7 @@
     "IntegrityAuditClaimTests.AgedClaim_ReopensAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3885,
+        "sourceLine": 3869,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313622,7 +313853,7 @@
     "IntegrityAuditClaimTests.ConcurrentClaims_ExactlyOneWinsAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3885,
+        "sourceLine": 3869,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313631,7 +313862,7 @@
     "WindowedDigestLaneReadTests.ManifestStreamWindow_ReadsTheWindow_NotTheLaneAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 4777,
+        "sourceLine": 4755,
         "sourceSymbol": "WindowedStreamDigestSql",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313640,7 +313871,7 @@
     "WindowedDigestLaneReadTests.TypeDigestWindow_ReadsTheWindow_NotTheLaneAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 4777,
+        "sourceLine": 4755,
         "sourceSymbol": "WindowedStreamDigestSql",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313649,7 +313880,7 @@
     "WindowedDigestTypeIndexTests.TypeFilteredWindow_ReadsThroughAnIndexConditionOnTheType_UnderAGenericPlanAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 4778,
+        "sourceLine": 4756,
         "sourceSymbol": "WindowedStreamDigestSql",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313658,7 +313889,7 @@
     "WindowedDigestTypeIndexTests.BeforeTheTypeIndexIsBuilt_TheReadAnswersTheSameAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 4778,
+        "sourceLine": 4756,
         "sourceSymbol": "WindowedStreamDigestSql",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313667,7 +313898,7 @@
     "WindowedDigestTypeIndexTests.TheRead_PlansEachCallAgainstItsOwnWindow_WhateverTheCallersPlanModeAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 4778,
+        "sourceLine": 4756,
         "sourceSymbol": "WindowedStreamDigestSql",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313676,7 +313907,7 @@
     "CoordinatorParameterBindingTests.AddDigestFilterParams_WithNoFilter_BindsDbNullForOriginAndTypesAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 4793,
+        "sourceLine": 4771,
         "sourceSymbol": "AddDigestFilterParams",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313685,7 +313916,7 @@
     "CoordinatorParameterBindingTests.AddDigestFilterParams_WithFilter_BindsOriginAndTypesAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 4793,
+        "sourceLine": 4771,
         "sourceSymbol": "AddDigestFilterParams",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313694,7 +313925,7 @@
     "CoordinatorParameterBindingTests.AsArray_WithAnArray_BindsTheCallersArrayWithoutCopyingAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 4793,
+        "sourceLine": 4771,
         "sourceSymbol": "AddDigestFilterParams",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313703,7 +313934,7 @@
     "CoordinatorParameterBindingTests.AsArray_WithAList_CopiesItInOrderAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 4793,
+        "sourceLine": 4771,
         "sourceSymbol": "AddDigestFilterParams",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313712,7 +313943,7 @@
     "OutboxFlushPoolExhaustionTests.StoreOutboxDeadLetters_WritesARecoverableDeadLetterAndALogRowPerMessageAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 5026,
+        "sourceLine": 4999,
         "sourceSymbol": "StoreOutboxDeadLettersAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313735,7 +313966,7 @@
     "InboxFlushDeadLetterTests.StoreInboxDeadLetters_WritesARecoverableDeadLetterAndALogRowPerMessageAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 5046,
+        "sourceLine": 5019,
         "sourceSymbol": "StoreInboxDeadLettersAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313758,14 +313989,14 @@
     "EFCoreOutboxEmissionDedupTests.StoreOutboxMessagesAsync_SameMessageStoredTwice_CountsTheSkippedRowByTypeAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 5099,
+        "sourceLine": 5072,
         "sourceSymbol": "_reportDeduplicatedOutboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 5105,
+        "sourceLine": 5078,
         "sourceSymbol": "_reportDeduplicatedOutboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313774,14 +314005,14 @@
     "EFCoreOutboxEmissionDedupTests.StoreOutboxMessagesAsync_MixedBatch_CountsOnlyTheRowsThatAlreadyExistedAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 5099,
+        "sourceLine": 5072,
         "sourceSymbol": "_reportDeduplicatedOutboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 5105,
+        "sourceLine": 5078,
         "sourceSymbol": "_reportDeduplicatedOutboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313790,14 +314021,14 @@
     "EFCoreOutboxEmissionDedupTests.StoreOutboxMessagesAsync_WithoutMetricsOrLogger_StillDeduplicatesQuietlyAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 5099,
+        "sourceLine": 5072,
         "sourceSymbol": "_reportDeduplicatedOutboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 5105,
+        "sourceLine": 5078,
         "sourceSymbol": "_reportDeduplicatedOutboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313806,14 +314037,14 @@
     "EFCoreOutboxEmissionDedupTests.StoreOutboxMessagesAsync_InsideAnOpenTransaction_StoresAndCountsOnTheSameConnectionAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 5099,
+        "sourceLine": 5072,
         "sourceSymbol": "_reportDeduplicatedOutboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 5105,
+        "sourceLine": 5078,
         "sourceSymbol": "_reportDeduplicatedOutboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313822,7 +314053,7 @@
     "ExhaustedInboxDropSqlTests.Drop_RemovesOnlyTheGivenUnprocessedRowsPastTheCeilingAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 5226,
+        "sourceLine": 5199,
         "sourceSymbol": "DropExhaustedInboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313838,7 +314069,7 @@
     "ExhaustedInboxDropSqlTests.Drop_InDebugMode_KeepsTheRowWithItsProcessedTimeStampedAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 5226,
+        "sourceLine": 5199,
         "sourceSymbol": "DropExhaustedInboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313854,7 +314085,7 @@
     "ExhaustedInboxDropSqlTests.Drop_WithNoIds_IsANoOpAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 5226,
+        "sourceLine": 5199,
         "sourceSymbol": "DropExhaustedInboxRowsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313870,7 +314101,7 @@
     "BrokerDeadLetterImportSqlTests.Import_OfAnEnvelopeTypedMessage_RecordsAndRecoversItsPayloadTypeAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 5619,
+        "sourceLine": 5592,
         "sourceSymbol": "ImportBrokerDeadLetterAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313879,7 +314110,7 @@
     "RecoveredBrokerDeadLetterDispatchIntegrationTests.RecoveredBrokerDeadLetter_ReachesItsCompileTimeReceptorAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 5620,
+        "sourceLine": 5593,
         "sourceSymbol": "ImportBrokerDeadLetterAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313888,7 +314119,7 @@
     "RecoveredBrokerDeadLetterDispatchIntegrationTests.RecoveredBrokerDeadLetter_ReachesItsRuntimeRegisteredConsumerAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 5621,
+        "sourceLine": 5594,
         "sourceSymbol": "ImportBrokerDeadLetterAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313897,7 +314128,7 @@
     "EFCoreWorkCoordinatorServiceIdTests.GetLocalServiceIdAsync_SchemaScopedDbContext_ReadsTheIdFromTheModelSchemaAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 5828,
+        "sourceLine": 5801,
         "sourceSymbol": "GetLocalServiceIdAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313906,7 +314137,7 @@
     "EFCoreWorkCoordinatorServiceIdTests.GetLocalServiceIdAsync_PublicSchema_StillReadsTheSeededRowAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 5828,
+        "sourceLine": 5801,
         "sourceSymbol": "GetLocalServiceIdAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313915,7 +314146,7 @@
     "CollectiveSinkQueueSqlTests.FetchCollectiveSinkQueueAsync_ReturnsTheQueueInCommitOrderAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 6159,
+        "sourceLine": 6132,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313924,7 +314155,7 @@
     "CollectiveSinkQueueSqlTests.FetchCollectiveSinkQueueHeadAsync_ReturnsTheHeadAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 6185,
+        "sourceLine": 6158,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -313940,7 +314171,7 @@
     "CollectiveSinkQueueSqlTests.FetchCollectiveSinkQueueMembersAsync_ReturnsTheNamedRowsStillQueuedAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 6201,
+        "sourceLine": 6174,
         "sourceSymbol": "FetchCollectiveSinkQueueMembersAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -338824,7 +339055,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryPump.cs",
-        "sourceLine": 334,
+        "sourceLine": 368,
         "sourceSymbol": "_buildComposite",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371462,7 +371693,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371478,7 +371709,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371494,7 +371725,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371510,7 +371741,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371526,7 +371757,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371542,7 +371773,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371558,7 +371789,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371574,7 +371805,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371590,7 +371821,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371606,7 +371837,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371622,7 +371853,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371638,7 +371869,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371654,7 +371885,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371670,7 +371901,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371686,7 +371917,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371702,7 +371933,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371718,7 +371949,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371734,7 +371965,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371750,7 +371981,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371766,7 +371997,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371782,7 +372013,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371798,7 +372029,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371814,7 +372045,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371830,7 +372061,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371846,7 +372077,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371862,7 +372093,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371878,7 +372109,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371894,7 +372125,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371910,7 +372141,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371926,7 +372157,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -371942,7 +372173,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 641,
+        "sourceLine": 651,
         "sourceSymbol": "UpdateBackfillGauges",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -447945,10 +448176,33 @@
         "linkSource": "XmlTag"
       }
     ],
+    "RedeliveryReconcilerTests.Reconcile_ACopyANewerHeldCopySupersedes_IsCountedSatisfied_AndNotADeficitAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
+        "sourceLine": 191,
+        "sourceSymbol": "PassiveCounter",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
+        "sourceLine": 38,
+        "sourceSymbol": "struct",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
+        "sourceLine": 125,
+        "sourceSymbol": "RedeliveryReconciler",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
     "StreamIntegrityMetricsRepairedEventsTests.RepairedEvents_AreCountedByDeliveryAndReasonAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 618,
+        "sourceLine": 628,
         "sourceSymbol": "RecordRepairedEvents",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -447957,7 +448211,7 @@
     "StreamIntegrityMetricsRepairedEventsTests.EveryReason_ExistsAtZero_BeforeAnythingIsRepairedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 618,
+        "sourceLine": 628,
         "sourceSymbol": "RecordRepairedEvents",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -447966,14 +448220,14 @@
     "StreamIntegrityBacklogMetricsTests.TheBacklogInstruments_AreCreatedWithTheirNamesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 656,
+        "sourceLine": 666,
         "sourceSymbol": "UpdateLedgerBacklog",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 669,
+        "sourceLine": 679,
         "sourceSymbol": "RecordBucketsMarkedUnhealable",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -447982,14 +448236,14 @@
     "StreamIntegrityBacklogMetricsTests.TheCounters_ExistAtZeroForEveryHow_BeforeTheFirstCountAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 656,
+        "sourceLine": 666,
         "sourceSymbol": "UpdateLedgerBacklog",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 669,
+        "sourceLine": 679,
         "sourceSymbol": "RecordBucketsMarkedUnhealable",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -447998,14 +448252,14 @@
     "StreamIntegrityBacklogMetricsTests.NoReading_ReportsNoSeries_NeverAZeroAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 656,
+        "sourceLine": 666,
         "sourceSymbol": "UpdateLedgerBacklog",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 669,
+        "sourceLine": 679,
         "sourceSymbol": "RecordBucketsMarkedUnhealable",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -448014,14 +448268,14 @@
     "StreamIntegrityBacklogMetricsTests.AReportedReading_IsOneSeriesPerOriginAndState_AndTheQueueDepthAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 656,
+        "sourceLine": 666,
         "sourceSymbol": "UpdateLedgerBacklog",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 669,
+        "sourceLine": 679,
         "sourceSymbol": "RecordBucketsMarkedUnhealable",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -448030,14 +448284,14 @@
     "StreamIntegrityBacklogMetricsTests.WithdrawingTheReading_StopsBothGaugesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 656,
+        "sourceLine": 666,
         "sourceSymbol": "UpdateLedgerBacklog",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 669,
+        "sourceLine": 679,
         "sourceSymbol": "RecordBucketsMarkedUnhealable",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -448046,14 +448300,14 @@
     "StreamIntegrityBacklogMetricsTests.BucketsMarkedUnhealable_CountAsRepairsUnhealable_AndAsClosedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 656,
+        "sourceLine": 666,
         "sourceSymbol": "UpdateLedgerBacklog",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 669,
+        "sourceLine": 679,
         "sourceSymbol": "RecordBucketsMarkedUnhealable",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -448062,14 +448316,14 @@
     "StreamIntegrityCompletionMetricsTests.TheDerivedGauges_AreCreatedWithTheirNamesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 686,
+        "sourceLine": 696,
         "sourceSymbol": "UpdateVerifiedPercent",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 701,
+        "sourceLine": 711,
         "sourceSymbol": "UpdateRepairProgress",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -448078,14 +448332,14 @@
     "StreamIntegrityCompletionMetricsTests.BeforeAnyReading_NoDerivedGaugeReportsASeriesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 686,
+        "sourceLine": 696,
         "sourceSymbol": "UpdateVerifiedPercent",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 701,
+        "sourceLine": 711,
         "sourceSymbol": "UpdateRepairProgress",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -448094,14 +448348,14 @@
     "StreamIntegrityCompletionMetricsTests.AVerifiedReading_IsOneSeriesPerOrigin_AndTheRollUpAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 686,
+        "sourceLine": 696,
         "sourceSymbol": "UpdateVerifiedPercent",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 701,
+        "sourceLine": 711,
         "sourceSymbol": "UpdateRepairProgress",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -448110,14 +448364,14 @@
     "StreamIntegrityCompletionMetricsTests.AVerifiedReadingWithNoRollUp_OrWithdrawn_ReportsNothingForItAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 686,
+        "sourceLine": 696,
         "sourceSymbol": "UpdateVerifiedPercent",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 701,
+        "sourceLine": 711,
         "sourceSymbol": "UpdateRepairProgress",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -448126,14 +448380,14 @@
     "StreamIntegrityCompletionMetricsTests.ARepairProgressReading_ReportsEachValueItHasAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 686,
+        "sourceLine": 696,
         "sourceSymbol": "UpdateVerifiedPercent",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 701,
+        "sourceLine": 711,
         "sourceSymbol": "UpdateRepairProgress",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -448142,14 +448396,14 @@
     "StreamIntegrityCompletionMetricsTests.WithdrawingTheRepairProgress_StopsBothGaugesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 686,
+        "sourceLine": 696,
         "sourceSymbol": "UpdateVerifiedPercent",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 701,
+        "sourceLine": 711,
         "sourceSymbol": "UpdateRepairProgress",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -448158,14 +448412,14 @@
     "StreamIntegrityCompletionMetricsTests.ThePendingLedgerTally_IsWhatTheCountersAddedSinceItWasLastMarkedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 686,
+        "sourceLine": 696,
         "sourceSymbol": "UpdateVerifiedPercent",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 701,
+        "sourceLine": 711,
         "sourceSymbol": "UpdateRepairProgress",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -448174,14 +448428,14 @@
     "IntegrityLedgerHealRemainingGaugesSqlTests.Summary_SumsTheDeficitOfRepairableBuckets_AndCountsTheUnhealableOnesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 780,
+        "sourceLine": 790,
         "sourceSymbol": "UnhealedDeficitEvents",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-        "sourceLine": 785,
+        "sourceLine": 795,
         "sourceSymbol": "UnhealableBuckets",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -462224,7 +462478,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -465930,7 +466184,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -465991,7 +466245,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -466007,7 +466261,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -466050,7 +466304,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -466066,7 +466320,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476299,6 +476553,156 @@
         "linkSource": "XmlTag"
       }
     ],
+    "RedeliveryPumpWindowTests.WholeAnswer.PublishAnswer_EveryBundleButTheLast_SaysTheAnswerContinuesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryAnswerPublication.cs",
+        "sourceLine": 26,
+        "sourceSymbol": "RedeliveryAnswerPublication",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryAnswerPublication.cs",
+        "sourceLine": 52,
+        "sourceSymbol": "PublishAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryAnswerPublication.cs",
+        "sourceLine": 79,
+        "sourceSymbol": "CompleteAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryPump.cs",
+        "sourceLine": 247,
+        "sourceSymbol": "BeginAnswer",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "RedeliveryPumpWindowTests.WholeAnswer.Publish_ThatAnswersNoWindow_SaysNothingContinuesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryAnswerPublication.cs",
+        "sourceLine": 26,
+        "sourceSymbol": "RedeliveryAnswerPublication",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryAnswerPublication.cs",
+        "sourceLine": 52,
+        "sourceSymbol": "PublishAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryAnswerPublication.cs",
+        "sourceLine": 79,
+        "sourceSymbol": "CompleteAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryPump.cs",
+        "sourceLine": 247,
+        "sourceSymbol": "BeginAnswer",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "RedeliveryPumpWindowTests.WholeAnswer.BeginAnswer_OverSeveralPublishes_HoldsBackEachLastBundle_AndEndsOnlyOnCompleteAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryAnswerPublication.cs",
+        "sourceLine": 26,
+        "sourceSymbol": "RedeliveryAnswerPublication",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryAnswerPublication.cs",
+        "sourceLine": 52,
+        "sourceSymbol": "PublishAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryAnswerPublication.cs",
+        "sourceLine": 79,
+        "sourceSymbol": "CompleteAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryPump.cs",
+        "sourceLine": 247,
+        "sourceSymbol": "BeginAnswer",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "RedeliveryPumpWindowTests.WholeAnswer.BeginAnswer_ThatPublishesNothing_EndsWithoutABundleAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryAnswerPublication.cs",
+        "sourceLine": 26,
+        "sourceSymbol": "RedeliveryAnswerPublication",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryAnswerPublication.cs",
+        "sourceLine": 52,
+        "sourceSymbol": "PublishAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryAnswerPublication.cs",
+        "sourceLine": 79,
+        "sourceSymbol": "CompleteAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryPump.cs",
+        "sourceLine": 247,
+        "sourceSymbol": "BeginAnswer",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "RedeliveryPumpWindowTests.WholeAnswer.BeginAnswer_RefusesAMissingTopic_AndAPublishOfNoListAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryAnswerPublication.cs",
+        "sourceLine": 26,
+        "sourceSymbol": "RedeliveryAnswerPublication",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryAnswerPublication.cs",
+        "sourceLine": 52,
+        "sourceSymbol": "PublishAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryAnswerPublication.cs",
+        "sourceLine": 79,
+        "sourceSymbol": "CompleteAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryPump.cs",
+        "sourceLine": 247,
+        "sourceSymbol": "BeginAnswer",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
     "RedeliveryAnswerCoverageTests.Reconcile_AWindowedAnswerThatChangedNothing_LeavesTheBucketRepairableAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryAnswerWindow.cs",
@@ -476431,6 +476835,33 @@
         "sourceLine": 33,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "IntegrityTypeLaneAnswerSqlTests.WholeAnswer.RecordBundleAnswer_AMultiBundleAnswerWhoseFirstBundleChangedNothing_DoesNotMarkTheTypeLaneBeforeItsLastBundleAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryAnswerWindow.cs",
+        "sourceLine": 43,
+        "sourceSymbol": "Continues",
+        "sourceType": "Property",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "IntegrityTypeLaneAnswerSqlTests.WholeAnswer.RecordBundleAnswer_AMultiBundleAnswerThatChangedNothingAnywhere_MarksTheTypeLaneOnItsLastBundleAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryAnswerWindow.cs",
+        "sourceLine": 43,
+        "sourceSymbol": "Continues",
+        "sourceType": "Property",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "IntegrityTypeLaneAnswerSqlTests.WholeAnswer.RecordBundleAnswer_AnEarlierBundleThatStoredSomething_LeavesTheTypeLaneUnmarkedByTheLastAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryAnswerWindow.cs",
+        "sourceLine": 43,
+        "sourceSymbol": "Continues",
+        "sourceType": "Property",
         "linkSource": "XmlTag"
       }
     ],
@@ -476696,7 +477127,7 @@
     "IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ClearsThePending_AndTheBucketWaitsForTheNextComparisonAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476705,7 +477136,7 @@
     "IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ABundleSpanningStreams_AnswersEveryStreamsBucketAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476714,7 +477145,7 @@
     "IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ABundleSpanningStreams_MarksUnchangedOnlyWhenTheWholeBundleChangedNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476723,7 +477154,7 @@
     "IntegrityRepairAnswerSqlTests.RecordBundleAnswer_AStoredEventWithoutItsOrigin_IsLeftForTheReconcile_NotMarkedAtCommitAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476732,7 +477163,7 @@
     "IntegrityRepairAnswerSqlTests.RecordBundleAnswer_AnEventTheStoreRefusedToRestore_MarksItsBucketAtCommit_WithTheReasonAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476741,7 +477172,7 @@
     "IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ABucketWithATenant_IsKeyedWithItAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476750,7 +477181,7 @@
     "IntegrityRepairAnswerSqlTests.RecordBundleAnswer_AnEventNeitherStoreNorInboxHolds_CountsAsAbsentAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476759,7 +477190,7 @@
     "IntegrityRepairAnswerSqlTests.RecordMissingEvents_ALaterComparisonThatNamesNone_ClearsTheIdAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476768,7 +477199,7 @@
     "IntegrityRepairAnswerSqlTests.RecordMissingEvents_NothingToRecord_IsHarmlessAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476777,7 +477208,7 @@
     "IntegrityRepairAnswerSqlTests.Claim_PastTheAttemptBudget_StopsForGood_AndCountsAsExhaustedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476786,7 +477217,7 @@
     "IntegrityRepairAnswerSqlTests.TryBeginRepair_PastTheAttemptBudget_IsRefusedForGoodAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476795,7 +477226,7 @@
     "IntegrityRepairAnswerSqlTests.TryBeginRepair_WhileItsOwnAnswerIsPending_IsRefusedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476804,7 +477235,7 @@
     "IntegrityRepairAnswerSqlTests.Report_TheLocalDigestMoved_ResetsTheLadder_AndLiftsTheMarkAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476813,7 +477244,7 @@
     "IntegrityRepairAnswerSqlTests.Report_OnlyTheOriginsDigestMoved_KeepsTheAttempts_AndTheMarkAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476822,7 +477253,7 @@
     "IntegrityRepairAnswerSqlTests.TryBeginRepair_OnTheTypeLane_StandsDown_WhilePerStreamRowsOfTheTypeAwaitTheirAnswerAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476831,7 +477262,7 @@
     "IntegrityRepairAnswerSqlTests.Summary_CountsBucketsAwaitingAnAnswer_AnsweredBuckets_AndTheIntegrityDeliveriesWaitingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476840,7 +477271,7 @@
     "IntegrityRepairAnswerSqlTests.Summary_WithNoIntegrityDeliveries_ReportsNoneWaitingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476849,7 +477280,7 @@
     "IntegrityRepairAnswerSqlTests.MarkAnswerPending_ThroughAThroughputGatedCoordinator_MarksAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476858,7 +477289,7 @@
     "IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ThroughAThroughputGatedCoordinator_RecordsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476867,7 +477298,7 @@
     "IntegrityRepairAnswerSqlTests.MarkAnswerPending_CanceledDuringShutdown_PropagatesInsteadOfReadingAsNothingMarkedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476876,7 +477307,7 @@
     "IntegrityRepairAnswerSqlTests.RecordBundleAnswer_CanceledDuringShutdown_PropagatesInsteadOfReadingAsUnrecordedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "IntegrityBundleAnswer",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -476885,14 +477316,14 @@
     "RedeliveryReconcileDeferralTests.Reconcile_WithTheQueue_IsRecordedForTheMaintainer_NotRunHereAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 95,
+        "sourceLine": 98,
         "sourceSymbol": "Deferred",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 123,
+        "sourceLine": 126,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -476901,7 +477332,7 @@
     "RedeliveryReconcilerTests.Reconcile_EventsStoredWithoutTheirOrigin_AdoptTheOriginTheBundleCarriesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -476910,7 +477341,7 @@
     "RedeliveryReconcilerTests.Reconcile_SequenceFills_AreReportedApartFromOriginFillsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -476919,7 +477350,7 @@
     "RedeliveryReconcilerTests.Reconcile_EveryEventAlreadyPresentAndNothingAdopted_MarksTheBucketUnhealableOnceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -476928,7 +477359,7 @@
     "RedeliveryReconcilerTests.Reconcile_SomeEventsNotYetStored_MarksNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -476937,7 +477368,7 @@
     "RedeliveryReconcilerTests.Reconcile_WithMetrics_CountsAdoptedEventsAndUnhealableBucketsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -476946,7 +477377,7 @@
     "RedeliveryReconcilerTests.Reconcile_ARestoreTheStoreRefused_MarksTheBucketUnhealableOnce_NamingTheReasonAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -476955,7 +477386,7 @@
     "RedeliveryReconcilerTests.Reconcile_ARefusalBesideAdoptedHistory_MarksOnlyTheRefusedBucketAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -476964,7 +477395,7 @@
     "RedeliveryReconcilerTests.Reconcile_EveryChildPresentOrRefused_MarksBothBuckets_EachWithItsOwnReasonAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -476973,7 +477404,7 @@
     "RedeliveryReconcilerTests.Reconcile_ARefusalBesideEventsBeingStored_MarksOnlyTheRefusedBucketAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -476982,7 +477413,7 @@
     "RedeliveryReconcilerTests.Reconcile_ARefusalWithoutALedger_ReportsTheRefusalWithoutMarkingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -476991,7 +477422,7 @@
     "RedeliveryReconcilerTests.Reconcile_WithMetrics_CountsARefusedBucketAsUnhealableAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477000,7 +477431,7 @@
     "RedeliveryReconcilerTests.Reconcile_PassesTheOriginsServiceName_ToTheStoreAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477009,7 +477440,7 @@
     "RedeliveryReconcilerTests.Reconcile_EventsWhoseFirstHopNamesAnotherService_AreCountedAndLoggedOnceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477018,7 +477449,7 @@
     "RedeliveryReconcilerTests.Reconcile_EveryPresentEventRefused_MarksTheBucketUnhealable_AndReportsTheRefusalAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477027,7 +477458,7 @@
     "RedeliveryReconcilerTests.OriginServiceNameOf_TheBundlesFirstHop_NamesTheOriginAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477036,7 +477467,7 @@
     "RedeliveryReconcilerTests.OriginServiceNameOf_NoHops_IsNullAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477045,7 +477476,7 @@
     "RedeliveryReconcilerTests.OriginServiceNameOf_AFirstHopWithoutAServiceIdentity_IsNullAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477054,7 +477485,7 @@
     "RedeliveryReconcilerTests.OriginServiceNameOf_AnEnvelopeReadWithoutHops_IsNullAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477063,7 +477494,7 @@
     "RedeliveryReconcilerTests.OriginServiceNameOf_AFirstHopWithABlankServiceName_IsNullAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477072,7 +477503,7 @@
     "RedeliveryReconcilerTests.OriginServiceNameOf_TheUnknownSentinelInAnyCase_IsNullAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477081,7 +477512,7 @@
     "RedeliveryReconcilerTests.OriginServiceNameOf_KeepsTheNamesCase_ForTheStoreToCompareWithoutCaseAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477090,7 +477521,7 @@
     "RedeliveryReconcilerTests.OriginServiceNameOf_NullEnvelope_ThrowsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477099,7 +477530,7 @@
     "RedeliveryReconcilerTests.Reconcile_BundleWithoutAnOrigin_AsksTheStoreNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477108,7 +477539,7 @@
     "RedeliveryReconcilerTests.Reconcile_NoChildrenKept_AsksTheStoreNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477117,7 +477548,7 @@
     "RedeliveryReconcilerTests.Reconcile_NoCoordinatorInTheScope_DoesNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477126,7 +477557,7 @@
     "RedeliveryReconcilerTests.Reconcile_StoreCannotAnswer_DoesNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477135,7 +477566,7 @@
     "RedeliveryReconcilerTests.Reconcile_NoLedgerRegistered_ReportsPresenceWithoutMarkingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477144,7 +477575,7 @@
     "RedeliveryReconcilerTests.Reconcile_InProcessLedgerRegisteredByItsConcreteType_IsTheOneMarkedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477153,7 +477584,7 @@
     "RedeliveryReconcilerTests.Reconcile_StoreFails_LogsWhatFailedAndReturnsNoneAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477162,7 +477593,7 @@
     "RedeliveryReconcilerTests.Reconcile_Canceled_PropagatesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 122,
+        "sourceLine": 125,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477171,14 +477602,14 @@
     "RedeliveryReconcileDeferralTests.TheDrain_ReconcilesWithExactlyWhatTheInlineReconcilePassesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 123,
+        "sourceLine": 126,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 251,
+        "sourceLine": 254,
         "sourceSymbol": "HandleDeferredAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -477187,7 +477618,7 @@
     "RedeliveryReconcileDeferralTests.TheDrain_AnOriginWithoutAName_ReconcilesWithoutOneAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 123,
+        "sourceLine": 126,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477196,7 +477627,7 @@
     "RedeliveryReconcileDeferralTests.TheDrain_ReconcilesWithTheHostsLoggerAndClockAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 123,
+        "sourceLine": 126,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477205,7 +477636,7 @@
     "RedeliveryReconcileDeferralTests.TheDrain_WithoutACoordinator_DoesNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 123,
+        "sourceLine": 126,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477214,7 +477645,7 @@
     "RedeliveryReconcileDeferralTests.Reconcile_WithoutTheDrain_RunsInlineAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 123,
+        "sourceLine": 126,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477223,7 +477654,7 @@
     "RedeliveryReconcileDeferralTests.Reconcile_ARedeliveredBundle_IsRecordedOnceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 123,
+        "sourceLine": 126,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477232,7 +477663,7 @@
     "RedeliveryReconcileDeferralTests.Reconcile_WhenRecordingFails_LogsTheReconcileFailure_AndLeavesRepairToAskAgainAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 123,
+        "sourceLine": 126,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477241,7 +477672,7 @@
     "RedeliveryReconcileDeferralTests.Reconcile_WhenCanceledWhileRecording_PropagatesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 123,
+        "sourceLine": 126,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477250,7 +477681,7 @@
     "RedeliveryReconcileDeferralTests.TheDrain_APayloadThatIsNotAReconcile_IsRefusedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 123,
+        "sourceLine": 126,
         "sourceSymbol": "RedeliveryReconciler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -477259,7 +477690,7 @@
     "RedeliveryReconcileBatchTests.Batch_WithABatchCapableStore_ReconcilesEveryBundleInOneCall_AndConcludesEachAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 373,
+        "sourceLine": 376,
         "sourceSymbol": "HandleDeferredBatchAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -477268,7 +477699,7 @@
     "RedeliveryReconcileBatchTests.Batch_WithoutTheBatchCall_ReconcilesEachBundleOnItsOwnAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 373,
+        "sourceLine": 376,
         "sourceSymbol": "HandleDeferredBatchAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -477277,7 +477708,7 @@
     "RedeliveryReconcileBatchTests.Batch_WithoutACoordinator_DoesNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 373,
+        "sourceLine": 376,
         "sourceSymbol": "HandleDeferredBatchAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -477286,7 +477717,7 @@
     "RedeliveryReconcileBatchTests.Batch_AnUnreadablePayload_FaultsTheBatch_SoTheDrainHandlesEachOnItsOwnAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 373,
+        "sourceLine": 376,
         "sourceSymbol": "HandleDeferredBatchAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -477295,7 +477726,7 @@
     "RedeliveryReconcileBatchTests.Batch_AFailedBatchCall_FaultsTheBatchAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 373,
+        "sourceLine": 376,
         "sourceSymbol": "HandleDeferredBatchAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -477304,7 +477735,7 @@
     "RedeliveryReconcileBatchTests.Batch_ABundleWhoseConclusionFails_IsLogged_AndTheOthersStillConcludeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 373,
+        "sourceLine": 376,
         "sourceSymbol": "HandleDeferredBatchAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -477313,7 +477744,7 @@
     "RedeliveryReconcileBatchTests.Batch_CancellationDuringAConclusion_IsNotSwallowedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs",
-        "sourceLine": 373,
+        "sourceLine": 376,
         "sourceSymbol": "HandleDeferredBatchAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -521998,6 +522429,30 @@
         "linkSource": "Convention"
       }
     ],
+    "RedeliveryRequestReceptorTests.Receptor_AnAnswerOverSeveralPages_EndsOnlyWithItsLastBundleAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptor.cs",
+        "sourceSymbol": "RedeliveryRequestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "RedeliveryRequestReceptorTests.Receptor_AnAnswerWhoseLastPageIsFull_StillEndsWithItsLastBundleAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptor.cs",
+        "sourceSymbol": "RedeliveryRequestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "RedeliveryRequestReceptorTests.Receptor_AnAnswerThatSelectsNothing_PublishesNoBundleAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptor.cs",
+        "sourceSymbol": "RedeliveryRequestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "SchemaInitializationTests.EnsureWhizbangDatabaseInitialized_IsIdempotentAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Postgres/ISchemaInitializationObserver.cs",
@@ -547327,7 +547782,7 @@
       "kind": "assertionFree",
       "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityRepairAnswerSqlTests.cs",
       "testMethod": "RecordMissingEvents_NothingToRecord_IsHarmlessAsync",
-      "sourceTag": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs:67",
+      "sourceTag": "src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs:70",
       "message": "RecordMissingEvents_NothingToRecord_IsHarmlessAsync contains no assertion"
     },
     {
@@ -547409,12 +547864,12 @@
     }
   ],
   "metadata": {
-    "generated": "2026-11-15T00:14:26.011Z",
-    "sourceFiles": 2373,
-    "testFiles": 4263,
-    "totalLinks": 25993,
-    "codeSymbols": 3608,
-    "testMethods": 22385,
+    "generated": "2026-11-16T01:52:30.498Z",
+    "sourceFiles": 2375,
+    "testFiles": 4273,
+    "totalLinks": 26015,
+    "codeSymbols": 3612,
+    "testMethods": 22403,
     "linkHealthFindings": 105
   }
 }

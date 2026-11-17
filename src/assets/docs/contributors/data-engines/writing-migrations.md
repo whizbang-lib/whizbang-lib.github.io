@@ -157,6 +157,25 @@ applied in three ways:
   When the latest definition of a function asks the caller's schema, the function is redefined whole in a new
   migration that names its schema. Migration 213 did this for the seven functions that needed it.
 
+## A function's result never changes under its name {#a-functions-result-never-changes-under-its-name}
+
+Earlier migrations run again over a schema the later ones already migrated: a replay of every file starts each
+function's first definer against its latest definition, and an upgrade re-runs any file whose hash changed. PostgreSQL
+refuses a `CREATE OR REPLACE FUNCTION` that changes an existing function's result (`42P13 cannot change return type of
+existing function`), so an earlier definer that creates the function with another result, and does not drop it first,
+fails that re-run.
+
+A function that must return something new therefore gets a new name, named for what it returns, and the existing
+function keeps its result and its behavior. Callers move to the new name. The old function keeps answering a service on
+the previous release during a rolling deploy. Migration 454 did this for the two redelivery reconciles: the forms that
+also count copies settled as satisfied are `wh_reconcile_redelivered_bundle_counting_satisfied` and
+`wh_reconcile_redelivered_bundles_counting_satisfied`, and `wh_reconcile_redelivered_bundle_by_first_hop` and
+`wh_reconcile_redelivered_bundles` are unchanged.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A changed result is a new function name, not a widened row under the old one. | Every earlier definer of the old name was written without a drop, and shipped files are never edited, so only a new name keeps every replay and every re-run working; the old name also keeps the previous release working during a deploy. | {verified: MigrationResultTypeReRunGuardTests.EveryDefinerWhoseResultDiffersFromTheLatest_DropsTheFunctionFirstAsync, MigrationResultTypeReRunGuardTests.TheGuard_FindsResultsThatChanged_AndEveryReviewedEntryIsStillOneAsync, NamedSchemaMigrationReplayTests.EveryMigrationReRunsOverItsOwnEarlierRunAsync} |
+
 ## Instance and role tables, and functions in the bootstrap closure {#bootstrap-closure-rules}
 
 Some migrations hold `-- @whizbang:bootstrap-begin` / `-- @whizbang:bootstrap-end` regions. The marked regions of
@@ -271,5 +290,9 @@ for one is optional follow-up work.
   `.down.sql` has no migration declaring it, and when a reverse script would be applied as a forward migration. A
   header that names a kind other than the three fails at apply time, naming it.
   {verified: MigrationReversalDeclarationGuardTests.EveryNewMigration_DeclaresHowItIsReversedAsync, MigrationReversalDeclarationGuardTests.AReversibleOrLossyMigration_ShipsItsReverse_AndAnIrreversibleOneShipsNoneAsync, MigrationReversalDeclarationGuardTests.AReverseScript_IsNeverAppliedAsAForwardMigrationAsync, MigrationReversalDeclarationGuardTests.TheGuard_ReadsTheRealMigrationsAsync, MigrationReversalTests.AKindThatIsNotOneOfTheThree_IsRefusedAsync, MigrationReversalTests.AReversibleMigrationWithoutItsReverseScript_IsRefusedNamingTheFileAsync}
+- `MigrationResultTypeReRunGuardTests` fails the build's tests when a migration creates a function with a result that
+  differs from the function's latest definition without dropping it first, since re-running that migration over the
+  migrated schema fails with 42P13. One shipped definer (078) is reviewed and listed with its reason.
+  {verified: MigrationResultTypeReRunGuardTests.EveryDefinerWhoseResultDiffersFromTheLatest_DropsTheFunctionFirstAsync, MigrationResultTypeReRunGuardTests.TheGuard_FindsResultsThatChanged_AndEveryReviewedEntryIsStillOneAsync}
 - `MigrationSchemaQualifierTests` covers each case of the qualification: literals, escape strings, doubled quotes,
   quoted identifiers, comments, dollar quotes and positional parameters.
