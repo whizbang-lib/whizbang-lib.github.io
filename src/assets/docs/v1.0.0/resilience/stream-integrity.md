@@ -17,8 +17,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/RuleFingerprintSource.cs
   - src/Whizbang.Core/Messaging/IntegrityPairGuard.cs
   - src/Whizbang.Core/Messaging/IntegrityPairGuardOptions.cs
-  - src/Whizbang.Data.Postgres/Migrations/465_CutsCarryTheirDigest.sql
-  - src/Whizbang.Data.Postgres/Migrations/466_SupersedingTypesCountTheKey.sql
+  - src/Whizbang.Data.Postgres/Migrations/460_CutsCarryTheirDigest.sql
+  - src/Whizbang.Data.Postgres/Migrations/461_SupersedingTypesCountTheKey.sql
   - src/Whizbang.Data.Postgres/Migrations/459_UnchangedOriginsAreNotAsked.sql
   - src/Whizbang.Data.Postgres/Migrations/458_FullHistoryCompareRunsInSlices.sql
   - src/Whizbang.Core/Messaging/IntegrityCheckOptions.cs

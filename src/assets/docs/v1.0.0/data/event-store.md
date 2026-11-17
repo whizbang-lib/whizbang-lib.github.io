@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS wh_perspective_cursors (
 **Receptors and perspectives**: a perspective keeps one cursor per stream and perspective, ordered within the stream
 by the UUIDv7 event id, and advances or rewinds it. Receptors keep no per-event record: a receptor runs when its message
 is dispatched, and its outcome is the inbox row's completion. (`wh_receptor_processing`, an earlier per-event log, had
-no writer and is dropped by migration 477.)
+no writer and is dropped by migration 464.)
 
 ---
 

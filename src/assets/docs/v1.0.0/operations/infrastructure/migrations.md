@@ -14,8 +14,8 @@ tags: >-
   migrations, schema, hash-tracking, blue-green, rollback, preview,
   database, ddl, perspective-tracking, data-migration, wh-settings
 codeReferences:
-  - src/Whizbang.Data.Postgres/Migrations/476_UnusedCoordinationTablesAreDropped.sql
-  - src/Whizbang.Data.Postgres/Migrations/477_ReceptorProcessingTableIsDropped.sql
+  - src/Whizbang.Data.Postgres/Migrations/463_UnusedCoordinationTablesAreDropped.sql
+  - src/Whizbang.Data.Postgres/Migrations/464_ReceptorProcessingTableIsDropped.sql
   - src/Whizbang.Data.Postgres/RetiredReceptorTable.cs
   - src/Whizbang.Data.Postgres/StartupVerdictBinding.cs
   - src/Whizbang.Data.Postgres/SchemaInitializationStages.cs
@@ -1349,13 +1349,13 @@ Two tables from the first schema had no writer: `wh_partition_assignments` (the 
 the [published partition assignment](../../fundamentals/work-coordinator/claim-loop#ranking-who-counts-as-alive)) and
 `wh_receptor_processing` (receptors keep no per-event record). Both are gone:
 
-- **Their readers go first.** `claim_work` probed `wh_receptor_processing` on every poll (475), and the instance release
-  paths, the stream purge, the queue-statistics refresh and the rewind cleanup touched it. Migration 476 redefines each
+- **Their readers go first.** `claim_work` probed `wh_receptor_processing` on every poll (462), and the instance release
+  paths, the stream purge, the queue-statistics refresh and the rewind cleanup touched it. Migration 463 redefines each
   of those functions without it and drops `claim_orphaned_receptor_work`, so by the time a table is dropped no function
   names it.
-- **`wh_partition_assignments` is dropped by 476.** The infrastructure schema no longer declares it, because a table the
+- **`wh_partition_assignments` is dropped by 463.** The infrastructure schema no longer declares it, because a table the
   bootstrap declares is created again on every pass that applies the bootstrap, after the migration dropped it.
-- **`wh_receptor_processing` is dropped by 477, and the bootstrap creates it only until then.** Migration 031 creates an
+- **`wh_receptor_processing` is dropped by 464, and the bootstrap creates it only until then.** Migration 031 creates an
   index on it at the top level, and a shipped migration is never edited, so the table has to exist whenever 031 runs:
   on a database migrating from empty, and on any pass that runs 031 again (an upgrade whose recorded hashes predate the
   current files; the replay of every migration over its own earlier run stands for it). The bootstrap therefore creates

@@ -37,7 +37,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/349_ReOfferOnlyFetchableStreams.sql
   - src/Whizbang.Data.Postgres/Migrations/367_TheClaimRunsOnlyWhatCanFindWork.sql
   - src/Whizbang.Data.Postgres/Migrations/390_TheClaimLeasesNoInboxAFullWorkingSetWouldHandBack.sql
-  - src/Whizbang.Data.Postgres/Migrations/475_HeldLeasesAreRenewedByTheirOwner.sql
+  - src/Whizbang.Data.Postgres/Migrations/462_HeldLeasesAreRenewedByTheirOwner.sql
   - src/Whizbang.Data.Postgres/ConcurrentIndexBuild.cs
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/Signals/BasePollSignalSource.cs
@@ -454,7 +454,7 @@ full, so until it reached them the re-offer walk read each one on every poll and
 test against the clock, which no key of the held-lanes index can skip. On a busy store this made every poll's cost grow
 with the rows the instance had let lapse (#2345).
 
-Since migration 475 the claim renews them. After the inbox acquisition and before the stream ledger is written, it
+Since migration 462 the claim renews them. After the inbox acquisition and before the stream ledger is written, it
 reads this instance's pending rows whose lease ran out, oldest lease first, at most a claim window of them (eight
 batches), and renews each one whose stream the instance still owns under **acquisition's rule, without stealing**:
 

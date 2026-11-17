@@ -26,7 +26,7 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/EventEnvelopeJsonbAdapter.cs
   - src/Whizbang.Data.Postgres/Migrations/295_SupersedingEvents.sql
   - src/Whizbang.Data.Postgres/Migrations/454_RedeliveredCopiesKeepTheOriginsOrder.sql
-  - src/Whizbang.Data.Postgres/Migrations/466_SupersedingTypesCountTheKey.sql
+  - src/Whizbang.Data.Postgres/Migrations/461_SupersedingTypesCountTheKey.sql
   - src/Whizbang.Core/Messaging/CompositeInboxFanout.cs
   - src/Whizbang.Generators/MessageTypeCatalogGenerator.cs
   - src/Whizbang.Generators/SupersedingEventAnalyzer.cs

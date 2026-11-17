@@ -15,7 +15,7 @@ codeReferences:
   - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveServiceCollectionExtensions.cs
   - src/Whizbang.Archive.AzureBlob/ArchiveObjectDeletionStep.cs
   - src/Whizbang.Archive.AzureBlob/ArchiveSweepMetrics.cs
-  - src/Whizbang.Data.Postgres/Migrations/480_ArchiveDatabaseIdentity.sql
+  - src/Whizbang.Data.Postgres/Migrations/465_ArchiveDatabaseIdentity.sql
   - src/Whizbang.Data.Postgres/Migrations/269_ArchiveObjectDeletionQueue.sql
   - src/Whizbang.Data.Postgres/Migrations/353_ArchiveLocations.sql
 testReferences:
@@ -171,7 +171,7 @@ archive. Two databases sharing a container would each see the other's objects as
 each container for one database, and **a sweep in a container another database claimed is refused**.
 
 The first write to a container creates an owner marker object, `whizbang-archive-owner`, holding the database's
-archive identity (`archive_database_id` in `wh_settings`, given to each database by migration 480). The marker is
+archive identity (`archive_database_id` in `wh_settings`, given to each database by migration 465). The marker is
 created once, create-only like every archive object, and never updated. Before a sweep lists anything, it claims the
 container the same way, or reads the marker that is there and compares it with its own database's id.
 

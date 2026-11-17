@@ -258,5 +258,5 @@ its explanation.
   dead cursor also held the signal log's retention back. Finished `wh_subscription_backfills` rows stay **State**: a
   backfill is inserted only if none exists for its owner and type, so the finished row is the "already done" marker,
   and removing it would start the backfill again. {verified: OperationalTableRegistryGuardTests.TheDecidedTables_AreClassifiedAsDecidedAsync, OperationalRetentionSweepSqlTests.AFinishedSubscriptionBackfill_IsNeverSwept_ItIsTheAlreadyDoneMarkerAsync, OperationalRetentionSweepSqlTests.ASignalCursor_OfAGoneInstance_GoesPastTheRetention_ALivePodsNeverAsync}
-- **`wh_partition_assignments`** and **`wh_receptor_processing`** had no writer and are dropped (migrations 476 and 477;
+- **`wh_partition_assignments`** and **`wh_receptor_processing`** had no writer and are dropped (migrations 463 and 464;
   see [unused tables are dropped](migrations#unused-tables-are-dropped)).
