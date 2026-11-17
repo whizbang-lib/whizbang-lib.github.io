@@ -149,6 +149,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/RuleFingerprintWireTests.cs
   - tests/Whizbang.Core.Tests/Messaging/IntegrityPairGuardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TwoServicePairGuardTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/TwoServiceCutUnderPairGuardTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/EligibilitySqlVersionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CleanupIntegrityMatrixTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CutsCarryTheirDigestSqlTests.cs
@@ -1403,6 +1404,17 @@ mean (both versions, the SQL rule's text, and the canonical form and hashes of a
 | The SQL rule in `EligibilitySql` | `EligibilitySqlVersionTests` | `ELIGIBILITY_SQL_VERSION` is bumped with its hash recorded |
 | The constants in `Migrations/constants.txt` alone | `EligibilitySqlVersionTests` | They match `EligibilitySql` again |
 
+The rule-semantics versions so far:
+
+| `RuleSemantics.VERSION` | Rules version | What a digest means |
+| --- | --- | --- |
+| 1 | 1.0.0 | A cut subtracted what it removed, and every copy of a superseding type counted |
+| 2 | 2.0.0 | A cut [carries the digest](#cuts-carry-their-digest) of what it removes, and a superseding type counts its key once |
+
+Version 2 ships with the cuts that carry their digest and the superseding key slot, in the same release as the pair
+guard, so a service on version 1 and a service on version 2 halt their pair instead of reading a cut as a loss
+(`TwoServiceCutUnderPairGuardTests`).
+
 Why each choice:
 
 - **The migrations still read `constants.txt`.** Every substitution path (the runtime provider, the generated DbContext,
@@ -1703,7 +1715,7 @@ eligible to count, plus what cuts carried.
 |---|---|
 | Ephemeral body reap, pointer prune, at-most-once occurrences, audit records | never counted, so never seen |
 | Superseded reap | the key is counted once, whichever copies each side still holds |
-| Reclassify to ephemeral, rewind bookkeeping | a rule change: counted the same once both sides run the same rule |
+| Reclassify to ephemeral, rewind bookkeeping | a rule change: while only one side has made it, the [pair guard](#the-pair-guard) halts the pair and nothing is compared, not even the control loss; once both sides run the same rule the pair resumes on its own and the case converges like a both-sides cleanup |
 | Prefix truncate, close the books, prefix archive, whole archive, purge | carried: every answer and seal is what it was before the cut |
 | Archive then restore | nothing changes |
 
