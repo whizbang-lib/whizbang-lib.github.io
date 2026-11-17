@@ -25,6 +25,8 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs
   - src/Whizbang.Data.Dapper.Postgres/EventEnvelopeJsonbAdapter.cs
   - src/Whizbang.Data.Postgres/Migrations/295_SupersedingEvents.sql
+  - src/Whizbang.Data.Postgres/Migrations/454_RedeliveredCopiesKeepTheOriginsOrder.sql
+  - src/Whizbang.Core/Messaging/CompositeInboxFanout.cs
   - src/Whizbang.Generators/MessageTypeCatalogGenerator.cs
   - src/Whizbang.Generators/SupersedingEventAnalyzer.cs
   - src/Whizbang.Generators/Utilities/SupersedingResolver.cs
@@ -36,7 +38,11 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/358_StreamsRememberWhenTheyStarted.sql
   - src/Whizbang.Core/Perspectives/PerspectiveRowStart.cs
   - src/Whizbang.Data.Postgres/StreamStartSql.cs
+  - src/Whizbang.Data.Postgres/Migrations/455_StaleCopiesAboveTheNewestAreRewalked.sql
 testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/RedeliveredSupersedingChildTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveredSupersedingCopySqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SupersedingOrderGuardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TypeHistoryWalkSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/TypeHistoryWalkGuardTests.cs
   - tests/Whizbang.Core.Tests/Lifecycle/SupersedingEventsTests.cs
@@ -265,6 +271,67 @@ subscriber to acknowledge.
 | Choice | Reason | Verified |
 |---|---|---|
 | A received payload of a superseding type with a key property is deserialized once, with the service's `JsonSerializerOptions` (or the combined registered contexts when none is registered), so the generated accessor can read the key. | The producer's accessor and the receiver's are the same code, so both store the same key; reading JSON property names directly would depend on the naming policy. Only superseding types with a key pay for it. | {verified: SupersedingEventsTests.KeyOf_AReceivedJsonPayload_IsReadThroughItsTypeName_AsTheTypedPayloadIsAsync, ReceivedInboxMessageBuilderSupersedingKeyTests.Build_WithNoOptionsGiven_ReadsTheKeyThroughTheRegisteredContextsAsync} |
+
+### Redelivered copies {#redelivered-copies}
+
+{verified: RedeliveredSupersedingChildTests.ARedeliveredSupersedingChild_CarriesTheKeyAndGroupItsOriginStoredAsync, RedeliveredSupersedingChildTests.ATypedCompositesSupersedingChild_CarriesItsKeyAndGroup_AsADirectDeliveryDoesAsync, RedeliveredSupersedingCopySqlTests.ARedeliveredOlderCopy_IsNeverStored_IsRecordedSatisfied_AndNoPerspectiveSeesItAsync, RedeliveredSupersedingCopySqlTests.ARedeliveredCopyNewerThanTheHeldOne_IsRestoredAsBeforeAsync, RedeliveredSupersedingCopySqlTests.AnOlderCopyArrivingForTheFirstTime_AfterTheNewest_IsNeverStored_AndIsRecordedSatisfiedAsync, TwoServiceIntegrityConvergenceTests.AnOlderRedeliveredCopy_IsNeverStoredOrApplied_AndThePairConvergesWithNoFurtherResendAsync, RedeliveredSupersedingCopySqlTests.CopiesWithoutTheOriginsSequence_AreStillOrderedByVersion_AsBeforeAsync, RedeliveryReconcilerTests.Reconcile_ACopyANewerHeldCopySupersedes_IsCountedSatisfied_AndNotADeficitAsync, SupersedingOrderGuardTests.NoFunctionOrdersTheCopiesOfASupersedingKey_ByTheirStoredVersionAsync}
+
+When a subscriber reaps an older copy before its producer does, the integrity comparison reads the subscriber as short
+and a [redelivery](../../resilience/stream-integrity) carries the copy again. Three rules keep that copy from ever
+becoming the newest:
+
+- **It carries its key and group.** A redelivery bundle's children are stamped with the superseding key and group the
+  way the live receive path stamps them, read from the carried payload, and so are the children of a typed composite.
+- **A copy older than the one held is never stored.** When the subscriber already holds a newer copy of the same key,
+  an older copy is settled in the inbox as satisfied (`repair satisfied: a newer copy of its superseding key is held`)
+  instead of stored. That holds whichever path brings it and whether or not it arrived before: an integrity
+  redelivery, an operator's redelivery, or a live receive that arrives after the newest. Nothing claims, copies or applies it, so no perspective is offered it after the newest.
+  The bundle reconcile counts a redelivered one as present (never a deficit) and apart, in `superseded_satisfied_count`
+  (`wh_reconcile_redelivered_bundles_counting_satisfied`, a new function so the result of the earlier reconcile never
+  changes), and the reconciler counts it on `whizbang.stream_integrity.redelivered_copies_superseded`. A redelivered copy newer than the
+  held one is restored as before.
+- **Newer means the origin's order.** Which copy is newer is decided by `_wh_supersedes`: for two copies received from
+  the same origin, both carrying the origin's commit sequence, the origin's order; otherwise the stored version, as for
+  every locally written event. The restore check, the queue, the history walk and the reaper all ask it.
+
+```mermaid{caption="A subscriber reaps the older copy first; the redelivered copy keeps its key and origin sequence, is settled as satisfied instead of stored, and the newest copy stays." tests=["RedeliveredSupersedingCopySqlTests.ARedeliveredOlderCopy_IsNeverStored_IsRecordedSatisfied_AndNoPerspectiveSeesItAsync", "RedeliveredSupersedingChildTests.ARedeliveredSupersedingChild_CarriesTheKeyAndGroupItsOriginStoredAsync"]}
+sequenceDiagram
+  participant O as Origin
+  participant S as Subscriber
+  O->>S: copy 1 (key k, origin seq 10), copy 2 (key k, origin seq 20)
+  S->>S: reaper removes copy 1
+  S-->>O: digest compare reads a deficit, asks for the stream
+  O->>S: redelivery: copy 1 with key k and origin seq 10
+  S->>S: copy 2 (seq 20) is held, so copy 1 is settled as satisfied, not stored
+  S->>S: no perspective is offered copy 1; copy 2 stays the newest
+```
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A copy older than the held one is settled, not stored. | Stored, it would sit above the newest by version and be applied after it, so a perspective would show the stale state. Settled as satisfied, it is neither applied nor read as missing. | {verified: RedeliveredSupersedingCopySqlTests.ARedeliveredOlderCopy_IsNeverStored_IsRecordedSatisfied_AndNoPerspectiveSeesItAsync} |
+| Without the origin's sequence on both copies, the stored version decides. | A local event, or a received one whose sequence is not known yet, has no origin order to compare; for them the stored order is the write order, as before. | {verified: RedeliveredSupersedingCopySqlTests.CopiesWithoutTheOriginsSequence_AreStillOrderedByVersion_AsBeforeAsync} |
+| One comparison function, enforced by a guard. | The queue, the history walk and the reaper each compared versions themselves; one of them disagreeing would reap the newest copy. A function that orders the copies of a key by comparing versions fails the build. | {verified: SupersedingOrderGuardTests.NoFunctionOrdersTheCopiesOfASupersedingKey_ByTheirStoredVersionAsync} |
+
+Streams that already hold a stale copy stored above the newest, by an earlier version, are not changed by this rule;
+they need the one-time repair tracked separately.
+
+### Stale copies already stored {#stale-copies-already-stored}
+
+{verified: SupersedingHistoryReconcileSqlTests.Repair_AStreamHoldingOlderCopiesAboveItsNewest_QueuesTheCopies_OnceTheWalkRestartsAsync}
+
+Before migration 454, a redelivered older copy was stored at the end of the consumer's stream, above the newest copy
+by version, and the history walk of its type had already completed under the version order. Migration 455 restarts
+every completed superseding walk (`wh_restart_superseding_history_walks()`), so the
+[history reconcile](#history-stored-before-the-declaration) walks each type once more under the origin's order: it
+stamps the key on any copy that lacks one and queues every copy a held copy supersedes, wherever it sits by version.
+The reaper then removes them past its usual gates. Nothing needs to be run by hand.
+
+- **The walker, not a new scan.** The walk is already paced, bounded per window, resumable after a crash and shared
+  across instances, and the ordering rule lives in one function (`_wh_supersedes`), so the repair is the walk run
+  again rather than a second walker that could disagree with it.
+- **A stream looping on a rewind recovers either way.** Until the copies are reaped, a perspective asked to rewind
+  the same stream again for the same trigger, with nothing stored since, settles the repeat instead of replaying it
+  ([rewind](../perspectives/rewind#a-repeated-rewind-is-settled)).
 
 ## History stored before the declaration {#history-stored-before-the-declaration}
 

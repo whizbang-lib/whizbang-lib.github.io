@@ -7,9 +7,15 @@ order: 4
 description: Cross-service anti-entropy — continuity checkpoints, digest audits, and idempotent re-delivery repair; report-only by default, self-healing as the opt-in
 tags: 'stream-integrity, anti-entropy, re-delivery, backfill, digest, manifest, continuity, checkpoint, repair, cross-service, bootstrap'
 codeReferences:
+  - src/Whizbang.Data.Postgres/Migrations/459_UnchangedOriginsAreNotAsked.sql
+  - src/Whizbang.Data.Postgres/Migrations/458_FullHistoryCompareRunsInSlices.sql
   - src/Whizbang.Core/Messaging/IntegrityCheckOptions.cs
   - src/Whizbang.Data.Postgres/Migrations/450_SealedEpochsRecordWhenTheyWereSealed.sql
   - src/Whizbang.Data.EFCore.Postgres/IntegritySweepScheduler.cs
+  - src/Whizbang.Data.Postgres/Migrations/452_HeldFoldIsMaintainedAsRowsChange.sql
+  - src/Whizbang.Data.Postgres/Migrations/453_DigestPathsShareOneEligibilityRule.sql
+  - src/Whizbang.Data.Postgres/Migrations/constants.txt
+  - src/Whizbang.Data.EFCore.Postgres/DigestRuleSql.cs
   - src/Whizbang.Data.Postgres/Migrations/214_AtMostOnceEventsCarryAFlag.sql
   - src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs
   - src/Whizbang.Core/Messaging/IntegrityDomainOwnership.cs
@@ -122,10 +128,19 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/408_ASealFallsOnlyAsFarAsARewriteReached.sql
   - src/Whizbang.Data.Postgres/Migrations/409_RepairedEventsRunOnlyReceptorsThatNeverRan.sql
   - src/Whizbang.Data.Postgres/Migrations/375_LedgerRowsWithoutAWindowAreRechecked.sql
+  - src/Whizbang.Data.EFCore.Postgres/UnsequencedDigestCompactionStep.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAskMemoSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/TwoServiceAskSkipTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.AskSkip.cs
+  - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerAskSkipTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestTableSqlTests.Slices.cs
   - tests/Whizbang.Core.Tests/Messaging/IntegrityCheckOptionsTests.cs
   - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerCheckGatingTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SealRecheckRotationSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedHeldFoldCostSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/DigestEligibilitySqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/DigestEligibilityGuardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileCoordinatorTests.cs
   - tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcileBatchTests.cs
@@ -262,6 +277,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerRepairTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HandledLedgerSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RepairDrainRecordsBeforeSendingTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedDigestCompactionSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedDigestCompactionStepTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedHeldFoldWriteCostSqlTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -526,8 +544,9 @@ sequence) for the types they subscribe to, and compare.
 - Detects the incident class **within one to two checkpoint intervals**, not at the next nightly
   audit.
 - Near-zero origin cost: one `GROUP BY` over the stamped window per interval; checkpoints are
-  doorbell-sized control messages. Checkpoints publish even when the window is empty — a missing
-  checkpoint (3× interval) is itself a **liveness alarm**.
+  doorbell-sized control messages. A checkpoint goes out when the window moved; while it did not, a
+  heartbeat goes out every `CheckpointHeartbeatMinutes` (15 by default), and a missing heartbeat is
+  itself a **liveness alarm** (see [Checkpoints go out on change](#checkpoints-go-out-on-change)).
 - Subscription subsets are handled by construction — buckets are per *type*, so a consumer only
   compares types it consumes. At-most-once schedule occurrences are excluded from the counts (a
   non-delivered at-most-once occurrence is its declared behavior, not a gap).
@@ -1252,6 +1271,60 @@ records changes nothing consumers verify (migration 263)
 {verified: StreamDigestTableSqlTests.TruncateStreamPrefix_APrefixOfOnlyAnAuditRecord_IsNotAMutationOfFoldedHistoryAsync, StreamDigestTableSqlTests.TruncateStreamPrefix_APrefixHoldingAnAuditRecord_LeavesTheDigestEqualToAFreshFoldAsync}. Payloads, metadata and the order of arrival play no part, which is why a
 crypto-shredded or re-serialized event digests the same.
 
+### One eligibility rule {#one-eligibility-rule}
+
+{verified: DigestEligibilityGuardTests.NoDigestFunction_WritesTheEligibilityRuleByHandAsync, DigestEligibilityGuardTests.NoCSharpSql_WritesTheEligibilityRuleByHandAsync, DigestEligibilityGuardTests.TheConstants_ExpandToTheRule_UnderTheAliasGivenAsync, DigestEligibilityGuardTests.TheGuard_FlagsAHandWrittenRule_AndPassesTheConstantOrAMarkedFlagTestAsync, DigestEligibilitySqlTests.TheSeed_LeavesOutAtMostOnceAndExemptEvents_AsEveryOtherFoldDoesAsync, DigestEligibilitySqlTests.TheConsumersCheckpointCount_LeavesOutAtMostOnceEvents_AsTheOriginsCountDoesAsync, DigestEligibilitySqlTests.DigestBucketsWithNoEligibleEvents_AreRemoved_AndBucketsWithEventsKeptAsync}
+
+The table above is one rule, and it is written once. Every fold, answer, heal, checkpoint and cleanup path writes it
+as a [migration constant](../operations/infrastructure/migrations#constants) that takes the row's alias:
+
+| Constant | Counts an event when | Used by |
+| --- | --- | --- |
+| `__DIGEST_ELIGIBLE__(alias)` | It is not ephemeral (`flags & 8`), not delivered at most once (`flags & 32`), and not an [exempt type](#audit-records-not-digested) | Every digest fold, answer, heal, seal, unfold and the [held fold](#the-held-fold-is-maintained-as-rows-change) |
+| `__INTEGRITY_COUNTED__(alias)` | It is not delivered at most once and not an exempt type | Both halves of a continuity checkpoint count |
+
+```sql{
+title: "The rule written as its constant"
+description: "A digest fold names the row it reads; the constant expands to the flag tests and the exempt list at apply time."
+category: "Configuration"
+difficulty: "ADVANCED"
+tags: ["stream-integrity", "migrations", "constants", "digests"]
+}
+-- a migration
+FROM __SCHEMA__.wh_event_store es
+WHERE es.stream_id = ANY(p_streams)
+  AND __DIGEST_ELIGIBLE__(es)
+
+-- what runs
+  AND (COALESCE(es.flags, 0) & 8 = 0 AND COALESCE(es.flags, 0) & 32 = 0
+       AND split_part(es.event_type, ',', 1) <> ALL(ARRAY['Whizbang.Core.SystemEvents.EventAudited', ...]))
+```
+
+The work coordinator's C# SQL reads the same text through `MigrationConstants.Apply("__DIGEST_ELIGIBLE__(es)")`, so it
+binds no list of its own.
+
+Before migration 453 the rule was copied by hand into each site, and five copies differed: the digest seed had no
+at-most-once test and no exempt filter, the consumer's checkpoint count had no at-most-once test, and the reclassify,
+at-most-once flagging, archive and purge unfolds had no exempt filter. Two paths could count one event differently,
+and a later heal or comparison then reported a difference that nothing caused. Migration 453 redefines every site
+with the constant, and also removes, once, the digest buckets that hold no counted event: the leftovers of migration
+210, which deleted rewind events without touching their digests and which the heal otherwise reported as
+`drift_removed` on every sweep.
+
+Why each choice:
+
+- **A constant, not a SQL function.** A function call hides the flag and type tests from the planner, which then
+  misestimates every fold that uses it; migration 446 fixed exactly that kind of plan. A constant is substituted at
+  apply time, so each statement holds plain SQL and keeps the plan it had.
+- **Two constants, because a checkpoint counts differently.** A checkpoint counts what was received, and an ephemeral
+  event was received live whether or not its body has been reaped since. Ephemeral events are therefore counted by
+  checkpoints and left out of digests. Both constants share the at-most-once and exempt tests, so the two halves of a
+  checkpoint (the origin's window and the consumer's count) now agree.
+- **A guard, not a convention.** `DigestEligibilityGuardTests` fails the build on a flag test or the exempt list
+  written by hand in any function that folds, compares or stores digests, or in C# SQL. A flag test that selects rows
+  to change rather than counting them (the rows still to flag at most once, the events still Sourced) is allowed
+  when the line above it says so (`-- not the digest rule: ...`).
+
 ### How at-most-once events are excluded {#at-most-once-exclusion}
 
 The delivery guarantee of a schedule occurrence lives on the outbox row's metadata, and the outbox
@@ -1259,7 +1332,7 @@ row is deleted once processed, so the integrity queries cannot read it there. In
 is flagged when it is spawned: `_wh_spawn_occurrence` sets `EventFlags.AtMostOnce` (bit 32) on the
 outbox row, and the emit chain copies `flags` to `wh_event_store`. Every place that must leave
 at-most-once events out tests `flags & 32` on the event-store row, exactly as ephemeral events are
-tested with `flags & 8`. The bit costs no stored bytes, and the digest, checkpoint and verify
+tested with `flags & 8`, through the [one eligibility rule](#one-eligibility-rule). The bit costs no stored bytes, and the digest, checkpoint and verify
 queries no longer join the event body at all.
 
 Before migration 214 the exclusions read a metadata key that the event store never stored, so no
@@ -1990,7 +2063,9 @@ drivers):
 Two deliberate omissions. Requests from peers (`RequestIntegrityManifest` in the inbox) are still
 answered when this service's own audit is off: a service that does not audit can still be audited.
 And `RebuildPerspectiveCommand` is never swept, because an operator issues the same command by hand;
-a stale auto-rebuild left over from an `AutoRepairCapped` period is indistinguishable from one.
+a stale auto-rebuild left over from an `AutoRepairCapped` period (before #2344 the audit's repair was sent as that
+command) is indistinguishable from one. Since #2344 the audit repairs in its own service and sends nothing; see
+[the integrity audit repairs in its own service](/v1.0.0/fundamentals/perspectives/rebuild#auto-repair-is-local).
 
 A feature that is on is never touched: the sweep names only the types of features that are off, so
 with everything enabled it does nothing, and with the defaults it drops repair traffic (report-only)
@@ -2559,6 +2634,38 @@ Each choice below is locked by the test beside it, which fails if the behavior f
 | Its index is built concurrently after the migrations | A `CREATE INDEX` in a migration would block every ledger write until it committed | {verified: IntegrityAnswerPendingCountSqlTests.Count_OnceTheIndexIsBuilt_IsAnsweredFromItAsync} |
 | An engine with no ledger counts nothing | Nothing awaits an answer where nothing is requested | {verified: WorkCoordinatorDefaultsTests.IntegrityCountAnswerPendingAsync_WithoutProviderSupport_CountsNothingAsync} |
 
+### Idle pollers back off {#idle-pollers-back-off}
+
+{verified: RepairDrainWorkerTests.ExecuteAsync_AnIdleLedger_WaitsLongerUpToTheCeiling_AndAClaimReturnsItToOneSecondAsync, SubscriptionBackfillWorkerTests.ExecuteAsync_WithNothingRunning_WaitsLongerUpToTheCeiling_AndARunningBackfillReturnsItToOneSecondAsync, RepairDrainWorkerTests.Options_IdlePollCeilingSeconds_DefaultsTo60Async}
+
+The paced repair drain and the subscription backfill both tick once a second on the maintainer, because their pacing
+(a token bucket of rows or events per second) needs a one-second step while they have work. Without work, that step
+only reads: the drain counts the buckets awaiting an answer and claims nothing, and the backfill reads an empty list of
+running backfills. On a measured 16-service deployment with no work anywhere those two reads were about 26 statements a
+second, a cost that grows with the number of services, not with the work.
+
+So each one waits longer while it finds nothing: one second, then two, four and so on, doubling up to
+`IdlePollCeilingSeconds` (60 by default, under `Whizbang:StreamIntegrity`). The first tick that finds work returns the
+wait to one second, and the pacing from then on is exactly as before. A ceiling of 1 or less keeps the one-second tick.
+A tick that fails is not known to be idle, so it keeps the one-second step.
+
+| Poller | Finds work when | Probe name |
+|---|---|---|
+| Paced repair drain | it claims a row, or buckets are still awaiting their answer | `repair-drain` |
+| Subscription backfill | a backfill is running (not yet completed or ended) | `subscription-backfill` |
+
+**Why a ceiling and not a wake-up signal.** A new deficit or backfill is recorded by a comparison or a subscription
+change that may run on another instance, so there is no in-process signal that reliably reaches the maintainer. The
+ceiling bounds the delay instead: new work waits at most `IdlePollCeilingSeconds` to start, which is small next to the
+time a repair answer takes anyway. An idle service then reads once a minute per poller, not once a second.
+
+**Each tick is counted.** `whizbang.probes.ticks{probe, outcome}` (meter `Whizbang.Probes`) counts every tick as `work`
+or `idle`, so a dashboard shows each poller's rate and how much of it is idle.
+
+**Not changed, and why.** Role leases are renewed on `RenewInterval` because a renewal must land inside the lease; a
+longer wait while idle would let leases lapse, so their cadence is the lease's to set, not the idle state's. The
+doorbell ring runs only after a write that queued a doorbell, and checks the queue before ringing, so it does not poll.
+
 ### What resets the repair ladder {#what-resets-the-repair-ladder}
 
 {verified: IntegrityRepairAnswerSqlTests.Report_TheLocalDigestMoved_ResetsTheLadder_AndLiftsTheMarkAsync, IntegrityRepairAnswerSqlTests.Report_TheDeficitGrew_ResetsTheLadder_AndLiftsTheMarkAsync, IntegrityRepairAnswerSqlTests.Report_OnlyTheOriginsDigestMoved_KeepsTheAttempts_AndTheMarkAsync, IntegrityManifestReceptorTests.ManifestReceptor_StreamLevelReport_CarriesEachDeficitsSize_SoTheLedgerCanTellAGrowingDeficitAsync}
@@ -2865,7 +2972,9 @@ refolds the epoch that sequence falls in. A hundred thousand one-event bundles w
 most of them of the same few epochs.
 
 The drain hands every redelivery reconcile in a lease to one store call, `wh_reconcile_redelivered_bundles`
-(migration 335, behind `IWorkCoordinator.ReconcileRedeliveredBundlesAsync`):
+(migration 335, behind `IWorkCoordinator.ReconcileRedeliveredBundlesAsync`; since migration 454 its counting form,
+`wh_reconcile_redelivered_bundles_counting_satisfied`, which also counts the
+[copies settled as satisfied](../fundamentals/events/superseding-events#redelivered-copies)):
 
 - each bundle gets what reconciling it alone would give it: the same origin and sequence fills, the same
   [first-hop check](#pre-stamp-history-first-hop), the same counts per bucket;
@@ -2921,6 +3030,35 @@ cleanup sweep and below dead-letter recovery.
 rates. With one shared budget, whichever requester asked first after the ceiling would take the forced pass and re-arm
 the ceiling for all of them, so a requester on a slower tick could be starved for as long as the load lasted. Each
 requester's ceiling is measured from its own first deferral and re-armed only by its own completed pass.
+
+### Checkpoints go out on change {#checkpoints-go-out-on-change}
+
+{verified: IntegrityCheckpointWorkerTests.RunCheckpointOnce_AnUnmovedWindow_WaitsForTheHeartbeat_AndAMovedOneGoesAtOnceAsync, IntegrityCheckpointWorkerTests.RunCheckpointOnce_AnOriginQuietForLessThanItsHeartbeat_IsNotStaleAsync, IntegrityCheckpointWorkerTests.Options_CheckpointHeartbeatMinutes_DefaultsTo15Async}
+
+Every `CheckpointIntervalSeconds` the origin advances its checkpoint watermark. A checkpoint is published only when that
+advance moved the window (its upper commit sequence is above its lower one), or when `CheckpointHeartbeatMinutes`
+(default 15) have passed since the last checkpoint this instance sent. The first cycle after a start always sends. A
+heartbeat of 0 sends every cycle, as before.
+
+**Why.** An idle origin used to send a checkpoint every minute to every consumer, each one stored, claimed and recounted
+on the consumer. On a measured 16-service deployment that was 1.41 messages a second with nothing written anywhere, two
+thirds of all idle inbox traffic, and a cost that grew with time and the number of services. A checkpoint over an
+unmoved window counts nothing, so skipping it loses no comparison; the consumer only needs to hear that the origin is
+alive, and a slow heartbeat says that. Cost now grows with writes.
+
+**Liveness.** A consumer calls an origin stale once its heartbeat plus two checkpoint intervals have passed without a
+checkpoint from it (17 minutes with the defaults), widened by any deferral of the integrity delivery queue as before. A
+lost origin is therefore noticed within about 17 minutes rather than 3; a lost *event* is still noticed within one or
+two intervals, because a window that moved is sent at once. The one case that waits longer is the two-cycle
+confirmation of a deficit when the origin falls idle right after the window that carried it: the confirming checkpoint
+is then the next heartbeat, so that gap is confirmed within `CheckpointHeartbeatMinutes` instead of one interval.
+
+**During a rolling deploy.** A consumer still on the previous release calls an origin stale after three intervals, so
+while the fleet is mixed it may log the liveness warning for an idle origin that has moved to heartbeats. The warning
+is a log line only; it clears once that consumer is upgraded.
+
+**Every cycle still advances.** The watermark advance stays on every interval, because it is what picks one winner per
+window among instances and what a moved window is measured against.
 
 ### Checkpoints are not idle-gated {#checkpoints-are-not-idle-gated}
 
@@ -3017,6 +3155,90 @@ never re-open verified history), and steady-state audits ask windowed **from the
 sweep deliberately asks full history — it is trust-but-verify for exactly the state the seals
 assume is fine, and a windowed sweep would be circular trust.
 
+### Unchanged origins are not asked {#unchanged-origins-are-not-asked}
+
+{verified: IntegrityAskMemoSqlTests.AfterAFullMatch_AnUnchangedOrigin_IsSkippedUntilTheBound_ThenAskedAgainAsync, IntegrityAskMemoSqlTests.AnyOfTheFourMoving_AsksAsync, TwoServiceAskSkipTests.AnIdlePair_IsAskedOncePerMaximumSkip_NotOncePerAuditAsync, TwoServiceAskSkipTests.AnEventThatSettlesAfterTheMatch_AndNeverArrived_IsFoundByTheBoundedAskAsync}
+
+The routine audit asks each origin for the window above the seal, and both sides fold that window. In a quiet fleet it
+is the same empty window every cycle, and on a measured deployment those comparisons were about 13% of all statement
+time (#2349). The window above the seal can change only when the origin emits, when this service receives, or when the
+origin rewrites its history. So after a full match the consumer remembers, beside the seal, four values, and skips the
+ask while none of them moved:
+
+| Remembered at the last full match | Moves when |
+|---|---|
+| The seal | a window above it verified, or the generation guard lowered it |
+| The origin generation recorded beside the seal | an answer carried a new generation (the origin rewrote history) |
+| The origin's last checkpoint position | the origin emitted (any checkpoint after it announces a higher position) |
+| The highest position this service holds from the origin | this service received from it, or lost the event at the top |
+
+A full match is a type-level compare of the window above the seal that advanced the seal (every type matched, one chunk,
+no resume cursor), or an origin's reply that it has nothing settled above the seal (below). A compare that disagrees
+forgets the memo, so the next audit asks again and the repair is verified on the next cycle, not an hour later.
+
+```mermaid{caption="Each audit asks the store whether the origin moved since the last full match; the store answers skip only while all four values are as remembered and the last ask is younger than MaxAskSkipMinutes." tests=["IntegrityAuditWorkerBranchCoverageTests.AnUnchangedOrigin_IsNotAsked_AndTheCycleStillReachedItAsync", "IntegrityAuditWorkerBranchCoverageTests.EveryOtherDecision_Asks_AndTagsTheAskWithItsReasonAsync", "IntegrityManifestReceptorTests.ManifestReceptor_ACleanCompleteWindow_IsRememberedAsAFullMatchAsync", "IntegrityManifestReceptorTests.ManifestReceptor_AWindowThatDisagrees_ForgetsTheMatchAsync"]}
+flowchart LR
+  A[Audit cycle, per origin] --> D{Memo of a full match?}
+  D -->|no| ASK[Ask from the seal]
+  D -->|yes| M{Seal, generation, checkpoint, highest held unchanged?}
+  M -->|no| ASK
+  M -->|yes| B{Last ask younger than MaxAskSkipMinutes?}
+  B -->|no| ASK
+  B -->|yes| SKIP[Skip; count manifest_asks_skipped]
+  ASK --> C{Compare}
+  C -->|full match| R[Remember the four values]
+  C -->|a type disagrees| F[Forget the memo]
+```
+
+**The bound.** An unchanged origin is still asked at least once per `MaxAskSkipMinutes` (default 60, under
+`Whizbang:StreamIntegrity`; 0 or less asks every cycle, as before), measured from the last ask on the audit's own clock.
+It is what finds the changes none of the four values tracks: an event the origin emitted before the match that was
+still inside its settle window then, settles later, and never reached this service (its checkpoint position was
+announced before the match, and nothing arrived here); and a rewrite of the origin's history, whose new generation this
+service learns only from an answer. The first is also found sooner by the [continuity checkpoints](#phase-b-continuity-checkpoints-fast-drop-detection)
+when the gap detector is on. The full-history compare never consults the memo: it re-verifies history below the seal,
+which an unchanged open window says nothing about.
+{verified: IntegrityAuditWorkerBranchCoverageTests.ABoundOfZero_AsksEveryCycle_WithoutConsultingTheMemoAsync, IntegrityAuditWorkerBranchCoverageTests.TheFullHistoryCompare_AlwaysAsks_WithoutConsultingTheMemoAsync, IntegrityAuditWorkerBranchCoverageTests.Options_MaxAskSkipMinutes_DefaultsToOneHourAsync}
+
+**The origin says so.** An origin with nothing settled at or above the asked start folds nothing (the windowed read takes
+the settled head first and returns before the fold), and a type-level ask is now answered with an empty manifest marked
+`NothingSettledAbove`, its `ComputedThrough` equal to the start, instead of silence. Silence cannot be told from a lost
+answer; the reply is how a consumer whose seal is already at the origin's head records its first full match. A
+drill-down page and a ledger re-check stay silent, as before. A consumer that predates the field compares the reply as
+a quiet window; an origin that predates it stays silent, and the consumer keeps asking each cycle until the next real
+match.
+{verified: IntegrityManifestReceptorTests.RequestReceptor_NothingSettledAboveTheStart_SaysSoInTheReply_AndCountsItAsync, IntegrityManifestReceptorTests.RequestReceptor_NothingSettledAboveAStreamLevelStart_StaysSilentAsync, IntegrityManifestReceptorTests.ManifestReceptor_NothingSettledAbove_FoldsNothing_AndIsRememberedAsAFullMatchAsync}
+
+**Design choices.**
+
+- *The memo is kept only while everything held from the origin lies below the seal.* An event held at or above the seal
+  is not yet verified (it was still settling when the window was answered); remembering the match would leave it
+  unverified until the bound. Such a match is not remembered, and the audit keeps asking until the seal passes it.
+  {verified: IntegrityAskMemoSqlTests.AMatch_WhileThisStoreHoldsEventsAtOrAboveTheSeal_IsNotRememberedAsync}
+- *A reply that the origin has nothing above a start above the seal is not a match.* The history between the seal and
+  that start was not compared. {verified: IntegrityManifestReceptorTests.ManifestReceptor_NothingSettledAbove_AWindowStartingAboveTheSeal_IsNotRememberedAsync}
+- *The memo lives beside the seal and never creates a seal row.* The seal guard reads a missing row as first contact,
+  so a row made by the memo would turn the first answer's generation into a change and discard it. The last ask is kept
+  on the origin's checkpoint row instead. {verified: IntegrityAskMemoSqlTests.AnOriginWithNoSeal_IsAlwaysAsked_AndGetsNoRowAsync}
+- *The highest position held is read from the origin lane index.* The decision runs once per origin per audit and reads
+  the top of one range of `idx_event_store_origin_lane`, never the event store, even under a generic plan.
+  {verified: IntegrityAskMemoSqlTests.TheHighestPositionHeld_IsReadThroughTheOriginLaneIndex_UnderAGenericPlanAsync}
+- *A skipped origin counts as reached.* A cycle that skipped every origin is not retried on the startup window as if it
+  had nobody to ask. {verified: IntegrityAuditWorkerBranchCoverageTests.AnUnchangedOrigin_IsNotAsked_AndTheCycleStillReachedItAsync}
+- *Not done: an open-window digest on every checkpoint.* It would let both sides compare without an ask, but it changes
+  the checkpoint's wire shape and puts a fold on the origin's checkpoint path for every consumer; the memo needs no
+  protocol change.
+
+**With the default cadence.** `AuditIntervalMinutes` defaults to a day, longer than the default bound, so a default
+audit always asks; the skip saves work where audits run more often than `MaxAskSkipMinutes` (a shortened interval, the
+startup audit and its retries).
+
+**Watching it.** `whizbang.stream_integrity.manifest_asks_skipped{origin}` counts skipped asks;
+`whizbang.stream_integrity.manifests_requested` carries `reason` (`nothing_remembered`, `moved`, `bound_reached`,
+`every_cycle` or `sweep`); on the origin, `whizbang.stream_integrity.manifest_answers_unchanged{level}` counts asks
+answered without a fold. Migration 459 adds the memo columns to `wh_integrity_seals` and `last_asked_at` to
+`wh_integrity_known_origins`.
+
 ### Deficit repairs; mismatch alarms {#deficit-repairs-mismatch-alarms}
 
 Only a **deficit** (`localCount < originCount`) is repairable. Equal counts with differing folds
@@ -3097,14 +3319,41 @@ it, and is now the re-check over every sealed epoch with no interval: it rotates
 restarting at 0.
 
 #### The full-history compare {#full-history-compare}
-{verified: IntegrityCheckOptionsTests.FullHistoryCompare_IsOffByDefault_OnTheNightlyScheduleAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_WithTheDefaults_RunsNeitherCheck_AndStillAsksWindowedAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_WithTheFullHistoryCompareOn_HealsAndAsksForTheWholeHistoryAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_WithTheSealRecheckOn_RechecksWithTheConfiguredLimits_AndStaysWindowedAsync, IntegrityAuditWorkerBranchCoverageTests.RunCheckOnce_TheSealRecheck_RechecksOnly_AndAsksNoOriginAsync, IntegrityAuditWorkerBranchCoverageTests.RunCheckOnce_ADisabledCheck_RunsNothingAtAllAsync, IntegrityAuditWorkerBranchCoverageTests.RunSweepOnce_WithBothChecksOff_RunsNothingAtAllAsync}
+{verified: IntegrityCheckOptionsTests.FullHistoryCompare_IsOffByDefault_OnTheNightlyScheduleAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_WithTheDefaults_RunsNeitherCheck_AndStillAsksWindowedAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_WithTheFullHistoryCompareOn_HealsASliceAndAsksFromTheLookbackAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_WithTheSealRecheckOn_RechecksWithTheConfiguredLimits_AndStaysWindowedAsync, IntegrityAuditWorkerBranchCoverageTests.RunCheckOnce_TheSealRecheck_RechecksOnly_AndAsksNoOriginAsync, IntegrityAuditWorkerBranchCoverageTests.RunCheckOnce_ADisabledCheck_RunsNothingAtAllAsync, IntegrityAuditWorkerBranchCoverageTests.RunSweepOnce_WithBothChecksOff_RunsNothingAtAllAsync}
 
 | Key | Default | Meaning |
 |---|---|---|
-| `FullHistoryCompare:Enabled` | `false` | Run the compare: heal this service's own digest table against a full recompute, and ask each origin for its full history instead of the window above the seal |
+| `FullHistoryCompare:Enabled` | `false` | Run the compare: heal this service's own digest table against a recompute, and ask each origin for its history below the seal as well as above it |
 | `FullHistoryCompare:Schedule` | `"0 3 * * *"` | Cron on the temporal engine, splayed per service. Empty: the every-Nth-audit fallback |
+| `FullHistoryCompare:Lookback` | `90.00:00:00` | How far back the compare reaches. The heal covers streams last written within it; the ask starts at the oldest epoch sealed within it |
+| `FullHistoryCompare:MaxPerRun` | `10000` | Streams one run heals. The next run resumes after the last of them |
 
 The routine windowed heal and the windowed audit are not gated by this section.
+
+##### Bounded by a lookback, healed in slices {#full-history-compare-slices}
+{verified: StreamDigestTableSqlTests.ASlice_HealsAtMostMaxPerRunStreams_AndTheNextResumesAfterItAsync, StreamDigestTableSqlTests.AStreamLastWrittenBeforeTheLookback_IsNotHealedAsync, StreamDigestTableSqlTests.APhantomBucket_OfAStreamTheLedgerDoesNotRecord_IsRemovedAsync, StreamDigestTableSqlTests.TheAsksStart_IsTheOldestEpochSealedWithinTheLookback_NeverAboveTheSealAsync, IntegrityAuditWorkerTests.SweepCycle_AsksFromTheLookback_AndHealsOneSliceAsync, IntegrityAuditWorkerTests.SweepCycle_RecordsTheSlice_AndThePassItCompletesAsync, IntegrityCheckOptionsTests.FullHistoryCompare_IsOffByDefault_OnTheNightlyScheduleAsync}
+
+Until #2361 the compare healed the whole digest table in one statement and asked each origin for its whole history, so
+a run grew with the store. Now:
+
+- **The heal works in slices.** One run takes the next `MaxPerRun` stream ids in key order after a cursor stored in
+  `wh_settings` (`integrity_full_history_compare_cursor`), read from both the stream lifecycle ledger and the digest
+  table, so a phantom bucket of a stream the ledger no longer records is still in a slice. It heals the streams last
+  written within `Lookback`, and those the ledger cannot date, then stores where it stopped. A run that reads fewer than
+  `MaxPerRun` ids reached the end: the pass is complete and the next run starts again from the first stream.
+- **The ask starts at the lookback.** The ask to each origin is windowed from the first sequence of the oldest epoch
+  of that origin's lane sealed within `Lookback`, never above the seal, so a clean answer still advances it. With no
+  epoch sealed within the lookback the ask is the routine one, from the seal.
+
+| Choice | Why |
+|---|---|
+| A lookback, not the whole history. | History older than the lookback is sealed: the sealed-history re-check covers it, epoch by epoch, on its own bounded schedule. The compare is for what the seals have not yet proved stable. |
+| Slices by stream, resumed from a stored cursor. | A run's cost is bounded by `MaxPerRun` whatever the store's size, so it fits the idle maintenance budget, and a restart loses no progress. Each slice reads at most `MaxPerRun` entries of two key-ordered indexes. |
+| The lookback filters the slice; no index on the last write time. | `last_appended_bucket` is written on the outbox emit path, the hottest write in the framework; an index on it would cost every append. A stream outside the lookback still uses one place in its slice. |
+| The start is never above the seal. | The comparator advances the seal only for a window that starts at or below it; a start above the seal would verify nothing it could certify. |
+
+What it reports: `whizbang.stream_integrity.compare_streams_covered` (streams the slices took),
+`compare_slices` (runs), `compare_passes_completed` and `compare_pass_runs` (a histogram of the runs one pass took).
 
 #### Each check has its own schedule {#integrity-check-schedules}
 {verified: IntegritySweepSchedulingTests.Start_WithBothChecksOn_RegistersOneScheduleEach_OnItsOwnCronAsync, IntegritySweepSchedulingTests.Start_WithTheDefaults_RegistersNothing_SoNeitherCheckRunsAsync, IntegritySweepSchedulingTests.Start_WithOnlyTheSealRecheckOn_RegistersOnlyItsScheduleAsync, IntegritySweepSchedulingTests.SweepReceptor_RunsTheCheckTheOccurrenceNamesAsync, IntegritySweepSchedulingTests.SweepReceptor_AnOccurrenceNamingNoCheck_RunsTheFullHistoryCompareAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_LeavesACheckToItsSchedule_OnceTheScheduleIsRegisteredAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_RunsEachCheckWhoseScheduleIsNotRegistered_AndOnlyThatOneAsync}
@@ -3561,7 +3810,7 @@ key and touches only the buckets the bundle changed.
 
 #### Events held without an origin sequence {#events-held-without-an-origin-sequence}
 
-{verified: HeldWithoutOriginSequenceTests.PlacedFoldEqualToTheOrigin_MatchesAsync, HeldWithoutOriginSequenceTests.EventsHeldWithoutASequence_ThatCompleteTheWindow_MatchAsync, HeldWithoutOriginSequenceTests.OnlySequencelessEventsHeld_ThatAreTheWindow_MatchAsync, HeldWithoutOriginSequenceTests.MoreMissingThanTheSequencelessEventsCanCover_IsADeficit_WithTheHeldDigestAsync, HeldWithoutOriginSequenceTests.CountsThatFitButDigestsThatDiffer_AreUndecidedAsync, HeldWithoutOriginSequenceTests.NothingHeldWithoutASequence_ShortPlacedFold_IsADeficitAsBeforeAsync, HeldWithoutOriginSequenceTests.NothingHeldWithoutASequence_EqualOrLargerPlacedFold_DiffersAsBeforeAsync, IntegrityManifestReceptorTests.WindowedStream_EventsHeldWithoutAnOriginSequence_AreNoDeficit_AndTheFalseRowClearsAsync, IntegrityManifestReceptorTests.WindowedStream_AMissingEventBeyondTheHeldOnes_IsStillADeficit_WithTheHeldDigestAsync, IntegrityManifestReceptorTests.WindowedStream_UndecidedBucket_IsNeitherReportedNorRepaired_AndItsRowIsDroppedAsync, IntegrityManifestReceptorTests.WindowedStream_UndecidedBuckets_AreCountedOnTheUnplacedCounterAsync, IntegrityManifestReceptorTests.WindowedStream_MatchingBuckets_NeverAskForHeldEventsAsync, IntegrityManifestReceptorTests.UnwindowedStream_NeverAsksForHeldEventsAsync, IntegrityManifestReceptorTests.WindowedType_HeldEventsCompletingTheWindow_AdvanceTheSealAsync, IntegrityManifestReceptorTests.WindowedType_ADeficitTheHeldEventsMayFill_IsNotBulkBackfilledAsync, IntegrityManifestReceptorTests.WindowedType_ADeficitBeyondTheHeldEvents_IsBulkBackfilledByWhatIsMissingAsync, IntegrityCheckpointReceptorTests.AShortWindow_TheEventsHeldWithoutASequenceCanFill_IsNoGapAsync, IntegrityCheckpointReceptorTests.AFullWindow_NeverAsksForTheEventsHeldWithoutASequenceAsync, IntegrityCheckpointReceptorTests.AWindowShortByMoreThanTheEventsHeldWithoutASequence_IsStillAGapAsync, IntegrityCheckpointReceptorTests.APendingGap_TheEventsHeldWithoutASequenceFillOnTheRecount_HealsAndForgetsTheLaneAsync, UnsequencedReceivedDigestSqlTests.ByStream_FoldsOnlyTheOriginsSequencelessEventsOfTheNamedStreams_AsTheDigestFoldsDoAsync, UnsequencedReceivedDigestSqlTests.ByType_FoldsPerTenantAndType_AcrossStreamsAsync, UnsequencedReceivedDigestSqlTests.ByStream_UnderAGenericPlan_ReadsTheNamedStreamsRows_NotTheOriginsLaneAsync, UnsequencedReceivedDigestSqlTests.ByType_UnderAGenericPlan_ReadsTheOriginsSequencelessRows_NotItsSequencedLaneAsync}
+{verified: HeldWithoutOriginSequenceTests.PlacedFoldEqualToTheOrigin_MatchesAsync, HeldWithoutOriginSequenceTests.EventsHeldWithoutASequence_ThatCompleteTheWindow_MatchAsync, HeldWithoutOriginSequenceTests.OnlySequencelessEventsHeld_ThatAreTheWindow_MatchAsync, HeldWithoutOriginSequenceTests.MoreMissingThanTheSequencelessEventsCanCover_IsADeficit_WithTheHeldDigestAsync, HeldWithoutOriginSequenceTests.CountsThatFitButDigestsThatDiffer_AreUndecidedAsync, HeldWithoutOriginSequenceTests.NothingHeldWithoutASequence_ShortPlacedFold_IsADeficitAsBeforeAsync, HeldWithoutOriginSequenceTests.NothingHeldWithoutASequence_EqualOrLargerPlacedFold_DiffersAsBeforeAsync, IntegrityManifestReceptorTests.WindowedStream_EventsHeldWithoutAnOriginSequence_AreNoDeficit_AndTheFalseRowClearsAsync, IntegrityManifestReceptorTests.WindowedStream_AMissingEventBeyondTheHeldOnes_IsStillADeficit_WithTheHeldDigestAsync, IntegrityManifestReceptorTests.WindowedStream_UndecidedBucket_IsNeitherReportedNorRepaired_AndItsRowIsDroppedAsync, IntegrityManifestReceptorTests.WindowedStream_UndecidedBuckets_AreCountedOnTheUnplacedCounterAsync, IntegrityManifestReceptorTests.WindowedStream_MatchingBuckets_NeverAskForHeldEventsAsync, IntegrityManifestReceptorTests.UnwindowedStream_NeverAsksForHeldEventsAsync, IntegrityManifestReceptorTests.WindowedType_HeldEventsCompletingTheWindow_AdvanceTheSealAsync, IntegrityManifestReceptorTests.WindowedType_ADeficitTheHeldEventsMayFill_IsNotBulkBackfilledAsync, IntegrityManifestReceptorTests.WindowedType_ADeficitBeyondTheHeldEvents_IsBulkBackfilledByWhatIsMissingAsync, IntegrityCheckpointReceptorTests.AShortWindow_TheEventsHeldWithoutASequenceCanFill_IsNoGapAsync, IntegrityCheckpointReceptorTests.AFullWindow_NeverAsksForTheEventsHeldWithoutASequenceAsync, IntegrityCheckpointReceptorTests.AWindowShortByMoreThanTheEventsHeldWithoutASequence_IsStillAGapAsync, IntegrityCheckpointReceptorTests.APendingGap_TheEventsHeldWithoutASequenceFillOnTheRecount_HealsAndForgetsTheLaneAsync, UnsequencedReceivedDigestSqlTests.ByStream_FoldsOnlyTheOriginsSequencelessEventsOfTheNamedStreams_AsTheDigestFoldsDoAsync, UnsequencedReceivedDigestSqlTests.ByType_FoldsPerTenantAndType_AcrossStreamsAsync, UnsequencedReceivedDigestSqlTests.ByStream_UnderAGenericPlan_ReadsTheNamedStreamsRows_NotTheOriginsLaneAsync}
 
 Until a redelivery fills it, an event that carries its origin but not the origin's commit sequence (the re-attributed
 history above) sits in no window. Windowed comparisons count a consumer's events by that sequence: the checkpoint
@@ -3585,7 +3834,8 @@ Where it applies:
 - **Windowed stream comparisons** fold the sequence-less events of the streams that disagree, one row per stream. The
   read is paid only when a bucket disagrees, and it is bounded by the chunk's streams.
 - **Windowed type comparisons** fold the sequence-less events of the disagreeing types, one row per (tenant, type),
-  read through the origin lane index as that origin's sequence-less range, never its sequenced lane. A bulk backfill
+  read from a fold maintained as the rows change ([below](#the-held-fold-is-maintained-as-rows-change)), never from
+  the held rows themselves. A bulk backfill
   the type deficit triggers is sized by what is missing beyond the held events, and a deficit the held events may
   fill triggers none.
 - **Checkpoint counts**, and the recount that confirms a pending gap, add the held sequence-less events of a type to
@@ -3611,6 +3861,114 @@ Why each choice:
   sequence-less events, so a healthy comparison costs what it did.
 
 Existing false deficit rows clear on the next comparison of their bucket.
+
+#### The held fold is maintained as rows change {#the-held-fold-is-maintained-as-rows-change}
+
+{verified: UnsequencedHeldFoldCostSqlTests.ByType_ALargeHistory_CostsWhatASmallOneDoes_ForTheSameNewWorkAsync, UnsequencedHeldFoldCostSqlTests.ByType_UnderAGenericPlan_ReadsOnlyTheUnsettledRowsOfTheEventStore_NeverItsHistoryAsync, UnsequencedHeldFoldCostSqlTests.EveryKindOfChange_LeavesTheAnswerEqualToAFoldOfTheRowsAsync, UnsequencedHeldFoldCostSqlTests.ABacklogLargerThanOneFold_IsFoldedOverSeveralAnswers_AndEveryAnswerIsExactAsync, UnsequencedHeldFoldCostSqlTests.ARebuild_FoldsTheRowsTheTrackingNeverSaw_AndAnswersAsTheRowsDoAsync, UnsequencedHeldFoldCostSqlTests.ATruncatedEventStore_HoldsNothingWithoutASequenceAsync}
+
+The type-level answer above (one row per tenant and type of the events held from an origin without its sequence) used
+to fold the held rows on every call. A service can hold millions of them while it waits for redeliveries, so each call
+read all of them, as a parallel scan whose worker time statement statistics do not show. Its cost grew with the held
+history, which the integrity cost rule forbids: steady-state integrity work costs what changed, never what is stored.
+
+Since migration 452 the fold is kept up to date as the rows change:
+
+```mermaid{caption="Every write that changes the held set records a change; the next answer folds the changes into the totals and subtracts the rows still inside the settle window." tests=["UnsequencedHeldFoldCostSqlTests.EveryKindOfChange_LeavesTheAnswerEqualToAFoldOfTheRowsAsync", "UnsequencedHeldFoldCostSqlTests.ByType_UnderAGenericPlan_ReadsOnlyTheUnsettledRowsOfTheEventStore_NeverItsHistoryAsync", "UnsequencedHeldFoldCostSqlTests.ABacklogLargerThanOneFold_IsFoldedOverSeveralAnswers_AndEveryAnswerIsExactAsync"]}
+flowchart LR
+  W[Any write to wh_event_store] -->|row trigger, held rows only| C[(wh_unsequenced_digest_changes)]
+  C -->|folded by the next answer| T[(wh_unsequenced_digest_totals)]
+  T --> A[wh_unsequenced_received_type_digests]
+  C --> A
+  R[Held rows younger than the settle window] -->|partial index| A
+```
+
+| Piece | What it holds | Cost |
+| --- | --- | --- |
+| `wh_unsequenced_digest_totals` | One row per (origin, tenant, type): the XOR of the digest lanes and the count of the eligible held events | O(types) to read |
+| `wh_unsequenced_digest_changes` | One row each time an eligible event joins (+1) or leaves (-1) the held set | One insert per change |
+| `idx_event_store_unsequenced_received` | The held rows only, by (origin, created_at) | Reads only the rows inside the settle window |
+| `wh_unsequenced_received_type_digests(origin, types, settle)` | The answer: totals, plus pending changes, minus the held rows younger than `settle` | O(types) + changes since the last answer + unsettled rows |
+| `wh_rebuild_unsequenced_digests()` | Recomputes the totals from the rows | Once, in migration 452 |
+
+Measured by the scaling test, with the same 25 new rows on each store:
+
+| Store | Before 452 | After 452 |
+| --- | --- | --- |
+| 1,000 held rows | 1,025 rows read, 28 blocks | 107 rows read, 120 blocks |
+| 20,000 held rows | 20,025 rows read, 545 blocks | 115 rows read, 120 blocks |
+
+The plan-shape test reads 5 event-store rows (the ones inside the settle window) on the 20,000-row store, where the
+scan read all 20,000.
+
+Why each choice:
+
+- **Row triggers, not a call in each write path.** Inserts, deletes by every cleanup path, sequence adoption by a
+  redelivery, re-attribution, at-most-once flagging, reclassification and rescoping all change the held set. A trigger
+  covers every one of them, including paths written later, so no author has to remember to keep the fold right. A
+  `WHEN` clause skips every row that is not and was not held, so the ordinary receive path, whose rows carry their
+  sequence, pays nothing.
+- **An insert-only change log, folded by the reader.** Writers never update a shared totals row, so two writers of the
+  same type never wait on each other and cannot deadlock on lock order. The answer folds a bounded batch of the
+  origin's changes first, skipping any another answer is folding; whatever is not folded is read as pending, so the
+  answer is exact either way.
+- **The settle window from the rows, not from the log.** Rows younger than the window are subtracted, read through a
+  partial index of held rows by creation time. That keeps the answer exact for any settle window, including the
+  checkpoint's zero, without the log having to know which windows callers will ask for.
+- **The change log is vacuumed by row count.** Every change row is deleted by the fold that takes it in. Until vacuum
+  reclaims them, the next fold walks those dead rows, so autovacuum runs on the log after 1,000 deleted rows instead of
+  a fraction of the table.
+- **A TRUNCATE empties both tables,** so an emptied store holds nothing without a sequence.
+
+The by-stream fold is unchanged: it is already bounded by the named streams.
+
+##### The change log stays bounded {#the-change-log-stays-bounded}
+
+{verified: UnsequencedDigestCompactionSqlTests.Compaction_FoldsEveryOriginsChanges_InBoundedBatches_AndLeavesWhatARebuildComputesAsync, UnsequencedDigestCompactionSqlTests.UnderSteadyWritesWithNoAnswerAsked_TheLogNeverHoldsMoreThanOneCyclesChangesAsync, UnsequencedDigestCompactionStepTests.ARun_FoldsAtMostItsBatchesOfChanges_AndTheNextRunTakesTheRestAsync, DapperUnsequencedDigestCompactionStepTests.ARun_FoldsAtMostItsBatchesOfChanges_AndTheNextRunTakesTheRestAsync, DapperUnsequencedDigestCompactionStepTests.AddWhizbangPostgres_RegistersTheStepAsync}
+
+An answer folds only its own origin's changes. An origin that no consumer audits, or one audited rarely, would let its
+changes pile up: the log would grow without bound, and the next answer for that origin would begin with the whole
+backlog. The maintenance cycle therefore runs `UnsequencedDigestCompactionStep`, which calls
+`wh_compact_unsequenced_digest_changes(limit)`: it folds the oldest pending changes of every origin into the totals
+and deletes them, at most 10 batches of 10,000 changes per run, stopping early when a batch comes back short.
+Both drivers run it: the EF Core driver as `UnsequencedDigestCompactionStep`, the Dapper driver as
+`DapperUnsequencedDigestCompactionStep`, and both call the one shared fold (`UnsequencedDigestCompaction`), because the
+row triggers that write the log are in the schema whichever driver writes the events. Both tables are classified in the
+[operational table registry](../operations/infrastructure/operational-retention#every-table-is-classified): the log is
+work in flight, removed by the fold, and the totals are bounded by origins, tenants and types.
+
+- **Oldest first, across origins.** The log's identity orders the changes, so a bounded batch always takes the ones
+  that have waited longest, whichever origin they belong to.
+- **Shared, never repeated.** Like an answer's fold, the compaction skips changes another fold holds instead of
+  waiting for them, so every instance can run it and concurrent runs divide the work.
+- **The answer stays exact either way.** What the compaction has not reached yet is read as pending by the next answer,
+  exactly as before.
+
+##### What the triggers cost a write {#what-the-triggers-cost-a-write}
+
+{verified: UnsequencedHeldFoldWriteCostSqlTests.AnOrdinaryEvent_WritesNothingMore_AndAHeldEvent_WritesOneChangeRowAsync}
+
+The row triggers are on the event store's write path, so their cost is stated per event written. The same insert runs
+with the triggers and without:
+
+| Event written | Change rows | WAL | Time |
+| --- | --- | --- | --- |
+| With its origin's sequence, or with no origin (the ordinary receive and append paths) | 0 | none measurable (-14 bytes, noise) | none measurable (-0.3 us, noise) |
+| Held: from an origin, without its sequence | 1 | about 308 bytes | about 32 us |
+
+An ordinary event is filtered out by the triggers' `WHEN` clause before the trigger function runs, so it writes
+nothing. A held event writes one change row (its heap tuple and two index entries), which is what the answer later
+folds instead of re-reading the event. Measured over 2,000-event inserts on a shared test server, so the WAL and time
+are indicative; the change-row counts are exact and asserted.
+
+##### What was not built, and why {#held-fold-not-built}
+
+- **No bulk backfill of origin sequences for the held rows.** A consumer cannot learn an origin's commit sequence for
+  an event it already holds: only a redelivery from the origin carries it, and a redelivery that brings one already
+  adopts it into the stored row (which leaves the held set through the triggers). A separate backfill would have to
+  ask the origin for every held event, which is what redelivery adoption already does for the events that matter.
+- **No "held rows left" metric.** The held set drains as redeliveries adopt sequences, and the totals already count it
+  per origin and type (`wh_unsequenced_digest_totals.event_count`), so a separate gauge would report a number that is
+  one query away and would add a scan of its own to produce.
 
 #### Events this service authored {#pre-stamp-history-first-hop}
 
