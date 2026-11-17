@@ -7,6 +7,16 @@ order: 4
 description: Cross-service anti-entropy — continuity checkpoints, digest audits, and idempotent re-delivery repair; report-only by default, self-healing as the opt-in
 tags: 'stream-integrity, anti-entropy, re-delivery, backfill, digest, manifest, continuity, checkpoint, repair, cross-service, bootstrap'
 codeReferences:
+  - src/Whizbang.Rules/TypeRules.cs
+  - src/Whizbang.Rules/RuleSet.cs
+  - src/Whizbang.Rules/RuleSemantics.cs
+  - src/Whizbang.Rules/EligibilitySql.cs
+  - src/Whizbang.Rules/rule-semantics.golden.txt
+  - src/Whizbang.Rules/rules-version.txt
+  - src/Whizbang.Core/Messaging/RuleFingerprint.cs
+  - src/Whizbang.Core/Messaging/RuleFingerprintSource.cs
+  - src/Whizbang.Core/Messaging/IntegrityPairGuard.cs
+  - src/Whizbang.Core/Messaging/IntegrityPairGuardOptions.cs
   - src/Whizbang.Data.Postgres/Migrations/459_UnchangedOriginsAreNotAsked.sql
   - src/Whizbang.Data.Postgres/Migrations/458_FullHistoryCompareRunsInSlices.sql
   - src/Whizbang.Core/Messaging/IntegrityCheckOptions.cs
@@ -130,6 +140,14 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/375_LedgerRowsWithoutAWindowAreRechecked.sql
   - src/Whizbang.Data.EFCore.Postgres/UnsequencedDigestCompactionStep.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/Rules/TypeRulesTests.cs
+  - tests/Whizbang.Core.Tests/Rules/RuleSetTests.cs
+  - tests/Whizbang.Core.Tests/Rules/RuleSemanticsGoldenTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/CatalogRuleFingerprintSourceTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RuleFingerprintWireTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/IntegrityPairGuardTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/TwoServicePairGuardTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/EligibilitySqlVersionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAskMemoSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TwoServiceAskSkipTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.AskSkip.cs
@@ -1324,6 +1342,123 @@ Why each choice:
   written by hand in any function that folds, compares or stores digests, or in C# SQL. A flag test that selects rows
   to change rather than counting them (the rows still to flag at most once, the events still Sourced) is allowed
   when the line above it says so (`-- not the digest rule: ...`).
+
+### Rule fingerprint {#rule-fingerprint}
+
+{verified: TypeRulesTests.Hash_ChangesWithEveryRuleFieldAsync, TypeRulesTests.Canonical_NamesEveryFieldInAFixedOrderAsync, RuleSetTests.Fingerprint_IgnoresBuildOrder_AndChangesWithAnyPartAsync, CatalogRuleFingerprintSourceTests.RulesOf_ReadsEveryDeclaredRule_AndTheConfiguredEndOfLifeActionAsync, CatalogRuleFingerprintSourceTests.For_CoversTheNamedTypesItKnows_InAnyForm_AndLeavesOutTheRestAsync, RuleFingerprintWireTests.EveryCarrier_RoundTripsItsFingerprintAsync, EligibilitySqlVersionTests.TheEligibilityConstants_MatchTheGoldenHashOfTheirVersionAsync}
+
+One eligibility rule makes every path of one service count alike. Two services must also count alike: a digest the
+origin folds one way and the consumer another can never match, and the comparison then reads a difference in rules as
+a lost or surplus event. Every integrity message therefore carries its sender's rules, as a **rule fingerprint**:
+
+| Part | What it is | Changes when |
+| --- | --- | --- |
+| Rule-semantics version | `RuleSemantics.VERSION` | What a digest counts or how changes in code (a cut that carries its removed part, a superseding key counted once) |
+| Eligibility SQL version | `RuleSemantics.ELIGIBILITY_SQL_VERSION` | The text of `__DIGEST_ELIGIBLE__`, `__INTEGRITY_COUNTED__` or `__DIGEST_EXEMPT_TYPES__` changes |
+| Per-type rule hash | 16 hex digits of the SHA-256 of the type's declared rules | A shared type's rules change in its contracts or its configuration |
+
+A type's rules are the fields that decide whether an event of it should exist: its ephemeral mode (destruction and
+storage), whether it is superseding, with its group and key property, whether it is terminal, the end-of-life action of
+the streams it opens, and whether it is exempt from digests. They come from the generated message-type catalog and the
+stream lifecycle settings, never from reflection.
+
+| Carrier | Covers the types |
+| --- | --- |
+| `RequestIntegrityManifest` | The consumer asks about (what it consumes) |
+| `IntegrityManifest` | The origin answers for |
+| `IntegrityCheckpoint` | The window counted |
+| `RequestRedeliveryCommand` | The request names |
+
+Why each choice:
+
+- **Rules, never timing.** When a service physically deletes an event (its idle gate, end-of-life triggers, rewind grace,
+  time to live) is local and may differ between services; whether the event is counted at all may not. So only the
+  end-of-life *action* is a rule, never its triggers, and a consumer that keeps less than the origin halts nothing.
+  `TypeRulesTests.Hash_ChangesWithEveryRuleFieldAsync` fails if a rule field stops counting.
+- **Versions held by a golden hash.** The SQL rule is text in the migrations' constants. `EligibilitySqlVersionTests`
+  holds that text to a hash recorded beside its version, so the SQL cannot change while the version stays the same.
+- **A hash per type, not one hash.** The receiver compares type by type, so it can name the types that differ instead
+  of only saying that something does.
+
+### The rules library and its version track {#the-rules-library}
+
+{verified: RuleSemanticsGoldenTests.TheRulesSemantics_MatchTheGoldenLineOfTheCurrentRulesVersionAsync, EligibilitySqlVersionTests.TheMigrationConstants_AreTheRulesLibrarysSourceAsync, EligibilitySqlVersionTests.TheEligibilityConstants_MatchTheGoldenHashOfTheirVersionAsync}
+
+The rule model (`TypeRules`, `RuleSet`, the pair comparison), the two versions and the source of the SQL rule
+(`EligibilitySql`) live in their own library, `Whizbang.Rules`, which `Whizbang.Core` references. It holds no
+service code, so what decides whether two services count alike is in one small place.
+
+The library has its own version, in `src/Whizbang.Rules/rules-version.txt`, changed only when what the rules mean
+changes. `rule-semantics.golden.txt` records one line per rules version: the version and the hash of what the rules
+mean (both versions, the SQL rule's text, and the canonical form and hashes of a reference type and rule set).
+
+| A change to | Fails | Until |
+| --- | --- | --- |
+| A rule field, the hash, the fingerprint or a version | `RuleSemanticsGoldenTests` | A golden line with a new version and the new hash is appended, and `rules-version.txt` names it |
+| The SQL rule in `EligibilitySql` | `EligibilitySqlVersionTests` | `ELIGIBILITY_SQL_VERSION` is bumped with its hash recorded |
+| The constants in `Migrations/constants.txt` alone | `EligibilitySqlVersionTests` | They match `EligibilitySql` again |
+
+Why each choice:
+
+- **The migrations still read `constants.txt`.** Every substitution path (the runtime provider, the generated DbContext,
+  the migration lint) reads that file, so the library is the source and a test holds the file to it, instead of
+  teaching each path a second source.
+- **A golden line per version, never edited.** A version can then never be reused for another meaning, and a meaning
+  cannot change without a new version: both are checked.
+- **The package still ships at the release's version.** Publishing it on its own track needs the release pipeline
+  to learn a second version (the package set check, the bill of materials, the nuget.org floor check and a `rules-v`
+  tag); until then the version track is the file and its guard.
+
+### The pair guard {#the-pair-guard}
+
+{verified: RuleSetTests.CompareWith_ADifferenceOnlyInATypeNotShared_AgreesAsync, RuleSetTests.CompareWith_NoPeerRules_IsHaltedForNoFingerprintAsync, IntegrityPairGuardTests.Admit_ADifferentSharedType_HaltsWithOneErrorNamingBothSidesAndTheTypeAsync, IntegrityPairGuardTests.Admit_StillHaltedPastTheThreshold_AlertsOnce_ThenResumesOnItsOwnAsync, IntegrityPairGuardTests.Gauges_ReportEachPairsState_HaltedAge_AndTheServiceFingerprintAsync, TwoServicePairGuardTests.TheSameRules_ThePairProceeds_AndTheLossIsRepairedAsync, TwoServicePairGuardTests.ASharedTypesRulesDiffer_ThePairIsHaltedOnBothSides_WithTheReason_AndResumesOnceTheyMatchAsync, TwoServicePairGuardTests.AConsumerWithNoFingerprint_IsNotAnswered_AndThePairIsHaltedAsync, TwoServicePairGuardTests.AnOriginWithNoFingerprint_IsNotCompared_AndThePairIsHaltedAsync, TwoServicePairGuardTests.RulesDifferOnlyForATypeThePairDoesNotShare_ThePairProceedsAsync}
+
+Integrity runs for a service pair only while both apply the same rules to the event types they share. Every receptor
+asks the guard before it acts:
+
+```mermaid {caption="The pair guard: an integrity message is acted on only while both services apply the same rules to the types they share" tests=["TwoServicePairGuardTests.ASharedTypesRulesDiffer_ThePairIsHaltedOnBothSides_WithTheReason_AndResumesOnceTheyMatchAsync","TwoServicePairGuardTests.TheSameRules_ThePairProceeds_AndTheLossIsRepairedAsync"]}
+flowchart LR
+  M[Integrity message<br/>with the sender's rules] --> G{Same rules over<br/>the shared types?}
+  G -- yes --> A[Compare, repair,<br/>redeliver as usual]
+  G -- "no, or no rules sent" --> H[Halt the pair:<br/>error, metric, nothing done]
+  H -. next message with matching rules .-> A
+```
+
+| Receiver | On a halt |
+| --- | --- |
+| Origin, a manifest request | Answers with its own rules and no digests (`PairHalted`), so the consumer names the same types; a request with no rules is not answered |
+| Consumer, a manifest | Compares nothing, records no seal and no match |
+| Consumer, a checkpoint | Keeps the origin known (address, ownership, liveness) and verifies nothing |
+| Origin, a redelivery request the comparison made | Refuses it (`redelivery_requests_ignored{reason=pair_halted}`) |
+
+A halt is logged once at Error, naming the peer, this service's side, the reason (`no_fingerprint`,
+`semantics_version`, `eligibility_sql_version` or `type_rules`), both sides' versions and fingerprints, and the types
+whose rules differ. It is logged again only when the reason or the types change. A pair still halted after
+`Whizbang:StreamIntegrity:PairGuard:HaltedAlertAfter` (default 2 hours) is logged once at Critical. The first message
+whose rules match resumes the pair, with an information line; nothing has to be reset.
+
+| Instrument (meter `Whizbang.StreamIntegrity`) | Kind | Attributes |
+| --- | --- | --- |
+| `whizbang.stream_integrity.pair_state` | Gauge, 1 per pair | `peer`, `side`, `state` (`agreed` or `halted`) |
+| `whizbang.stream_integrity.pair_halted_seconds` | Gauge | `peer`, `side` |
+| `whizbang.stream_integrity.pair_halts` | Counter | `reason`, `side` |
+| `whizbang.stream_integrity.pair_halt_alerts` | Counter | `side` |
+| `whizbang.stream_integrity.rule_fingerprint_info` | Info gauge | `fingerprint` (this service's, over every type it knows) |
+
+Why each choice:
+
+- **Only shared types count** (owner decision Q3). The guard compares only types both fingerprints name, so a rule
+  change on a type the pair does not exchange halts nothing. `RulesDifferOnlyForATypeThePairDoesNotShare_ThePairProceedsAsync`
+  fails if a non-shared type ever halts a pair.
+- **No fingerprint is a mismatch.** A service on a release that predates the fingerprint may fold digests another way.
+  Comparing it during a rolling deploy would repair losses that are not real, so the pair is halted until both sides
+  run the new release. `AnOriginWithNoFingerprint_IsNotCompared_AndThePairIsHaltedAsync` and
+  `AConsumerWithNoFingerprint_IsNotAnswered_AndThePairIsHaltedAsync` fail if a legacy peer is ever compared.
+- **The alert waits** (owner decision Q5). A rollout halts its mixed pairs for minutes, which is expected; only a pair
+  halted past the threshold is a rollout that did not finish or two services built from different rules.
+- **Operator requests and subscription backfills are not guarded.** They deliver the events asked for and are not
+  judged by a digest, so different rules cannot make them wrong.
+- **A metric per pair, not per stream or tenant.** The attributes are bounded by the services in the deployment.
 
 ### How at-most-once events are excluded {#at-most-once-exclusion}
 
