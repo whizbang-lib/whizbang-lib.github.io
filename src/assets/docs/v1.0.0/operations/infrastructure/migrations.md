@@ -1764,6 +1764,13 @@ IF __DIGEST_ELIGIBLE__(NEW) THEN
 C# SQL that must agree with the migrations reads such a constant through `MigrationConstants.Apply`, never its own
 copy ([one eligibility rule](../../resilience/stream-integrity#one-eligibility-rule)).
 
+A call is substituted only when it is written as one identifier between parentheses, with whitespace allowed inside
+(`__TOKEN__( NEW )`); any other shape is left as written, so the token check below reports it. The substitution is a
+plain scan with no time limit: every startup applies it to every migration, and a pattern match bounded by a wall-clock
+timer would fail a migration on a starved host for no fault in the text
+(`MigrationConstantsTests.Apply_AnArgumentFormNotWrittenAsOneAlias_IsLeftAsWrittenAsync`,
+`MigrationConstantsTests.RenameWord_ReplacesTheWordOnlyWhereItStandsAloneAsync`).
+
 Two checks hold the rule. `scripts/Lint-MigrationSql.ps1` fails a migration numbered 148 or later that
 writes one of the values raw, or writes a token the file does not define. `MigrationConstantsTests` fails the
 build if any migration, whatever its number, writes a token nothing defines, and proves the provider hands
