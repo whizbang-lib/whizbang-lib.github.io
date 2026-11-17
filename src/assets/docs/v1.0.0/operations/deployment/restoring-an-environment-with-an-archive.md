@@ -8,17 +8,20 @@ description: >-
   Restore a service database to a point in time and bring its Azure Blob archive to the same point: why the two stay
   consistent (objects are never updated, the store never purges), how to restore in place or into another environment,
   and the deletion delay for storage without soft delete.
-tags: 'archive, azure-blob, point-in-time-restore, pitr, soft-delete, disaster-recovery, restore, deletion-delay, delete-after, orphan-sweep, repoint'
+tags: 'archive, azure-blob, owner-marker, one-database-per-container, point-in-time-restore, pitr, soft-delete, disaster-recovery, restore, deletion-delay, delete-after, orphan-sweep, repoint'
 codeReferences:
   - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveStore.cs
   - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveOptions.cs
   - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveServiceCollectionExtensions.cs
   - src/Whizbang.Archive.AzureBlob/ArchiveObjectDeletionStep.cs
+  - src/Whizbang.Archive.AzureBlob/ArchiveSweepMetrics.cs
+  - src/Whizbang.Data.Postgres/Migrations/480_ArchiveDatabaseIdentity.sql
   - src/Whizbang.Data.Postgres/Migrations/269_ArchiveObjectDeletionQueue.sql
   - src/Whizbang.Data.Postgres/Migrations/353_ArchiveLocations.sql
 testReferences:
   - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreImmutabilityTests.cs
   - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs
+  - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs
   - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs
   - tests/Whizbang.Archive.AzureBlob.Tests/AzureBlobArchiveRegistrationTests.cs
 ---
@@ -156,10 +159,44 @@ and that storage created at least `DeleteAfter` ago. Operators can also run a sw
 | Each object is deleted under its stream's lock, after checking again that nothing names it; a stream being written is left for the next sweep. | A write holds the stream's lock from before its upload until its manifest rows commit, so the sweep never deletes an object a write is about to name. | {verified: AzureBlobArchiveStoreTests.Sweep_AnObjectWhoseStreamIsBeingWritten_IsLeftForALaterSweepAsync} |
 | A name is kept when any manifest row or queued deletion names it, in any location, and a name the store did not write is never touched. | The sweep removes only what is certainly this store's and certainly unnamed. | {verified: AzureBlobArchiveStoreTests.Sweep_DeletesOnlyObjectsNothingNames_OnceTheyAreOlderThanTheDelayAsync} |
 | A database that has never written to the configured location sweeps nothing. | Such a database (a copy not yet repointed) names nothing in the container, so a sweep would delete every object. | {verified: AzureBlobArchiveStoreTests.Sweep_InADatabaseThatNeverWroteToTheLocation_DeletesNothingAsync} |
+| A sweep runs only in a container whose owner marker names this database ([one database per container](#one-database-per-container)). | Two databases sharing a container would each delete the other's objects as orphans. | {verified: AzureBlobArchiveStoreTests.Sweep_ASecondDatabaseOnTheSameContainer_Refuses_AndBothEnvironmentsObjectsSurviveAsync} |
 | The step sweeps at most once per day per process. | Listing a large container is the expensive part, and orphans only cost storage; a daily sweep bounds both. | {verified: AzureBlobArchiveStoreTests.Step_SweepsAtMostOncePerInterval_AndOnlyWithADelayAsync} |
 
-A container swept this way must hold one database's archive only. Two environments that share a container would each
-see the other's objects as unnamed; give each environment its own container.
+### One database per container {#one-database-per-container}
+
+{verified: AzureBlobArchiveStoreTests.Sweep_ASecondDatabaseOnTheSameContainer_Refuses_AndBothEnvironmentsObjectsSurviveAsync, AzureBlobArchiveStoreTests.Write_ClaimsTheContainer_WithAMarkerNamingTheDatabase_AndTheOwnerSweepsAsync}
+
+The sweep deletes what the database does not name, so it is only safe in a container that holds one database's
+archive. Two databases sharing a container would each see the other's objects as orphans. The store therefore claims
+each container for one database, and **a sweep in a container another database claimed is refused**.
+
+The first write to a container creates an owner marker object, `whizbang-archive-owner`, holding the database's
+archive identity (`archive_database_id` in `wh_settings`, given to each database by migration 480). The marker is
+created once, create-only like every archive object, and never updated. Before a sweep lists anything, it claims the
+container the same way, or reads the marker that is there and compares it with its own database's id.
+
+| Case | What happens | Verified |
+|---|---|---|
+| The marker names this database. | The sweep runs. | {verified: AzureBlobArchiveStoreTests.Write_ClaimsTheContainer_WithAMarkerNamingTheDatabase_AndTheOwnerSweepsAsync} |
+| The marker names another database (`foreign_marker`). | The sweep is refused: it deletes nothing, logs a warning naming the reason and counts the refusal. A write into that container also logs a warning, because the owner's sweep cannot see this database's objects. | {verified: AzureBlobArchiveStoreTests.Sweep_ASecondDatabaseOnTheSameContainer_Refuses_AndBothEnvironmentsObjectsSurviveAsync, AzureBlobArchiveStoreTests.Sweep_AForeignMarkerPlacedFirst_Refuses_AndTheWriteStillSucceedsAsync} |
+| There is no marker and none can be written, or the marker cannot be read (`marker_unclaimable`). | The sweep is refused the same way. | {verified: AzureBlobArchiveStoreTests.Sweep_AMarkerItCannotClaimOrRead_Refuses_AndTheWriteStillSucceedsAsync} |
+| There is no marker (a container written before markers existed). | The sweep claims the container and runs. | {verified: AzureBlobArchiveStoreTests.Sweep_AContainerWithoutAMarker_IsClaimedByTheSweep_AndSweptAsync} |
+| The database never wrote to the configured location (`unknown_location`). | The sweep is refused. | {verified: AzureBlobArchiveStoreTests.Sweep_InADatabaseThatNeverWroteToTheLocation_CountsTheRefusalAsync} |
+| A database restored to its own container. | The restored database carries the same id, so the marker still names it and the sweep runs. | {verified: AzureBlobArchiveStoreTests.Sweep_ADatabaseRestoredToItsOwnContainer_StillMatchesItsMarkerAsync} |
+| A copy [repointed](#restoring-into-another-environment) to a new container. | Its first write or sweep claims the new container. | {verified: AzureBlobArchiveStoreTests.Sweep_ARepointedCopy_ClaimsItsNewContainer_AndSweepsItAsync} |
+
+Every refusal is counted by `whizbang.archive.orphan_sweep.refused` (meter `Whizbang.Archive.AzureBlob`), tagged
+`reason`: `foreign_marker`, `marker_unclaimable` or `unknown_location`.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| Only the sweep depends on the marker. Writes, reads, restores, deletes and the deletion queue work whatever the marker says. | Nothing else lists the container or deletes what it does not name, so nothing else can harm another database's objects; gating writes on a marker would turn a storage permission or a misconfiguration into an outage. | {verified: AzureBlobArchiveStoreTests.Sweep_ASecondDatabaseOnTheSameContainer_Refuses_AndBothEnvironmentsObjectsSurviveAsync, AzureBlobArchiveStoreTests.Sweep_AMarkerItCannotClaimOrRead_Refuses_AndTheWriteStillSucceedsAsync} |
+| The identity is a random id stored in the database, not a server or database name. | A restore by any method (point-in-time, a backup into a new server, a logical dump) carries the data, so the restored database matches its own container's marker. | {verified: AzureBlobArchiveStoreTests.Sweep_ADatabaseRestoredToItsOwnContainer_StillMatchesItsMarkerAsync} |
+| The marker is never updated, and the store never deletes it. | A marker that could be rewritten would let a second database take over a container another still uses. An operator who moves a container to another database replaces the marker by hand. | {verified: AzureBlobArchiveStoreTests.Sweep_AForeignMarkerPlacedFirst_Refuses_AndTheWriteStillSucceedsAsync} |
+
+A copy of a database carries its id, just as a restore does. A copy left pointing at its source's container (same
+account, connection name and container) is therefore indistinguishable from a restore of the source, and its sweep runs
+there. Repoint every copy to its own container before giving it a deletion delay.
 
 ## Related
 

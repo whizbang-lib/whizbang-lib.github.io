@@ -79,6 +79,7 @@ testReferences:
   - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs
   - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreImmutabilityTests.cs
   - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs
+  - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs
   - tests/Whizbang.Archive.AzureBlob.Tests/AzureBlobArchiveLocationTests.cs
   - tests/Whizbang.Core.Tests/Archival/ArchiveLocationMismatchExceptionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchiveLocationSqlTests.cs
@@ -894,6 +895,7 @@ the colder tier's read price and its early-deletion charge.
 | A write also moves any rows the table store archived for the stream into its objects. | After a service switches stores, its older archives move out of the database the next time each stream is archived, and the stream's archive ends in one place. | {verified: AzureBlobArchiveStoreTests.Read_EventsTheTableStoreArchived_ComeBackInVersionOrderWithTheObjectsAsync} |
 | The tombstone records the stream's locator, `azure-blob://{stream}?codec=brotli&format=1`. It is informational only: no operation reads a container or an account from it. | A reader can tell this store's archives from the table store's, as the [locator format](#locator-format) intends. Naming no container means it never goes stale when a location is [repointed](#repointing-an-environment), and it can never redirect an operation. | {verified: AzureBlobArchiveRegistrationTests.LocatorFor_NamesTheStoreAndTheStream_NeverTheContainer_WithBrotliAndFormat1Async} |
 | A write records the configured location's id and, for each object, only its path from the stream. | The account and container belong to the location row, so moving an environment is one row's update rather than a rewrite of every record. | {verified: AzureBlobArchiveStoreTests.Write_RecordsTheConfiguredLocation_AndOnlyAPathFromTheStreamOnEachObject_NeverASecretAsync} |
+| The first write to a container claims it for the database with a create-only owner marker, `whizbang-archive-owner`, that holds the database's `archive_database_id` and is never updated. A write never depends on the marker; a container another database claimed is logged and the write goes on. | Only the orphan sweep needs to know a container is one database's alone, and it is [refused anywhere else](../../operations/deployment/restoring-an-environment-with-an-archive#one-database-per-container). | {verified: AzureBlobArchiveStoreTests.Write_ClaimsTheContainer_WithAMarkerNamingTheDatabase_AndTheOwnerSweepsAsync, AzureBlobArchiveStoreTests.Sweep_ASecondDatabaseOnTheSameContainer_Refuses_AndBothEnvironmentsObjectsSurviveAsync} |
 
 ### Object format {#azure-blob-object-format}
 
