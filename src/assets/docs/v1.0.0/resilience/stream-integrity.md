@@ -7,9 +7,12 @@ order: 4
 description: Cross-service anti-entropy — continuity checkpoints, digest audits, and idempotent re-delivery repair; report-only by default, self-healing as the opt-in
 tags: 'stream-integrity, anti-entropy, re-delivery, backfill, digest, manifest, continuity, checkpoint, repair, cross-service, bootstrap'
 codeReferences:
-  - src/Whizbang.Core/Rules/TypeRules.cs
-  - src/Whizbang.Core/Rules/RuleSet.cs
-  - src/Whizbang.Core/Rules/RuleSemantics.cs
+  - src/Whizbang.Rules/TypeRules.cs
+  - src/Whizbang.Rules/RuleSet.cs
+  - src/Whizbang.Rules/RuleSemantics.cs
+  - src/Whizbang.Rules/EligibilitySql.cs
+  - src/Whizbang.Rules/rule-semantics.golden.txt
+  - src/Whizbang.Rules/rules-version.txt
   - src/Whizbang.Core/Messaging/RuleFingerprint.cs
   - src/Whizbang.Core/Messaging/RuleFingerprintSource.cs
   - src/Whizbang.Core/Messaging/IntegrityPairGuard.cs
@@ -139,6 +142,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Tests/Rules/TypeRulesTests.cs
   - tests/Whizbang.Core.Tests/Rules/RuleSetTests.cs
+  - tests/Whizbang.Core.Tests/Rules/RuleSemanticsGoldenTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CatalogRuleFingerprintSourceTests.cs
   - tests/Whizbang.Core.Tests/Messaging/RuleFingerprintWireTests.cs
   - tests/Whizbang.Core.Tests/Messaging/IntegrityPairGuardTests.cs
@@ -1375,6 +1379,35 @@ Why each choice:
   holds that text to a hash recorded beside its version, so the SQL cannot change while the version stays the same.
 - **A hash per type, not one hash.** The receiver compares type by type, so it can name the types that differ instead
   of only saying that something does.
+
+### The rules library and its version track {#the-rules-library}
+
+{verified: RuleSemanticsGoldenTests.TheRulesSemantics_MatchTheGoldenLineOfTheCurrentRulesVersionAsync, EligibilitySqlVersionTests.TheMigrationConstants_AreTheRulesLibrarysSourceAsync, EligibilitySqlVersionTests.TheEligibilityConstants_MatchTheGoldenHashOfTheirVersionAsync}
+
+The rule model (`TypeRules`, `RuleSet`, the pair comparison), the two versions and the source of the SQL rule
+(`EligibilitySql`) live in their own library, `Whizbang.Rules`, which `Whizbang.Core` references. It holds no
+service code, so what decides whether two services count alike is in one small place.
+
+The library has its own version, in `src/Whizbang.Rules/rules-version.txt`, changed only when what the rules mean
+changes. `rule-semantics.golden.txt` records one line per rules version: the version and the hash of what the rules
+mean (both versions, the SQL rule's text, and the canonical form and hashes of a reference type and rule set).
+
+| A change to | Fails | Until |
+| --- | --- | --- |
+| A rule field, the hash, the fingerprint or a version | `RuleSemanticsGoldenTests` | A golden line with a new version and the new hash is appended, and `rules-version.txt` names it |
+| The SQL rule in `EligibilitySql` | `EligibilitySqlVersionTests` | `ELIGIBILITY_SQL_VERSION` is bumped with its hash recorded |
+| The constants in `Migrations/constants.txt` alone | `EligibilitySqlVersionTests` | They match `EligibilitySql` again |
+
+Why each choice:
+
+- **The migrations still read `constants.txt`.** Every substitution path (the runtime provider, the generated DbContext,
+  the migration lint) reads that file, so the library is the source and a test holds the file to it, instead of
+  teaching each path a second source.
+- **A golden line per version, never edited.** A version can then never be reused for another meaning, and a meaning
+  cannot change without a new version: both are checked.
+- **The package still ships at the release's version.** Publishing it on its own track needs the release pipeline
+  to learn a second version (the package set check, the bill of materials, the nuget.org floor check and a `rules-v`
+  tag); until then the version track is the file and its guard.
 
 ### The pair guard {#the-pair-guard}
 
