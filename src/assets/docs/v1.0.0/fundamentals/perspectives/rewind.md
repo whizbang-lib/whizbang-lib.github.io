@@ -36,7 +36,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/StreamReadAnchor.cs
   - src/Whizbang.Core/Perspectives/ReplayFloor.cs
   - src/Whizbang.Core/Perspectives/FoldedVersionPrefix.cs
-  - src/Whizbang.Data.Postgres/Migrations/485_FlaggedCursorsBelowTheirStreamAreQueued.sql
+  - src/Whizbang.Data.Postgres/Migrations/466_FlaggedCursorsBelowTheirStreamAreQueued.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/ReplayEventOrderTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindOptionsTests.cs
