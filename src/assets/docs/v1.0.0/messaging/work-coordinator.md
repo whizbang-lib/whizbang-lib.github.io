@@ -296,7 +296,7 @@ public record PerspectiveCursorCompletion {
 **Purpose**: Track **cursors** for perspectives processing event streams (one cursor per stream/perspective pair, stored in `wh_perspective_cursors`).
 
 **Key Difference from Receptors**:
-- **Receptors**: Many receptors can process the same event independently (tracked in `wh_receptor_processing`)
+- **Receptors**: Many receptors can process the same event independently; their progress is not recorded per event
 - **Perspectives**: One cursor per (stream_id, perspective_name) pair for ordered processing
 
 ### New Messages

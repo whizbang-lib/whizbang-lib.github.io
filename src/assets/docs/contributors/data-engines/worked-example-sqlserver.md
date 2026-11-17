@@ -60,12 +60,11 @@ BEGIN
   IF NOT EXISTS (SELECT TOP 1 1 FROM wh_outbox WHERE processed_at IS NULL)
      AND NOT EXISTS (SELECT TOP 1 1 FROM wh_inbox WHERE processed_at IS NULL)
      AND NOT EXISTS (SELECT TOP 1 1 FROM wh_perspective_events WHERE processed_at IS NULL)
-     AND NOT EXISTS (SELECT TOP 1 1 FROM wh_receptor_processing WHERE completed_at IS NULL)
   BEGIN
     RETURN;
   END
 
-  -- ... claim_orphaned_outbox / inbox / perspective_events / receptor (T-SQL versions)
+  -- ... claim_orphaned_outbox / inbox / perspective_events (T-SQL versions)
   -- ... return work via SELECT INTO / OUTPUT clauses
 END
 ```
