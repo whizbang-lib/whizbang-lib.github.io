@@ -77,6 +77,8 @@ testReferences:
   - tests/Whizbang.Archive.AzureBlob.Tests/AzureBlobArchiveRegistrationTests.cs
   - tests/Whizbang.Archive.AzureBlob.Tests/ArchiveObjectCorruptedExceptionTests.cs
   - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs
+  - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreImmutabilityTests.cs
+  - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs
   - tests/Whizbang.Archive.AzureBlob.Tests/AzureBlobArchiveLocationTests.cs
   - tests/Whizbang.Core.Tests/Archival/ArchiveLocationMismatchExceptionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchiveLocationSqlTests.cs
@@ -823,6 +825,7 @@ builder.Services.AddWhizbangAzureBlobArchive(builder.Configuration);
 | `Whizbang:Archive:AzureBlob:CompressionLevel` | `int` | `4` | `Whizbang__Archive__AzureBlob__CompressionLevel` | The Brotli quality, 0 (fastest) to 11 (smallest); a value outside the range fails when the store is built |
 | `Whizbang:Archive:AzureBlob:MaxEventsPerChunk` | `int` | `10000` | `Whizbang__Archive__AzureBlob__MaxEventsPerChunk` | The most events one object holds; 1 or more |
 | `Whizbang:Archive:AzureBlob:AccessTier` | `AccessTier?` | `null` (the account's default tier) | `Whizbang__Archive__AzureBlob__AccessTier` | The tier every object is written at: `Hot`, `Cool` or `Cold`, in any case ([access tier](#access-tier)) |
+| `Whizbang:Archive:AzureBlob:DeleteAfter` | `TimeSpan?` | `null` (deletions run at once) | `Whizbang__Archive__AzureBlob__DeleteAfter` | How long a queued object deletion waits, for storage without soft delete; above zero when set. Also turns on the daily orphan sweep ([a deletion delay](../../operations/deployment/restoring-an-environment-with-an-archive#a-deletion-delay)) |
 
 | Choice | Reason | Verified |
 |---|---|---|
@@ -883,7 +886,7 @@ the colder tier's read price and its early-deletion charge.
 |---|---|---|
 | The write is one database transaction: `wh_archive_stream` moves the batch into `wh_event_archive` (every guard and the tombstone included), the objects are uploaded, the manifest rows are written and the staged rows removed, and only then does it commit. | The archive is all or nothing like the table store's: an upload that fails, or a process that dies before the commit, rolls the truncate back, so every event is hot again with every column, no tombstone is left and the generation is unchanged. | {verified: AzureBlobArchiveStoreTests.Write_TheUploadFails_TheStreamStaysFullyHot_AndNothingIsListedAsync} |
 | An object becomes part of an archive only through its manifest row, and readers, restores and deletes never list the container. | The manifest commits with the truncate, so an object a failed attempt uploaded is named by nothing and can never be read as archived. | {verified: AzureBlobArchiveStoreTests.Write_ACrashAfterTheUploadBeforeTheCommit_IsRetriedWithoutADuplicateAsync} |
-| An object's name carries the SHA-256 of its bytes, and an upload overwrites an object of the same name. | The encoding is deterministic, so a retry of the same events writes the same bytes under the same name: the container still holds one object, not two. A name can only ever hold the bytes it hashes to, so overwriting it is safe. | {verified: AzureBlobArchiveStoreTests.Write_ACrashAfterTheUploadBeforeTheCommit_IsRetriedWithoutADuplicateAsync, ArchiveChunkTests.Encode_IsDeterministic_SoARetryWritesTheSameObjectName_AndOtherEventsAnotherAsync} |
+| An object's name carries the SHA-256 of its bytes, and an upload only ever creates: it never overwrites an object of the same name. | The encoding is deterministic, so a retry of the same events writes the same name: the container still holds one object, not two, and the object already there is kept and checked like a read checks it. An object is never updated after it is written, which is what lets a database and its storage be [restored to the same point in time](../../operations/deployment/restoring-an-environment-with-an-archive#never-updated). | {verified: AzureBlobArchiveStoreTests.Write_ACrashAfterTheUploadBeforeTheCommit_IsRetriedWithoutADuplicateAsync, AzureBlobArchiveStoreTests.Write_NeverReplacesAnObject_WithDifferentBytesUnderItsName_TheStreamStaysHotAsync} |
 | Each upload sends an MD5 of its bytes, which the service checks before it stores them. | An object is stored exactly as it was sent, or the upload fails and the write rolls back. A single upload is atomic, so a partial object is never visible. | {verified: AzureBlobArchiveStoreTests.Write_WholeStream_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync} |
 | The transaction stays open, holding the stream's append lock, while the objects upload. | It is what makes the archive atomic. An append to that one stream waits for the upload; archived streams are cold, so nothing normally waits. Keep a database's `idle_in_transaction_session_timeout`, if set, above the time an upload of one stream can take. | {verified: AzureBlobArchiveStoreTests.Write_TheUploadFails_TheStreamStaysFullyHot_AndNothingIsListedAsync} |
 | A refusal (`blocked`, `held`, a prefix the truncate refused, `nothing_to_archive`, `debug_skipped`) uploads nothing and keeps its status. | Nothing moved, so nothing is written. | {verified: AzureBlobArchiveStoreTests.Write_ARefusal_KeepsItsStatus_AndUploadsNothingAsync} |
@@ -1151,3 +1154,4 @@ no longer keeps a stream in one location.
 - [Event streams](event-streams#truncating-a-stream-prefix): the gated prefix truncate a prefix archive runs.
 - [Stream integrity](../../resilience/stream-integrity): the origin generation every archive bumps.
 - [Azure Blob offload provider](../offloads/providers/azure-blob): the same storage account conventions for message bodies.
+- [Restoring an Environment with an Archive](../../operations/deployment/restoring-an-environment-with-an-archive): point-in-time restore of a database and its archive storage, and the deletion delay
