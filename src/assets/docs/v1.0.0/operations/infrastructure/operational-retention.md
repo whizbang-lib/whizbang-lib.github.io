@@ -77,6 +77,7 @@ test compares the registry with what the migrations created, so the only way to 
 | `RecheckRuns` | Results of re-check runs | `Whizbang:OperationalRetention:RecheckRuns` |
 | `Queues` | Finished queue rows | `Whizbang:OperationalRetention:Queues` |
 | `MaintenanceRuns` | Per-run maintenance records and logs | `Whizbang:OperationalRetention:MaintenanceRuns` |
+| `CarriedDetail` | The per-stream detail of what cuts carried: the carried columns of a stream's digest bucket (#2363). Cleared, not removed: the bucket's digest and the epochs' removed rows stay. See [carried detail rests, then rolls off](../../resilience/stream-integrity#carried-detail-rests-then-rolls-off) | `Whizbang:OperationalRetention:CarriedDetail` |
 
 A category with no override rests for `Whizbang:OperationalRetention:Default`.
 
@@ -234,7 +235,7 @@ its explanation.
 
 | Bounded by | Tables |
 |---|---|
-| Lanes, epochs and seals | `wh_digest_epoch_frontiers`, `wh_digest_epoch_seals`, `wh_digest_epochs`, `wh_integrity_seals` |
+| Lanes, epochs and seals | `wh_digest_epoch_frontiers`, `wh_digest_epoch_removed` (what cuts removed, per lane, tenant, type and epoch, #2363), `wh_digest_epoch_seals`, `wh_digest_epochs`, `wh_integrity_consumer_seals` (one row per consumer service that reports its seal, #2363), `wh_integrity_seals` |
 | Streams | `wh_active_streams`, `wh_apply_fold_watermarks`, `wh_archive_manifest`, `wh_event_archive`, `wh_event_archive_cursors`, `wh_event_archive_rows`, `wh_perspective_cursors`, `wh_perspective_snapshots`, `wh_receptor_processing`, `wh_stream_digests`, `wh_stream_lifecycle`, `wh_stream_purge_markers` |
 | Event data | `wh_event_body`, `wh_event_store`, `wh_offload_claims` (offloaded bodies, expire after `PassiveExpiry`) |
 | Types and origins | `wh_unsequenced_digest_totals` (one row per origin, tenant and type), `wh_consumed_types`, `wh_definition_lineage`, `wh_integrity_domain_claims`, `wh_integrity_known_origins`, `wh_integrity_pending_gaps`, `wh_subscription_backfills`, `wh_type_definitions`, `wh_type_history_walks` |

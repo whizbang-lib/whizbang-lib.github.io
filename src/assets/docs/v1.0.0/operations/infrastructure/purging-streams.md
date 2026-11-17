@@ -41,7 +41,7 @@ Everything keyed by the listed streams, in one transaction per batch:
 | Events | `wh_event_store`, `wh_event_body`, `wh_event_archive`, `wh_event_destruction_hold`, `wh_lifecycle_completions`, and the stream's [lifecycle ledger](../../fundamentals/events/stream-end-of-life.md#the-stream-lifecycle-ledger) row (`wh_stream_lifecycle`): a purged stream is gone, so no end-of-life sweep is left a row to act on |
 | Perspectives | every registered perspective table's row for the stream, `wh_perspective_events`, `wh_perspective_cursors`, `wh_perspective_snapshots`, `wh_perspective_applied`, `wh_perspective_row_hold`, `wh_row_eviction_journal`, `wh_apply_fold_watermarks` |
 | Messaging | `wh_outbox`, `wh_inbox`, `wh_inbox_state`, `wh_message_deduplication` (the stream's events and inbox messages), `wh_receptor_processing`, `wh_active_streams` |
-| Integrity | `wh_stream_digests`, `wh_integrity_ledger`; the sealed epochs the events covered are refolded and the origin generation is bumped once, as a stream close does |
+| Integrity | `wh_integrity_ledger`. The stream's `wh_stream_digests` buckets are kept, with their whole digest carried, and the epochs record what was removed, so the purge refolds nothing and bumps no generation; the buckets and the purge marker are the stream's tombstone, and a redelivered event of a purged stream is refused at the inbox ([cuts carry their digest](../../resilience/stream-integrity#cuts-carry-their-digest), #2363). The `wh_stream_digests` row of the result reports 0 |
 
 Dead letters are left alone: maintenance settles a dead letter whose stream no longer exists.
 

@@ -1498,7 +1498,7 @@ How long the records cleanup and integrity keep about their own work rest before
 |----------|------|---------|--------------------|---------|
 | `Enabled` | `bool` | `true` | `Whizbang__OperationalRetention__Enabled` | Run the operational retention sweep in the maintenance cycle |
 | `Default` | `TimeSpan` | `14.00:00:00` | `Whizbang__OperationalRetention__Default` | Resting period of every category without its own. Must be positive (checked at host start) |
-| `RepairLedger`, `RewriteLog`, `Deliveries`, `Reports`, `PairHistory`, `RecheckRuns`, `Queues`, `MaintenanceRuns` | `TimeSpan?` | unset (the default) | `Whizbang__OperationalRetention__<Category>` | A category's own resting period. Must be positive when set (checked at host start). See [categories](../infrastructure/operational-retention#categories) |
+| `RepairLedger`, `RewriteLog`, `Deliveries`, `Reports`, `PairHistory`, `RecheckRuns`, `Queues`, `MaintenanceRuns`, `CarriedDetail` | `TimeSpan?` | unset (the default) | `Whizbang__OperationalRetention__<Category>` | A category's own resting period. Must be positive when set (checked at host start). See [categories](../infrastructure/operational-retention#categories) |
 | `BatchSize` | `int` | `1000` | `Whizbang__OperationalRetention__BatchSize` | Rows removed per table per batch. Must be at least 1 (checked at host start) |
 | `MaxBatchesPerCycle` | `int` | `10` | `Whizbang__OperationalRetention__MaxBatchesPerCycle` | Batches one maintenance cycle runs at most. Must be at least 1 (checked at host start) |
 
@@ -1569,6 +1569,7 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `Sealing:Enabled` | `bool` | `true` | `Whizbang__StreamIntegrity__Sealing__Enabled` | Close and seal settled digest epochs on the maintenance cadence. See [sealing](/v1.0.0/resilience/stream-integrity#sealing) |
 | `Sealing:EpochWidth` | `long` | `100000` | `Whizbang__StreamIntegrity__Sealing__EpochWidth` | Sequence positions per epoch; pinned on a lane when it is first closed. Must be at least 1 (checked at host start) |
 | `Sealing:MaxClosuresPerCycle` | `int` | `64` | `Whizbang__StreamIntegrity__Sealing__MaxClosuresPerCycle` | Epochs closed per maintenance cycle across all lanes. Must be at least 1 (checked at host start) |
+| `Sealing:CutWaitsForConsumers` | `bool` | `false` | `Whizbang__StreamIntegrity__Sealing__CutWaitsForConsumers` | A cut of this service's own history also waits until every consumer reported verifying it (reports from the last 7 days). While `Sealing:Enabled` is on, every cut already waits for this service's own seal. See [a cut waits for the seal](/v1.0.0/resilience/stream-integrity#a-cut-waits-for-the-seal) |
 | `SealRecheck:Enabled` | `bool` | `false` | `Whizbang__StreamIntegrity__SealRecheck__Enabled` | Recompute sealed epochs and compare each with its seal. See [the seal re-check](/v1.0.0/resilience/stream-integrity#seal-re-check) |
 | `SealRecheck:Schedule` | `string?` | `"0 3 * * *"` | `Whizbang__StreamIntegrity__SealRecheck__Schedule` | Cron of the re-check on the temporal engine, splayed per service; empty leaves it to the every-Nth-audit fallback |
 | `SealRecheck:Lookback` | `TimeSpan` | `30.00:00:00` | `Whizbang__StreamIntegrity__SealRecheck__Lookback` | Only epochs sealed within this are re-checked. Must be positive (checked at host start) |
