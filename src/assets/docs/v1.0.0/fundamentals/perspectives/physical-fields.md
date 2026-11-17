@@ -556,6 +556,9 @@ rows.Select(r => r.Data).Where(x => ids.Contains(x.OrderId));
 - **The document test is kept.** The query never returns a row it did not return before. For a model
   that keeps the `[StreamId]` contract the two ids are equal and the result is unchanged; a row whose
   property was set to something other than its stream id is no longer found by that property.
+- **A null value never reaches the key.** The primary key is never null, so a `Guid?` stream id compared
+  with `null`, or with a variable that holds null, still finds the documents with no stream id: the key is
+  added only when the value is not null. A set that can hold null (`List<Guid?>`) stays a document search.
 - **Left alone:** a stream-id test under `OR` or `NOT`, an inequality, and a stream id that is a `string`
   or strongly-typed key (the row's id is a `Guid`).
 
