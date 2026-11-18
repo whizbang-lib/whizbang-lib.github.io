@@ -598,8 +598,8 @@ var fullSchemaSql = builder.BuildInfrastructureSchema(config);
 
 // Generates CREATE SCHEMA IF NOT EXISTS "inventory"; followed by
 // CREATE TABLE statements for all infrastructure tables
-// (service_instances, active_streams, partition_assignments,
-//  message_deduplication, inbox, outbox, event_store, receptor_processing,
+// (service_instances, active_streams,
+//  message_deduplication, inbox, outbox, event_store,
 //  perspective_cursors, perspective_snapshots, message_associations,
 //  perspective_registry, message_type_registry, request_response, sequences)
 // with the "prod_" prefix, plus all indexes and sequences.

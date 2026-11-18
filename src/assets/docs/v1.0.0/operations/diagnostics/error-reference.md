@@ -478,6 +478,32 @@ This instance stood down, so no schema initialization runs on it and nothing is 
 
 ## Configuration
 
+### The pair guard's alert threshold is not positive {#pair-guard-alert-threshold-not-positive}
+{verified: IntegrityCheckOptionsTests.Validate_ALimitBelowItsFloor_FailsNamingTheKeyAsync}
+
+```text
+Whizbang:StreamIntegrity:PairGuard:HaltedAlertAfter must be positive (was 00:00:00); it is how long a service pair may stay halted before the guard alerts, and an empty threshold alerts on every halt, including the brief ones every rollout makes (#2362).
+```
+
+**Source**: `StreamIntegrityOptionsValidator`, through the options pipeline (`ValidateOnStart`), as an `OptionsValidationException`.
+
+**Trigger**: [`PairGuard:HaltedAlertAfter`](../../resilience/stream-integrity#the-pair-guard) set to zero or less.
+
+**Fix**: Set a positive duration, such as the default `02:00:00`. Choose one longer than a normal rollout of the services that exchange events, so only a rollout that did not finish raises the alert.
+
+### Integrity halted for a service pair {#integrity-pair-halted}
+{verified: IntegrityPairGuardTests.Admit_ADifferentSharedType_HaltsWithOneErrorNamingBothSidesAndTheTypeAsync, TwoServicePairGuardTests.ASharedTypesRulesDiffer_ThePairIsHaltedOnBothSides_WithTheReason_AndResumesOnceTheyMatchAsync}
+
+```text
+Integrity halted for the pair with 'orders-svc' (this service is the Consumer): type_rules. This service runs rule semantics 1, eligibility SQL 1, fingerprint 3f9c0a7e1b2d4c58; the peer runs 1, 1, 8d21e6b04f7a9c13. Types whose rules differ: [Contracts.OrderPlaced]. Nothing is compared, repaired or redelivered for the pair until its rules match; it resumes on its own
+```
+
+**Source**: `IntegrityPairGuard`, logged at Error once per halt (and again only when the reason or the differing types change), beside the `pair_halts` counter and the `pair_state` gauge.
+
+**Trigger**: Two services that exchange events apply different [eligibility rules](../../resilience/stream-integrity#rule-fingerprint) to a type they share, run different rule versions, or one of them runs a release that predates the fingerprint (`no_fingerprint`). Expected briefly during a rolling deployment.
+
+**Fix**: Nothing, during a rollout: the pair resumes on its own once both run the same release. If it lasts, the Critical alert after [`PairGuard:HaltedAlertAfter`](../configuration/configuration-reference) follows: align the two services' releases, or the declarations of the named types (for example `[Ephemeral]` or `[Superseding]` on one side only).
+
 ### A sealing or seal re-check setting below its floor {#sealing-setting-below-its-floor}
 {verified: IntegrityCheckOptionsTests.Validate_ALimitBelowItsFloor_FailsNamingTheKeyAsync, IntegrityCheckOptionsTests.Validate_TheDefaults_SucceedAsync}
 

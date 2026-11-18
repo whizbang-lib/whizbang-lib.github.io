@@ -14,6 +14,7 @@ tags: 'metrics, opentelemetry, counters, histograms, monitoring, Prometheus, Gra
 codeReferences:
   - src/Whizbang.Core/Observability/IntegrityCompletion.cs
   - src/Whizbang.Core/Observability/WhizbangMetrics.cs
+  - src/Whizbang.Archive.AzureBlob/ArchiveSweepMetrics.cs
   - src/Whizbang.Core/Observability/PassiveCounter.cs
   - src/Whizbang.Core/Observability/MaintenanceMetrics.cs
   - src/Whizbang.Core/Observability/PendingReclamation.cs
@@ -147,6 +148,7 @@ Additional subsystem meters:
 | `Whizbang.Housekeeping` | `HousekeepingCoordinator` | Arbitration verdicts, the running activity, per-activity volume rollup, and idle seconds-since-activity |
 | `Whizbang.Core.Routing.MessageDiscard` | `MessageDiscardPolicy` | Unsubscribed-message skips at the inbox and outbox gates |
 | `Whizbang.Postgres.Notifications` | `NotifyMetrics` | LISTEN/NOTIFY signal delivery and connection state |
+| `Whizbang.Archive.AzureBlob` | `ArchiveSweepMetrics` | Orphan sweeps of the Azure Blob archive store refused, by reason |
 | `Whizbang.Capabilities` | `CapabilityMetrics` | Which external capabilities (Postgres extensions first) each scope can use, by state |
 | `Whizbang.Sagas` | `SagaMetrics` | Saga initiation, completion, item and hook outcomes |
 | `Whizbang.Liveness` | `InstanceLivenessMetrics` | Heartbeat watchdog and slow beats, death announcements and retractions |
@@ -1148,6 +1150,7 @@ namespace whose quota is exhausted, compare `ops_rate` across `transport_namespa
 | Meter | Metric Name | Type | Description |
 |-------|-------------|------|-------------|
 | `Whizbang.Core.Routing.MessageDiscard` | `whizbang.message.skipped` | Counter\<long\> | Messages intentionally skipped at a discard gate (`inbox` \| `outbox`). The built-in transports no longer skip at receive: a message the consumer skips there is stored settled and counted by `whizbang.transport.inbox.messages_discarded` |
+| `Whizbang.Archive.AzureBlob` | `whizbang.archive.orphan_sweep.refused` | Counter\<long\> | Orphan sweeps that deleted nothing because the container could not be proven this database's; tagged by reason (foreign_marker/marker_unclaimable/unknown_location). See [one database per container](../deployment/restoring-an-environment-with-an-archive#one-database-per-container) |
 | `Whizbang.Postgres.Notifications` | `whizbang.postgres.notifications.signals_received` | Counter\<long\> | NOTIFY signals delivered to subscribers; tagged by category (outbox/inbox/perspective/unknown) |
 | `Whizbang.Postgres.Notifications` | `whizbang.postgres.notifications.connection_state` | UpDownCounter\<int\> | +1 when LISTEN/NOTIFY is healthy, -1 on disconnect; sum = number of connected pods |
 | `Whizbang.Postgres.Notifications` | `whizbang.postgres.notifications.signaling_mode` | Counter\<long\> | Mode-decision events (startup + runtime transitions); tagged by mode and reason |
