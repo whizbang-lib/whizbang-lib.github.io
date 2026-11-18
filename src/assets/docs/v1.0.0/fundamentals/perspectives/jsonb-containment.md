@@ -34,11 +34,11 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OpaqueDocumentRoundTripTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CanonicalTemporalRewriteTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CanonicalTemporalRewriteIntegrationTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/CanonicalTemporalJsonConverterTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/CanonicalTemporalFormatTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/CanonicalTemporalReadersTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/CanonicalTemporalReaderToleranceTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PersistenceProfileConverterReachProbeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/CanonicalTemporalJsonConverterTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/CanonicalTemporalFormatTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/CanonicalTemporalReadersTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/CanonicalTemporalReaderToleranceTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PersistenceProfileConverterReachProbeTests.cs
   - tests/Whizbang.Generators.Tests/JsonIndexGenerationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonbContainmentSqlMatrixTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonbContainmentAuthoringTests.cs

@@ -15,8 +15,8 @@ codeReferences:
   - src/Whizbang.Testing/Lifecycle/PerspectiveCompletionWaiter.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveForTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/InMemoryEventStoreTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/IPerspectiveForTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

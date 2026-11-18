@@ -37,10 +37,10 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HeldLeaseRenewalSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerHoldRenewalTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerTransportReadinessTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerHeldLeaseTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxDispatchWorkerHeldLeaseTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherIdleSignalTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/FlushWorkerIdleSignalTests.cs
-  - tests/Whizbang.Core.Tests/Workers/QueuedWritesLandedSignalTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/QueuedWritesLandedSignalTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/QueuedWritesLandedRegistrationTests.cs
 ---
 

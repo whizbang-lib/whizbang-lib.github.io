@@ -40,23 +40,23 @@ codeReferences:
   - src/Whizbang.Generators/MessageTagDiscoveryGenerator.cs
   - src/Whizbang.Generators/Utilities/AttributeArgNamingHelper.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Tags/TagOptionsTests.cs
-  - tests/Whizbang.Core.Tests/Tags/TagContextTests.cs
-  - tests/Whizbang.Core.Tests/Tags/MessageTagProcessorTests.cs
-  - tests/Whizbang.Core.Tests/Tags/MessageTagHookTests.cs
-  - tests/Whizbang.Core.Tests/Tags/TagHookRegistrationTests.cs
-  - tests/Whizbang.Core.Tests/Tags/TagHookStageFilteringAndScopeTests.cs
-  - tests/Whizbang.Core.Tests/Tags/DispatcherTagProcessingTests.cs
-  - tests/Whizbang.Core.Tests/Tags/MessageTagDiscoveryGeneratorTests.cs
-  - tests/Whizbang.Core.Tests/Tags/SignalTagAttributeTests.cs
-  - tests/Whizbang.Core.Tests/Tags/SignalPriorityTests.cs
-  - tests/Whizbang.Core.Tests/Tags/TelemetryTagAttributeTests.cs
-  - tests/Whizbang.Core.Tests/Tags/MetricTagAttributeTests.cs
-  - tests/Whizbang.Core.Tests/Tags/MetricTypeTests.cs
-  - tests/Whizbang.Core.Tests/Tags/SpanKindTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Tags/TagOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Tags/TagContextTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Tags/MessageTagProcessorTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Tags/MessageTagHookTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Tags/TagHookRegistrationTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Tags/TagHookStageFilteringAndScopeTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Tags/DispatcherTagProcessingTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Tags/MessageTagDiscoveryGeneratorTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Tags/SignalTagAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Tags/SignalPriorityTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Tags/TelemetryTagAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Tags/MetricTagAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Tags/MetricTypeTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Tags/SpanKindTests.cs
   - tests/Whizbang.Core.Tests/Attributes/AttributeArgNamingAttributeTests.cs
-  - tests/Whizbang.Core.Tests/Audit/AuditEventAttributeTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/AuditEventAttributeExcludeTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Audit/AuditEventAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditEventAttributeExcludeTests.cs
   - tests/Whizbang.Generators.Tests/AttributeArgNamingHelperTests.cs
   - tests/Whizbang.Generators.Tests/MessageTagDiscoveryGeneratorTests.cs
 ---
@@ -160,7 +160,7 @@ options.Tags.UseHook<SignalTagAttribute, NotificationHook>(priority: 0);   // Mi
 options.Tags.UseHook<SignalTagAttribute, AuditHook>(priority: 500);        // Last
 ```
 
-> Verified: `TagOptions.UseHook<TAttribute, THook>(int priority = -100, LifecycleStage? fireAt = null)` — `tests/Whizbang.Core.Tests/Tags/TagOptionsTests.cs` (`UseHook_UsesDefaultPriorityAsync` asserts the default is `-100`; `GetHooksInExecutionOrder_SortsByPriorityAscendingAsync` locks in ascending ordering).
+> Verified: `TagOptions.UseHook<TAttribute, THook>(int priority = -100, LifecycleStage? fireAt = null)` — `tests/Whizbang.Core.Unit.Messaging.Tests/Tags/TagOptionsTests.cs` (`UseHook_UsesDefaultPriorityAsync` asserts the default is `-100`; `GetHooksInExecutionOrder_SortsByPriorityAscendingAsync` locks in ascending ordering).
 
 ### 2. Tag Your Messages
 
@@ -397,7 +397,7 @@ public class SignalRNotificationHook : IMessageTagHook<SignalTagAttribute> {
 `LifecycleStage` has **29 members**: 28 real lifecycle stages (including the four destruction stages `PreDestructionDetached`/`PreDestructionInline`/`PostDestructionDetached`/`PostDestructionInline`) plus the special value `AfterReceptorCompletion = -1`, which fires synchronously after the receptor completes, *before* any real lifecycle stage is invoked. `AfterReceptorCompletion` is not a true lifecycle stage — it is the tag system's default firing point.
 :::
 
-> Verified: `src/Whizbang.Core/Messaging/LifecycleStage.cs` — 28 stages + `AfterReceptorCompletion = -1` (the enum's own XML summary still reads "Defines the 24 lifecycle stages"; it predates the destruction stages). `fireAt` server-side filtering is exercised by `tests/Whizbang.Core.Tests/Tags/TagHookStageFilteringAndScopeTests.cs` (a hook registered at `PostAllPerspectivesDetached` does not fire at `AfterReceptorCompletion`, and does fire at its registered stage).
+> Verified: `src/Whizbang.Core/Messaging/LifecycleStage.cs` — 28 stages + `AfterReceptorCompletion = -1` (the enum's own XML summary still reads "Defines the 24 lifecycle stages"; it predates the destruction stages). `fireAt` server-side filtering is exercised by `tests/Whizbang.Core.Unit.Messaging.Tests/Tags/TagHookStageFilteringAndScopeTests.cs` (a hook registered at `PostAllPerspectivesDetached` does not fire at `AfterReceptorCompletion`, and does fire at its registered stage).
 
 ### Changed properties {#changed-properties}
 
@@ -656,7 +656,7 @@ The `SignalPriority` enum controls notification delivery urgency:
 | `High` | 2 | Immediate delivery, prominent display | Order confirmations, important updates |
 | `Critical` | 3 | Urgent system alerts, bypass user preferences | System failures, security alerts |
 
-> Verified: `src/Whizbang.Core/Tags/SignalPriority.cs` (`Low = 0`, `Normal = 1`, `High = 2`, `Critical = 3`); `tests/Whizbang.Core.Tests/Tags/SignalTagAttributeTests.cs` (`SignalTagAttribute_Priority_DefaultsToNormalAsync`, `SignalTagAttribute_Group_IsNullByDefaultAsync`).
+> Verified: `src/Whizbang.Core/Tags/SignalPriority.cs` (`Low = 0`, `Normal = 1`, `High = 2`, `Critical = 3`); `tests/Whizbang.Core.Unit.Messaging.Tests/Tags/SignalTagAttributeTests.cs` (`SignalTagAttribute_Priority_DefaultsToNormalAsync`, `SignalTagAttribute_Group_IsNullByDefaultAsync`).
 
 ### TelemetryTagAttribute {#telemetry-tag}
 
@@ -777,7 +777,7 @@ services.AddWhizbang(options => {
 
 `AuditEventAttribute` uses `AllowMultiple = false` (one per type). See [Audit Logging](../security/audit-logging.md#selective-auditing) for how it integrates with system audit.
 
-> Verified: `src/Whizbang.Core/Attributes/AuditEventAttribute.cs` (`Tag = "audit"`, `Level = AuditLevel.Info`, `Exclude = false`, `[AttributeUsage(..., AllowMultiple = false)]`), `src/Whizbang.Core/Audit/AuditLevel.cs` (`Info`, `Warning`, `Critical`); `tests/Whizbang.Core.Tests/Audit/AuditEventAttributeTests.cs`, `tests/Whizbang.Core.Tests/SystemEvents/AuditEventAttributeExcludeTests.cs`.
+> Verified: `src/Whizbang.Core/Attributes/AuditEventAttribute.cs` (`Tag = "audit"`, `Level = AuditLevel.Info`, `Exclude = false`, `[AttributeUsage(..., AllowMultiple = false)]`), `src/Whizbang.Core/Audit/AuditLevel.cs` (`Info`, `Warning`, `Critical`); `tests/Whizbang.Core.Unit.Dispatcher.Tests/Audit/AuditEventAttributeTests.cs`, `tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditEventAttributeExcludeTests.cs`.
 
 ## Message Tag Registry {#registry}
 

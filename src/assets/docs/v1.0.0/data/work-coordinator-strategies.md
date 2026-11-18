@@ -25,10 +25,10 @@ codeReferences:
   - src/Whizbang.Core/Messaging/WorkCoordinatorFlushHelper.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/BatcherAmbientContextTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/FlushApiTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/FlushApiTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/BatchWorkCoordinatorStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorStrategyRegistrationTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/WorkFlusherTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/WorkCoordinatorStrategyRegistrationTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/WorkFlusherTests.cs
   - tests/Whizbang.Hosting.AspNet.Component.Tests/WhizbangFlushMiddlewareTests.cs
   - tests/Whizbang.Core.Component.Tests/Shutdown/StrategyFlushShutdownTests.cs
   - tests/Whizbang.Core.Component.Tests/Shutdown/DetachedStagesShutdownTests.cs

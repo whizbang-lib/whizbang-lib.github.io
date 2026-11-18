@@ -15,7 +15,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/ScopedDbContextFactory.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreLensQueryFactory.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Lenses/FactoryOwnedLensQueryTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/FactoryOwnedLensQueryTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreLensQueryFactoryTests.cs
 lastMaintainedCommit: '01f07906'
 ---

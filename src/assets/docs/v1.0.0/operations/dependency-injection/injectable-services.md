@@ -16,7 +16,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/NoChaosInjector.cs
 testReferences:
   - tests/Whizbang.Core.Tests/DependencyInjection/InstanceProviderWiringTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ChaosInjectorDefaultTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ChaosInjectorDefaultTests.cs
 ---
 
 # Injectable Services

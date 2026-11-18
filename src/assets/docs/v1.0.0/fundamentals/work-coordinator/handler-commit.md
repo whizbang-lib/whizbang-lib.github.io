@@ -19,7 +19,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/InboxHandlerWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/FailureFlushWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerControlPlaneDropLogTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxDispatchWorkerControlPlaneDropLogTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceiveDoorbellCostSqlTests.cs
 ---
 

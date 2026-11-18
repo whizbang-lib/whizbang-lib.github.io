@@ -25,12 +25,12 @@ codeReferences:
   - src/Whizbang.Transports.HotChocolate/Middleware/WhizbangScopeMiddleware.cs
   - src/Whizbang.Core/Transports/ServiceBusTransportMetadata.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Security/MessageHopSecurityExtractorTests.cs
-  - tests/Whizbang.Core.Tests/Security/MessageSecurityContextProviderTests.cs
-  - tests/Whizbang.Core.Tests/Security/MessageSecurityIntegrationTests.cs
-  - tests/Whizbang.Core.Tests/Security/MessageSecurityOptionsTests.cs
-  - tests/Whizbang.Core.Tests/Security/MessageSecurityServiceCollectionExtensionsTests.cs
-  - tests/Whizbang.Core.Tests/Security/ImmutableScopeContextTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/MessageHopSecurityExtractorTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/MessageSecurityContextProviderTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/MessageSecurityIntegrationTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/MessageSecurityOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/MessageSecurityServiceCollectionExtensionsTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/ImmutableScopeContextTests.cs
   - tests/Whizbang.Core.Component.Tests/Security/ScopeContextAccessorTests.cs
 lastMaintainedCommit: '01f07906'
 ---

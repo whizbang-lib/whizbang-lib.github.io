@@ -18,7 +18,7 @@ codeReferences:
   - src/Whizbang.Core/SystemEvents/SystemEventServiceCollectionExtensions.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Pipeline/PipelineBehaviorTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/CommandAuditPipelineBehaviorTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/CommandAuditPipelineBehaviorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

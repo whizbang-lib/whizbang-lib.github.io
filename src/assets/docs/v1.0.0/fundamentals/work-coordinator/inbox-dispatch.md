@@ -18,11 +18,11 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Data.Postgres/Migrations/255_LeaseRenewalIsScopedToTheHolder.sql
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/InboxChannelWriterHeldRowsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerHeldLeaseTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/InboxChannelWriterHeldRowsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxDispatchWorkerHeldLeaseTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerLeaseKeeperTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxHandlerWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerCacheLifetimeTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxDispatchWorkerCacheLifetimeTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
 ---
 

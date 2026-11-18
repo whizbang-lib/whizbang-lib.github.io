@@ -15,8 +15,8 @@ codeReferences:
   - src/Whizbang.Core/Dispatcher.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherDeliveryReceiptTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherDeliveryReceiptTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherOutboxTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

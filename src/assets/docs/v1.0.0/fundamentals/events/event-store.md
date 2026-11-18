@@ -25,12 +25,12 @@ codeReferences:
   - src/Whizbang.Testing/Contracts/EventStoreContractTests.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceivedStreamOrderSqlTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/AppendAndWaitEventStoreDecoratorTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/SecurityContextEventStoreDecoratorTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/SyncTrackingEventStoreDecoratorTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/AppendAndWaitEventStoreDecoratorTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/SecurityContextEventStoreDecoratorTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/SyncTrackingEventStoreDecoratorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreSyncTrackingIntegrationTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/EventStoreAppendBatchTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/InMemoryEventStoreTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EventStoreAppendBatchTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreConcurrentAppendTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BranchCoverage/EFCore/EventStoreAppendFailureTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPostgresEventStore.RetryTests.cs

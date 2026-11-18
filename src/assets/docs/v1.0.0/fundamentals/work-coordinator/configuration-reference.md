@@ -20,7 +20,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerAcquisitionBoundsTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerStreamRunTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDrainWorkerGapTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDeserializeCacheByteBudgetTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxDeserializeCacheByteBudgetTests.cs
 ---
 
 # Configuration reference

@@ -23,9 +23,9 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CloseBooksSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperCloseBooksTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/BookCloserTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/StreamDispositionStepTests.cs
-  - tests/Whizbang.Core.Tests/Archival/StreamLifecycleOptionsBinderTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Lifecycle/BookCloserTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Lifecycle/StreamDispositionStepTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/StreamLifecycleOptionsBinderTests.cs
 ---
 
 # Closing the Books

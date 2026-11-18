@@ -29,10 +29,10 @@ codeReferences:
   - src/Whizbang.Generators/EventNamespaceRegistryGenerator.cs
   - src/Whizbang.Generators/MessageTypeCatalogGenerator.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/ConsumedMessageTypesTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ConsumedMessageTypesTests.cs
   - tests/Whizbang.Core.Tests/Generated/WhizbangReceptorRegistryQueryConsumedMessagesTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/WhizbangReceptorRegistryQueryAdapterTests.cs
-  - tests/Whizbang.Core.Tests/Workers/ReceivedInboxMessageBuilderClassificationTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/WhizbangReceptorRegistryQueryAdapterTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/ReceivedInboxMessageBuilderClassificationTests.cs
   - tests/Whizbang.Generators.Tests/ReceptorRegistryQueryGeneratorConsumedMessagesTests.cs
   - tests/Whizbang.Generators.Tests/ConsumedEventNamespacesAgreementTests.cs
   - tests/Whizbang.Generators.Tests/EventNamespaceRegistryGeneratorConsumerKindsTests.cs

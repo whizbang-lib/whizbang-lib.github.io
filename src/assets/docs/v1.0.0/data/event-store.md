@@ -36,10 +36,10 @@ codeReferences:
   - src/Whizbang.Data.Postgres/MetadataHistoryConversionStep.cs
   - src/Whizbang.Data.Postgres/PostgresRouteTraceStore.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/InMemoryEventStoreTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreEventStoreTests.cs
   - tests/Whizbang.Data.Schema.Tests/Schemas/EventStoreSchemaTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/EventUpcasterPipelineTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EventUpcasterPipelineTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPostgresEventStore.RetryTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MetadataHistoryConversionSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/MetadataHistoryConversionCostScenarioTests.cs

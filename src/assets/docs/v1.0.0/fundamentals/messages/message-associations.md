@@ -15,7 +15,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MessageAssociationRegistrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MessageAssociationRegistryTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/RecordTypesConstructionTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/RecordTypesConstructionTests.cs
   - tests/Whizbang.Data.Schema.Tests/ISchemaBuilderContractTests.cs
 lastMaintainedCommit: '01f07906'
 ---

@@ -31,7 +31,7 @@ testReferences:
   - tests/Whizbang.Generators.Tests/Analyzers/StreamIdAttributeAnalyzerTests.cs
   - tests/Whizbang.Generators.Tests/StrongIdStreamInheritanceGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/StreamIdInheritFromAnalyzerTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherStrongIdStreamInheritanceTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherStrongIdStreamInheritanceTests.cs
   - tests/Whizbang.Core.Tests/StreamKeyAttributeTests.cs
   - tests/Whizbang.Core.Tests/StreamIdExtractorTests.cs
   - tests/Whizbang.Core.Tests/Registry/StreamIdExtractorRegistryTests.cs

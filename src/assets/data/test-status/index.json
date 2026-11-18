@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "44402926675",
-    "sha": "6224774211209aeac41af4cfbd6abaae5524e222",
+    "runId": "44414915317",
+    "sha": "83829b441ffc680cffcbaf05693e26cb70dd97cb",
     "branch": "develop",
-    "libraryVersion": "0.2627.0-alpha.1744",
-    "completedAt": "2026-11-18T21:46:17.905Z"
+    "libraryVersion": "0.2627.0-alpha.1763",
+    "completedAt": "2026-11-18T23:02:30.698Z"
   },
   "total": {
-    "passed": 43016,
+    "passed": 43020,
     "failed": 0,
     "skipped": 12
   },
@@ -18,7 +18,7 @@
       "skipped": 0
     },
     "component": {
-      "passed": 6081,
+      "passed": 6084,
       "failed": 0,
       "skipped": 0
     },
@@ -58,7 +58,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 23455,
+      "passed": 23456,
       "failed": 0,
       "skipped": 8
     }
@@ -168,7 +168,7 @@
     },
     "Whizbang.Core.Component.Tests": {
       "file": "Whizbang.Core.Component.Tests.json",
-      "passed": 4742,
+      "passed": 4745,
       "failed": 0,
       "skipped": 0
     },
@@ -180,7 +180,31 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 15167,
+      "passed": 3502,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Core.Unit.Dispatcher.Tests": {
+      "file": "Whizbang.Core.Unit.Dispatcher.Tests.json",
+      "passed": 2903,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Core.Unit.Messaging.Tests": {
+      "file": "Whizbang.Core.Unit.Messaging.Tests.json",
+      "passed": 3461,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Core.Unit.Perspectives.Tests": {
+      "file": "Whizbang.Core.Unit.Perspectives.Tests.json",
+      "passed": 1820,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Core.Unit.Workers.Tests": {
+      "file": "Whizbang.Core.Unit.Workers.Tests.json",
+      "passed": 3482,
       "failed": 0,
       "skipped": 0
     },

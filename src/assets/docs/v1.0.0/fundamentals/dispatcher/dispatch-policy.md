@@ -20,11 +20,11 @@ codeReferences:
   - src/Whizbang.Core/Dispatch/BatchFailureMode.cs
   - src/Whizbang.Core/Dispatcher.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Dispatch/Policy/DispatchDecisionTableTests.cs
-  - tests/Whizbang.Core.Tests/Dispatch/Policy/DispatchRulesTests.cs
-  - tests/Whizbang.Core.Tests/Dispatch/Policy/DispatchPolicyTests.cs
-  - tests/Whizbang.Core.Tests/Dispatch/Policy/DispatchPolicyExtensionTests.cs
-  - tests/Whizbang.Core.Tests/Dispatch/Policy/DispatchPolicyAllocationTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatch/Policy/DispatchDecisionTableTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatch/Policy/DispatchRulesTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatch/Policy/DispatchPolicyTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatch/Policy/DispatchPolicyExtensionTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatch/Policy/DispatchPolicyAllocationTests.cs
   - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatchPolicyBehaviorComponentTests.cs
 ---
 

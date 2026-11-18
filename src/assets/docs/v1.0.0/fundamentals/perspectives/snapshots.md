@@ -33,23 +33,23 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/403_EphemeralHistoryFollowsWhatAReadModelConsumes.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EvictionCompanionCleanupSqlTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/EvictedRowRebuildTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveSnapshotAndRewindTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/SnapshotEnvelopeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/EvictedRowRebuildTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveSnapshotAndRewindTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/SnapshotEnvelopeTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/DapperPerspectiveSnapshotStoreTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePerspectiveSnapshotStoreTests.cs
   - tests/Whizbang.Data.Schema.Tests/Schemas/PerspectiveSnapshotsSchemaTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/SplitClassSnapshotRewindTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/CollectiveReplayRunnerTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/CollectiveReplayRunnerTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveRunnerSplitSnapshotTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CollectiveReplayRebuildIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveSnapshotFenceSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/SnapshotSelectionFollowsStreamOrderTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRebuildSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchivedStreamRebuildTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/SnapshotBootstrapOutcomeTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/EphemeralRewindFloorRunnerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerReapDrivenSnapshotTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/SnapshotBootstrapOutcomeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/EphemeralRewindFloorRunnerTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerReapDrivenSnapshotTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PurgedRowEphemeralHistorySqlTests.cs
 lastMaintainedCommit: '01f07906'
 ---

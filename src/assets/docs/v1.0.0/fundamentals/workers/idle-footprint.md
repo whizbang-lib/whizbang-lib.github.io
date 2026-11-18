@@ -19,7 +19,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Notifications/PgRoleElector.cs
   - src/Whizbang.Data.Postgres/Notifications/PgInstanceLifecycleMonitor.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/AdaptiveIdleBackoffTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/AdaptiveIdleBackoffTests.cs
   - tests/Whizbang.Core.Tests/Observability/ProbeCadenceMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/BacklogAgeCadenceTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgDurableSignalTailWorkerCadenceTests.cs

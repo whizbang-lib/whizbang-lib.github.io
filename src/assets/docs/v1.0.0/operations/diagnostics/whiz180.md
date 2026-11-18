@@ -20,7 +20,7 @@ codeReferences:
   - src/Whizbang.Core/SystemEvents/AuditEventRegistry.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/AuditEventRegistryGeneratorTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/AuditEventRegistryTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditEventRegistryTests.cs
 lastMaintainedCommit: '75ea7ca4'
 ---
 

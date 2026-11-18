@@ -43,8 +43,8 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPartitionMaintenanceStepTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMaintenanceStepNamedSchemaTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PartitionedTableTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PartitioningOptionsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PartitionManagementStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PartitioningOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PartitionManagementStrategyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/PgPartmanPartitionSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PgPartmanPartitionMaintenanceTests.cs
 ---

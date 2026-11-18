@@ -28,12 +28,12 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MoveToDeadLettersSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreDeadLetterStoreTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerDeadLetterTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerControlPlaneDropLogTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxDispatchWorkerDeadLetterTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxDispatchWorkerControlPlaneDropLogTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerDlqPromotionTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs
-  - tests/Whizbang.Core.Tests/Workers/V502DefaultsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerDeadLetterLogTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/V502DefaultsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxDispatchWorkerDeadLetterLogTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PrePublishGateForensicPreservationTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDrainWorkerGapTests.UnreadableRows.cs
 ---

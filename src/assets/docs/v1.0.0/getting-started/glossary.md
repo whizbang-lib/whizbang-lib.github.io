@@ -11,10 +11,10 @@ description: >-
   CQRS, event sourcing, perspectives, receptors, and framework-specific terminology
 tags: 'glossary, terminology, definitions, concepts, vocabulary, reference'
 testReferences:
-  - tests/Whizbang.Core.Tests/Dispatch/RouteTests.cs
-  - tests/Whizbang.Core.Tests/Dispatch/DispatchModeTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/LifecycleStageTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveForTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatch/RouteTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatch/DispatchModeTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/LifecycleStageTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/IPerspectiveForTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

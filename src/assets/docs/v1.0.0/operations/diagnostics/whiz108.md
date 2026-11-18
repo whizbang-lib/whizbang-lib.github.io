@@ -21,7 +21,7 @@ codeReferences:
   - src/Whizbang.Core/Attributes/OverwriteOnlyAttribute.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/OverwriteOnlyAnalyzerTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/OverwriteOnlyRewindTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/OverwriteOnlyRewindTests.cs
 lastMaintainedCommit: '34936cf3'
 ---
 

@@ -18,10 +18,10 @@ codeReferences:
   - >-
     samples/ECommerce/ECommerce.BFF.API/Perspectives/ProductCatalogPerspective.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/IEventStoreQueryTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveForTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/InMemoryEventStoreTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/IEventStoreQueryTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/IPerspectiveForTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRebuilderTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

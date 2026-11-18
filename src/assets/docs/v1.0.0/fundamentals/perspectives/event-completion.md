@@ -22,8 +22,8 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Perspectives/Sync/EventCompletionAwaiterTests.cs
   - tests/Whizbang.Core.Component.Tests/Perspectives/Sync/SyncEventTrackerTests.cs
-  - tests/Whizbang.Core.Tests/Dispatch/DispatchOptionsTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherPerspectiveSyncCoverageTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatch/DispatchOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherPerspectiveSyncCoverageTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

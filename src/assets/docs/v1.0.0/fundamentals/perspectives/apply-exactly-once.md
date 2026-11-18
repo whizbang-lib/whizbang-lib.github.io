@@ -21,9 +21,9 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveReplayReader.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveIdempotencyFilterTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveIdempotencyFilterTests.cs
   - tests/Whizbang.Core.Integration.Tests/Perspectives/PerspectiveApplyExactlyOnceTests.cs
-  - tests/Whizbang.Core.Tests/Workers/ProcessedEventCacheTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/ProcessedEventCacheTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDedupTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDrainModeTests.cs
 ---

@@ -23,7 +23,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/MixedStreamAllowance.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/MixedStreamAllowanceGeneratorTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/MixedStreamAllowanceTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/MixedStreamAllowanceTests.cs
 lastMaintainedCommit: '2fb623ec'
 ---
 

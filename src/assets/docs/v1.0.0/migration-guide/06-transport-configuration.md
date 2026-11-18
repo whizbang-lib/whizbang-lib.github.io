@@ -17,7 +17,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Transports.RabbitMQ.Tests/ServiceCollectionExtensionsBranchCoverageTests.cs
   - tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs
-  - tests/Whizbang.Core.Tests/Routing/RoutingBuilderExtensionsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/RoutingBuilderExtensionsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

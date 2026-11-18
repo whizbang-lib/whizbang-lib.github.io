@@ -76,22 +76,22 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PerspectiveIndexSetupTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/OptionalExtensionBlocksTests.cs
   - tests/Whizbang.Generators.Tests/JsonIndexSqlScriptTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PhysicalFieldAttributeTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/IndexedAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PhysicalFieldAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/IndexedAttributeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonIndexUsageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonIndexStandDownTests.cs
   - tests/Whizbang.Generators.Tests/JsonIndexGenerationTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/JsonIndexDeclarationAnalyzerTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveStorageAttributeTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/FieldStorageModeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveStorageAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/FieldStorageModeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PhysicalFieldIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PhysicalFieldUpsertStrategyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PhysicalFieldRegistryTests.cs
   - tests/Whizbang.Generators.Tests/Models/PhysicalFieldInfoTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectivePhysicalColumnIntegrationTests.cs
   - tests/Whizbang.Generators.Tests/EnumPhysicalFieldGenerationTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectivePhysicalValuesTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectivePhysicalValuesTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectivePhysicalColumnIntegrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMaintenanceStepNamedSchemaTests.cs
   - tests/Whizbang.Generators.Tests/PhysicalFieldHydratorInitOnlyTests.cs

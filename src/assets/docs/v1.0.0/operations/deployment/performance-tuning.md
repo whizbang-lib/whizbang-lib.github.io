@@ -20,7 +20,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/WhizbangMetrics.cs
 testReferences:
   - tests/Whizbang.Policies.Tests/PolicyContextPoolTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveCompletionStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PerspectiveCompletionStrategyTests.cs
 lastMaintainedCommit: '62abd3a45'
 ---
 

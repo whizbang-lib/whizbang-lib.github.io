@@ -16,9 +16,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/PostgresRequiredExtension.cs
   - src/Whizbang.Data.Postgres/PostgresSchemaRequirements.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Perspectives/VectorFieldAttributeTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/VectorDistanceMetricTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/VectorIndexTypeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/VectorFieldAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/VectorDistanceMetricTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/VectorIndexTypeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/VectorSearchExtensionsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/VectorSearchIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/SplitModeProductionTests.cs

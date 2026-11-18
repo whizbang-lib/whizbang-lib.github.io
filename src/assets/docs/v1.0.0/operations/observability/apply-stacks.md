@@ -31,7 +31,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ApplyPathFoldSqlTests.cs
   - tests/Whizbang.Core.Tests/Lineage/ApplyStackFlowViewTests.cs
   - tests/Whizbang.Core.Tests/Lineage/ApplyStackReporterTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/StreamPrefixTruncatorFoldOrderTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Lifecycle/StreamPrefixTruncatorFoldOrderTests.cs
   - tests/Whizbang.Hosting.AspNet.Component.Tests/ApplyStackEndpointsTests.cs
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/WhizbangApplyStackEndpointBaseTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/ApplyStackQueryTests.cs
