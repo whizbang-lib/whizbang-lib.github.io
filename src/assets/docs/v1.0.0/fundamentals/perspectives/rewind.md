@@ -424,6 +424,13 @@ at its stream's last version, an unflagged cursor and a flag whose trigger its s
 a re-run queues nothing.
 {verified: PerspectiveCursorOneOrderSqlTests.QueueUnreachable_QueuesOnePerFlaggedPairBelowItsStreamWithNoWork_NothingElse_AndARerunQueuesNothingAsync, PerspectiveCursorOneOrderSqlTests.QueueUnreachable_ATriggerWhoseProcessedRowIsNotYetPurged_IsQueuedAgainOnThatRowAsync, PerspectiveRewindLoopTests.AStreamWhoseFirstEventHasTheHighestId_WithItsWorkRetired_IsQueuedOnUpgrade_AndConvergesAfterOneRewindAsync}
 
+**Reading between checkpoints, by version.** The read that hands a perspective's lifecycle receptors their batch
+follows the same order: the events after the previous checkpoint's version through the new checkpoint's, in stream
+order ([reading between checkpoints](../events/event-store#read-between)). Before #2381 it selected by id, so a stream
+whose first event carried its highest id delivered the wrong events to `PostPerspective*` receptors. A checkpoint the
+stream does not hold is compared by id.
+{verified: EventStoreReadAfterVersionTests.GetEventsBetweenPolymorphicAsync_AfterTheFirstEvent_WhoseIdIsTheHighest_ReadsThroughTheUpperVersionAsync, InMemoryEventStoreReplayOrderTests.GetEventsBetweenPolymorphicAsync_BetweenTwoEvents_ReadsByTheirVersionsInStreamOrderAsync}
+
 **What still compares ids, and why.** Three places keep event ids on purpose. The receive chain flags a stored event as
 late when its id sorts below the cursor's: the question it asks is whether an event arrived after one minted later, and
 the flag only asks for a rewind, which now converges by version. A model that opts into event-id ordering is guarded on

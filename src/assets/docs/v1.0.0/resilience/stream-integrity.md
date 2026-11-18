@@ -2703,19 +2703,79 @@ Why each choice:
   last bundle never comes.
 - **No answer state on the receiver.** The rule needs nothing per answer: an earlier bundle that brought something
   answers the type lane, and an answered type lane is no longer awaiting, which is exactly what stops the last bundle's
-  mark.
+  mark. That held only while the bundles committed in order; a whole-type answer now records its progress, see
+  [below](#a-whole-type-answer-is-judged-once-all-of-it-is-in).
 - **Per-stream buckets are unchanged.** A stream carried whole in one bundle is judged by that bundle as before.
 - **Older origins are judged as before.** A bundle without the field reads as the answer's last.
 
-:::warning
-**Known limit: an answer's bundles are assumed to commit in order.** The rule relies on the last bundle committing after
-the others, which holds when every bundle of an answer rides one broker session
-([one session per answer](#answer-session-key)). An answer to a requester that files one stream per bundle, or one
-whose events carry several scopes, travels on more than one session, and its last bundle can commit first and mark the
-type lane early. Tracked in [whizbang#2340](https://github.com/whizbang-lib/whizbang/issues/2340). A related suspected
-gap, an answer to a request for named streams marking a whole-type request's type lane that happens to be waiting, is
-tracked in [whizbang#2341](https://github.com/whizbang-lib/whizbang/issues/2341).
-:::
+Answer bundles that travel on several sessions, and so commit out of order, are judged once the whole answer is in:
+see [a whole-type answer is judged once all of it is in](#a-whole-type-answer-is-judged-once-all-of-it-is-in) (#2340).
+An answer to a request for named streams never marks a type lane:
+see [only a whole-type answer marks the type lane](#only-a-whole-type-answer-marks-the-type-lane) (#2341).
+
+### A whole-type answer is judged once all of it is in {#a-whole-type-answer-is-judged-once-all-of-it-is-in}
+{verified: IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AOneBundleWholeTypeAnswerThatChangedNothing_MarksTheTypeLaneAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AWholeTypeAnswerThatChangedNothing_MarksTheTypeLaneOnlyOnceAllItsBundlesAreInAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AWholeTypeAnswerWithABundleThatBroughtSomething_NeverMarksTheTypeLaneAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AnAnswerWhoseBundlesCarryDifferentScopes_MarksEveryTenantsLaneOnlyOnceAllOfItIsInAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AnAnswerThatBroughtSomethingForOneTenant_MarksOnlyTheOtherTenantsLaneAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_ABundleCommittedTwice_DoesNotStandInForAMissingOneAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AnAnswerWithABundleNeverCommitted_LeavesTheTypeLaneWaitingAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_PagesThatEachAnswerPartOfTheWindow_AreJudgedByTheWindowTheyAnsweredTogetherAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AnAnswerThatCoveredLessThanTheRequest_AnswersTheTypeLaneWithoutMarkingItAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_ALastBundleThatCarriedAStreamInPart_LeavesTheTypeLaneUnmarkedAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AnEarlierBundleThatCarriedAStreamInPart_StillLetsTheWholeAnswerMarkAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AnAnswerLeftIncompleteForADay_IsForgottenWhenAnotherAnswerStartsAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_ConcurrentBundlesOfOneAnswer_JudgeTheAnswerOnceBothHaveCommittedAsync, RedeliveryPumpWindowTests.BeginAnswer_StampsOneAnswerIdOnEveryBundle_WithItsPlace_AndTheCountOnTheLastAsync, RedeliveryPumpWindowTests.PublishAnswer_IsOneAnswer_AndTwoPublishesAreTwoAnswersAsync, RedeliveryPumpWindowTests.Publish_ThatAnswersNoRequest_NamesNoAnswerAsync, RedeliveryPumpWindowTests.AnsweredWindow_CarriesTheBundlesPlaceInItsAnswer_OrNoneFromAnOlderOriginAsync, RedeliveryRequestReceptorTests.Receptor_AWholeTypeRequest_StampsOneAnswerOnEveryBundle_CountedOnTheLastAsync, RedeliveryRequestReceptorTests.Receptor_TwoRequests_AreTwoAnswersAsync, RedeliveryWindowAnswerTests.Window_OverSeveralPages_IsOneWholeTypeAnswer_CountedOnItsLastBundleAsync}
+
+The origin splits a whole-type repair answer into bundles, and the bundles can travel on several broker sessions. That
+happens when the requester does not accept [bundles that span streams](#accepts-stream-spanning-bundles) (one session
+per stream), or when the answer's events carry different scopes (one session per scope). So the bundles can commit in
+any order, and the bundle that says it is the last can commit first. The rule in
+[a whole-type answer is judged as a whole](#a-whole-type-answer-is-judged-as-a-whole), which trusted the last bundle to
+commit last, could then mark a type lane while other bundles of the answer still had events to store (#2340).
+
+Each bundle therefore names its answer and its place in it, and the last bundle also says how many bundles the answer
+has. The receiver records each bundle of a whole-type answer as it commits (migration 530,
+`wh_integrity_answer_progress`, locked before any ledger row, so two bundles of one answer committing at once judge it
+once). Only when every bundle is in does it judge the type lanes the answer carried.
+
+A lane is marked as one repair cannot change only when all of the following hold:
+
+- no bundle of the answer brought anything for that type;
+- the answer's last bundle carried every stream of the type whole;
+- the lane was still waiting for this answer;
+- the bundles' windows together cover the window the request asked for.
+
+The last rule means a backfill answered over several pages, each with part of the window, can mark the lane once the
+pages together cover the request. A bundle committed twice counts once, so it never stands in for a missing one.
+
+A bundle that brings something answers its lanes immediately, as before. If some bundles never arrive, for example
+because they expired at the broker, the lanes wait out their [answer timeout](#repair-waits-for-its-answer) and are
+asked for again. The answer's progress is removed a day after its last bundle arrived. Bundles from an origin on an
+older version carry none of this and are judged one at a time, as before.
+
+Why each choice:
+
+- **Count the bundles, rather than trust the order.** The broker gives no order across sessions, and splitting an
+  answer by stream or by scope is what the requester and the scopes require, so the receiver cannot rely on order.
+- **A lost bundle leaves the lane waiting, never marked.** Marking on a partial answer is the bug this fixes; waiting
+  costs one more request after the timeout.
+- **Progress is kept a day, not forever.** An answer whose bundles never all arrive would otherwise leave its row for
+  good. A day is well past the default three-hour answer timeout, by which the lanes have been asked for again.
+
+### Only a whole-type answer marks the type lane {#only-a-whole-type-answer-marks-the-type-lane}
+{verified: IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_ANamedStreamAnswerThatChangedNothing_LeavesAWaitingWholeTypeLaneUnmarkedAndWaitingAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_ANamedStreamAnswerThatBroughtSomething_LeavesAWaitingWholeTypeLaneWaitingAsync, IntegrityTypeLaneAnswerSqlTests.RecordBundleAnswer_AMultiBundleNamedStreamAnswerThatChangedNothing_NeverMarksTheTypeLaneAsync, RedeliveryPumpWindowTests.BeginAnswer_ForNamedStreams_SaysOnEveryBundleThatItIsNotAWholeTypeAnswerAsync, RedeliveryRequestReceptorTests.Receptor_ARequestForNamedStreams_SaysItsAnswerIsNotForTheWholeTypeAsync, RedeliveryRequestReceptorTests.Receptor_ARequestForNamedEvents_SaysItsAnswerIsNotForTheWholeTypeAsync, RedeliveryRequestReceptorTests.Receptor_ARequestWithEmptyStreamAndEventLists_IsAWholeTypeRequestAsync, RedeliveryWindowAnswerTests.Window_ThatNamesStreams_IsNotAWholeTypeAnswerAsync}
+
+A type lane records a request for a whole type: a bulk backfill or a checkpoint gap. An answer to a separate request
+that names particular streams or events says nothing about the type's other streams. Such an answer is still applied,
+and its per-stream buckets are judged as usual. But it neither answers nor marks the type lane, even when it changed
+nothing while a whole-type request on that type is waiting (#2341). Before, such an answer could mark the lane and stop
+the whole-type request from being granted again, although the streams it never looked at were still missing events.
+
+The origin states on every bundle whether its answer is to a whole-type request. A request with empty stream and event
+lists is a whole-type request; one that names streams or events is not. Code that publishes an answer directly passes
+this to `RedeliveryPump.BeginAnswer`, and it is required:
+
+```csharp{title="Publishing an answer directly" description="BeginAnswer requires answersWholeType" category="Architecture" difficulty="ADVANCED" tags=["Resilience", "Stream Integrity", "Redelivery"] tests=["RedeliveryPumpWindowTests.BeginAnswer_ForNamedStreams_SaysOnEveryBundleThatItIsNotAWholeTypeAnswerAsync", "RedeliveryPumpWindowTests.BeginAnswer_StampsOneAnswerIdOnEveryBundle_WithItsPlace_AndTheCountOnTheLastAsync"]}
+// answersWholeType: true only when the request named no streams and no events
+var answersWholeType = request.StreamIds is not { Count: > 0 } && request.EventIds is not { Count: > 0 };
+var answer = pump.BeginAnswer(request.Topic, request.RequesterService, answersWholeType, originServiceId);
+```
+
+**Upgrading.** `answersWholeType` is a new required parameter of `RedeliveryPump.BeginAnswer`, so a caller that
+publishes answers itself does not compile until it passes it. `PublishAnswerAsync`, the one-call form, takes it as an
+optional parameter that defaults to `false`, so an answer published that way never marks a type lane unless the caller
+says it answers a whole-type request. The built-in request receptor states it for every answer it sends, ordinary or
+paced backfill window.
 
 ### Repair waits for its answer {#repair-waits-for-its-answer}
 
