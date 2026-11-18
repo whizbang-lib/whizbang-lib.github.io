@@ -31,6 +31,7 @@ testReferences:
   - tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQTransportFailurePathTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQReceiveStoresBeforeSettlingTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQSubscriptionTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQPausedSubscriptionTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQHealthCheckTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/ServiceCollectionExtensionsTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Integration.Tests/RabbitMQFifoIntegrationTests.cs
@@ -828,18 +829,37 @@ public class OrderProcessor {
     public async Task PauseProcessingAsync() {
         if (_subscription != null) {
             await _subscription.PauseAsync();
-            // Messages will be nack'd with requeue while paused
+            // The consumer is canceled: nothing is delivered here while paused
         }
     }
 
     public async Task ResumeProcessingAsync() {
         if (_subscription != null) {
             await _subscription.ResumeAsync();
-            // Message processing continues
+            // A consumer is started again and processing continues
         }
     }
 }
 ```
+
+### Paused subscriptions {#paused-subscriptions}
+
+{verified: RabbitMQPausedSubscriptionTests.Batch_Paused_CancelsItsConsumerAsync, RabbitMQPausedSubscriptionTests.Single_Paused_CancelsItsConsumerAsync, RabbitMQPausedSubscriptionTests.Batch_ResumedAfterAPause_ConsumesAgainAndHandlesDeliveriesAsync}
+
+Pausing a subscription cancels its consumer, so the broker hands this instance nothing while it is
+paused and the queue is left to the instances that are running; resuming starts a consumer again on
+the same channel. A paused consumer that stayed on the queue was handed every delivery and could
+only requeue it, raising each message's delivery count (`x-delivery-count` on a quorum queue) for
+nothing. The run-control path pauses every subscription on a pause, a stop, and a rolling-upgrade
+stand-down, so this is the same rule as the [Service Bus transport's](azure-service-bus#paused-subscriptions).
+
+- The cancel is started, not awaited, so a pause reached from a consumer callback cannot wait on
+  itself. A delivery already handed over is requeued once, with a Warning.
+- If the consumer cannot be canceled, the subscription stays paused, logs a Warning, and keeps
+  requeueing what it is given; a resume then starts no second consumer next to it.
+  {verified: RabbitMQPausedSubscriptionTests.Batch_PauseCannotCancelTheConsumer_LogsAWarningAndResumeStartsNoSecondConsumerAsync}
+- Disposing a paused subscription does not cancel the already-canceled consumer again.
+  {verified: RabbitMQPausedSubscriptionTests.Batch_DisposedWhilePaused_DoesNotCancelTheConsumerAgainAsync}
 
 ---
 

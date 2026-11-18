@@ -1346,7 +1346,8 @@ holds a session keeps it while messages keep arriving. All of one origin's integ
 share a session and arrive every minute, so a standing-down instance that kept its processor
 running held those sessions and burned every message in them to the dead-letter queue with
 `MaxDeliveryCountExceeded`. Stopped, it takes nothing, nothing is counted, and the newer instance
-takes the session at once.
+takes the session at once. The RabbitMQ transport follows the same rule: a paused subscription
+cancels its consumer (see [RabbitMQ paused subscriptions](rabbitmq#paused-subscriptions)).
 
 - The stop is started when the pause lands, not awaited: the processor's stop waits for the
   handlers in flight, and a pause can be reached from one of them. A delivery that reaches the
@@ -1357,6 +1358,12 @@ takes the session at once.
   {verified: AzureServiceBusPausedSubscriptionTests.SessionBatch_PauseCannotStopTheProcessor_LogsAWarningAndStaysPausedAsync}
 - Resuming waits for that stop to finish and starts the processor again.
   {verified: AzureServiceBusPausedSubscriptionTests.SessionBatch_ResumedAfterAPause_StartsItsProcessorAndHandlesDeliveriesAsync, AzureServiceBusPausedSubscriptionTests.NonSessionBatch_ResumedAfterAPause_StartsItsProcessorAsync}
+- The [receive-liveness watchdog](#receive-liveness) does not treat a paused subscription's
+  silence as a stall: it neither counts that silence nor re-subscribes the subscription, so a
+  paused instance is never handed sessions by a recovery. Once the subscription is resumed it is
+  watched again from a fresh silence window. A subscription established again for the same entity
+  starts active and is watched.
+  {verified: AzureServiceBusTransportLivenessWiringTests.SessionSubscription_PausedPastTheSilenceThreshold_IsNotRecoveredAndTakesNoSessionsAsync, AzureServiceBusTransportLivenessWiringTests.NonSessionSubscription_PausedPastTheSilenceThreshold_IsNotRecoveredAsync, AzureServiceBusTransportLivenessWiringTests.Subscription_ResumedAfterALongPause_IsWatchedAgainFromAFreshWindowAsync, AzureServiceBusTransportLivenessWiringTests.Subscription_EstablishedAgainAfterAPausedOne_IsWatchedAsync}
 - A [namespace-throttle pause](#namespace-throttling) that ends while the subscription is paused
   leaves the processor stopped until the subscription is resumed.
   {verified: AzureServiceBusPausedSubscriptionTests.NamespaceThrottle_EndingWhileTheSubscriptionIsPaused_LeavesTheProcessorStoppedAsync}
