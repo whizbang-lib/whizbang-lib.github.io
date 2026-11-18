@@ -17,11 +17,11 @@ codeReferences:
   - src/Whizbang.Core/Dispatch/InvokeResult.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherInvokeWithReceiptTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherInvokeWithReceiptTests.cs
   - tests/Whizbang.Core.Tests/DeliveryReceiptTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherOutboxTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherSyncTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCascadeTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherCascadeTests.cs
 ---
 
 # Dispatch Patterns
@@ -806,7 +806,7 @@ var receipts = await _dispatcher.SendManyAsync(commands);
 | No | Yes | Outbox only (receipt: Accepted) |
 | No | No | Throws `InvalidOperationException` |
 
-**Source**: `src/Whizbang.Core/Dispatcher.cs` · **Tests**: `tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs`
+**Source**: `src/Whizbang.Core/Dispatcher.cs` · **Tests**: `tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherOutboxTests.cs`
 
 ### PublishManyAsync
 
@@ -843,7 +843,7 @@ var receipts = await _dispatcher.PublishManyAsync(events);
 // Events route to event topics (not command destinations)
 ```
 
-**Source**: `src/Whizbang.Core/Dispatcher.cs` · **Tests**: `tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs`
+**Source**: `src/Whizbang.Core/Dispatcher.cs` · **Tests**: `tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherOutboxTests.cs`
 
 ### LocalSendManyAsync {#localsendmanyasync}
 
@@ -887,7 +887,7 @@ var receipts = await _dispatcher.LocalSendManyAsync(commands);
 | `LocalInvokeAsync` | Yes | No | In-process RPC |
 | `LocalSendManyAsync` | Yes | No | Batch: local only |
 
-**Source**: `src/Whizbang.Core/Dispatcher.cs` · **Tests**: `tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs`
+**Source**: `src/Whizbang.Core/Dispatcher.cs` · **Tests**: `tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherOutboxTests.cs`
 
 ---
 
@@ -966,7 +966,7 @@ public async Task<ActionResult> CreateOrder(
 
 **Performance note**: `LocalInvokeWithReceiptAsync` always takes the tracing code path (creates an envelope) since the receipt requires dispatch metadata. If you do not need the receipt, prefer `LocalInvokeAsync` for lower overhead.
 
-**Source**: `src/Whizbang.Core/IDispatcher.cs` · **Tests**: `tests/Whizbang.Core.Tests/Dispatcher/DispatcherInvokeWithReceiptTests.cs`
+**Source**: `src/Whizbang.Core/IDispatcher.cs` · **Tests**: `tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherInvokeWithReceiptTests.cs`
 
 ---
 

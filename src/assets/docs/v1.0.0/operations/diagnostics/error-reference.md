@@ -31,16 +31,16 @@ codeReferences:
   - src/Whizbang.Core/Messaging/StreamIntegrityOptionsValidator.cs
   - src/Whizbang.Core/Workers/OperationalRetentionOptions.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/LifecycleStageFailureIsolationTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/LifecycleStageFailureIsolationTests.cs
   - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamSealingSqlTests.cs
-  - tests/Whizbang.Core.Tests/Archival/ArchiveLocationMismatchExceptionTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/ArchiveLocationMismatchExceptionTests.cs
   - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs
   - tests/Whizbang.Offloads.AzureBlob.Tests/AzureBlobMessageBodyStoreValidationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaBootstrapPhaseTests.cs
-  - tests/Whizbang.Core.Tests/Schema/SchemaBootstrapRetryTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/IntegrityCheckOptionsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OperationalRetentionOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Schema/SchemaBootstrapRetryTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/IntegrityCheckOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/OperationalRetentionOptionsTests.cs
 ---
 
 # Runtime Error Reference

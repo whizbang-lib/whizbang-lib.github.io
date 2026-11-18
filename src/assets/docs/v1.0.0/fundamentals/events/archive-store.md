@@ -68,9 +68,9 @@ codeReferences:
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamSealingSqlTests.cs
-  - tests/Whizbang.Core.Tests/Archival/ArchiveBatchTests.cs
-  - tests/Whizbang.Core.Tests/Archival/ArchiveLocatorTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/StreamPrefixTruncatorArchiveStoreTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/ArchiveBatchTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/ArchiveLocatorTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Lifecycle/StreamPrefixTruncatorArchiveStoreTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchiveStoreSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchiveStoreTests.cs
   - tests/Whizbang.Archive.AzureBlob.Tests/ArchiveChunkTests.cs
@@ -81,7 +81,7 @@ testReferences:
   - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs
   - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs
   - tests/Whizbang.Archive.AzureBlob.Tests/AzureBlobArchiveLocationTests.cs
-  - tests/Whizbang.Core.Tests/Archival/ArchiveLocationMismatchExceptionTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/ArchiveLocationMismatchExceptionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchiveLocationSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchiveAppendPolicySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchiveRulesSqlTests.cs
@@ -90,14 +90,14 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/ArchivedStreamEmitCostScenarioTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchiveAppendPolicyTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchiveReadThroughTests.cs
-  - tests/Whizbang.Core.Tests/Archival/ArchiveAwareEventStoreDecoratorTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/RewindDeletedArchiveTests.cs
-  - tests/Whizbang.Core.Tests/Archival/ArchiveReadThroughRegistrationTests.cs
-  - tests/Whizbang.Core.Tests/Archival/StreamArchivedRefusalTests.cs
-  - tests/Whizbang.Core.Tests/Archival/StreamLifecycleOptionsBinderTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerStreamTypePolicySyncTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindWriteCheckTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderArchivedDataTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/ArchiveAwareEventStoreDecoratorTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/RewindDeletedArchiveTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/ArchiveReadThroughRegistrationTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/StreamArchivedRefusalTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/StreamLifecycleOptionsBinderTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerStreamTypePolicySyncTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRewindWriteCheckTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRebuilderArchivedDataTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRebuildSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchivedStreamRebuildTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchiveRestoreRedriveTests.cs
@@ -110,11 +110,11 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamDispositionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRowsSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchivedStreamRowsTests.cs
-  - tests/Whizbang.Core.Tests/Archival/ArchivedStreamRowPoliciesTests.cs
-  - tests/Whizbang.Core.Tests/Archival/ArchivedStreamRowsOptionsBinderTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/ArchivedStreamRowPoliciesTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/ArchivedStreamRowsOptionsBinderTests.cs
   - tests/Whizbang.Core.Component.Tests/Archival/ArchivedStreamRowsConfiguratorTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerArchivedStreamRowsSyncTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/EvictedRowRebuildTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerArchivedStreamRowsSyncTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/EvictedRowRebuildTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorArchivedStreamRowsTests.cs
 ---
 

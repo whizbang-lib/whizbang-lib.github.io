@@ -43,39 +43,39 @@ codeReferences:
   - src/Whizbang.Core/Routing/TransportSubscriptionBuilder.cs
   - src/Whizbang.Core/Workers/TransportPublishStrategy.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOwnedDomainTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCoverageSweepRoutedCascadeTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherOwnedDomainTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherCoverageSweepRoutedCascadeTests.cs
   - tests/Whizbang.Core.Integration.Tests/SendReceptorShapeIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/LifecycleStageOwnedCommandSendIntegrationTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerOwnedEventDiscardTests.cs
-  - tests/Whizbang.Core.Tests/Routing/RoutingOptionsTests.cs
-  - tests/Whizbang.Core.Tests/Routing/RoutingBuilderExtensionsTests.cs
-  - tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Routing/OutboxRoutingStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Routing/EventSubscriptionDiscoveryTests.cs
-  - tests/Whizbang.Core.Tests/Routing/RuntimeEventSubscriptionTests.cs
-  - tests/Whizbang.Core.Tests/Routing/TransportSubscriptionBuilderTests.cs
-  - tests/Whizbang.Core.Tests/Routing/MessageKindDetectorTests.cs
-  - tests/Whizbang.Core.Tests/Routing/NamespaceInboxStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Routing/NamespaceOutboxStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Routing/CommandInboxNamingTests.cs
-  - tests/Whizbang.Core.Tests/Routing/DefaultNamespaceTopologyTests.cs
-  - tests/Whizbang.Core.Tests/Routing/SharedInboxRetirementTests.cs
-  - tests/Whizbang.Core.Tests/Routing/TopologyDriftStateTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/RoutingOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/RoutingBuilderExtensionsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/InboxRoutingStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/OutboxRoutingStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/EventSubscriptionDiscoveryTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/RuntimeEventSubscriptionTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/TransportSubscriptionBuilderTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/MessageKindDetectorTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/NamespaceInboxStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/NamespaceOutboxStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/CommandInboxNamingTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/DefaultNamespaceTopologyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/SharedInboxRetirementTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/TopologyDriftStateTests.cs
   - tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusInfrastructureProvisionerManifestTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQInfrastructureProvisionerManifestTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/CommandOwnershipAnalyzerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/ReceiveConsumerGateTests.cs
-  - tests/Whizbang.Core.Tests/Routing/MessageDiscardPolicyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/ReceiveConsumerGateTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/MessageDiscardPolicyTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerStoresBeforeSkippingTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ServiceBusConsumerWorkerDropGateTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AbsorbedEventReachesEventStoreTests.cs
-  - tests/Whizbang.Core.Tests/Routing/EventSubjectTests.cs
-  - tests/Whizbang.Core.Tests/Routing/ExcludedEventTypePlannerTests.cs
-  - tests/Whizbang.Core.Tests/Routing/RoutingOptionsExcludedEventTypesTests.cs
-  - tests/Whizbang.Core.Tests/Routing/TransportSubscriptionBuilderExcludedEventTypesTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TransportPublishStrategyCoverageTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/EventSubjectTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/ExcludedEventTypePlannerTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/RoutingOptionsExcludedEventTypesTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/TransportSubscriptionBuilderExcludedEventTypesTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/TransportPublishStrategyCoverageTests.cs
   - tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusExcludedEventTypesTests.cs
 lastMaintainedCommit: '62abd3a45'
 ---

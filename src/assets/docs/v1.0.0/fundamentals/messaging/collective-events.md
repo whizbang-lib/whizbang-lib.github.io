@@ -69,16 +69,16 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/279_CollectiveApplyProgress.sql
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.UnreadableRows.cs
-  - tests/Whizbang.Core.Tests/Messaging/CollectiveEventContractTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/EventFlagsWireFormTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/CollectiveEventContractTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EventFlagsWireFormTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StringEventFlagsStoreTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/CollectiveWhereComposerTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/CollectiveSpecContractTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/TenantCollectiveScopeResolverTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/CollectiveWhereComposerTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/CollectiveSpecContractTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/TenantCollectiveScopeResolverTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.LifecycleOnce.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerCollectiveLifecycleTests.cs
-  - tests/Whizbang.Core.Tests/Workers/ReceivedEventPostPerspectiveStagesTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxDispatchWorkerCollectiveLifecycleTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/ReceivedEventPostPerspectiveStagesTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveInMemoryUpsertElementTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveElementUpsertSqlTests.cs
@@ -90,8 +90,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectivePhysicalColumnIntegrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectivePhysicalColumnIntegrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/CollectivePhysicalColumnCompilerTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectivePhysicalFieldRegistryTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/CollectiveOrderingKeyTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectivePhysicalFieldRegistryTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/CollectiveOrderingKeyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CollectiveSinkQueueSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerCollectiveSinkQueueHeadTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectiveSinkQueueTests.cs
@@ -103,9 +103,9 @@ testReferences:
   - tests/Whizbang.Generators.Tests/CollectiveApplyShapeAnalyzerTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperArchivedCollectiveReplayTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/ArchivedCollectiveStreamsQueryPlanTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/CollectiveReplayRunnerTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/CollectiveReplayRunnerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveReplayApplierCoverageTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/CollectiveApplyEntryTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/CollectiveApplyEntryTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveApplyProgressEFCoreTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectiveApplyProgressTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveApplyProgressTests.cs

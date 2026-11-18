@@ -20,7 +20,7 @@ testReferences:
   - tests/Whizbang.Hosting.AspNet.Tests/DatabaseAvailabilityMiddlewareModeTests.cs
   - tests/Whizbang.Hosting.AspNet.Tests/WhizbangAvailabilityStartupFilterTests.cs
   - tests/Whizbang.Hosting.AspNet.Tests/AddWhizbangAspNetTurnkeyTests.cs
-  - tests/Whizbang.Core.Tests/Workers/SchemaInitializationOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/SchemaInitializationOptionsTests.cs
   - tests/Whizbang.Core.Tests/WhizbangHostingIntegrationTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04

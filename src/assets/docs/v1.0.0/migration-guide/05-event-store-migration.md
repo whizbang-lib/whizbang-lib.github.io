@@ -14,8 +14,8 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs
 testReferences:
   - src/Whizbang.Testing/Contracts/EventStoreContractTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/EventStoreAppendBatchTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/InMemoryEventStoreTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EventStoreAppendBatchTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPostgresEventStoreTests.cs
   - tests/Whizbang.Migrate.Tests/Transformers/EventStoreTransformerTests.cs
 lastMaintainedCommit: '01f07906'

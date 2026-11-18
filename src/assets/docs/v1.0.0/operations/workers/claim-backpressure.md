@@ -20,11 +20,11 @@ codeReferences:
   - src/Whizbang.Core/Workers/ClaimWorker.cs
   - src/Whizbang.Core/Messaging/IInboxChannelWriter.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/AdaptiveClaimWindowSampleSizeTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/AdaptiveClaimWindowSampleSizeTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerAcquisitionBoundsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/AdaptiveClaimWindowLatencyTests.cs
-  - tests/Whizbang.Core.Tests/Workers/AdaptiveOutstandingBudgetTests.cs
-  - tests/Whizbang.Core.Tests/Workers/AdaptiveOutstandingBudgetLeaseAwarenessTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/AdaptiveClaimWindowLatencyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/AdaptiveOutstandingBudgetTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/AdaptiveOutstandingBudgetLeaseAwarenessTests.cs
 ---
 
 ## The failure

@@ -20,9 +20,9 @@ codeReferences:
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
   - src/Whizbang.Core/Perspectives/PerspectiveSnapshotOptions.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/EventUpcasterPipelineTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/EventUpcasterRegistrationTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/UpcastingEventStoreDecoratorTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EventUpcasterPipelineTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EventUpcasterRegistrationTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/UpcastingEventStoreDecoratorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/RekeyThroughRebuildTests.cs
 ---
 
@@ -292,11 +292,11 @@ analogue of event upcasting.
 
 - Pipeline composition, ordering, passthrough, null-guarding, and type-change
   scoping (`HasTypeChanges` / `ExtraInputTypesFor` / `ExtraInputTypeNamesFor`):
-  `tests/Whizbang.Core.Tests/Messaging/EventUpcasterPipelineTests.cs`
+  `tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EventUpcasterPipelineTests.cs`
 - Registration & DI order (singleton, call-order = apply-order):
-  `tests/Whizbang.Core.Tests/Messaging/EventUpcasterRegistrationTests.cs`
+  `tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EventUpcasterRegistrationTests.cs`
 - Seam contract (pipeline applied on every polymorphic entrypoint; type-change
   read-widening + filter-back):
-  `tests/Whizbang.Core.Tests/Messaging/UpcastingEventStoreDecoratorTests.cs`
+  `tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/UpcastingEventStoreDecoratorTests.cs`
 - Re-key re-routes on rebuild (Testcontainers):
   `tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/RekeyThroughRebuildTests.cs`

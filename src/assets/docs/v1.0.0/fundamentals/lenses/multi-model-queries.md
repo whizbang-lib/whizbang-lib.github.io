@@ -16,7 +16,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/MultiModelScopedAccess.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreInfrastructureRegistration.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Lenses/ILensQueryMultiGenericTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/ILensQueryMultiGenericTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePostgresLensQueryMultiGenericTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePostgresLensQueryHighArityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MultiModelScopedAccessTests.cs

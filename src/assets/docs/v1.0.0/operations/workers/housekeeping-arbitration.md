@@ -32,21 +32,21 @@ codeReferences:
   - src/Whizbang.Core/Workers/HousekeepingDeferralStore.cs
   - src/Whizbang.Data.Postgres/Migrations/399_TheForcedPassCeilingSurvivesARestart.sql
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/HousekeepingCoordinatorTests.cs
-  - tests/Whizbang.Core.Tests/Workers/HousekeepingCooldownTests.cs
-  - tests/Whizbang.Core.Tests/Workers/HousekeepingDeferralCeilingTests.cs
-  - tests/Whizbang.Core.Tests/Workers/HousekeepingIntegrityAdmissionTests.cs
-  - tests/Whizbang.Core.Tests/Workers/IntegrityTimerWorkersOnTheMaintainerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/IntegrityDeliveryWorkerTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/HousekeepingCoordinatorTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/HousekeepingCooldownTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/HousekeepingDeferralCeilingTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/HousekeepingIntegrityAdmissionTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/IntegrityTimerWorkersOnTheMaintainerTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/IntegrityDeliveryWorkerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CountServiceBacklogSqlTests.cs
-  - tests/Whizbang.Core.Tests/Workers/HousekeepingIntegrityTrafficTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/SteadyIntegrityTrafficTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerHousekeepingLogTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/HousekeepingIntegrityTrafficTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/SteadyIntegrityTrafficTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerHousekeepingLogTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperFleetRecoveryTests.cs
-  - tests/Whizbang.Core.Tests/Workers/HousekeepingHigherRankDeferralTests.cs
-  - tests/Whizbang.Core.Tests/Workers/HousekeepingPersistedDeferralTests.cs
-  - tests/Whizbang.Core.Tests/Workers/HousekeepingDeferralStoreTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDeferralStoreTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/HousekeepingHigherRankDeferralTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/HousekeepingPersistedDeferralTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/HousekeepingDeferralStoreTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerDeferralStoreTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HousekeepingDeferralSqlTests.cs
 ---
 

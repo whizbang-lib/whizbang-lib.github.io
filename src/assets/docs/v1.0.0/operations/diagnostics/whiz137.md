@@ -19,7 +19,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/UnshippedDestructionAnalyzerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDispositionTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerDispositionTests.cs
 ---
 
 # WHIZ137: Destruction value has not shipped

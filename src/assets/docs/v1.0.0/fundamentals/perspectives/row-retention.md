@@ -36,10 +36,10 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperRowRetentionTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPerspectiveRegistryReconcileTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveSchemaGeneratorRegistryTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRegistryPayloadsTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/EvictedRowRebuildTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRowEvictionTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/ResurrectionProbeIsPerspectiveAwareTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRegistryPayloadsTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/EvictedRowRebuildTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRowEvictionTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/ResurrectionProbeIsPerspectiveAwareTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EnrolledRowReaperSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveRowCapSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamGroupCascadeSqlTests.cs

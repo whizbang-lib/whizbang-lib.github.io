@@ -25,7 +25,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Testing.Component.Tests/Lifecycle/LifecycleStageAwaiterTests.cs
   - tests/Whizbang.Testing.Tests/Lifecycle/PerspectiveCompletionWaiterTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ReceptorRegistryRuntimeRegistrationTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ReceptorRegistryRuntimeRegistrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

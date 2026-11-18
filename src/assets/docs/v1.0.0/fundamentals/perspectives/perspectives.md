@@ -35,7 +35,7 @@ codeReferences:
   - >-
     samples/ECommerce/ECommerce.BFF.API/Perspectives/InventoryLevelsPerspective.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveForTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/IPerspectiveForTests.cs
   - tests/Whizbang.Generators.Tests/PerspectivePurityAnalyzerTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveUnlistedApplyTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveApplyNearMissTests.cs
@@ -45,9 +45,9 @@ testReferences:
   - tests/Whizbang.Generators.Tests/PerspectiveRunnerInterfaceDispatchTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveWithActionsArityTests.cs
   - tests/Whizbang.Generators.Tests/GlobalPerspectiveArityTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/ExplicitApplyRunnerTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRowConflictRetryTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindWriteCheckTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/ExplicitApplyRunnerTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRowConflictRetryTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRewindWriteCheckTests.cs
   - >-
     tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveLateEventApplyTests.cs
   - >-

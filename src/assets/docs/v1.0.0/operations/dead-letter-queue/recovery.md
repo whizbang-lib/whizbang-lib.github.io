@@ -29,8 +29,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/279_CollectiveApplyProgress.sql
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/DeadLetterRecoveryWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/DefaultDeadLetterRecoveryPolicyTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/DeadLetterRecoveryPolicyTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/DefaultDeadLetterRecoveryPolicyTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/DeadLetterRecoveryPolicyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreDeadLetterRecoveryServiceTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DeadLetterRecoverySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RecoveredWorkReentrySqlTests.cs

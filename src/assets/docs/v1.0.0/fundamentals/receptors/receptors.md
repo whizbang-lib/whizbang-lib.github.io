@@ -24,7 +24,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
   - tests/Whizbang.Core.Tests/Receptors/VoidReceptorTests.cs
   - tests/Whizbang.Core.Tests/Receptors/SyncReceptorTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/SuppressedReceptorRouteTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/SuppressedReceptorRouteTests.cs
   - tests/Whizbang.Generators.Tests/ReceptorRegistrationSuppressionTests.cs
   - tests/Whizbang.Core.Integration.Tests/DispatcherReceptorIntegrationTests.cs
 lastMaintainedCommit: '01f07906'

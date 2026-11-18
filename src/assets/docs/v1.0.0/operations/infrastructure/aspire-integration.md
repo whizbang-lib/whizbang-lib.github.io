@@ -22,7 +22,7 @@ testReferences:
     tests/Whizbang.Hosting.Azure.ServiceBus.Tests/ServiceBusSubscriptionExtensionsTests.cs
   - tests/Whizbang.Hosting.Azure.ServiceBus.Tests/ServiceBusReadinessCheckTests.cs
   - >-
-    tests/Whizbang.Core.Tests/Transports/AzureServiceBus/AspireConfigurationGeneratorTests.cs
+    tests/Whizbang.Core.Unit.Messaging.Tests/Transports/AzureServiceBus/AspireConfigurationGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

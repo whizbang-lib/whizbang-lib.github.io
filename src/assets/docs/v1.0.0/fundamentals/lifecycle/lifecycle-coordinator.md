@@ -25,16 +25,16 @@ codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Lifecycle/LifecycleCoordinatorTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/LifecycleCoordinatorSituationTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/PostLifecyclePipelineTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Lifecycle/LifecycleCoordinatorSituationTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Lifecycle/PostLifecyclePipelineTests.cs
   - tests/Whizbang.Core.Component.Tests/Lifecycle/DebugAwareStopwatchTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerPostLifecycleTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerPostLifecycleTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/LifecycleTrackingEndsTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/LifecycleCoordinatorDetachedRetentionTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PerspectiveWorkerPostLifecycleTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/TransportConsumerWorkerPostLifecycleTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Lifecycle/LifecycleTrackingEndsTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Lifecycle/LifecycleCoordinatorDetachedRetentionTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDrainModeLifecycleTests.TrackingEnds.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerStartupAndMaintenanceTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/LifecycleTrackingPathTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Lifecycle/LifecycleTrackingPathTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDrainModeLifecycleTests.LocalDispatchOverlap.cs
 lastMaintainedCommit: '01f07906'
 ---

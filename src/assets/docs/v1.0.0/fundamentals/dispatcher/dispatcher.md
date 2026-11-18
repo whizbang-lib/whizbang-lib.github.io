@@ -20,14 +20,14 @@ codeReferences:
   - src/Whizbang.Core/Dispatch/InvokeResult.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherInvokeWithReceiptTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherSyncModeContractTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherOutboxTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherInvokeWithReceiptTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherSyncModeContractTests.cs
   - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherLocalInvokeAndSyncTimingTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCascadeTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherCascadeTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherRoutedCascadeTests.cs
-  - tests/Whizbang.Core.Tests/Dispatch/DispatchOptionsTests.cs
-  - tests/Whizbang.Core.Tests/Dispatch/DispatchModeTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatch/DispatchOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatch/DispatchModeTests.cs
   - tests/Whizbang.Core.Tests/DeliveryReceiptTests.cs
 lastMaintainedCommit: '01f07906'
 ---
@@ -499,7 +499,7 @@ public async Task<ActionResult<OrderResult>> CreateOrder(
 }
 ```
 
-**Source**: `src/Whizbang.Core/Dispatch/DispatchOptions.cs` · **Tests**: `tests/Whizbang.Core.Tests/Dispatch/DispatchOptionsTests.cs`
+**Source**: `src/Whizbang.Core/Dispatch/DispatchOptions.cs` · **Tests**: `tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatch/DispatchOptionsTests.cs`
 
 ---
 

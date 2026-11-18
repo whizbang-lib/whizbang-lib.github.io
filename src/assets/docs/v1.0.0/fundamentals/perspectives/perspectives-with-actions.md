@@ -26,17 +26,17 @@ codeReferences:
   - src/Whizbang.Generators/Analyzers/PerspectiveContractAnalyzer.cs
   - src/Whizbang.Data.Postgres/Migrations/264_DrainSaysWhichEventIsFirstInItsStream.sql
 testReferences:
-  - tests/Whizbang.Core.Tests/Perspectives/ReplayEventOrderTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveWithActionsForTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/ApplyResultTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/ModelActionTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PurgeStaysPurgedTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/ReplayEventOrderTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/IPerspectiveWithActionsForTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/ApplyResultTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/ModelActionTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PurgeStaysPurgedTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectivePurgeMarkerStoreTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/DeclinedStreamLeavesNoRowTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRowWriteGuardTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/DeclinedStreamLeavesNoRowTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRowWriteGuardTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveRunnerTemplateInvariantTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/ApplyContextTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/FirstEventInStreamTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/ApplyContextTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/FirstEventInStreamTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/FirstEventInStreamReadTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveCurrentModelAnalyzerTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveWithActionsArityTests.cs

@@ -19,8 +19,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/ClaimedEmissionPruneStep.cs
   - src/Whizbang.Core/Dispatch/RetainedClaimKeyPrefix.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/ClaimedEmissionPruneStepTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherPublishOnceTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/ClaimedEmissionPruneStepTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherPublishOnceTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Dispatch/ClaimedEmissionStoreTests.cs
   - tests/Whizbang.Sagas.Tests/BaseSagaServiceTests.cs
   - tests/Whizbang.Sagas.Tests/DispatcherSagaEventEmitterTests.cs

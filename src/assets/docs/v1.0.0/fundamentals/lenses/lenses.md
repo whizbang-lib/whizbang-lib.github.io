@@ -21,7 +21,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ScopedLensQueryIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreFilterableLensQueryScopedAccessTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePostgresLensQueryMultiGenericTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/FactoryOwnedLensQueryTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/FactoryOwnedLensQueryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

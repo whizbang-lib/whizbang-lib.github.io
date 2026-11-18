@@ -30,7 +30,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ActiveStreamLeaseExpirySqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerGateCadenceTests.cs
-  - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerAdaptiveCadenceTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/HeartbeatWorkerAdaptiveCadenceTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/LeaseRenewalWorkerCapTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkSqlTests.cs

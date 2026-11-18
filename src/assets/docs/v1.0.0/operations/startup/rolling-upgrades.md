@@ -46,10 +46,10 @@ codeReferences:
   - src/Whizbang.Data.Postgres/StoredFormApplier.cs
   - src/Whizbang.Data.Postgres/MigrationReversal.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Startup/AssessStartupStepTests.cs
-  - tests/Whizbang.Core.Tests/Startup/StartupAssessmentSourceTests.cs
-  - tests/Whizbang.Core.Tests/Startup/StartupStandDownTests.cs
-  - tests/Whizbang.Core.Tests/Schema/StartupVerdictBindingTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/AssessStartupStepTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/StartupAssessmentSourceTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/StartupStandDownTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Schema/StartupVerdictBindingTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/AssessBindingSourceGuardTests.cs
   - tests/Whizbang.Core.Component.Tests/Schema/SchemaInitializationRunnersTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
@@ -60,7 +60,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupAssessorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StandbyHandshakeE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StandbyHandshakeSqlTests.cs
-  - tests/Whizbang.Core.Tests/Startup/StandbyHandshakeCoverageTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/StandbyHandshakeCoverageTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/StandbyWatcherTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockLivenessSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/StartupWiringAuditTests.cs

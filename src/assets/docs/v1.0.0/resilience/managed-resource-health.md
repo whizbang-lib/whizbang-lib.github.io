@@ -29,18 +29,18 @@ codeReferences:
   - src/Whizbang.Core/Health/RoleAssignmentHealthSource.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Health/HealthProbeMustAlwaysAnswerTests.cs
-  - tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs
-  - tests/Whizbang.Core.Tests/Health/SchemaHealthSourceTests.cs
-  - tests/Whizbang.Core.Tests/Health/WorkerHealthSourceTests.cs
-  - tests/Whizbang.Core.Tests/Health/StoredFormHealthSourceTests.cs
-  - tests/Whizbang.Core.Tests/Health/ConnectivityHealthSourceTests.cs
-  - tests/Whizbang.Core.Tests/Health/TransportHealthWiringTests.cs
-  - tests/Whizbang.Core.Tests/Health/OffloadHealthWiringTests.cs
-  - tests/Whizbang.Core.Tests/Health/WhizbangHealthDiTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Health/WhizbangHealthAggregatorTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Health/SchemaHealthSourceTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Health/WorkerHealthSourceTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Health/StoredFormHealthSourceTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Health/ConnectivityHealthSourceTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Health/TransportHealthWiringTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Health/OffloadHealthWiringTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Health/WhizbangHealthDiTests.cs
   - tests/Whizbang.Hosting.AspNet.Tests/WhizbangManagedHealthCheckTests.cs
   - tests/Whizbang.Hosting.AspNet.Tests/AddWhizbangAspNetTurnkeyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHealthSourceIntegrationTests.cs
-  - tests/Whizbang.Core.Tests/Health/RoleAssignmentHealthSourceTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Health/RoleAssignmentHealthSourceTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupHealthWhileMigratingTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04

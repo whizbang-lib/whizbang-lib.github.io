@@ -22,7 +22,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MoveToDeadLettersSqlTests.cs
-  - tests/Whizbang.Core.Tests/Workers/V502DefaultsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/V502DefaultsTests.cs
 ---
 
 # Perspective-event Dead-lettering

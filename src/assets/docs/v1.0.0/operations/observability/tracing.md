@@ -25,7 +25,7 @@ testReferences:
   - tests/Whizbang.Observability.Tests/TracerPatternMatchingTests.cs
   - tests/Whizbang.Core.Tests/Tracing/TracingOptionsTests.cs
   - tests/Whizbang.Observability.Tests/WhizbangActivitySourceTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerBranchCoverageTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ReceptorInvokerBranchCoverageTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

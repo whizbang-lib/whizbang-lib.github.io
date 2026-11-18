@@ -29,9 +29,9 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowInboxFlushFailureTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatcherAmbientContextTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxFlushFailureRecorderTests.cs
-  - tests/Whizbang.Core.Tests/Workers/BatchStrategyFlushCallbackWiringTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/DefaultDeadLetterRecoveryPolicyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxFlushFailureRecorderTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/BatchStrategyFlushCallbackWiringTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/DefaultDeadLetterRecoveryPolicyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InboxFlushDeadLetterTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperInboxDeadLetterTests.cs
 ---

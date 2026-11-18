@@ -17,9 +17,9 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/EFCoreFilterableEventStoreQuery.cs
   - src/Whizbang.Core/Lenses/IScopedLensFactory.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/IEventStoreQueryTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/IScopedEventStoreQueryTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/IFilterableEventStoreQueryTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/IEventStoreQueryTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/IScopedEventStoreQueryTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/IFilterableEventStoreQueryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

@@ -13,9 +13,9 @@ codeReferences:
   - src/Whizbang.Core/Messaging/InMemoryEventStore.cs
   - src/Whizbang.Core/Messaging/EventStoreRecord.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/InMemoryEventStoreTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/EventStoreOrderingInvariantTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/EventStoreAppendBatchTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EventStoreAppendBatchTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

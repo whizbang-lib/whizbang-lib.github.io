@@ -41,31 +41,31 @@ codeReferences:
   - src/Whizbang.Core/Workers/IntegrityAuditWorker.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/RebuildCreatedAtIntegrationTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveSnapshotFloorTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderUnchangedReasonTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRowUnchangedTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveSnapshotFloorTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRebuilderTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRebuilderUnchangedReasonTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRowUnchangedTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/RebuildAlreadyCorrectRowTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/RebuildProvenanceTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/RebuildProvenanceTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRowDigestIntegrationTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderBlueGreenTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRebuilderBlueGreenTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/BlueGreenRebuildIntegrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/PostgresPerspectiveTableSwapperTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRebuilderIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Commands/System/SystemCommandsTests.cs
   - tests/Whizbang.Core.Tests/Commands/System/RebuildPerspectiveCommandSplitTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/ArchiveReadThroughIntegrationTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderArchivedDataTests.cs
-  - tests/Whizbang.Core.Tests/Archival/ArchiveAwareEventStoreDecoratorTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRebuilderArchivedDataTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/ArchiveAwareEventStoreDecoratorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRebuildSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchivedStreamRebuildTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RebuildPerspectiveCommandReceptorCoverageTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperRebuildCommandTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveReplayOrderingTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindWriteCheckTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRewindWriteCheckTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CollectiveReplayRebuildIntegrationTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/RewindDeletedArchiveTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/RewindDeletedArchiveTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRebuilderIntegrationTests.AuditRepair.cs
   - tests/Whizbang.Core.Component.Tests/Workers/IntegrityAuditWorkerTests.cs
 lastMaintainedCommit: '01f07906'
@@ -301,8 +301,8 @@ archive registered rebuilds every stream from its start, as before.
 | The choice travels on the request (`RebuildOrigin.ArchivedData`, `RebuildPerspectiveCommand.ArchivedData`) and is held ambient while the rebuild replays (`RebuildArchivedDataAccessor.Current`). | `RebuildOrigin` already goes everywhere a rebuild does: the rebuilder overloads, a run recorded for the streams' owners, the background queue and the rebuild events. Holding it ambient lets the readers the rebuild calls (the archive seam, the collective replay) honor it with no new parameter on every read. It applies only while the processing mode is `Rebuild`, and the previous value is put back afterwards. | {verified: RebuildPerspectiveCommandReceptorCoverageTests.HandleAsync_CarriesTheCommandsArchivedDataChoice_OnTheOriginAsync, PerspectiveRebuilderArchivedDataTests.Rebuild_HoldsItsArchivedDataChoice_AmbientForItsReaders_AndRestoresItAfterwardsAsync} |
 | Both Postgres drivers register the ledger lookup (`IArchivedStreamExtents`). | The rebuild decides per stream from one lookup per phase, the same way on either driver. | {verified: ArchivedStreamRebuildSqlTests.TheDriver_RegistersTheArchivedStreamExtents_OnItsArchiveConnectionAsync, DapperArchivedStreamRebuildTests.AddWhizbangPostgres_RegistersTheArchivedStreamExtents_ThatNameTheStreamsArchivedWholeAndThroughAPrefixAsync} |
 
-The tests live in `tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderArchivedDataTests.cs`,
-`tests/Whizbang.Core.Tests/Archival/ArchiveAwareEventStoreDecoratorTests.cs`,
+The tests live in `tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRebuilderArchivedDataTests.cs`,
+`tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/ArchiveAwareEventStoreDecoratorTests.cs`,
 `tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/ArchiveReadThroughIntegrationTests.cs`,
 `tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRebuildSqlTests.cs`,
 `tests/Whizbang.Data.EFCore.Postgres.Tests/RebuildPerspectiveCommandReceptorCoverageTests.cs` and

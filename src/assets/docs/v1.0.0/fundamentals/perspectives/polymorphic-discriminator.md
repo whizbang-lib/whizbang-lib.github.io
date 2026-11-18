@@ -10,7 +10,7 @@ codeReferences:
   - >-
     src/Whizbang.Data.EFCore.Postgres.Generators/EFCorePerspectiveConfigurationGenerator.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Perspectives/PolymorphicDiscriminatorAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PolymorphicDiscriminatorAttributeTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

@@ -16,7 +16,7 @@ codeReferences:
   - src/Whizbang.Core/ServiceCollectionExtensions.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Configuration/WhizbangCoreOptionsTests.cs
-  - tests/Whizbang.Core.Tests/Tags/TagOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Tags/TagOptionsTests.cs
   - tests/Whizbang.Core.Tests/ServiceCollectionExtensionsTests.cs
 lastMaintainedCommit: '01f07906'
 ---

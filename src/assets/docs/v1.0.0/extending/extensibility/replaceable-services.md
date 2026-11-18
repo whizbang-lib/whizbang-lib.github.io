@@ -42,15 +42,15 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Documentation/InjectedExtensibilityPointsAreDocumentedTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/OptionalInjectedParameterAnalyzerTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/EventTypeProviderContributionTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EventTypeProviderContributionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/MultiAssemblyEventTypeProviderTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRunnerRegistryContributionTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRunnerRegistryContributionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/MultiAssemblyPerspectiveRunnerRegistryTests.cs
   - tests/Whizbang.Core.Tests/RegistrationCollisionsTests.cs
   - tests/Whizbang.Core.Component.Tests/RegistrationCollisionStartupValidatorTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ReceptorRegistryContributionTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Messaging/ReceptorRegistryContributionTests.cs
   - tests/Whizbang.Core.Tests/PinnedIdRegistryContributionTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveInvokerContributionTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveInvokerContributionTests.cs
   - tests/Whizbang.Core.Tests/ServiceRegistrationCallbacksAccumulateTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ModelRegistrationRegistryTests.cs
   - tests/Whizbang.Generators.Tests/PerAssemblyRegistrationGuardTests.cs
