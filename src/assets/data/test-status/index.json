@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "44365439457",
-    "sha": "342c941494de719e5d9bc65acebe9146dd26d38f",
+    "runId": "44380572809",
+    "sha": "39cefef5650839e4574728d4bacebb8119492b9a",
     "branch": "develop",
-    "libraryVersion": "0.2627.0-alpha.1740",
-    "completedAt": "2026-11-18T18:14:31.409Z"
+    "libraryVersion": "0.2627.0-alpha.1742",
+    "completedAt": "2026-11-18T19:37:33.230Z"
   },
   "total": {
-    "passed": 43006,
+    "passed": 43016,
     "failed": 0,
     "skipped": 12
   },
@@ -48,7 +48,7 @@
       "skipped": 0
     },
     "servicebus-ecommerce": {
-      "passed": 83,
+      "passed": 93,
       "failed": 0,
       "skipped": 0
     },
@@ -66,7 +66,7 @@
   "assemblies": {
     "ECommerce.AzureServiceBus.Integration.Tests": {
       "file": "ECommerce.AzureServiceBus.Integration.Tests.json",
-      "passed": 83,
+      "passed": 93,
       "failed": 0,
       "skipped": 0
     },
