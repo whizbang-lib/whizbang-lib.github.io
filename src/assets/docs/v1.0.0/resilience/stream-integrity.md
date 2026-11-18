@@ -7,6 +7,18 @@ order: 4
 description: Cross-service anti-entropy — continuity checkpoints, digest audits, and idempotent re-delivery repair; report-only by default, self-healing as the opt-in
 tags: 'stream-integrity, anti-entropy, re-delivery, backfill, digest, manifest, continuity, checkpoint, repair, cross-service, bootstrap'
 codeReferences:
+  - src/Whizbang.Rules/TypeRules.cs
+  - src/Whizbang.Rules/RuleSet.cs
+  - src/Whizbang.Rules/RuleSemantics.cs
+  - src/Whizbang.Rules/EligibilitySql.cs
+  - src/Whizbang.Rules/rule-semantics.golden.txt
+  - src/Whizbang.Rules/rules-version.txt
+  - src/Whizbang.Core/Messaging/RuleFingerprint.cs
+  - src/Whizbang.Core/Messaging/RuleFingerprintSource.cs
+  - src/Whizbang.Core/Messaging/IntegrityPairGuard.cs
+  - src/Whizbang.Core/Messaging/IntegrityPairGuardOptions.cs
+  - src/Whizbang.Data.Postgres/Migrations/460_CutsCarryTheirDigest.sql
+  - src/Whizbang.Data.Postgres/Migrations/461_SupersedingTypesCountTheKey.sql
   - src/Whizbang.Data.Postgres/Migrations/459_UnchangedOriginsAreNotAsked.sql
   - src/Whizbang.Data.Postgres/Migrations/458_FullHistoryCompareRunsInSlices.sql
   - src/Whizbang.Core/Messaging/IntegrityCheckOptions.cs
@@ -146,6 +158,18 @@ testReferences:
   - tests/Whizbang.Documentation.Component.Tests/IntegrityDashboardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TwoServiceHistoryMovedReasonTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CutsAwaitingSealSqlTests.cs
+  - tests/Whizbang.Core.Tests/Rules/TypeRulesTests.cs
+  - tests/Whizbang.Core.Tests/Rules/RuleSetTests.cs
+  - tests/Whizbang.Core.Tests/Rules/RuleSemanticsGoldenTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/CatalogRuleFingerprintSourceTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RuleFingerprintWireTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/IntegrityPairGuardTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/TwoServicePairGuardTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/TwoServiceCutUnderPairGuardTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/EligibilitySqlVersionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CleanupIntegrityMatrixTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CutsCarryTheirDigestSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CutsCarryTheirDigestCoordinatorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAskMemoSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TwoServiceAskSkipTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.AskSkip.cs
@@ -1341,6 +1365,134 @@ Why each choice:
   to change rather than counting them (the rows still to flag at most once, the events still Sourced) is allowed
   when the line above it says so (`-- not the digest rule: ...`).
 
+### Rule fingerprint {#rule-fingerprint}
+
+{verified: TypeRulesTests.Hash_ChangesWithEveryRuleFieldAsync, TypeRulesTests.Canonical_NamesEveryFieldInAFixedOrderAsync, RuleSetTests.Fingerprint_IgnoresBuildOrder_AndChangesWithAnyPartAsync, CatalogRuleFingerprintSourceTests.RulesOf_ReadsEveryDeclaredRule_AndTheConfiguredEndOfLifeActionAsync, CatalogRuleFingerprintSourceTests.For_CoversTheNamedTypesItKnows_InAnyForm_AndLeavesOutTheRestAsync, RuleFingerprintWireTests.EveryCarrier_RoundTripsItsFingerprintAsync, EligibilitySqlVersionTests.TheEligibilityConstants_MatchTheGoldenHashOfTheirVersionAsync}
+
+One eligibility rule makes every path of one service count alike. Two services must also count alike: a digest the
+origin folds one way and the consumer another can never match, and the comparison then reads a difference in rules as
+a lost or surplus event. Every integrity message therefore carries its sender's rules, as a **rule fingerprint**:
+
+| Part | What it is | Changes when |
+| --- | --- | --- |
+| Rule-semantics version | `RuleSemantics.VERSION` | What a digest counts or how changes in code (a cut that carries its removed part, a superseding key counted once) |
+| Eligibility SQL version | `RuleSemantics.ELIGIBILITY_SQL_VERSION` | The text of `__DIGEST_ELIGIBLE__`, `__INTEGRITY_COUNTED__` or `__DIGEST_EXEMPT_TYPES__` changes |
+| Per-type rule hash | 16 hex digits of the SHA-256 of the type's declared rules | A shared type's rules change in its contracts or its configuration |
+
+A type's rules are the fields that decide whether an event of it should exist: its ephemeral mode (destruction and
+storage), whether it is superseding, with its group and key property, whether it is terminal, the end-of-life action of
+the streams it opens, and whether it is exempt from digests. They come from the generated message-type catalog and the
+stream lifecycle settings, never from reflection.
+
+| Carrier | Covers the types |
+| --- | --- |
+| `RequestIntegrityManifest` | The consumer asks about (what it consumes) |
+| `IntegrityManifest` | The origin answers for |
+| `IntegrityCheckpoint` | The window counted |
+| `RequestRedeliveryCommand` | The request names |
+
+Why each choice:
+
+- **Rules, never timing.** When a service physically deletes an event (its idle gate, end-of-life triggers, rewind grace,
+  time to live) is local and may differ between services; whether the event is counted at all may not. So only the
+  end-of-life *action* is a rule, never its triggers, and a consumer that keeps less than the origin halts nothing.
+  `TypeRulesTests.Hash_ChangesWithEveryRuleFieldAsync` fails if a rule field stops counting.
+- **Versions held by a golden hash.** The SQL rule is text in the migrations' constants. `EligibilitySqlVersionTests`
+  holds that text to a hash recorded beside its version, so the SQL cannot change while the version stays the same.
+- **A hash per type, not one hash.** The receiver compares type by type, so it can name the types that differ instead
+  of only saying that something does.
+
+### The rules library and its version track {#the-rules-library}
+
+{verified: RuleSemanticsGoldenTests.TheRulesSemantics_MatchTheGoldenLineOfTheCurrentRulesVersionAsync, EligibilitySqlVersionTests.TheMigrationConstants_AreTheRulesLibrarysSourceAsync, EligibilitySqlVersionTests.TheEligibilityConstants_MatchTheGoldenHashOfTheirVersionAsync}
+
+The rule model (`TypeRules`, `RuleSet`, the pair comparison), the two versions and the source of the SQL rule
+(`EligibilitySql`) live in their own library, `Whizbang.Rules`, which `Whizbang.Core` references. It holds no
+service code, so what decides whether two services count alike is in one small place.
+
+The library has its own version, in `src/Whizbang.Rules/rules-version.txt`, changed only when what the rules mean
+changes. `rule-semantics.golden.txt` records one line per rules version: the version and the hash of what the rules
+mean (both versions, the SQL rule's text, and the canonical form and hashes of a reference type and rule set).
+
+| A change to | Fails | Until |
+| --- | --- | --- |
+| A rule field, the hash, the fingerprint or a version | `RuleSemanticsGoldenTests` | A golden line with a new version and the new hash is appended, and `rules-version.txt` names it |
+| The SQL rule in `EligibilitySql` | `EligibilitySqlVersionTests` | `ELIGIBILITY_SQL_VERSION` is bumped with its hash recorded |
+| The constants in `Migrations/constants.txt` alone | `EligibilitySqlVersionTests` | They match `EligibilitySql` again |
+
+The rule-semantics versions so far:
+
+| `RuleSemantics.VERSION` | Rules version | What a digest means |
+| --- | --- | --- |
+| 1 | 1.0.0 | A cut subtracted what it removed, and every copy of a superseding type counted |
+| 2 | 2.0.0 | A cut [carries the digest](#cuts-carry-their-digest) of what it removes, and a superseding type counts its key once |
+
+Version 2 ships with the cuts that carry their digest and the superseding key slot, in the same release as the pair
+guard, so a service on version 1 and a service on version 2 halt their pair instead of reading a cut as a loss
+(`TwoServiceCutUnderPairGuardTests`).
+
+Why each choice:
+
+- **The migrations still read `constants.txt`.** Every substitution path (the runtime provider, the generated DbContext,
+  the migration lint) reads that file, so the library is the source and a test holds the file to it, instead of
+  teaching each path a second source.
+- **A golden line per version, never edited.** A version can then never be reused for another meaning, and a meaning
+  cannot change without a new version: both are checked.
+- **The package still ships at the release's version.** Publishing it on its own track needs the release pipeline
+  to learn a second version (the package set check, the bill of materials, the nuget.org floor check and a `rules-v`
+  tag); until then the version track is the file and its guard.
+
+### The pair guard {#the-pair-guard}
+
+{verified: RuleSetTests.CompareWith_ADifferenceOnlyInATypeNotShared_AgreesAsync, RuleSetTests.CompareWith_NoPeerRules_IsHaltedForNoFingerprintAsync, IntegrityPairGuardTests.Admit_ADifferentSharedType_HaltsWithOneErrorNamingBothSidesAndTheTypeAsync, IntegrityPairGuardTests.Admit_StillHaltedPastTheThreshold_AlertsOnce_ThenResumesOnItsOwnAsync, IntegrityPairGuardTests.Gauges_ReportEachPairsState_HaltedAge_AndTheServiceFingerprintAsync, TwoServicePairGuardTests.TheSameRules_ThePairProceeds_AndTheLossIsRepairedAsync, TwoServicePairGuardTests.ASharedTypesRulesDiffer_ThePairIsHaltedOnBothSides_WithTheReason_AndResumesOnceTheyMatchAsync, TwoServicePairGuardTests.AConsumerWithNoFingerprint_IsNotAnswered_AndThePairIsHaltedAsync, TwoServicePairGuardTests.AnOriginWithNoFingerprint_IsNotCompared_AndThePairIsHaltedAsync, TwoServicePairGuardTests.RulesDifferOnlyForATypeThePairDoesNotShare_ThePairProceedsAsync}
+
+Integrity runs for a service pair only while both apply the same rules to the event types they share. Every receptor
+asks the guard before it acts:
+
+```mermaid {caption="The pair guard: an integrity message is acted on only while both services apply the same rules to the types they share" tests=["TwoServicePairGuardTests.ASharedTypesRulesDiffer_ThePairIsHaltedOnBothSides_WithTheReason_AndResumesOnceTheyMatchAsync","TwoServicePairGuardTests.TheSameRules_ThePairProceeds_AndTheLossIsRepairedAsync"]}
+flowchart LR
+  M[Integrity message<br/>with the sender's rules] --> G{Same rules over<br/>the shared types?}
+  G -- yes --> A[Compare, repair,<br/>redeliver as usual]
+  G -- "no, or no rules sent" --> H[Halt the pair:<br/>error, metric, nothing done]
+  H -. next message with matching rules .-> A
+```
+
+| Receiver | On a halt |
+| --- | --- |
+| Origin, a manifest request | Answers with its own rules and no digests (`PairHalted`), so the consumer names the same types; a request with no rules is not answered |
+| Consumer, a manifest | Compares nothing, records no seal and no match |
+| Consumer, a checkpoint | Keeps the origin known (address, ownership, liveness) and verifies nothing |
+| Origin, a redelivery request the comparison made | Refuses it (`redelivery_requests_ignored{reason=pair_halted}`) |
+
+A halt is logged once at Error, naming the peer, this service's side, the reason (`no_fingerprint`,
+`semantics_version`, `eligibility_sql_version` or `type_rules`), both sides' versions and fingerprints, and the types
+whose rules differ. It is logged again only when the reason or the types change. A pair still halted after
+`Whizbang:StreamIntegrity:PairGuard:HaltedAlertAfter` (default 2 hours) is logged once at Critical. The first message
+whose rules match resumes the pair, with an information line; nothing has to be reset.
+
+| Instrument (meter `Whizbang.StreamIntegrity`) | Kind | Attributes |
+| --- | --- | --- |
+| `whizbang.stream_integrity.pair_state` | Gauge, 1 per pair | `peer`, `side`, `state` (`agreed` or `halted`) |
+| `whizbang.stream_integrity.pair_halted_seconds` | Gauge | `peer`, `side` |
+| `whizbang.stream_integrity.pair_halts` | Counter | `reason`, `side` |
+| `whizbang.stream_integrity.pair_halt_alerts` | Counter | `side` |
+| `whizbang.stream_integrity.rule_fingerprint_info` | Info gauge | `fingerprint` (this service's, over every type it knows) |
+
+Why each choice:
+
+- **Only shared types count** (owner decision Q3). The guard compares only types both fingerprints name, so a rule
+  change on a type the pair does not exchange halts nothing. `RulesDifferOnlyForATypeThePairDoesNotShare_ThePairProceedsAsync`
+  fails if a non-shared type ever halts a pair.
+- **No fingerprint is a mismatch.** A service on a release that predates the fingerprint may fold digests another way.
+  Comparing it during a rolling deploy would repair losses that are not real, so the pair is halted until both sides
+  run the new release. `AnOriginWithNoFingerprint_IsNotCompared_AndThePairIsHaltedAsync` and
+  `AConsumerWithNoFingerprint_IsNotAnswered_AndThePairIsHaltedAsync` fail if a legacy peer is ever compared.
+- **The alert waits** (owner decision Q5). A rollout halts its mixed pairs for minutes, which is expected; only a pair
+  halted past the threshold is a rollout that did not finish or two services built from different rules.
+- **Operator requests and subscription backfills are not guarded.** They deliver the events asked for and are not
+  judged by a digest, so different rules cannot make them wrong.
+- **A metric per pair, not per stream or tenant.** The attributes are bounded by the services in the deployment.
+
 ### How at-most-once events are excluded {#at-most-once-exclusion}
 
 The delivery guarantee of a schedule occurrence lives on the outbox row's metadata, and the outbox
@@ -1486,6 +1638,106 @@ Why the plan is fixed by the statement's shape rather than by planner settings: 
 function would also turn off the keyed lookups the update and the insert rely on, replacing them with scans of the
 whole digest table. Better estimates are not available either: the filters are bit tests and a type-name list, which
 PostgreSQL has no statistics for.
+
+## Cleanup and integrity {#cleanup-and-integrity}
+
+{verified: CleanupIntegrityMatrixTests.CleanupAndIntegrity_Converge_AndAGenuineLossBesideTheCleanupIsStillRepairedAsync}
+
+Cleanup removes history; integrity compares digests across services. A deliberate removal on one side must never read as
+damage on the other, or integrity sends the removed history back and cleanup removes it again, forever. The rule that
+keeps the two apart: **the digest follows what should exist, never when it was deleted.** Physical deletion is timing,
+local to each service, and it never changes a digest, a seal or the origin generation.
+
+Cleanup comes in two shapes, and each has one way of staying invisible:
+
+| Shape | Paths | How it stays invisible |
+|---|---|---|
+| Rule-shaped | the ephemeral body reap and pointer prune, at-most-once occurrences, audit records, superseded copies | the rule decides what counts, the same on every service, so a path removes only what was never counted, or, for a superseding type, a copy whose key is still counted ([superseding events](../fundamentals/events/superseding-events#the-digest-counts-the-key)) |
+| Cut-shaped | a prefix truncate, close the books, an archive, a purge, an end-of-life cut | the cut [carries the digest](#cuts-carry-their-digest) of what it removes |
+
+The [cleanup-and-integrity matrix](#cleanup-integrity-matrix) runs every cleanup path against every integrity mechanism
+over two real stores and holds each combination to it.
+
+### Cuts carry their digest {#cuts-carry-their-digest}
+
+{verified: CutsCarryTheirDigestSqlTests.Truncate_CarriesWhatItRemoves_TheDigestStaysAndNothingIsRefoldedOrBumpedAsync, CutsCarryTheirDigestSqlTests.TypeAnswer_IsTheSameBeforeAndAfterACut_SealedOrOpenAsync, CutsCarryTheirDigestSqlTests.EpochRecheck_AfterACut_FindsNoDrift_AndStillFindsADamagedSealAsync}
+
+A cut moves the digest contribution of what it removes instead of subtracting it:
+
+- the stream's bucket keeps its digest, which is the **comparable digest**: the live events plus the carried part. The
+  removed part is recorded beside it (`carried_lo`, `carried_hi`, `carried_count`, `carried_id_lo`, `carried_id_hi`,
+  `carried_at`);
+- the epoch each removed event sat in records it in `wh_digest_epoch_removed`, so an epoch's fold is its surviving
+  events plus what was removed from it;
+- nothing is refolded and the origin generation is not bumped.
+
+Every answer therefore reads exactly what it read before the cut: the bucket tables, the sealed epochs, the open window
+and the recomputed folds (which add the carried part). A service that cut its history and one that did not still answer
+alike, whichever side cut.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The carried part sits on the bucket that already exists, and the removed part on one row per lane, tenant, type and epoch. | The cost of "I no longer keep this" grows with cut streams and epochs, never with events. | {verified: CutsCarryTheirDigestSqlTests.Truncate_CarriesWhatItRemoves_TheDigestStaysAndNothingIsRefoldedOrBumpedAsync} |
+| The removed rows are their own table, not columns on `wh_digest_epochs`. | A refold deletes and rewrites an epoch's rows, and an epoch not sealed yet has none; the removed part has to outlive both. | {verified: CutsCarryTheirDigestSqlTests.Refold_OfAnEpochACutTouched_KeepsTheRemovedPartInTheSealAsync} |
+| The heal compares a bucket with its live fold plus its carried part, and keeps a bucket whose whole stream was cut. | Such a bucket is the stream's digest, not a phantom; an event lost without being carried is still drift. | {verified: CutsCarryTheirDigestSqlTests.Heal_FindsACarriedBucketTrue_AndStillFindsAnUnaccountedLossAsync, CutsCarryTheirDigestSqlTests.Heal_ABucketWhoseWholeStreamWasCut_IsKept_NotReportedAsAPhantomAsync} |
+| A truncate records the stream's floor (`truncated_through_version`). | Nothing at or below it is held here, so nothing is stored below it again. | {verified: CutsCarryTheirDigestSqlTests.Truncate_WritesTheStreamsFloorAsync} |
+| A restore takes its events back out of what their archive carried; a stream archived before carrying existed folds them back in, as before. | The restore leaves every digest and seal where it was. | {verified: CutsCarryTheirDigestSqlTests.ArchiveWhole_KeepsTheBucketCarried_AndARestoreTakesItBack_NothingBumpedAsync, CutsCarryTheirDigestSqlTests.Restore_OfAStreamArchivedBeforeCutsCarried_FoldsItBackAsBeforeAsync} |
+| A purged stream keeps its buckets, carried, and its purge marker is its tombstone: a redelivered event of it is refused at the inbox (`repair refused: stream purged`). | The purge removes deduplication too, so without the tombstone a resend would bring the stream back. | {verified: CutsCarryTheirDigestSqlTests.Purge_KeepsTheBucketCarried_AndARedeliveryOfThePurgedStreamIsRefusedAsync} |
+| The carried detail is never re-verifiable once its events are gone. | It is trusted like a sealed epoch, by design; the [seal gate](#a-cut-waits-for-the-seal) makes sure it was verified before it was removed. | {verified: CleanupIntegrityMatrixTests.CleanupAndIntegrity_Converge_AndAGenuineLossBesideTheCleanupIsStillRepairedAsync} |
+
+### A cut waits for the seal {#a-cut-waits-for-the-seal}
+
+{verified: CutsCarryTheirDigestSqlTests.Truncate_OfHistoryAboveTheSeal_WaitsForIt_WhenTheGateIsOn_AndProceedsWhenItIsOffAsync, CutsCarryTheirDigestSqlTests.Truncate_OfReceivedHistory_WaitsForTheConsumersSeal_WhenItAuditsThatOriginAsync, CutsCarryTheirDigestSqlTests.Truncate_OfLocalHistory_WaitsForEveryConsumersReportedSeal_OnlyWhenThatSettingIsOnAsync}
+
+A cut removes only history this service has sealed. Asked for above the seal, it removes nothing and returns
+`awaiting_seal`; the end-of-life step asks again on its next cycle, as it does after any refusal.
+
+- Every event the cut would remove sits below the sealed frontier of its lane.
+- A received event also sits below this service's verified seal for its origin, when it audits that origin.
+- With `Whizbang:StreamIntegrity:Sealing:CutWaitsForConsumers` on (off by default), a local event also sits below the
+  lowest seal a consumer reported in the last 7 days. A consumer reports its seal with every windowed type-level audit
+  request, recorded in `wh_integrity_consumer_seals`.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The gate follows `Sealing:Enabled`: the maintenance cycle writes it to the store (`integrity_cut_waits_for_seal`) every cycle, and the store rewrites it only when it changes. | Nothing is sealed while sealing is off, so a cut that waited would wait forever. A host without stream integrity writes nothing and its cuts never wait. | {verified: MaintenanceWorkerEpochClosureTests.SealingOn_ACutWaitsForTheSeal_AndForConsumersOnlyWhenAskedAsync, MaintenanceWorkerEpochClosureTests.SealingOff_ACutNeverWaits_AndNothingIsClosedAsync, MaintenanceWorkerEpochClosureTests.NoIntegrityOptionsRegistered_WritesNoCutGateAsync} |
+| A purge never waits. | It is an operator's decision, made in the operator's transaction; what it removes is carried all the same, and the open window's answer keeps it through the removed rows. | {verified: CutsCarryTheirDigestSqlTests.TypeAnswer_IsTheSameBeforeAndAfterACut_SealedOrOpenAsync} |
+| Waiting for consumers is a setting, off by default. | It guarantees every consumer verified the history while the origin could still resend it, at the cost of making this service's cuts wait for its slowest consumer. Only reports from the last 7 days count, so a consumer that stopped asking holds nothing back for long. | {verified: CutsCarryTheirDigestSqlTests.Truncate_OfLocalHistory_WaitsForEveryConsumersReportedSeal_OnlyWhenThatSettingIsOnAsync, CutsCarryTheirDigestCoordinatorTests.AWindowedTypeAsk_RecordsTheConsumersSeal_OnTheOriginAsync} |
+
+### Carried detail rests, then rolls off {#carried-detail-rests-then-rolls-off}
+
+{verified: CutsCarryTheirDigestSqlTests.CarriedDetail_PastItsRestingPeriod_RollsOff_AndTheHealThenLeavesTheBucketAloneAsync, MaintenanceWorkerOperationalRetentionTests.TheCycle_RollsOffCarriedDetail_WithItsOwnRest_InBoundedBatches_AndCountsItAsync}
+
+The per-stream carried detail is operational data: it is kept so a recent cut can be investigated and its bucket
+re-checked, for the `CarriedDetail` resting period of [operational retention](../operations/infrastructure/operational-retention#categories)
+(14 days by default), then cleared by the maintenance cycle in bounded batches. The bucket's comparable digest stays, so
+the stream still answers as it did, and the epochs keep the removed part. The heal leaves a bucket whose detail rolled
+off alone: its events can no longer account for its digest.
+
+### The cleanup-and-integrity matrix {#cleanup-integrity-matrix}
+
+{verified: CleanupIntegrityMatrixTests.CleanupAndIntegrity_Converge_AndAGenuineLossBesideTheCleanupIsStillRepairedAsync}
+
+`CleanupIntegrityMatrixTests` runs each (cleanup path, side, integrity mechanism) pair over two real Postgres stores, an
+origin and a consumer, with the real integrity receptors and the real receive path between them. Each case seeds the
+same history on both sides, seals it and audits it clean, runs the cleanup on the origin, the consumer or both, then
+runs the mechanism for three cycles with the cleanup run again between cycles. It asserts that the cleanup is invisible
+(no repair request, no divergence report, no redelivered event stored again, no drift found by the heal or the epoch
+re-check) and, beside it, a **positive control**: a genuine loss of the same type is found and, where the mechanism
+repairs, repaired. Every case also checks the invariant: each stored digest equals a fresh fold over the events still
+eligible to count, plus what cuts carried.
+
+| Cleanup | Outcome on every side and mechanism |
+|---|---|
+| Ephemeral body reap, pointer prune, at-most-once occurrences, audit records | never counted, so never seen |
+| Superseded reap | the key is counted once, whichever copies each side still holds |
+| Reclassify to ephemeral, rewind bookkeeping | a rule change: while only one side has made it, the [pair guard](#the-pair-guard) halts the pair and nothing is compared, not even the control loss; once both sides run the same rule the pair resumes on its own and the case converges like a both-sides cleanup |
+| Prefix truncate, close the books, prefix archive, whole archive, purge | carried: every answer and seal is what it was before the cut |
+| Archive then restore | nothing changes |
+
+The pairs that cannot meet are left out, with the reason: a never-counted kind has no sealed epoch to check, and the
+rewind bookkeeping records live on the local lane and never travel, so only the origin's own heal and epoch re-check
+apply to them.
 
 ## Scheduling, startup, and the repair policy ladder
 

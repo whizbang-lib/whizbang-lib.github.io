@@ -71,7 +71,6 @@ The empty-call short-circuit pattern is the same:
 SELECT EXISTS(SELECT 1 FROM wh_outbox WHERE processed_at IS NULL LIMIT 1)
     OR EXISTS(SELECT 1 FROM wh_inbox WHERE processed_at IS NULL LIMIT 1)
     OR EXISTS(SELECT 1 FROM wh_perspective_events WHERE processed_at IS NULL LIMIT 1)
-    OR EXISTS(SELECT 1 FROM wh_receptor_processing WHERE completed_at IS NULL LIMIT 1)
 INTO v_has_any_work;
 ```
 

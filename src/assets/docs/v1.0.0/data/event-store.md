@@ -122,24 +122,6 @@ CREATE INDEX idx_event_store_aggregate_type ON wh_event_store (aggregate_type, c
 ### Event Processing Tracking
 
 ```sql{title="Event Processing Tracking" description="Event Processing Tracking" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Sql", "Event", "Processing", "Tracking"]}
--- Receptor processing (log-style tracking with lease-based claiming)
-CREATE TABLE IF NOT EXISTS wh_receptor_processing (
-    id UUID PRIMARY KEY,
-    event_id UUID NOT NULL,
-    receptor_name VARCHAR(500) NOT NULL,
-    stream_id UUID,
-    partition_number INTEGER,
-    status VARCHAR(50) NOT NULL,        -- 'Pending', 'Processing', 'Completed', 'Failed'
-    attempts INTEGER NOT NULL DEFAULT 0,
-    error TEXT,
-    instance_id UUID,                   -- Claiming service instance
-    lease_expiry TIMESTAMPTZ,           -- Lease-based work claiming
-    started_at TIMESTAMPTZ,
-    claimed_at TIMESTAMPTZ,
-    completed_at TIMESTAMPTZ,
-    processed_at TIMESTAMPTZ
-);
-
 -- Perspective cursors (stream-based projection tracking)
 CREATE TABLE IF NOT EXISTS wh_perspective_cursors (
     stream_id UUID NOT NULL,
@@ -163,14 +145,10 @@ CREATE TABLE IF NOT EXISTS wh_perspective_cursors (
 );
 ```
 
-**Design Differences**:
-
-| Aspect | Receptors (wh_receptor_processing) | Perspectives (wh_perspective_cursors) |
-|--------|-------------------------------------|------------------------------------------|
-| **Tracking** | Per event + receptor (log-style) | Per stream + perspective (cursor-style) |
-| **Ordering** | No ordering (parallel) | Ordered within stream (by UUIDv7 event_id) |
-| **Use Case** | Side effects, notifications | Read model projections |
-| **Replay** | Re-process individual events | Advance/rewind the stream cursor |
+**Receptors and perspectives**: a perspective keeps one cursor per stream and perspective, ordered within the stream
+by the UUIDv7 event id, and advances or rewinds it. Receptors keep no per-event record: a receptor runs when its message
+is dispatched, and its outcome is the inbox row's completion. (`wh_receptor_processing`, an earlier per-event log, had
+no writer and is dropped by migration 464.)
 
 ---
 

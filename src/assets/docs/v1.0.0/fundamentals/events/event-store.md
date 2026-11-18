@@ -377,6 +377,26 @@ Neither of the other two orders will do:
   stamped as they were written follow their versions, but rows stamped after the fact can run backward against
   them, and a replay in that order folded a stream's last write first.
 
+### Reading after an event {#read-after}
+
+{verified: EventStoreReadAfterVersionTests, DapperPostgresEventStoreEdgeCaseTests.ReadPolymorphicAsync_AfterTheEventWithTheHighestId_ReadsTheEventsAfterItsVersionAsync, DapperPostgresEventStoreEdgeCaseTests.ReadPolymorphicAsync_AfterAnEventTheStreamDoesNotHold_ReadsAfterItsIdAsync, InMemoryEventStoreReplayOrderTests.ReadPolymorphicAsync_FromAnEvent_ReadsTheEventsAfterItsVersionAsync, InMemoryEventStoreReplayOrderTests.ReadPolymorphicAsync_FromAnEventTheStreamDoesNotHold_ReadsAfterItsIdAsync}
+
+`ReadPolymorphicAsync(streamId, fromEventId, ...)` and its batched form `ReadPolymorphicManyAsync` read the events
+**after `fromEventId`'s position in the stream: its version**. The anchor is a cursor's last event, or the event a
+snapshot was taken at, and "after" it means later in the order the stream was written.
+
+**Why not after its id.** The reads used to return the events whose ids sort above the anchor's. When the anchor carries
+the stream's highest id (an event minted later but stored first, so version 1 has the highest id), that selects nothing.
+A rewind that restored a snapshot at such an event and read the events after it replayed nothing, left the cursor where
+it was, and rewound again on the next pass, without end (#2379). Reading after the version returns exactly the events
+the stream holds above the anchor, whatever their ids.
+
+**An anchor the stream does not hold** has no position in it. The read then keeps the order it always had for one,
+after its id, rather than guess a position. The batched read declines instead (returns `null`, so each pair reads its
+own events) when any anchor is not held by its stream, because it cannot cut that stream at a version. The read through
+an archive places the hot events by the snapshot's version, which the caller passes, because the hot store may no
+longer hold the snapshot's event.
+
 The typed `ReadAsync` and the between-checkpoint reads keep `event_id` order.
 
 ## Decorator Stack

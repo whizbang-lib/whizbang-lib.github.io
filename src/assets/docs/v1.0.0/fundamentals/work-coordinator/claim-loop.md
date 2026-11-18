@@ -12,7 +12,8 @@ description: >-
   fetch, why a claim runs only the statements that can find work, how a claim
   keeps the queue tables' planner statistics
   true, how a claim ranks only the peers that are alive and eligible for work,
-  why a caller that is not eligible claims nothing,
+  why a caller that is not eligible claims nothing, how an owner renews the
+  inbox leases it let run out,
   and why a claim no longer announces the caller's lifecycle phase.
 tags: 'work-coordinator, claim-loop, claim-work, acquisition, backpressure, work-stealing, command-lane'
 codeReferences:
@@ -36,6 +37,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/349_ReOfferOnlyFetchableStreams.sql
   - src/Whizbang.Data.Postgres/Migrations/367_TheClaimRunsOnlyWhatCanFindWork.sql
   - src/Whizbang.Data.Postgres/Migrations/390_TheClaimLeasesNoInboxAFullWorkingSetWouldHandBack.sql
+  - src/Whizbang.Data.Postgres/Migrations/462_HeldLeasesAreRenewedByTheirOwner.sql
+  - src/Whizbang.Data.Postgres/ConcurrentIndexBuild.cs
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/Signals/BasePollSignalSource.cs
   - src/Whizbang.Core/Signals/PollIdleBackoff.cs
@@ -48,6 +51,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HeartbeatPhaseOrderSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerAcquisitionBoundsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimInboxWorkingSetSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/OwnerLeaseRenewalSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkPlanShapeTests.ExpiredLeases.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerRunPermitTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperWorkCoordinatorGuardAndGateTests.cs
   - tests/Whizbang.Core.Tests/Workers/AdaptiveClaimWindowLatencyTests.cs
@@ -438,6 +443,44 @@ claim charged it an attempt until it was dead-lettered. Migration 411 changes tw
 
 A row held back behind an event another live instance holds is still acquired and waits, since the claim cannot take a
 row under a live lease; it is no longer charged for waiting.
+
+### An owner renews the leases it let run out {#an-owner-renews-the-leases-it-let-run-out}
+{verified: OwnerLeaseRenewalSqlTests.Claim_AHeldRowWhoseLeaseRanOut_OnAStreamItsRankOwns_IsRenewedAndOffered_WithoutAnAttemptAsync, OwnerLeaseRenewalSqlTests.Claim_ARenewedStream_IsLeasedInTheLedgerToTheRenewingInstanceAsync, OwnerLeaseRenewalSqlTests.Claim_EveryExpiredRowOfARenewedStream_IsRenewedAsync, OwnerLeaseRenewalSqlTests.Claim_AHeldRowWhoseLeaseIsLive_KeepsItsLeaseAsync, OwnerLeaseRenewalSqlTests.Claim_PastTheAcquisitionBound_TheRestOfItsExpiredRowsAreRenewed_NotChargedAsync, OwnerLeaseRenewalSqlTests.Claim_RenewsAtMostTheClaimWindow_OldestLeaseFirstAsync, OwnerLeaseRenewalSqlTests.Claim_WhenTheInstanceCountChanged_AndThePartitionFallsToALivePeer_LeavesTheRowToAcquisitionAsync, OwnerLeaseRenewalSqlTests.Claim_WhenThePartitionFallsToAPeer_ButTheHoldersLedgerLeaseIsLive_RenewsTheRowAsync, OwnerLeaseRenewalSqlTests.Claim_WhenALivePeerHoldsTheStream_LeavesTheRowAsync, OwnerLeaseRenewalSqlTests.Claim_WithStealingAllowed_TheRenewalStillDoesNotSteal_AcquisitionDoesAsBeforeAsync, ClaimWorkPlanShapeTests.ClaimWork_HeldRowsWhoseLeaseRanOut_AreRenewed_AndTheNextPollDoesNotPassOverThemAsync, ClaimWorkPlanShapeTests.ClaimWork_RenewingExpiredLeases_ReadsThemThroughTheLeaseOrderIndexAsync}
+
+An instance leases inbox rows a batch at a time and hands their streams to its drain, which works through them within
+its [working-set budget](per-stream-drain#working-set-budget). While the working set is full, rows wait in memory and
+their leases run out. Acquisition re-leases expired rows a batch at a time, and not at all while the working set is
+full, so until it reached them the re-offer walk read each one on every poll and passed over it: an expired lease is a
+test against the clock, which no key of the held-lanes index can skip. On a busy store this made every poll's cost grow
+with the rows the instance had let lapse (#2345).
+
+Since migration 462 the claim renews them. After the inbox acquisition and before the stream ledger is written, it
+reads this instance's pending rows whose lease ran out, oldest lease first, at most a claim window of them (eight
+batches), and renews each one whose stream the instance still owns under **acquisition's rule, without stealing**:
+
+- the stream's ledger lease is this instance's and live, **or**
+- the row's partition falls to this instance's rank (`partition_number % live instances = rank`) **and** no live peer
+  holds the stream in the ledger.
+
+A renewed row keeps its attempt count and records no failure: it waited, it did not fail. Its stream joins the claim's
+one ledger pass, so a stream whose rows the instance holds under a live lease is its stream in the ledger and no peer's
+acquisition takes the stream's next row. The re-offer walk is unchanged: a renewed row has a live lease, so the walk
+lands on it and offers it instead of passing over it.
+
+**Why the owner renews, and why only under that rule.** Work is spread by a deterministic distribution, so the instance
+that leased a stream is still the one the distribution gives it to while the rule holds, and re-leasing through
+acquisition would only charge the row an attempt for waiting and record a lease-expired failure no handler caused.
+When ownership moved, the row is left to acquisition exactly as before: the instance count changed and the partition
+now falls to a peer's rank, or a live peer holds the stream. Renewal never steals; with `AllowSteal` on, acquisition
+still decides whether to take a partition that falls to a peer, and charges it as it always has.
+
+**What it reads.** The renewal reaches the leases that ran out through `idx_inbox_state_lease_order`, keyed on the
+lease's expiry and built concurrently after the migrations (see
+[indexes built after the migrations](../../operations/infrastructure/migrations#indexes-built-after-the-migrations)).
+It replaces `idx_inbox_state_expired`, whose leading priority key made every read of expired leases (this renewal,
+acquisition's two expired lanes, and the claim's expired guard) walk every held row of the band; keyed on the expiry,
+each reads only the leases that ran out, in the order it takes them. The table keeps its index count. The renewal
+locks its rows `SKIP LOCKED`, so it never waits on a drain completing a row or a peer acquiring one.
 
 ## The claim runs only what can find work {#the-claim-runs-only-what-can-find-work}
 {verified: ClaimFixedCostSqlTests.InboxReOffer_AnInstanceHoldingOneLane_WalksOnlyThatLane_AndOffersItsStreamAsync, ClaimFixedCostSqlTests.InboxReOffer_ALaneHoldingOnlyUnfetchableRows_IsStillWalked_AndOffersNothingAsync, ClaimFixedCostSqlTests.Claim_AnInstanceHoldingNothing_RunsNoReOfferWalkAsync, ClaimFixedCostSqlTests.PerspectiveReOffer_AnInstanceHoldingOneBucket_WalksOnlyThatBucket_AndOffersItsStreamAsync, ClaimFixedCostSqlTests.PerspectiveReOffer_TheIdleBucketWhileWithheld_IsNotOffered_AndNotWalkedAsync, ClaimFixedCostSqlTests.StorePass_ARowWhoseEventIsAlreadyStored_IsStamped_WithoutRunningTheCopyAsync, ClaimFixedCostSqlTests.StorePass_AfterAPassWithNoCandidate_AReadyRowIsStoredByTheNextClaimAsync, ClaimFixedCostSqlTests.StorePass_AnOrdinaryEvent_RunsNoCollectiveRoutingAsync, ClaimFixedCostSqlTests.StorePass_ACollectiveEvent_IsStillRoutedToTheCollectiveSinkAsync}
