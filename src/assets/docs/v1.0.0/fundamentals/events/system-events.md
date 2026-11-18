@@ -38,24 +38,24 @@ codeReferences:
   - src/Whizbang.Core/Attributes/AuditEventAttribute.cs
   - src/Whizbang.Core/Events/System/SystemEvents.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/SystemEvents/AuditEventRegistryTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditEventRegistryTests.cs
   - tests/Whizbang.Generators.Tests/AuditEventRegistryGeneratorTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventEmitterTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventEmitterRegistrationTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventStreamRoutingTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/SystemEventEmitterTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/SystemEventEmitterRegistrationTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/SystemEventStreamRoutingTests.cs
   - tests/Whizbang.Core.Component.Tests/SystemEvents/SystemEventFireAndForgetTests.cs
   - tests/Whizbang.Core.Component.Tests/Lenses/ScopedLensFactoryEmitFailureTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventTransportFilterTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/AuditingEventStoreDecoratorTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/CommandAuditPipelineBehaviorTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventServiceCollectionExtensionsTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventSelfAuditPreventionTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/EventAuditedTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/Security/SecuritySystemEventTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/Security/SecuritySystemEventStorageTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/SystemEventTransportFilterTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/SystemEventOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditingEventStoreDecoratorTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/CommandAuditPipelineBehaviorTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/SystemEventServiceCollectionExtensionsTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/SystemEventSelfAuditPreventionTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/EventAuditedTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/Security/SecuritySystemEventTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/Security/SecuritySystemEventStorageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AuditRecordStreamPositionSqlTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/AuditDecisionHookCallSiteTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditDecisionHookCallSiteTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

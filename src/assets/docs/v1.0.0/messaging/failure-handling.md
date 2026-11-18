@@ -23,9 +23,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/018_ProcessInboxFailures.sql
   - src/Whizbang.Data.Postgres/Migrations/029_ProcessWorkBatch.sql
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/MessageFailureTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/MessageFailureReasonTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/MessageProcessingStatusTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/MessageFailureTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/MessageFailureReasonTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/MessageProcessingStatusTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresFunctionTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerDlqPromotionTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerTests.cs
@@ -558,6 +558,6 @@ public record MessageFailure {
 ### Tests
 
 - `tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresFunctionTests.cs` — `ProcessOutboxFailures_SetsFailureFlagsAndSchedulesRetryAsync` and related SQL-function tests
-- `tests/Whizbang.Core.Tests/Messaging/MessageFailureTests.cs` — failure record + reason classification
+- `tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/MessageFailureTests.cs` — failure record + reason classification
 - `tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerDlqPromotionTests.cs` — outbox max-attempts dead-letter promotion
 - `tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs` — perspective pre-apply dead-letter filter

@@ -22,11 +22,11 @@ codeReferences:
   - src/Whizbang.Core/Observability/WorkCoordinatorMetrics.cs
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCascadeTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherCascadeTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherRoutedCascadeTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/DeferredOutboxChannelTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/EmissionIdentityTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherEmissionIdentityTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EmissionIdentityTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherEmissionIdentityTests.cs
   - tests/Whizbang.Core.Tests/Observability/MessageEnvelopeHandlerNameTests.cs
   - tests/Whizbang.Core.Tests/Observability/WorkCoordinatorMetricsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreOutboxEmissionDedupTests.cs

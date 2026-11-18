@@ -51,16 +51,16 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/NpgsqlWaitTimeoutTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgSharedNotifyConnectionCoverageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/AliveLockRankCostScenarioTests.cs
-  - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerAdaptiveCadenceTests.cs
-  - tests/Whizbang.Core.Tests/Workers/HeartbeatLivenessThresholdTests.cs
-  - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerTickPlanTests.cs
-  - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerRequestFieldsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/HeartbeatWorkerAdaptiveCadenceTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/HeartbeatLivenessThresholdTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/HeartbeatWorkerTickPlanTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/HeartbeatWorkerRequestFieldsTests.cs
   - tests/Whizbang.Core.Tests/Observability/InstanceLivenessMetricsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgInstanceLifecycleMonitorUnitTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgInstanceLifecycleMonitorIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RecordHeartbeatBackfillTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HeartbeatPhaseOrderSqlTests.cs
-  - tests/Whizbang.Core.Tests/Startup/StartupStageReporterTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/StartupStageReporterTests.cs
 ---
 
 # Instance liveness — advisory lock + heartbeat fallback

@@ -33,30 +33,30 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/AuditRebuildRequestReceptor.cs
   - src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptorRegistrar.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/SystemEvents/CommandAuditListLengthsTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/EventAuditedTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/CommandAuditTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/AuditEventAttributeExcludeTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/AuditingEventStoreDecoratorTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/CommandAuditPipelineBehaviorTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventEmitterTests.cs
-  - tests/Whizbang.Core.Tests/Audit/AuditEventAttributeTests.cs
-  - tests/Whizbang.Core.Tests/Audit/AuditLevelTests.cs
-  - tests/Whizbang.Core.Tests/Audit/AuditLogEntryTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/AuditLedgerTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/AuditDecisionHookCallSiteTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/CommandAuditListLengthsTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/EventAuditedTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/CommandAuditTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/SystemEventOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditEventAttributeExcludeTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditingEventStoreDecoratorTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/CommandAuditPipelineBehaviorTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/SystemEventEmitterTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Audit/AuditEventAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Audit/AuditLevelTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Audit/AuditLogEntryTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditLedgerTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditDecisionHookCallSiteTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AuditRecordStreamPositionSqlTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/AuditEphemeralExclusionTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/AuditOutboxMessageBuilderTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/AuditDependencyInjectionWiringTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventEmitterRegistrationTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/AuditLedgerRebuildTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/AuditEventTypeResolutionTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditEphemeralExclusionTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditOutboxMessageBuilderTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditDependencyInjectionWiringTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/SystemEventEmitterRegistrationTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditLedgerRebuildTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditEventTypeResolutionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AuditRebuildRequestReceptorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryRequestReceptorTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ControlPlaneTypeRegistryTests.cs
-  - tests/Whizbang.Core.Tests/Tags/SystemControlTagTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ControlPlaneTypeRegistryTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Tags/SystemControlTagTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -379,8 +379,8 @@ a warning for each type it skips under `OptIn`, so a rebuilt ledger holds exactl
 | Every such skip logs a warning naming the type. | In the ledger, a record missing because its type could not be resolved looks exactly like a type nobody opted in. The warning keeps a resolution failure from being silent. | {verified: AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptInMode_UnresolvableType_WarnsThatItWasNotAuditedNamingTheTypeAsync, AuditLedgerRebuildTests.Rederive_AnUnknownTypeUnderOptIn_WarnsNamingTheTypeAsync, AuditLedgerRebuildTests.Rederive_AnUnknownTypeUnderOptOut_DoesNotWarnAsync} |
 | Under `OptOut`, an unresolvable type is audited, without the skip warning. | Under `OptOut` every event is audited unless its type excludes itself, and a type that cannot be resolved cannot have excluded itself. | {verified: AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptOutMode_UnresolvableType_IsAuditedWithoutTheSkipWarningAsync, AuditLedgerRebuildTests.LiveAndRebuild_AgreeOnAnUnresolvableType_UnderEitherModeAsync} |
 
-Locked by [`AuditOutboxMessageBuilderTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Core.Tests/SystemEvents/AuditOutboxMessageBuilderTests.cs)
-and [`AuditLedgerRebuildTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Core.Tests/SystemEvents/AuditLedgerRebuildTests.cs),
+Locked by [`AuditOutboxMessageBuilderTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditOutboxMessageBuilderTests.cs)
+and [`AuditLedgerRebuildTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditLedgerRebuildTests.cs),
 which fail if the live path goes back to auditing the type under `OptIn`, if a skip stops being reported, or if the
 live path and the rebuild stop agreeing.
 
@@ -402,7 +402,7 @@ resolves is decided by the audit mode alone, as the table above describes.
 | One resolver is registered in the container, and every work-coordinator strategy the factory builds is given it. | A strategy built without it would resolve no type and judge every event by the audit mode alone, the very disagreement this removes. Built once from the catalog, it costs each event one or two dictionary probes and no reflection, so the path stays trimming and AOT safe. | {verified: AuditDecisionHookCallSiteTests.Factory_Scoped_PassesTheRegisteredHookAsync, AuditDecisionHookCallSiteTests.Factory_Immediate_PassesTheRegisteredHookAsync, AuditDecisionHookCallSiteTests.Factory_StreamAffinityWrap_PassesTheRegisteredHookAsync, AuditEventTypeResolutionTests.AResolvableEventType_TakesTheNormalDecisionPathAsync} |
 | A name that is malformed or that the catalog does not hold falls back to the audit mode and logs the warning; it never throws. | One unreadable type name must not stall the outbox drain behind it, and a silent fallback would make a resolution failure look like a type nobody audits. | {verified: AuditEventTypeResolutionTests.AMalformedTypeName_FallsBackRatherThanThrowingAsync, AuditEventTypeResolutionTests.AnUnresolvableEventType_IsStillAuditedAndSaidSoAsync} |
 
-Locked by [`AuditLedgerRebuildTests.LiveAndRebuild_AgreeWhereTypeGetTypeAndTheCatalogDisagree_UnderEitherModeAsync`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Core.Tests/SystemEvents/AuditLedgerRebuildTests.cs),
+Locked by [`AuditLedgerRebuildTests.LiveAndRebuild_AgreeWhereTypeGetTypeAndTheCatalogDisagree_UnderEitherModeAsync`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditLedgerRebuildTests.cs),
 which builds one event of each disagreement under both audit modes and fails if the live path and the rebuild
 decide either one differently.
 

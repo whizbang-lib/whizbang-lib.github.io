@@ -21,13 +21,13 @@ codeReferences:
   - src/Whizbang.Core/Lenses/FilterMode.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreFilterableLensQuery.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Lenses/ScopedLensFactoryTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/ScopedLensFactoryImplTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/ScopedLensQueryTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/ScopeFilterTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/ScopeFilterBuilderTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/ScopeDefinitionTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/FilterModeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/ScopedLensFactoryTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/ScopedLensFactoryImplTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/ScopedLensQueryTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/ScopeFilterTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/ScopeFilterBuilderTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/ScopeDefinitionTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/FilterModeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreFilterableLensQueryTests.cs
 lastMaintainedCommit: '01f07906'
 ---

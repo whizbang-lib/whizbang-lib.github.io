@@ -24,16 +24,16 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveScopeFor.cs
   - src/Whizbang.Core/IMessageContext.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Security/SecurityOptionsTests.cs
-  - tests/Whizbang.Core.Tests/Scoping/PerspectiveScopeTests.cs
-  - tests/Whizbang.Core.Tests/Security/RoleBuilderTests.cs
-  - tests/Whizbang.Core.Tests/Security/PermissionExtractorTests.cs
-  - tests/Whizbang.Core.Tests/Security/ScopeContextTests.cs
-  - tests/Whizbang.Core.Tests/Security/AccessDeniedExceptionTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/ScopedLensFactoryTests.cs
-  - tests/Whizbang.Core.Tests/Scoping/InheritScopeAttributeTests.cs
-  - tests/Whizbang.Core.Tests/Scoping/IScopeEventTests.cs
-  - tests/Whizbang.Core.Tests/Scoping/IPerspectiveScopeForTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/SecurityOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Scoping/PerspectiveScopeTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/RoleBuilderTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/PermissionExtractorTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/ScopeContextTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/AccessDeniedExceptionTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/ScopedLensFactoryTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Scoping/InheritScopeAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Scoping/IScopeEventTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Scoping/IPerspectiveScopeForTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

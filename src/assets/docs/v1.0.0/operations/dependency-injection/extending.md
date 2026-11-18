@@ -13,7 +13,7 @@ codeReferences:
   - src/Whizbang.Core/Lifecycle/NoOpDestructionHook.cs
   - src/Whizbang.Core/Observability/InstanceIdentityRegistration.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/SystemEvents/AuditDecisionHookTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditDecisionHookTests.cs
   - tests/Whizbang.Core.Tests/DependencyInjection/RegistrationValidationTests.cs
 ---
 

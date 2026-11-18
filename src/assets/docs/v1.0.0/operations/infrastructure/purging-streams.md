@@ -20,7 +20,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Operations/StreamPurgeTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamPurgeTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/StreamPurgeRequestTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/StreamPurgeRequestTests.cs
 ---
 
 # Purging Streams

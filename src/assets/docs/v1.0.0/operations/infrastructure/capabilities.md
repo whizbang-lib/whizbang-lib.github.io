@@ -39,29 +39,29 @@ codeReferences:
   - src/Whizbang.Core/Workers/PartitionManagementStrategy.cs
   - src/Whizbang.Core/Workers/TableRewriteStrategy.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Capabilities/CapabilityDescriptorTests.cs
-  - tests/Whizbang.Core.Tests/Capabilities/CapabilityRegistryTests.cs
-  - tests/Whizbang.Core.Tests/Capabilities/CapabilityReportTests.cs
-  - tests/Whizbang.Core.Tests/Capabilities/CapabilityMetricsTests.cs
-  - tests/Whizbang.Core.Tests/Capabilities/CapabilitiesStartupStepTests.cs
-  - tests/Whizbang.Core.Tests/Capabilities/CapabilityServiceCollectionExtensionsTests.cs
-  - tests/Whizbang.Core.Tests/Capabilities/RequiresCapabilityAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityDescriptorTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityRegistryTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityReportTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityMetricsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilitiesStartupStepTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityServiceCollectionExtensionsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/RequiresCapabilityAttributeTests.cs
   - tests/Whizbang.Core.Tests/Configuration/ConfigurationManifestRegistryTests.cs
   - tests/Whizbang.Generators.Tests/ConfigurationManifestGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/ConfigurationManifestGeneratorCoverageTests.cs
-  - tests/Whizbang.Core.Tests/Capabilities/ConfigurationManifestRequirementSourceTests.cs
-  - tests/Whizbang.Core.Tests/Capabilities/CapabilityActivationResolverTests.cs
-  - tests/Whizbang.Core.Tests/Capabilities/CapabilityVerdictTests.cs
-  - tests/Whizbang.Core.Tests/Capabilities/CapabilityHealthCheckTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/ConfigurationManifestRequirementSourceTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityActivationResolverTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityVerdictTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityHealthCheckTests.cs
   - tests/Whizbang.Core.Component.Tests/Capabilities/CapabilityVerdictEnforcerTests.cs
-  - tests/Whizbang.Core.Tests/Capabilities/CapabilityProvisioningTests.cs
-  - tests/Whizbang.Core.Tests/Capabilities/CapabilityAutoProvisionTests.cs
-  - tests/Whizbang.Core.Tests/Capabilities/CapabilityVersionTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityProvisioningTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityAutoProvisionTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityVersionTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresCapabilityProvisioningIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Observability/StatementStatisticsCapabilityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/TableStatisticsProviderTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PartitionManagementStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TableRewriteStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PartitionManagementStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/TableRewriteStrategyTests.cs
 ---
 
 # Capabilities

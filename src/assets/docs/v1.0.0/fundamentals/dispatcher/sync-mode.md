@@ -16,8 +16,8 @@ codeReferences:
   - src/Whizbang.Core/Dispatcher.cs
   - src/Whizbang.Core/Perspectives/Sync/SyncMode.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherSyncModeContractTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherSyncModeBehaviorTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherSyncModeContractTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherSyncModeBehaviorTests.cs
 ---
 
 # SyncMode — Read-After-Write Dispatch

@@ -14,7 +14,7 @@ codeReferences:
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Core/ServiceCollectionExtensions.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/ReceptorRegistryRuntimeRegistrationTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ReceptorRegistryRuntimeRegistrationTests.cs
   - tests/Whizbang.Core.Tests/HealthChecks/SubscriptionHealthCheckTests.cs
 lastMaintainedCommit: '01f07906'
 ---

@@ -24,7 +24,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupHostedServiceAuditTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/WhizbangWorkerRegistrationTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/WorkerStartGateSourceGuardTests.cs
-  - tests/Whizbang.Core.Tests/Startup/StartupStageGateTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/StartupStageGateTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
 ---
 

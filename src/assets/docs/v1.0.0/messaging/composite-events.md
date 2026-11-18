@@ -21,13 +21,13 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IEventStore.cs
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/CompositeEventContractTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/CompositeEventBaseTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/EventStoreAppendBatchTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/NoRebroadcastGuardTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/CompositeEventContractTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/CompositeEventBaseTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/CompositeInboxFanoutTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EventStoreAppendBatchTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/NoRebroadcastGuardTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerCompositeNoExpandTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCompositePublishFanoutTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherCompositePublishFanoutTests.cs
 ---
 
 # Composite Events

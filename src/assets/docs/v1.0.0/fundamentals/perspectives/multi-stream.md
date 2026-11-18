@@ -16,7 +16,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IGlobalPerspectiveFor.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCorePostgresPerspectiveStore.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Perspectives/IGlobalPerspectiveForTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/IGlobalPerspectiveForTests.cs
   - tests/Whizbang.Generators.Tests/GlobalPerspectiveArityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePostgresPerspectiveStoreTests.cs
 lastMaintainedCommit: '01f07906'

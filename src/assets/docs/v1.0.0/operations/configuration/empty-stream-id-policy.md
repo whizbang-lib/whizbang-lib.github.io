@@ -22,8 +22,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/051_DeadLetterRecovery.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Configuration/EmptyStreamIdPolicyTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/EmptyStreamIdGuardTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/EmptyStreamIdExceptionTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EmptyStreamIdGuardTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EmptyStreamIdExceptionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamIdCoalescerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DeadLetterRecoverySqlTests.cs
 ---

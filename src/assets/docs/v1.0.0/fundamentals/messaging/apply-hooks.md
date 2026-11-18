@@ -16,7 +16,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Collective/CollectiveApplyHookPlanner.cs
   - src/Whizbang.Data.Postgres/PerEventApplyHooks.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Perspectives/Hooks/ApplyHookRegistryTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/Hooks/ApplyHookRegistryTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PerEventApplyHooksTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectiveApplierIntegrationTests.cs

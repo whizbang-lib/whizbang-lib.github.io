@@ -16,7 +16,7 @@ codeReferences:
   - src/Whizbang.Core/IReceptor.cs
   - src/Whizbang.Core/ICommand.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Security/ScopeContextTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/ScopeContextTests.cs
   - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
 lastMaintainedCommit: '01f07906'
 ---

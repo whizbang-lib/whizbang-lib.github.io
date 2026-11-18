@@ -103,7 +103,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PreflightInstanceColumnsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigratorDutyStagingTests.cs
-  - tests/Whizbang.Core.Tests/Schema/SchemaBootstrapRetryTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Schema/SchemaBootstrapRetryTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupPreflightHostTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupMigrationStepsTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationConstantsTests.cs
@@ -121,9 +121,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StoredFormScalarMismatchWorkerTests.cs
   - tests/Whizbang.Generators.Tests/CanonicalTemporalRewriteWiringTests.cs
   - tests/Whizbang.Generators.Tests/MigrationUtf8LiteralGenerationTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/StoredFormUnreadableTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/StoredFormUnreadableTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.StoredForm.cs
-  - tests/Whizbang.Core.Tests/Health/StoredFormHealthSourceTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Health/StoredFormHealthSourceTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresSchemaInitializerBranchTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresSchemaInitializerTypeCompareTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresColumnTypeTests.cs
@@ -132,14 +132,14 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaCommandBoundaryTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/NamedSchemaMigrationReplayTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationSchemaQualificationTests.cs
-  - tests/Whizbang.Core.Tests/Startup/TableRewriteStartupStepTests.cs
-  - tests/Whizbang.Core.Tests/Workers/VacuumFullTableRewriterTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TableRewriteStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/TableRewriteStartupStepTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/VacuumFullTableRewriterTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/TableRewriteStrategyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TableRewriteJourneyE2ETests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationSchemaQualifierTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationSearchPathTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/LogPartitionConversionTests.cs
-  - tests/Whizbang.Core.Tests/Schema/CatalogCheckedDdlTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Schema/CatalogCheckedDdlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/CatalogCheckedDdlPostgresTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationAgainstRunningWorkersTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSchemaAgainstRunningWorkersTests.cs

@@ -16,8 +16,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/HealthChecks/SubscriptionHealthCheck.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Transports/TransportReadinessCheckTests.cs
-  - tests/Whizbang.Core.Tests/Workers/DefaultTransportReadinessCheckTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Transports/TransportReadinessCheckTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/DefaultTransportReadinessCheckTests.cs
   - tests/Whizbang.Core.Tests/HealthChecks/SubscriptionHealthCheckTests.cs
 lastMaintainedCommit: '01f07906'
 ---

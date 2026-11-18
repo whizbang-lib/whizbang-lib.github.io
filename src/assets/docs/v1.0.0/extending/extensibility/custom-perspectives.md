@@ -17,9 +17,9 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveStore.cs
   - src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveStoreTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveStoreDefaultsTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/IPerspectiveStoreTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/IPerspectiveStoreDefaultsTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRebuilderTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePostgresPerspectiveStoreTests.cs
 lastMaintainedCommit: '01f07906'
 ---

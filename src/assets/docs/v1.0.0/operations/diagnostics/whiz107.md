@@ -21,8 +21,8 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/ApplyContext.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/PerspectiveCurrentModelAnalyzerTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/FirstEventInStreamTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/ApplyContextTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/FirstEventInStreamTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/ApplyContextTests.cs
 lastMaintainedCommit: '34936cf3'
 ---
 

@@ -24,16 +24,16 @@ codeReferences:
   - src/Whizbang.Core/Security/SecurityExtraction.cs
   - src/Whizbang.Transports.HotChocolate/Middleware/WhizbangScopeMiddleware.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Security/ScopeDeltaTests.cs
-  - tests/Whizbang.Core.Tests/Security/ScopeDeltaApplyToTests.cs
-  - tests/Whizbang.Core.Tests/Security/ScopeDeltaExtensionsTests.cs
-  - tests/Whizbang.Core.Tests/Security/ScopePropJsonConverterTests.cs
-  - tests/Whizbang.Core.Tests/Dispatch/DispatcherSecurityBuilderTests.cs
-  - tests/Whizbang.Core.Tests/Dispatch/SystemDispatcherBuilderTests.cs
-  - tests/Whizbang.Core.Tests/Dispatch/ImpersonationDispatcherBuilderTests.cs
-  - tests/Whizbang.Core.Tests/Security/HopScopeTests.cs
-  - tests/Whizbang.Core.Tests/Security/HopScopeTwoHopWireTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/HopScopeDispatchParityTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/ScopeDeltaTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/ScopeDeltaApplyToTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/ScopeDeltaExtensionsTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/ScopePropJsonConverterTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatch/DispatcherSecurityBuilderTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatch/SystemDispatcherBuilderTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatch/ImpersonationDispatcherBuilderTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/HopScopeTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/HopScopeTwoHopWireTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/HopScopeDispatchParityTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStoredScopeReadBackTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/ScopeHopPropagationTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/WhizbangScopeMiddlewareTests.cs

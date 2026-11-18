@@ -31,8 +31,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
   - src/Whizbang.Core/RunControl/WhizbangRunPermit.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/TransportConsumerBuilderExtensionsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TransportConsumerBuilderExtensionsServiceNameTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/TransportConsumerBuilderExtensionsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/TransportConsumerBuilderExtensionsServiceNameTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerResilienceTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerSubscriptionStatusChangedTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerConnectionRecoveryTests.cs
@@ -42,18 +42,18 @@ testReferences:
   - tests/Whizbang.Core.Tests/HealthChecks/SubscriptionHealthCheckTests.cs
   - tests/Whizbang.Core.Tests/Observability/ServiceInstanceProviderTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportBatchCollectorTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TransportBatchGuardTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/TransportBatchGuardTests.cs
   - tests/Whizbang.Core.Component.Tests/Shutdown/BatcherShutdownTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerBodyOffloadTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerStoresBeforeSkippingTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InboxDiscardedOnReceiveSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InboxDiscardedOnReceiveKeepsNoBodySqlTests.cs
-  - tests/Whizbang.Core.Tests/Transports/ReceivedEnvelopeReaderTests.cs
-  - tests/Whizbang.Core.Tests/Workers/ReceiveConsumerGateTests.cs
-  - tests/Whizbang.Core.Tests/Routing/MessageDiscardPolicyTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Transports/ReceivedEnvelopeReaderTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/ReceiveConsumerGateTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/MessageDiscardPolicyTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ServiceBusConsumerWorkerDropGateTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AbsorbedEventReachesEventStoreTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TransportConsumerWithoutATransportTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/TransportConsumerWithoutATransportTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWithoutATransportStartupTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerRunPermitTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ServiceBusConsumerWorkerRunPermitTests.cs

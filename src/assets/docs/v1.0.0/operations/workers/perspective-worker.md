@@ -32,17 +32,17 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerChannelModeTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDedupTests.cs
-  - tests/Whizbang.Core.Tests/Workers/ProcessedEventCacheTests.cs
-  - tests/Whizbang.Core.Tests/Workers/RecentlyProcessedEventCacheTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/ProcessedEventCacheTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/RecentlyProcessedEventCacheTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ProcessedEventCacheCoverageTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveCompletionStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PerspectiveCompletionStrategyTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerSecurityContextTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDrainModeTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerParallelismTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PerspectiveWorkerParallelismTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerInjectedClockTests.cs
-  - tests/Whizbang.Core.Tests/Workers/DrainRowsOutsideCooldownTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/DrainRowsOutsideCooldownTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Diagnostics/MessageParseCountFlowTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.RewindFailure.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.UnreadableRows.cs

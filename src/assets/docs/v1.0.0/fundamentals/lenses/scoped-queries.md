@@ -15,9 +15,9 @@ codeReferences:
   - src/Whizbang.Core/Lenses/ILensQueryFactory.cs
   - src/Whizbang.Core/Lenses/LensQueryFactory.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Lenses/ScopedLensQueryTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/LensQueryFactoryTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/QueryScopeMapperTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/ScopedLensQueryTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/LensQueryFactoryTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/QueryScopeMapperTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ScopedLensQueryIntegrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---

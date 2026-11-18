@@ -31,10 +31,10 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatchStrategyShutdownFlushTests.cs
   - tests/Whizbang.Core.Component.Tests/Shutdown/DispatchWorkerShutdownTests.cs
-  - tests/Whizbang.Core.Tests/Workers/BatchBufferTests.cs
-  - tests/Whizbang.Core.Tests/Workers/BatchBufferLimitsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/BoundedBatchStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/StreamAffinityBatchBufferTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/BatchBufferTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/BatchBufferLimitsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/BoundedBatchStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Messaging/StreamAffinityBatchBufferTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

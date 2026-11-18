@@ -24,14 +24,14 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.FleetAndCatalog.cs
   - src/Whizbang.Data.Postgres/Migrations/350_ExhaustedInboxRowsAreDropped.sql
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerStuckRowSentinelTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateHolderDiagnosticsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerStuckRowSentinelTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/WorkCoordinatorGateHolderDiagnosticsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StuckRowSentinelSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreFindStuckRowsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerExhaustedInboxConclusionTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerExhaustedInboxConclusionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ExhaustedInboxDropSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperFleetRecoveryTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorDefaultsTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/WorkCoordinatorDefaultsTests.cs
 ---
 
 # Stuck Row Sentinel

@@ -13,8 +13,8 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IGlobalPerspectiveFor.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveStore.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveForTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/IGlobalPerspectiveForTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/IPerspectiveForTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/IGlobalPerspectiveForTests.cs
   - tests/Whizbang.Migrate.Tests/Transformers/ProjectionToPerspectiveTransformerTests.cs
 lastMaintainedCommit: '01f07906'
 ---

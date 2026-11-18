@@ -64,9 +64,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/MaintenanceMetricsPendingTests.cs
   - tests/Whizbang.Core.Component.Tests/Observability/PendingReclamationSamplerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PendingReclamationSqlTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/CollectiveReplayRunnerTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/CollectiveReplayRunnerTests.cs
   - tests/Whizbang.Core.Tests/Observability/InstanceLivenessMetricsTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/LifecycleTrackingEndsTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Lifecycle/LifecycleTrackingEndsTests.cs
   - tests/Whizbang.Core.Tests/Observability/ProbeCadenceMetricsTests.cs
   - tests/Whizbang.Core.Component.Tests/Observability/PassiveCounterTests.cs
   - tests/Whizbang.Core.Tests/Observability/PassiveCounterDriftLockTests.cs
@@ -77,7 +77,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/TransportMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/PerspectiveMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/PerspectiveRewindMetricsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PendingEventsStatisticsRefreshTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PendingEventsStatisticsRefreshTests.cs
   - >-
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsBackfillGaugeTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsCoverageTests.cs
@@ -86,7 +86,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/WorkCoordinatorMetricsTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowOutboxFlushFailureTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowInboxFlushFailureTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateHolderDiagnosticsTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/WorkCoordinatorGateHolderDiagnosticsTests.cs
   - tests/Whizbang.Core.Tests/Observability/InboxMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/DeadLetterMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/EventCategoryMetricsTests.cs
@@ -107,11 +107,11 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Observability/TableStatisticsCollectorDatabaseTests.cs
   - tests/Whizbang.Core.Tests/Observability/TypeRegistryMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsTests.cs
-  - tests/Whizbang.Core.Tests/Capabilities/CapabilityMetricsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityMetricsTests.cs
   - tests/Whizbang.Sagas.Tests/SagaMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/CompositeMetricsTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxHandlerWorkerQueueDepthTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxHandlerWorkerQueueDepthTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.UnreadableRows.cs
 lastMaintainedCommit: '62abd3a45'

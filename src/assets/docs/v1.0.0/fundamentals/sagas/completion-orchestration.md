@@ -44,10 +44,10 @@ testReferences:
   - tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs
   - tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamsWithPendingMessagesSqlTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherScheduledForLocalReceptorTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherScheduledForLocalReceptorTests.cs
   - tests/Whizbang.Sagas.Tests/SagaFrameworkEventStreamTests.cs
   - tests/Whizbang.Sagas.Tests/SagaWatchdogTickDeliveryCountTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherLocalDispatchRecordTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherLocalDispatchRecordTests.cs
 ---
 
 # Completion Orchestration & Adaptive Watchdog

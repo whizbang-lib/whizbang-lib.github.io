@@ -25,7 +25,7 @@ codeReferences:
   - src/Whizbang.Core/Attributes/TerminalEventAttribute.cs
   - src/Whizbang.Core/Messaging/StreamSealedException.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/InMemoryEventStoreTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/IdentityValueObjectTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamCloseSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestTableSqlTests.cs
@@ -33,7 +33,7 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamPrefixTruncateTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperScheduledPrefixTruncateTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PrefixTruncateDriverParityTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorDefaultsTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/WorkCoordinatorDefaultsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamSealingSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamSealingTests.cs
 lastMaintainedCommit: '01f07906'

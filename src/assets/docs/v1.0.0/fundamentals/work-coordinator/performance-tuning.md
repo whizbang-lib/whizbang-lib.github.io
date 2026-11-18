@@ -13,9 +13,9 @@ codeReferences:
   - src/Whizbang.Core/Workers/BatchFlusher.cs
   - src/Whizbang.Core/Notifications/IWorkNotificationListener.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/AdaptiveOutstandingBudgetTests.cs
-  - tests/Whizbang.Core.Tests/Workers/AdaptiveOutstandingBudgetLeaseAwarenessTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxHandlerWorkerQueueDepthTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/AdaptiveOutstandingBudgetTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/AdaptiveOutstandingBudgetLeaseAwarenessTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxHandlerWorkerQueueDepthTests.cs
 ---
 
 # Performance tuning

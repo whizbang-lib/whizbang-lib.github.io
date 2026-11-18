@@ -25,14 +25,14 @@ codeReferences:
   - src/Whizbang.Data.Postgres/MisattributedOriginCorrectionStep.cs
   - src/Whizbang.Data.Postgres/Migrations/346_MisattributedOriginCorrection.sql
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerStepTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerRetentionSyncTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerStepTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerRetentionSyncTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/LedgerRetentionSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/LogPartitionConversionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/LedgerDefaultPartitionSweepTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperLedgerRetentionSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveApplyProgressSqlTests.cs
-  - tests/Whizbang.Core.Tests/Workers/QueueIndexReindexStepTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/QueueIndexReindexStepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueueIndexReindexSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ConcurrentIndexBuildTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestIdLaneBackfillSqlTests.cs

@@ -16,7 +16,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/WorkerPipelineExtensions.cs
   - src/Whizbang.Core/Workers/DeadLetterRecoveryWorker.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/FlushApiTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/FlushApiTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorSchemaTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperWorkCoordinatorBroadTests.cs
 lastMaintainedCommit: '01f07906'

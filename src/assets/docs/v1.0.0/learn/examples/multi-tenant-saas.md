@@ -20,7 +20,7 @@ codeReferences:
   - >-
     samples/ECommerce/ECommerce.BFF.API/Endpoints/SuperAdmin/GetOrdersByTenantEndpoint.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Dispatch/SystemDispatcherBuilderTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatch/SystemDispatcherBuilderTests.cs
   - samples/ECommerce/tests/ECommerce.BFF.API.Tests/SuperAdminEndpointTests.cs
 lastMaintainedCommit: '01f07906'
 ---

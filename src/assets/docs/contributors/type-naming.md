@@ -20,7 +20,7 @@ testReferences:
   - tests/Whizbang.RepoAnalyzers.Tests/TypeNameSourceAnalyzerTests.cs
   - tests/Whizbang.Core.Tests/TypeNameWireFormTests.cs
   - tests/Whizbang.Generators.Tests/Utilities/TypeNameUtilitiesNamingTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/CompositeChildIdentityCanonicalTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/CompositeChildIdentityCanonicalTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/CompositeChildIdentityBanListTests.cs
 ---
 

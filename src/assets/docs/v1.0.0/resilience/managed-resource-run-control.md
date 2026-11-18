@@ -35,8 +35,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/RunControl/LifecyclePhaseTests.cs
   - tests/Whizbang.Core.Component.Tests/RunControl/WhizbangLifecycleCoordinatorTests.cs
   - tests/Whizbang.Core.Tests/RunControl/WhizbangLifecycleStateTests.cs
-  - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerRequestFieldsTests.cs
-  - tests/Whizbang.Core.Tests/Startup/StartupStageRunControlTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/HeartbeatWorkerRequestFieldsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/StartupStageRunControlTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/StartupWiringAuditTests.cs
   - tests/Whizbang.Core.Component.Tests/RunControl/WhizbangRunPermitTests.cs
   - tests/Whizbang.Core.Tests/RunControl/WhizbangKillswitchTests.cs
@@ -44,9 +44,9 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/RunControl/LifecyclePhaseWorkerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WhizbangDatabaseInitializerServiceTests.cs
   - tests/Whizbang.Core.Component.Tests/RunControl/WhizbangRunControllerTests.cs
-  - tests/Whizbang.Core.Tests/Startup/StartupStageHostLifecycleTests.cs
-  - tests/Whizbang.Core.Tests/Startup/StartupStandDownTests.cs
-  - tests/Whizbang.Core.Tests/Startup/MaintainerDutyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/StartupStageHostLifecycleTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/StartupStandDownTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/MaintainerDutyTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/StandbyWatcherTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/CoordinationSourceGuardTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerRunPermitTests.cs

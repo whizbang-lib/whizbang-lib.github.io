@@ -19,7 +19,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Schema/ManagedSchemaHostPass.cs
   - src/Whizbang.Data.Postgres/FleetClaim.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Schema/ManagedSchemaPlannerTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Schema/ManagedSchemaPlannerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ManagedSchemaReconcilerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ManagedSchemaReconcilerPoolerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/DocumentIndexInitializationTests.cs

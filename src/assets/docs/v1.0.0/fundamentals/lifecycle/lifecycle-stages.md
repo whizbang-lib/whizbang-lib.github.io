@@ -33,22 +33,22 @@ codeReferences:
   - src/Whizbang.Core/Workers/BatchStrategyShutdownFlush.cs
   - src/Whizbang.Core/WhizbangDefaultsServiceCollectionExtensions.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/LifecycleStageTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/LifecycleStageExtensionsTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/LocalImmediateLifecycleStageTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/LifecycleStageTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/LifecycleStageExtensionsTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/LocalImmediateLifecycleStageTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ReceptorInvokerTests.cs
   - tests/Whizbang.Core.Component.Tests/Lifecycle/LifecycleCoordinatorTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerPostLifecycleTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerPostLifecycleTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDestructionHookTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PerspectiveWorkerPostLifecycleTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/TransportConsumerWorkerPostLifecycleTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerDestructionHookTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/DestructionStageReceptorComponentTests.cs
   - tests/Whizbang.Core.Component.Tests/Lifecycle/StreamPrefixTruncatorDestructionStageComponentTests.cs
   - tests/Whizbang.Core.Component.Tests/Dispatcher/PostLifecycleOncePerHandlingServiceComponentTests.cs
   - tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/DistributeStageOwnedCommandSendComponentTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/LifecycleInvocationHelperTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/LifecycleStageFailureIsolationTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerFailureIsolationTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/LifecycleStageFailureIsolationTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ReceptorInvokerFailureIsolationTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/WorkerPipelineExtensionsCoverageTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/DetachedLifecycleWorkTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatchStrategyShutdownFlushTests.cs

@@ -27,9 +27,9 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Messaging/OrderedStreamProcessorTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ScopedWorkCoordinatorStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ScopedWorkCoordinatorStrategyTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/IntervalWorkCoordinatorStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ImmediateWorkCoordinatorStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ImmediateWorkCoordinatorStrategyTests.cs
 lastMaintainedCommit: '62abd3a45'
 ---
 

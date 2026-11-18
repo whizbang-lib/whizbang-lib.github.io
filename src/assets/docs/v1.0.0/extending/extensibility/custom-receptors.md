@@ -18,7 +18,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
   - tests/Whizbang.Core.Tests/Receptors/VoidReceptorTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ReceptorInvokerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

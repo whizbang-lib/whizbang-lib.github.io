@@ -18,7 +18,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/HandlerCommitRequest.cs
   - src/Whizbang.Core/Messaging/FlushCompletionsRequest.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorDefaultInterfaceTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/WorkCoordinatorDefaultInterfaceTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorDeepPathTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperWorkCoordinatorBroadTests.cs
 lastMaintainedCommit: '01f07906'

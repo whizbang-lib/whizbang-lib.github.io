@@ -31,7 +31,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/FlushCompletionsSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HeldLeaseRenewalSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/LeaseRenewalWorkerCoverageTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorFlushHelperInboxCompletionTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/WorkCoordinatorFlushHelperInboxCompletionTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
