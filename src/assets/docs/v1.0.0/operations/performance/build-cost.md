@@ -15,10 +15,14 @@ codeReferences:
   - src/Whizbang.Generators/build/SoftwareExtravaganza.Whizbang.Generators.targets
   - scripts/build-cost/Test-NoOpRebuild.ps1
   - .github/workflows/ci.yml
+  - .github/scripts/Invoke-BuildWithinMemory.ps1
+  - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/MigrationScriptsTemplate.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/BuildCost/GeneratorCachingTests.cs
   - tests/Whizbang.Generators.Tests/BuildCost/ConsumerCorpus.cs
   - .github/scripts/tests/Test-NoOpRebuild.Tests.ps1
+  - .github/scripts/tests/Invoke-BuildWithinMemory.Tests.ps1
+  - tests/Whizbang.Generators.Tests/MigrationScriptsEmittedOnceGenerationTests.cs
 ---
 
 # Build Cost
@@ -97,6 +101,25 @@ receptor discovery. They still read types across the compilation on each edit, b
 be a message or a receptor's message, but they compare the result with the last run and skip
 generating output when nothing changed.
 
+## Compiler memory
+
+Time is not the only cost. Everything a generator emits is source the compiler parses, binds and holds
+in memory, so generated text that grows with your project grows the compiler's memory with it.
+
+Whizbang emits content that is the same for every type once per assembly, never once per type. The
+library's migration set is the main example: several megabytes of SQL that every Whizbang `DbContext`
+needs. Before [whizbang#2391](https://github.com/whizbang-lib/whizbang/pull/2391), each context's
+generated schema extensions embedded their own copy. An assembly with 13 contexts compiled about
+120 MB of identical generated source, and its compile peaked at 18.9 GB. The set is now generated once,
+into an internal `WhizbangMigrationScripts` class that every context reads, and the same assembly
+peaks at 7.9 GB. The migration texts are unchanged, so no recorded migration hash moves.
+{verified: MigrationScriptsEmittedOnceGenerationTests.TheMigrationSetIsEmittedOnceForEveryContextAsync}
+
+The assembly's size does not show this kind of growth: the compiler stores identical text literals
+once, so the 13 copies cost memory while compiling but almost nothing in the built file. To see what
+the generators emit into your project, turn on `EmitCompilerGeneratedFiles` (see below) and compare
+the size of the generated files with your own source.
+
 ## How Whizbang guards this
 
 | Guard | What fails it | Where it runs |
@@ -106,6 +129,8 @@ generating output when nothing changed.
 | No-op rebuild check | A second build with nothing changed running `CoreCompile` or the generator merge step in any project | CI job "Build · No-op rebuild does no work" |
 | Syntax predicate guard | A generator's syntax predicate that is not a public `Is...Candidate` method, or one that admits ordinary code | Every test run of the generators component tests |
 | Generated JSON files check | The pinned-type ledger or opt-in message registry not written, not updated after a change, or rewritten on a build that did not recompile, with generated files off | CI job "Build · No-op rebuild does no work" |
+| Generated migration set test | A generated project carrying more than one copy of the migration set, or a context that does not read the shared one | Every test run of the generators project |
+| Build memory guard | A full-solution build that succeeds but peaks above 13 GB, counting the build's processes and the shared compiler server | CI jobs "Build · Compile", "Build · Analyzers" and the net10.0 build |
 | Generator and analyzer timing | A generator or analyzer, or the total of either, slower than its threshold over a large generated consumer | CI job "Build · Generator and analyzer timing" (advisory) |
 
 The generator caching test, [`GeneratorCachingTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/BuildCost/GeneratorCachingTests.cs),
@@ -131,6 +156,14 @@ consumer with `EmitCompilerGeneratedFiles` off. It fails unless the default buil
 and no registry or generated source, a build with `WhizbangEmitMessageRegistry=true` writes the
 registry too, a new `[PinnedId]` message reaches both files, and a build with nothing changed
 compiles nothing and runs neither extraction step.
+
+The build memory guard, `.github/scripts/Invoke-BuildWithinMemory.ps1`, runs the build and samples the
+memory of its processes and the compiler server every two seconds. A build that fails keeps its own
+exit code; a build that succeeds over the budget fails with an error naming the peak. The budget leaves
+headroom below the 16 GB of a hosted CI runner, so growth shows up as a failed check on the pull
+request that caused it, not as a runner that runs out of memory and hangs. The CI builds also set
+`DOTNET_GCConserveMemory=7`, which makes the shared compiler server return memory between projects
+instead of holding what the largest one used.
 
 The timing job builds a large generated consumer (1,000 features and 3,000 files of ordinary code),
 times each generator and analyzer as the median of five runs, and compares the times with
