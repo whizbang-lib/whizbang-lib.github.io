@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "44350490696",
-    "sha": "30c88b017912ace847bb6bb7cbc8df1343c77ff0",
+    "runId": "44365439457",
+    "sha": "342c941494de719e5d9bc65acebe9146dd26d38f",
     "branch": "develop",
-    "libraryVersion": "0.2627.0-alpha.1737",
-    "completedAt": "2026-11-18T16:59:02.587Z"
+    "libraryVersion": "0.2627.0-alpha.1740",
+    "completedAt": "2026-11-18T18:14:31.409Z"
   },
   "total": {
-    "passed": 43004,
+    "passed": 43006,
     "failed": 0,
     "skipped": 12
   },
@@ -28,7 +28,7 @@
       "skipped": 0
     },
     "integration": {
-      "passed": 645,
+      "passed": 647,
       "failed": 0,
       "skipped": 3
     },
@@ -174,7 +174,7 @@
     },
     "Whizbang.Core.Integration.Tests": {
       "file": "Whizbang.Core.Integration.Tests.json",
-      "passed": 217,
+      "passed": 219,
       "failed": 0,
       "skipped": 3
     },
