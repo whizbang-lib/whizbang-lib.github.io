@@ -3,8 +3,8 @@ title: Superseding Events
 pageType: concept
 description: >-
   Declare an event type [Superseding] when every event holds the whole state for its key: once a newer event of the
-  same type and key is stored on the stream, the older one is deleted with its body and its digest contribution after
-  every consumer has processed it. Covers the key, the reaper and its gates, what it means for rebuilds and rewinds,
+  same type and key is stored on the stream, the older one is deleted with its body after every consumer has processed
+  it. Integrity digests count the key once, so a reap never changes one. Covers the key, the reaper and its gates, what it means for rebuilds and rewinds,
   integrity digests, received copies, the history stored before a type was declared superseding, and the WHIZ135 and
   WHIZ136 build rules.
 version: 1.0.0
@@ -26,6 +26,7 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/EventEnvelopeJsonbAdapter.cs
   - src/Whizbang.Data.Postgres/Migrations/295_SupersedingEvents.sql
   - src/Whizbang.Data.Postgres/Migrations/454_RedeliveredCopiesKeepTheOriginsOrder.sql
+  - src/Whizbang.Data.Postgres/Migrations/461_SupersedingTypesCountTheKey.sql
   - src/Whizbang.Core/Messaging/CompositeInboxFanout.cs
   - src/Whizbang.Generators/MessageTypeCatalogGenerator.cs
   - src/Whizbang.Generators/SupersedingEventAnalyzer.cs
@@ -40,6 +41,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/StreamStartSql.cs
   - src/Whizbang.Data.Postgres/Migrations/455_StaleCopiesAboveTheNewestAreRewalked.sql
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/SupersedingCountsTheKeySqlTests.cs
   - tests/Whizbang.Core.Tests/Messaging/RedeliveredSupersedingChildTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveredSupersedingCopySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SupersedingOrderGuardTests.cs
@@ -71,8 +73,8 @@ embedding is recomputed and published in full; a user's permission set is replac
 event but the newest of each key is redundant once it has been consumed, and keeping it costs storage forever.
 
 Declare the type `[Superseding]` and Whizbang keeps only the newest event of each key on each stream. An older event is
-deleted, with its body and its contribution to the stream's integrity digest, once a newer event of the same type and
-key is stored on the same stream and every consumer has processed the older one.
+deleted with its body once a newer event of the same type and key is stored on the same stream and every consumer has
+processed the older one. The stream's integrity digest counts the key, not each copy, so the deletion never changes it.
 
 {verified: SupersedingEventReaperSqlTests.Reap_SupersededAndConsumed_IsDeletedWithItsBodyAndItsDigestContribution_TheNewestIsKeptAsync}
 
@@ -220,7 +222,7 @@ sequenceDiagram
   W->>Q: queue v1 (older event of stream, type and key k)
   M->>Q: read the oldest queued events (batch of 5000)
   M->>E: lock their streams, check every gate
-  M->>E: subtract v1 from the stream digest, delete its body and pointer
+  M->>E: hand v1's place in the digest on to v2, delete v1's body and pointer
   M->>Q: remove v1 from the queue
 ```
 
@@ -248,22 +250,33 @@ sequenceDiagram
 
 ## Integrity digests {#integrity-digests}
 
-A reaped event leaves the stream's integrity digest the way a prefix truncate's events do: its hashes are subtracted
-from `wh_stream_digests` (an emptied bucket is dropped), the sealed epochs that covered it are refolded, and the origin
-generation is bumped once per pass that removed folded history, so consumers reset their seals and re-verify instead
-of reporting damage.
+### The digest counts the key {#the-digest-counts-the-key}
+
+{verified: SupersedingCountsTheKeySqlTests.Emit_CopiesOfAKey_AreCountedOnce_AsTheKeysSlotAsync, SupersedingCountsTheKeySqlTests.Reap_DeletesOlderCopies_AndLeavesTheDigestTheSealsAndTheGenerationAsTheyWereAsync}
+
+A superseding type is declared as "only the newest copy matters", so its integrity digest counts each key once, never
+each copy. A key's **slot** (an identity made of the stream, the group and the key, the same on every service) is
+folded once, while any copy of the key is held, at the place its first copy was stored: that copy's type bucket and its
+lane position. The reaper deletes older copies physically and never touches a digest, a seal or the origin generation,
+so it does not matter which service reaps first.
 
 | Choice | Reason | Verified |
 |---|---|---|
-| The digest after a reap equals a fresh fold of the events left. | Integrity checks compare digests; a reap is a deliberate change, not drift. | {verified: SupersedingEventReaperSqlTests.Reap_SupersededAndConsumed_IsDeletedWithItsBodyAndItsDigestContribution_TheNewestIsKeptAsync} |
-| The origin generation is bumped once per pass, however many events it removed, and not at all when it removed only events no fold counts (at-most-once events, audit records). | Each bump makes consumers re-verify from the origin's epochs; a pass that changed no folded history must not cost them that. | {verified: SupersedingEventReaperSqlTests.Reap_RemovingFoldedHistory_RefoldsAndBumpsTheGenerationOnce_AnAtMostOnceEventDoesNotAsync} |
+| Count the key, not the newest copy. | Counting the newest copy would move a sealed epoch on every update, the seal churn the epochs exist to end. A slot counted once never moves. | {verified: SupersedingCountsTheKeySqlTests.Reap_DeletesOlderCopies_AndLeavesTheDigestTheSealsAndTheGenerationAsTheyWereAsync} |
+| The slot stays where its first copy sat: when the reaper deletes that copy, the copies it leaves inherit its lane position and type bucket (`supersede_slot_at`, `supersede_slot_type`). | A re-check of a sealed epoch recomputes it from the rows still held; without the inherited place the slot would move to the newer copy's epoch, and the re-check would find drift in two epochs. | {verified: SupersedingCountsTheKeySqlTests.AfterAReap_TheHealAndTheSealRecheckFindNoDrift_AndStillFindALossAsync, SupersedingCountsTheKeySqlTests.AKeyOfAGroup_StaysCountedUnderItsFirstCopysType_WhenANewerCopyIsAnotherTypeAsync} |
+| A cut that removes a key's every copy carries its slot; one that leaves a newer copy hands the place on. | The key is counted while it is held, and a cut [carries](../../resilience/stream-integrity#cuts-carry-their-digest) what it removes. | {verified: CleanupIntegrityMatrixTests.CleanupAndIntegrity_Converge_AndAGenuineLossBesideTheCleanupIsStillRepairedAsync} |
+| On upgrade, the stored digests of every stream holding a superseding row are recounted once, the sealed epochs holding one are refolded, and the generation is bumped once when this service's own epochs moved. | Digests stored by an earlier release counted every copy; consumers re-verify from the epochs once. During a rolling deploy the pair guard halts a pair whose two sides count differently. | {verified: SupersedingCountsTheKeySqlTests.TheUpgrade_RecountsStoredDigestsAndSealsByTheKey_AndBumpsTheGenerationOnceAsync} |
+
+What it gives up: once the open window has passed, a service that holds an older copy of a key and lost the newest one
+is not found by the digest. A whole key lost still is, and continuity checkpoints cover every copy's arrival inside the
+window.
 
 ## Across services {#across-services}
 
 A service that receives a superseding event stores it with the same flag and key its producer used: the flag comes from
 the receiving service's message catalog by type name, and the key from the received payload read as its registered
-type. Each service reaps its own copies by its own gates, so the producer and a subscriber can disagree about a stream's
-digest for a while, until both have reaped the same events. That window is accepted: reaping never waits for a
+type. Each service reaps its own copies by its own gates, and since the digest [counts the key](#the-digest-counts-the-key),
+the producer and a subscriber agree about a stream's digest whichever has reaped what. Reaping never waits for a
 subscriber to acknowledge.
 
 {verified: ReceivedInboxMessageBuilderSupersedingKeyTests.Build_AReceivedSupersedingEvent_IsFlaggedAndKeyed_AnOrdinaryEventIsNotAsync, SupersedingEventReaperSqlTests.Emit_Inbox_StampsTheKey_AndQueuesTheOlderOneAsync}
@@ -340,7 +353,7 @@ The write paths stamp the flag and the key when an event is stored, so the event
 `superseding-history-reconcile` step walks each superseding type's stored events, reads each event's key from its stored
 payload with the generated accessor the write paths use, stamps the flag and the key, and queues every event but the
 newest of each stream, type and key. From there the [reaper](#the-reaper) takes over: an old event is deleted only past
-every one of its gates, and the digests are adjusted as for any other reaped event. The step itself deletes nothing.
+every one of its gates, and, as for any other reaped event, no digest changes. The step itself deletes nothing.
 
 {verified: SupersedingHistoryReconcileSqlTests.Reconcile_HistoryStoredBeforeTheDeclaration_IsReapedDownToTheNewestOfEachKey_OnceConsumedAsync, DapperSupersedingKeyTests.HistoryStoredBeforeTheDeclaration_IsReconciledByTheRegisteredStep_AndReapedToTheNewestAsync}
 

@@ -162,6 +162,8 @@ The composite is **fail-closed but never silent**: while `StartedAsync` is block
 
 The narration runs on the `TimeProvider` that `StartupReadyService` is given, a required constructor parameter. Through the worker pipeline that is the host's registered clock: the pipeline registers `TimeProvider.System` with `TryAdd`, so a host that registers its own `TimeProvider` first, a fake clock in a test included, drives the narration with it. The service probes its wait every 5 seconds and narrates on the 3rd, 10th and 30th probe and then every 60 probes, so the first narration comes 15 seconds into a blocked boot. The elapsed time it reports comes from the same clock. {verified: StartupReadyCompositeTests.ReadyService_NarratesWhichBlockingStepIsHoldingItUpAsync, StartupReadyCompositeTests.StartedAsync_WhileBlockedOnAContributor_NarratesWhatItIsWaitingOnAsync, StartupWiringAuditTests.TheReadyServiceAndTheStandbyWatcher_RunOnTheHostsRegisteredClockAsync}
 
+A host told to stop while it waits ends the wait there and says nothing more about readiness. The stop is not counted as a probe, so it never produces a "not ready after 0s" warning, even when a readiness contributor does not watch for the stop itself. {verified: StartupReadyCompositeTests.ReadyService_StoppedWhileWaiting_DoesNotNarrateTheStopAsAProbeAsync, StartupStopBeforeReadyTests.AHostStoppedInPreflight_DoesNotDeregister_AndLogsNoWarningOrErrorAsync}
+
 See [Database Readiness](../workers/database-readiness#ready-is-more-than-the-gate) for the composite's roster and the health-policy rows.
 
 ## Seams

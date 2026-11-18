@@ -853,7 +853,7 @@ Whizbang's EF Core integration is **fully AOT-compatible** with zero reflection.
 
 When you build your application, the **EF Core source generator** runs automatically and:
 
-1. **Bundles Core Infrastructure Schema** - Generates the DDL for the `wh_*` infrastructure tables from C# schema definitions (`wh_service_instances`, `wh_active_streams`, `wh_partition_assignments`, `wh_message_deduplication`, `wh_inbox`, `wh_outbox`, `wh_event_store`, `wh_receptor_processing`, `wh_perspective_cursors`, `wh_perspective_snapshots`, `wh_message_associations`, `wh_perspective_registry`, `wh_message_type_registry`, `wh_request_response`, `wh_sequences`)
+1. **Bundles Core Infrastructure Schema** - Generates the DDL for the `wh_*` infrastructure tables from C# schema definitions (`wh_service_instances`, `wh_active_streams`, `wh_message_deduplication`, `wh_inbox`, `wh_outbox`, `wh_event_store`, `wh_perspective_cursors`, `wh_perspective_snapshots`, `wh_message_associations`, `wh_perspective_registry`, `wh_message_type_registry`, `wh_request_response`, `wh_sequences`)
 
 2. **Discovers Perspective Tables** - Finds every discovered perspective model and generates one `wh_per_*` table DDL at build time
 
