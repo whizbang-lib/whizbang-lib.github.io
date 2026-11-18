@@ -31,6 +31,8 @@ codeReferences:
   - src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusSubscriptionExtensions.cs
 testReferences:
   - >-
+    tests/Whizbang.Transports.AzureServiceBus.Component.Tests/AzureServiceBusPausedSubscriptionTests.cs
+  - >-
     tests/Whizbang.Transports.AzureServiceBus.Component.Tests/AzureServiceBusReceiveDiagnosticsTests.cs
   - >-
     tests/Whizbang.Transports.AzureServiceBus.Tests/AsbReceiveStoresBeforeSettlingTests.cs
@@ -1313,6 +1315,8 @@ numbers each line reports:
 1. **Every delivery has a handed-to-handler line, and an unsettled Warning follows each one.**
    The handler saw every delivery and the transport gave it back; the Warning's reason says why
    (a paused or disposed subscription, or the handler failed, with the failure logged just before).
+   A paused subscription stops its processor, so it hands back at most the deliveries already in
+   flight when the pause landed; see [Paused subscriptions](#paused-subscriptions).
 2. **Every delivery has a handed-to-handler line and no Warning.** The handler saw it and returned,
    and the transport then completed it; look for a completion failure (lock lost) logged after it.
 3. **Delivery numbers are missing from the handed-to-handler lines.** Those deliveries never reached
@@ -1327,6 +1331,35 @@ Debug is normally off in production, so turn it on for the `AzureServiceBusTrans
 one instance while you investigate. Each line checks its level before it formats anything, so a
 disabled level costs one check per delivery and allocates nothing.
 {verified: AzureServiceBusReceiveDiagnosticsTests.HandsADeliveryToTheHandler_WithDebugOff_FormatsNothingAsync, AzureServiceBusReceiveDiagnosticsTests.Redelivery_WithInformationOff_WritesAndFormatsNothingAsync, AzureServiceBusReceiveDiagnosticsTests.ReturnedUnsettled_WithWarningOff_WritesAndFormatsNothingAsync}
+
+### Paused subscriptions {#paused-subscriptions}
+
+{verified: AzureServiceBusPausedSubscriptionTests.SessionBatch_PausedForAStandDown_StopsTakingCheckpointDeliveriesAsync, AzureServiceBusPausedSubscriptionTests.NonSessionBatch_Paused_StopsItsProcessorAsync, AzureServiceBusPausedSubscriptionTests.SessionBatch_ResumedAfterAPause_StartsItsProcessorAndHandlesDeliveriesAsync}
+
+A paused subscription stops its processor, so it takes no session and no message until it is
+resumed. The run-control path pauses every subscription when the run permit closes: on a pause,
+on a stop, and when an instance stands down for a newer version during a rolling upgrade.
+
+Stopping, rather than receiving and handing each delivery back, is what keeps a rolling upgrade
+from dead-lettering anything. Every hand-back (abandon) counts a delivery, and the instance that
+holds a session keeps it while messages keep arriving. All of one origin's integrity checkpoints
+share a session and arrive every minute, so a standing-down instance that kept its processor
+running held those sessions and burned every message in them to the dead-letter queue with
+`MaxDeliveryCountExceeded`. Stopped, it takes nothing, nothing is counted, and the newer instance
+takes the session at once.
+
+- The stop is started when the pause lands, not awaited: the processor's stop waits for the
+  handlers in flight, and a pause can be reached from one of them. A delivery that reaches the
+  handler before the stop lands is handed back once, with the unsettled Warning above.
+  {verified: AzureServiceBusPausedSubscriptionTests.SessionBatch_ACheckpointInFlightAsThePauseLands_IsHandedBackOnceWithAWarningAsync}
+- If the processor cannot be stopped, the subscription stays paused and logs a Warning that it
+  keeps receiving; each delivery it takes is then handed back with the unsettled Warning.
+  {verified: AzureServiceBusPausedSubscriptionTests.SessionBatch_PauseCannotStopTheProcessor_LogsAWarningAndStaysPausedAsync}
+- Resuming waits for that stop to finish and starts the processor again.
+  {verified: AzureServiceBusPausedSubscriptionTests.SessionBatch_ResumedAfterAPause_StartsItsProcessorAndHandlesDeliveriesAsync, AzureServiceBusPausedSubscriptionTests.NonSessionBatch_ResumedAfterAPause_StartsItsProcessorAsync}
+- A [namespace-throttle pause](#namespace-throttling) that ends while the subscription is paused
+  leaves the processor stopped until the subscription is resumed.
+  {verified: AzureServiceBusPausedSubscriptionTests.NamespaceThrottle_EndingWhileTheSubscriptionIsPaused_LeavesTheProcessorStoppedAsync}
 
 ## Observability
 
