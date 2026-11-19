@@ -98,32 +98,32 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/EphemeralBlockerMetricsTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveRegistryMixedOptInTests.cs
   - tests/Whizbang.Generators.Tests/MixedStreamAllowanceGeneratorTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/MixedStreamAllowanceTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorDefaultsTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/MixedStreamAllowanceTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/WorkCoordinatorDefaultsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MixedStreamAllowanceSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMixedStreamAllowanceTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEphemeralHistoryReclassifyTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/AuditEphemeralExclusionTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditEphemeralExclusionTests.cs
   - tests/Whizbang.Core.Tests/Attributes/EphemeralAttributeTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDispositionTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerDispositionTests.cs
   - tests/Whizbang.Generators.Tests/UnshippedDestructionAnalyzerTests.cs
   - tests/Whizbang.Core.Tests/Ephemeral/EphemeralModeResolverTests.cs
   - tests/Whizbang.Core.Tests/Ephemeral/EphemeralFlagDeriverTests.cs
   - tests/Whizbang.Core.Tests/Ephemeral/EphemeralTtlDeriverTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/EvictedRowRebuildTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRebuilderTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/EvictedRowRebuildTests.cs
   - tests/Whizbang.Core.Tests/Observability/PerspectiveMetricsTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.StragglerDropped.cs
-  - tests/Whizbang.Core.Tests/Perspectives/RewindDeletedArchiveTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/StreamCompactorTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/FullHistoryPerspectiveRegistryTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/StreamPrefixTruncatorTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/RewindDeletedArchiveTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/StreamCompactorTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/FullHistoryPerspectiveRegistryTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Lifecycle/StreamPrefixTruncatorTests.cs
   - tests/Whizbang.Core.Component.Tests/Lifecycle/StreamPrefixTruncatorDestructionStageComponentTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/DestructionContractTests.cs
-  - tests/Whizbang.Core.Tests/Archival/PrefixTruncateScheduleTests.cs
-  - tests/Whizbang.Core.Tests/Archival/ScheduledPrefixTruncateRenameTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDestructionHookTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerReapDrivenSnapshotTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Lifecycle/DestructionContractTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/PrefixTruncateScheduleTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/ScheduledPrefixTruncateRenameTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerDestructionHookTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerReapDrivenSnapshotTests.cs
   - tests/Whizbang.Core.Tests/Fingerprint/TypeDefinitionReconcilerBranchCoverageTests.cs
   - tests/Whizbang.Core.Tests/Fingerprint/TypeDefinitionReconcilerCoverageTests.cs
   - tests/Whizbang.Generators.Tests/EphemeralAnalyzerTests.cs
@@ -138,7 +138,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralReapSeenSetTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralDestructionTargetSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PerformMaintenanceDelegatesTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerReapScopeTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerReapScopeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralEventStoreReadTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralSnapshotTargetSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralStreamGuardSqlTests.cs
@@ -151,8 +151,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PurgedRowEphemeralHistorySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralOnlyReadModelReapSqlTests.cs
   - tests/Whizbang.Generators.Tests/EphemeralRewindFloorGeneratorTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/EphemeralRewindFloorRunnerTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/EphemeralRewindFloorTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/EphemeralRewindFloorRunnerTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/EphemeralRewindFloorTests.cs
 lastMaintainedCommit: '62abd3a45'
 ---
 
@@ -1196,7 +1196,7 @@ in a dedicated control stream, separate from the stream being truncated. The cut
 yours to advance each period.
 {verified: PrefixTruncateScheduleTests.Recurring_BuildsIntervalDefinition_PayloadRoundTripsAsync, PrefixTruncateScheduleTests.RecurringCron_BuildsCronDefinitionAsync}
 
-```csharp{title="A monthly prefix-truncate schedule" description="A cron schedule that fires a ScheduledPrefixTruncate at midnight on the first of each month, New York time." framework="NET10" category="Core Concepts" difficulty="ADVANCED" tags=["prefix-truncate", "schedules", "archival"] testFile="PrefixTruncateScheduleTests.cs" testMethod="RecurringCron_BuildsCronDefinitionAsync" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Core.Tests/Archival/PrefixTruncateScheduleTests.cs" tests=["PrefixTruncateScheduleTests.RecurringCron_BuildsCronDefinitionAsync"]}
+```csharp{title="A monthly prefix-truncate schedule" description="A cron schedule that fires a ScheduledPrefixTruncate at midnight on the first of each month, New York time." framework="NET10" category="Core Concepts" difficulty="ADVANCED" tags=["prefix-truncate", "schedules", "archival"] testFile="PrefixTruncateScheduleTests.cs" testMethod="RecurringCron_BuildsCronDefinitionAsync" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/PrefixTruncateScheduleTests.cs" tests=["PrefixTruncateScheduleTests.RecurringCron_BuildsCronDefinitionAsync"]}
 var def = PrefixTruncateSchedule.RecurringCron(
   "truncate-month", Guid.NewGuid(), new ScheduledPrefixTruncate(Guid.NewGuid(), 100, false),
   "0 0 1 * *", Guid.NewGuid(), timeZone: "America/New_York");

@@ -14,8 +14,8 @@ codeReferences:
   - src/Whizbang.Core/Lenses/TemporalPerspectiveRow.cs
   - src/Whizbang.Core/Perspectives/TemporalActionType.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Lenses/ITemporalLensQueryTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/TemporalPerspectiveRowTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/ITemporalLensQueryTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/TemporalPerspectiveRowTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

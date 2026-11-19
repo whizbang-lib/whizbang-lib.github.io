@@ -51,25 +51,25 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PerspectiveCursorFillFactorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PerspectiveAppliedAutovacuumTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/TableRewritePolicyRetiredTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TableRewriteStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Startup/TableRewriteStartupStepTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PgRepackTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/TableRewriteStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/TableRewriteStartupStepTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PgRepackTests.cs
   - tests/Whizbang.Core.Tests/Processes/ExternalProcessRequestTests.cs
   - tests/Whizbang.Core.Tests/PostgresExtensions/LibpqEnvironmentTests.cs
   - tests/Whizbang.Core.Integration.Tests/Processes/ExternalProcessRunnerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ExternalTableRewriteTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OnlineTableRewriteStepTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/OnlineTableRewriteStepTests.cs
   - tests/Whizbang.Core.Tests/PostgresExtensions/PgSqueezePrerequisitesTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OnlineTableRewriteSqlTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerBloatMeasurementTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerBloatMeasurementTests.cs
   - tests/Whizbang.Core.Tests/Observability/BloatMeasurementMethodTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TableBloatMeasurementSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/BrinIndexCandidatesTests.cs
-  - tests/Whizbang.Core.Tests/Workers/QueueIndexReindexStepTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/QueueIndexReindexStepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueueIndexReindexSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ToastAwareBloatEstimateSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RewriteRegrowthFloorSqlTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TableRewriteSettingsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/TableRewriteSettingsTests.cs
 ---
 
 # Storage Maintenance

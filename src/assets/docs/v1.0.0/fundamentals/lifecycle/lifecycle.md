@@ -15,7 +15,7 @@ codeReferences:
   - src/Whizbang.Core/Routing/SharedTopicInboxStrategy.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Commands/System/SystemCommandsTests.cs
-  - tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/InboxRoutingStrategyTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

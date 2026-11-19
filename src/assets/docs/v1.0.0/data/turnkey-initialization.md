@@ -38,11 +38,11 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSchemaStartupTests.cs
   - tests/Whizbang.Core.Component.Tests/Schema/SchemaInitializationRunnersTests.cs
-  - tests/Whizbang.Core.Tests/Schema/SchemaInitializationObserversTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Schema/SchemaInitializationObserversTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationStepTransactionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupPreflightHostTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStartupAssessorTests.cs
-  - tests/Whizbang.Core.Tests/Schema/StartupVerdictBindingTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Schema/StartupVerdictBindingTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

@@ -20,7 +20,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StoreInboxMessagesSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreStoreInboxMessagesTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerDeadLetterTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxDispatchWorkerDeadLetterTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ServiceBusConsumerSourceIdentityTests.cs
 lastMaintainedCommit: '01f07906'

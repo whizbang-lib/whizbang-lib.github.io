@@ -42,26 +42,26 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/455_StaleCopiesAboveTheNewestAreRewalked.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SupersedingCountsTheKeySqlTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/RedeliveredSupersedingChildTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/RedeliveredSupersedingChildTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveredSupersedingCopySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SupersedingOrderGuardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TypeHistoryWalkSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/TypeHistoryWalkGuardTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/SupersedingEventsTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/EventFlagsTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/EventFlagsDeriverTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/DirectAppendKindTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Lifecycle/SupersedingEventsTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EventFlagsTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EventFlagsDeriverTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/DirectAppendKindTests.cs
   - tests/Whizbang.Core.Tests/EventMarkerResolverCoverageTests.cs
   - tests/Whizbang.Core.Tests/Observability/EnvelopeMetadataSlimFormTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherSupersedingKeyTests.cs
-  - tests/Whizbang.Core.Tests/Workers/ReceivedInboxMessageBuilderSupersedingKeyTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherSupersedingKeyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/ReceivedInboxMessageBuilderSupersedingKeyTests.cs
   - tests/Whizbang.Generators.Tests/MessageTypeCatalogGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/SupersedingEventAnalyzerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SupersedingEventReaperSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSupersedingKeyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SupersedingHistoryReconcileSqlTests.cs
   - tests/Whizbang.Generators.Tests/MessageTypeCatalogFingerprintTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRowStartTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRowStartTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamStartedAtSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/RebuildCreatedAtIntegrationTests.cs
 ---

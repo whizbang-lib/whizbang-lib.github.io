@@ -24,11 +24,11 @@ codeReferences:
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Data.Postgres/PostgresDeadlockRetry.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/TransientDatabaseFailureTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/TransientDatabaseFailureTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/WorkerLoopRecoveryTests.cs
-  - tests/Whizbang.Core.Tests/Workers/DatabaseFailureEscalationTests.cs
-  - tests/Whizbang.Core.Tests/Workers/DatabaseFailureEscalationOptionsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/DatabaseFailureEscalationWiringTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/DatabaseFailureEscalationTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/DatabaseFailureEscalationOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/DatabaseFailureEscalationWiringTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerCoverageTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDrainWorkerCoverageTests.TransientFailure.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerCoverageTests.TransientFailure.cs

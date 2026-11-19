@@ -21,9 +21,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/390_TheClaimLeasesNoInboxAFullWorkingSetWouldHandBack.sql
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDrainWorkerGapTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/InboxChannelWriterHeldRowsTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/InboxPayloadTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDeserializeCacheByteBudgetTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/InboxChannelWriterHeldRowsTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/InboxPayloadTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxDeserializeCacheByteBudgetTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowBatcherTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerAcquisitionBoundsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimInboxWorkingSetSqlTests.cs

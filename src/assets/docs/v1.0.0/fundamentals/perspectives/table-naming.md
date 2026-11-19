@@ -33,7 +33,7 @@ testReferences:
   - tests/Whizbang.Generators.Tests/Utilities/NamingConventionUtilitiesTests.cs
   - tests/Whizbang.Generators.Tests/Utilities/TypeNameUtilitiesTests.cs
   - tests/Whizbang.Generators.Tests/Utilities/ConfigurationUtilitiesTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveTableAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveTableAttributeTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPerspectiveTableRenameTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PerspectiveTableRenameTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupMigrationStepsTests.cs

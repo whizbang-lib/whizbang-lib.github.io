@@ -17,8 +17,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/RoleHolderLivenessCostScenarioTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/CoordinationSourceGuardTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/DutyHolderWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Startup/DutyGrantContractTests.cs
-  - tests/Whizbang.Core.Tests/Startup/RoleAssignmentOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/DutyGrantContractTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/RoleAssignmentOptionsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleAssignmentSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleAssignmentResilienceSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleAssignmentElectorE2ETests.cs

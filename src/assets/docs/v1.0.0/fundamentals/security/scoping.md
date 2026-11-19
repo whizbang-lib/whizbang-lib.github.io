@@ -18,15 +18,15 @@ codeReferences:
   - src/Whizbang.Core/Security/SecurityPrincipalId.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveStore.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Scoping/PerspectiveScopeTests.cs
-  - tests/Whizbang.Core.Tests/Scoping/MarkerInterfaceTests.cs
-  - tests/Whizbang.Core.Tests/Scoping/PerspectiveScopeFilterByFieldsTests.cs
-  - tests/Whizbang.Core.Tests/Scoping/InheritScopeAttributeTests.cs
-  - tests/Whizbang.Core.Tests/Scoping/ScopeInheritanceTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/ScopeFilterTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/ScopeFilterBuilderTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/ScopedLensFactoryTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/ScopedLensFactoryImplTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Scoping/PerspectiveScopeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Scoping/MarkerInterfaceTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Scoping/PerspectiveScopeFilterByFieldsTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Scoping/InheritScopeAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Scoping/ScopeInheritanceTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/ScopeFilterTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/ScopeFilterBuilderTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/ScopedLensFactoryTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/ScopedLensFactoryImplTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

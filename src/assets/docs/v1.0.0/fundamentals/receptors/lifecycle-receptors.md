@@ -26,14 +26,14 @@ codeReferences:
   - src/Whizbang.Core/Messaging/ReceptorInvoker.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerRepairTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/FireAtAttributeTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/LifecycleStageTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/LifecycleStageExtensionsTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/LifecycleContextTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ReceptorRegistryRuntimeRegistrationTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ReceptorIdempotentAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ReceptorInvokerRepairTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/FireAtAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/LifecycleStageTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/LifecycleStageExtensionsTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/LifecycleContextTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ReceptorInvokerTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ReceptorRegistryRuntimeRegistrationTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ReceptorIdempotentAttributeTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/ProcessingModeTests.cs
   - tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs
 lastMaintainedCommit: '01f07906'

@@ -31,8 +31,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/MessageContextTests.cs
   - tests/Whizbang.Core.Component.Tests/Security/ScopeContextAccessorTests.cs
   - tests/Whizbang.Core.Component.Tests/Security/ScopeContextAccessorInitiatingContextTests.cs
-  - tests/Whizbang.Core.Tests/Security/ScopedMessageContextTests.cs
-  - tests/Whizbang.Core.Tests/Security/SecurityContextHelperTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/ScopedMessageContextTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/SecurityContextHelperTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OutboxCascadeIdentityPersistenceIntegrationTests.cs
 lastMaintainedCommit: '1fe307a4'
 ---

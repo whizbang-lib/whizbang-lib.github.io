@@ -161,9 +161,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Rules/TypeRulesTests.cs
   - tests/Whizbang.Core.Tests/Rules/RuleSetTests.cs
   - tests/Whizbang.Core.Tests/Rules/RuleSemanticsGoldenTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/CatalogRuleFingerprintSourceTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/RuleFingerprintWireTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/IntegrityPairGuardTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/CatalogRuleFingerprintSourceTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/RuleFingerprintWireTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/IntegrityPairGuardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TwoServicePairGuardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TwoServiceCutUnderPairGuardTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/EligibilitySqlVersionTests.cs
@@ -173,49 +173,49 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAskMemoSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TwoServiceAskSkipTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.AskSkip.cs
-  - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerAskSkipTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/IntegrityAuditWorkerAskSkipTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestTableSqlTests.Slices.cs
-  - tests/Whizbang.Core.Tests/Messaging/IntegrityCheckOptionsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerCheckGatingTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/IntegrityCheckOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/IntegrityAuditWorkerCheckGatingTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SealRecheckRotationSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedHeldFoldCostSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DigestEligibilitySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/DigestEligibilityGuardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBatchReconcileCoordinatorTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcileBatchTests.cs
-  - tests/Whizbang.Core.Tests/Routing/OwnedNamespaceMatcherLocalLaneTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/IntegrityDomainOwnershipTests.cs
-  - tests/Whizbang.Core.Tests/Workers/IntegrityCheckpointOwnershipTests.cs
-  - tests/Whizbang.Core.Tests/Workers/SubscriptionExpansionTargetingTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OriginReattributionWorkerTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/RedeliveryReconcileBatchTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Routing/OwnedNamespaceMatcherLocalLaneTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/IntegrityDomainOwnershipTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/IntegrityCheckpointOwnershipTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/SubscriptionExpansionTargetingTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/OriginReattributionWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OriginReattributionWorkerLoopTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityDomainClaimsSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OriginReattributionSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AtMostOnceOccurrenceIntegrityTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/AuditLedgerRebuildTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditLedgerRebuildTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AuditRebuildRequestReceptorTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/IntegrityCheckpointWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/IntegrityAuditWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/SubscriptionExpansionWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/IntegrityGapTrackerTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/IntegrityCheckpointWireSerializationTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/StreamIntegrityOptionsDefaultsTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/StreamRedeliveryRequesterTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/IntegrityGapTrackerTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/IntegrityCheckpointWireSerializationTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/StreamIntegrityOptionsDefaultsTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/RedeliveryPumpTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/StreamRedeliveryRequesterTests.cs
   - tests/Whizbang.Hosting.AspNet.Component.Tests/StreamRedeliveryEndpointsTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/RedeliveryCompositeWireSerializationTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/RedeliveryCompositeWireSerializationTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/CompositeInboxFanoutTests.cs
   - tests/Whizbang.Core.Component.Tests/MultiService/StreamIntegrityRedeliveryE2ETests.cs
   - tests/Whizbang.Core.Tests/Observability/EnvelopeOriginWireTests.cs
-  - tests/Whizbang.Core.Tests/Workers/ReceivedOriginStampMonitorTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/ReceivedOriginStampMonitorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceivedEventOriginStampTests.cs
   - tests/Whizbang.Core.Component.Tests/MultiService/DirectedMessageE2ETests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerDirectedTargetTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PacedRepairDrainSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityRepairBacklogProbeSqlTests.cs
-  - tests/Whizbang.Core.Tests/Security/ControlPlaneSecurityExemptionTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/ControlPlaneSecurityExemptionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointAdvanceTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointReceptorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs
@@ -230,47 +230,47 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveredOriginAdoptionSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerUnhealableSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CoordinatorIntegrityRepairLedgerUnhealableTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcilerTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/IntegrityRepairLedgerUnhealableTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/RedeliveryReconcilerTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/IntegrityRepairLedgerUnhealableTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCoverageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EpochServedTypeDigestSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestDrainAdmissionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityRepairBacklogProbeSqlTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/StreamIntegrityOptionsValidatorTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/StreamIntegrityOptionsValidatorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveredMissingEventRestoreSqlTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutIdentityAndSubscriptionTests.cs
-  - tests/Whizbang.Core.Tests/Workers/IntegrityDeliveryWorkerTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/CompositeInboxFanoutIdentityAndSubscriptionTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/IntegrityDeliveryWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/IntegrityDeliveryWorkerLoopTests.cs
-  - tests/Whizbang.Core.Tests/Workers/IntegrityTimerWorkersOnTheMaintainerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/HousekeepingIntegrityAdmissionTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/IntegrityDeliveryDeferralTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcileDeferralTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/IntegrityTimerWorkersOnTheMaintainerTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/HousekeepingIntegrityAdmissionTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/IntegrityDeliveryDeferralTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/RedeliveryReconcileDeferralTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityDeliverySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityReceptorRegistrationEnforcementTests.cs
-  - tests/Whizbang.Core.Tests/Startup/MaintainerDutyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/MaintainerDutyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityRepairAnswerSqlTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcileCommitTimeTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/RedeliveryReconcileCommitTimeTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/RepairDrainWorkerTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsCoverageTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerIntegrityGaugeTests.cs
-  - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerBranchCoverageTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerIntegrityGaugeTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/IntegrityAuditWorkerBranchCoverageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAnswerPendingCountSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerUnownedAgeOutSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/IntegrityOwnershipRuleSourceGuardTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorDefaultsTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ConsumedMessageTypesTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/WorkCoordinatorDefaultsTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ConsumedMessageTypesTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerForgetUnconsumedSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerForgetNonOwnerSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ConsumedEventReachesEventStoreTests.cs
-  - tests/Whizbang.Core.Tests/Workers/RepairTopicResolverTests.cs
-  - tests/Whizbang.Core.Tests/Transports/IntegrityControlDestinationTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/RepairTopicResolverTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Transports/IntegrityControlDestinationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WindowedDigestLaneReadTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/SubscriptionBackfillWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpWindowTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/SubscriptionBackfillCursorTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/SubscriptionBackfillOptionsTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/RepairTrafficTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/RedeliveryPumpWindowTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/SubscriptionBackfillCursorTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/SubscriptionBackfillOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/RepairTrafficTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsBackfillGaugeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BackfillWindowAnswerReceptorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryWindowAnswerTests.cs
@@ -278,9 +278,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PacedBackfillEndToEndTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PacedBackfillIndexTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RunPermitAuditTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/HeldWithoutOriginSequenceTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/SingleMissingEventTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/IntegrityGapTrackerDurabilityTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/HeldWithoutOriginSequenceTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/SingleMissingEventTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/IntegrityGapTrackerDurabilityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedReceivedDigestSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestFoldHelperSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestWritersTests.cs
@@ -293,10 +293,10 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerRecheckSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerUnconfirmedHoldSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.TypeLaneHeal.cs
-  - tests/Whizbang.Core.Tests/Messaging/MisattributedOriginTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/MisattributedOriginTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MisattributedOriginCorrectionSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMisattributedOriginCorrectionTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/RedeliveryAnswerCoverageTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/RedeliveryAnswerCoverageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAnswerCoverageSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBundleCatalogChurnSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceiveDoorbellCostSqlTests.cs
@@ -305,16 +305,16 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityBacklogMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityCompletionMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsRepairedEventsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerIntegrityBacklogTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerIntegrityCompletionTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerIntegrityBacklogTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerIntegrityCompletionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerBacklogSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerBucketKindGaugesSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCompletionSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityAnsweredRecheckSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OriginRewriteFloorSqlTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpAnswerBundlingTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/RepairReceptorGateTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerRepairTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/RedeliveryPumpAnswerBundlingTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/RepairReceptorGateTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ReceptorInvokerRepairTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HandledLedgerSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RepairDrainRecordsBeforeSendingTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedDigestCompactionSqlTests.cs

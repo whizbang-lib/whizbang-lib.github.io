@@ -41,30 +41,30 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangJsonDbFunctions.cs
   - src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangDbContextOptionsExtensions.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Security/PermissionTests.cs
-  - tests/Whizbang.Core.Tests/Security/SecurityOptionsTests.cs
-  - tests/Whizbang.Core.Tests/Scoping/PerspectiveScopeTests.cs
-  - tests/Whizbang.Core.Tests/Security/RoleTests.cs
-  - tests/Whizbang.Core.Tests/Security/RoleBuilderTests.cs
-  - tests/Whizbang.Core.Tests/Security/SecurityPrincipalIdTests.cs
-  - tests/Whizbang.Core.Tests/Security/SecurityPrincipalIdJsonConverterTests.cs
-  - tests/Whizbang.Core.Tests/Security/ScopeContextTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/PermissionTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/SecurityOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Scoping/PerspectiveScopeTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/RoleTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/RoleBuilderTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/SecurityPrincipalIdTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/SecurityPrincipalIdJsonConverterTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/ScopeContextTests.cs
   - tests/Whizbang.Core.Component.Tests/Security/ScopeContextAccessorTests.cs
-  - tests/Whizbang.Core.Tests/Security/PermissionExtractorTests.cs
-  - tests/Whizbang.Core.Tests/Security/AccessDeniedExceptionTests.cs
-  - tests/Whizbang.Core.Tests/Security/ReceptorInterceptorDispatchTests.cs
-  - tests/Whizbang.Core.Tests/Security/ReceptorInterceptorGateTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerInterceptorTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerReceptorDenialTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/PermissionExtractorTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/AccessDeniedExceptionTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/ReceptorInterceptorDispatchTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/ReceptorInterceptorGateTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Messaging/ReceptorInvokerInterceptorTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxDispatchWorkerReceptorDenialTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ServiceBusConsumerWorkerReceptorDenialTests.cs
   - tests/Whizbang.Transports.AzureServiceBus.Component.Tests/AzureServiceBusRawReceptorInterceptorTests.cs
-  - tests/Whizbang.Core.Tests/Security/SecurityAttributeTests.cs
-  - tests/Whizbang.Core.Tests/Security/FieldPermissionMaskingTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/SecurityAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/FieldPermissionMaskingTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/FieldPermissionTypeInterceptorTests.cs
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/FieldPermissionJsonTests.cs
   - tests/Whizbang.Transports.FastEndpoints.Integration.Tests/RestLens/FieldPermissionRestLensTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/ScopedLensFactoryTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/ScopeFilterTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/ScopedLensFactoryTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/ScopeFilterTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

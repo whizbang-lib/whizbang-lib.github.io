@@ -22,7 +22,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Generators.Tests/PerspectiveDuplicateApplyTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveRunnerInterfaceDispatchTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/ExplicitApplyRunnerTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/ExplicitApplyRunnerTests.cs
 lastMaintainedCommit: '54643053'
 ---
 

@@ -58,22 +58,22 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamSealingSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/StreamSealingEmitCostScenarioTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamSealingTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/StreamSealedRefusalTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/TerminalEventsTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/StreamSealedRefusalTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Lifecycle/TerminalEventsTests.cs
   - tests/Whizbang.Generators.Tests/MessageTypeCatalogGeneratorTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ImmediateWorkCoordinatorStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ScopedWorkCoordinatorStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/StreamDispositionStepTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ImmediateWorkCoordinatorStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ScopedWorkCoordinatorStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Lifecycle/StreamDispositionStepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDispositionSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamDispositionTests.cs
-  - tests/Whizbang.Core.Tests/Archival/StreamLifecycleOptionsBinderTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/StreamPrefixTruncatorDispositionTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/DestructionContractTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDispositionTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/StreamLifecycleOptionsBinderTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Lifecycle/StreamPrefixTruncatorDispositionTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Lifecycle/DestructionContractTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerDispositionTests.cs
   - tests/Whizbang.Generators.Tests/UnshippedDestructionAnalyzerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRowsSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamEndOfLifePolicySqlTests.cs
-  - tests/Whizbang.Core.Tests/Archival/StreamEndOfLifeDeclarationsTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/StreamEndOfLifeDeclarationsTests.cs
 ---
 
 # Stream End of Life

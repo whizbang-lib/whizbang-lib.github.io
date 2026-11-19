@@ -21,11 +21,11 @@ codeReferences:
   - src/Whizbang.Data.Postgres/CoordinatorConnectionScope.cs
   - src/Whizbang.Core/Messaging/WorkCoordinatorGate.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/PinnedConnectionPoolPrimitivesTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PinnedPoolRegistrationTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PinnedConnectionPoolPrimitivesTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PinnedPoolRegistrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PinnedConnectionPoolIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CoordinatorConnectionScopeLifetimeTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGatePinnedExemptionTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/WorkCoordinatorGatePinnedExemptionTests.cs
 ---
 
 # Pinned Worker Connection Pool

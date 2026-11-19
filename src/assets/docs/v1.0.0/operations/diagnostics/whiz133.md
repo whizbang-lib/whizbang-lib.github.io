@@ -35,8 +35,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MixedStreamAllowanceSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMixedStreamGuardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DirectAppendMixedStreamGuardTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/MixedStreamRefusalTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorFlushHelperTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/MixedStreamRefusalTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/WorkCoordinatorFlushHelperTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/WorkTablesAreLockedInOneOrderTests.CallGraph.cs
 lastMaintainedCommit: 'a7c4e090'
 ---

@@ -10,7 +10,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/MustExistAttribute.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveFor.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Perspectives/MustExistAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/MustExistAttributeTests.cs
 ---
 
 # MustExist Attribute

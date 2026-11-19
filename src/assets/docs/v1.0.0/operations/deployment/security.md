@@ -18,7 +18,7 @@ codeReferences:
   - src/Whizbang.Core/Security/Attributes/RequirePermissionAttribute.cs
   - src/Whizbang.Hosting.AspNet/WhizbangSecurityHeadersMiddleware.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Security/MessageSecurityContextProviderTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/MessageSecurityContextProviderTests.cs
   - tests/Whizbang.Core.Integration.Tests/SecurityIntegrationTests.cs
   - tests/Whizbang.Hosting.AspNet.Tests/WhizbangSecurityHeadersMiddlewareTests.cs
 lastMaintainedCommit: '01f07906'

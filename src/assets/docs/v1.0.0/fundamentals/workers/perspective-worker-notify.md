@@ -18,7 +18,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerStartupAndMaintenanceTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.cs
-  - tests/Whizbang.Core.Tests/Workers/V502DefaultsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/V502DefaultsTests.cs
   - tests/Whizbang.Core.Tests/Async/WakeSignalTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/DeadLetterRecoveryWorkerTests.cs
 ---

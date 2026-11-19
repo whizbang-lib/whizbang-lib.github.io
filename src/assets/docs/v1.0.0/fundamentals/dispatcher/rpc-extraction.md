@@ -16,9 +16,9 @@ codeReferences:
   - src/Whizbang.Core/Internal/ResponseExtractor.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Internal/ResponseExtractorTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherRpcExtractionTests.cs
-  - tests/Whizbang.Core.Tests/Dispatch/RouteTests.cs
-  - tests/Whizbang.Core.Tests/Dispatch/RoutedTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherRpcExtractionTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatch/RouteTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatch/RoutedTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

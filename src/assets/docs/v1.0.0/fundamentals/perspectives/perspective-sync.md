@@ -30,14 +30,14 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Perspectives/Sync/PerspectiveSyncAwaiterTests.cs
   - tests/Whizbang.Core.Component.Tests/Perspectives/Sync/SyncEventTrackerTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncFilterBuilderTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/Sync/SyncFilterBuilderTests.cs
   - tests/Whizbang.Core.Component.Tests/Perspectives/Sync/EventCompletionAwaiterTests.cs
   - tests/Whizbang.Core.Component.Tests/Perspectives/Sync/ScopedEventTrackerTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncInquiryTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncContextTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/Sync/TrackedEventTypeRegistryTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/Sync/AwaitPerspectiveSyncAttributeTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/SyncAwareLensQueryTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/Sync/SyncInquiryTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/Sync/SyncContextTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/Sync/TrackedEventTypeRegistryTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/Sync/AwaitPerspectiveSyncAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/SyncAwareLensQueryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

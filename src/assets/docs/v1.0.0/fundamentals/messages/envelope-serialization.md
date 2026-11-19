@@ -13,7 +13,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/EnvelopeSerializer.cs
   - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/EnvelopeSerializerTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EnvelopeSerializerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

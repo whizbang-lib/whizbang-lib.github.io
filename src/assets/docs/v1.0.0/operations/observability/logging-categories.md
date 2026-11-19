@@ -40,16 +40,16 @@ codeReferences:
   - src/Whizbang.Core/Workers/DatabaseFailureEscalationOptions.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDrainWorkerGapTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerHeldLeaseTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerControlPlaneDropLogTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxDispatchWorkerHeldLeaseTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxDispatchWorkerControlPlaneDropLogTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxHandlerWorkerTests.cs
   - tests/Whizbang.Core.Tests/Observability/DeadLetterLogTests.cs
-  - tests/Whizbang.Core.Tests/Workers/DeadLetterLoggingOptionsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/DeadLetterLoggingWiringTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerDeadLetterLogTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerUndeserializablePayloadTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxFlushFailureRecorderTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OutboxFlushFailureCallbackTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/DeadLetterLoggingOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/DeadLetterLoggingWiringTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxDispatchWorkerDeadLetterLogTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxDispatchWorkerUndeserializablePayloadTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxFlushFailureRecorderTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/OutboxFlushFailureCallbackTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerBranchCoverageTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerDlqPromotionTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PrePublishGateForensicPreservationTests.cs
@@ -66,8 +66,8 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.StoredForm.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ServiceBusConsumerWorkerCoverageTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/OrderedStreamProcessorTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRunnerAttemptFailureLogLevelTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TransportBatchGuardTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRunnerAttemptFailureLogLevelTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/TransportBatchGuardTests.cs
   - tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportReceiveGuardTests.cs
   - tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportPublishPathTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Component.Tests/BranchCoverage/RabbitMQTransportLoggingBranchTests.cs
@@ -77,8 +77,8 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.RewindFailure.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.UnreadableRows.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
-  - tests/Whizbang.Core.Tests/Workers/DatabaseFailureEscalationTests.cs
-  - tests/Whizbang.Core.Tests/Workers/DatabaseFailureEscalationOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/DatabaseFailureEscalationTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/DatabaseFailureEscalationOptionsTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerCoverageTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDrainWorkerCoverageTests.TransientFailure.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerCoverageTests.TransientFailure.cs

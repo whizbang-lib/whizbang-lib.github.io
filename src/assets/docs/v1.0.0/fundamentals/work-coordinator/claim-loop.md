@@ -55,7 +55,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkPlanShapeTests.ExpiredLeases.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerRunPermitTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperWorkCoordinatorGuardAndGateTests.cs
-  - tests/Whizbang.Core.Tests/Workers/AdaptiveClaimWindowLatencyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/AdaptiveClaimWindowLatencyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BoundedAcquisitionRewriteSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkPlanShapeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HeldBackEventsDoNotCrowdTheReOfferTests.cs

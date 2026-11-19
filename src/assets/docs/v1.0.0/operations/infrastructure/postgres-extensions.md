@@ -23,7 +23,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/PostgresExtensions/PostgresCapabilityProbeTests.cs
   - tests/Whizbang.Core.Tests/PostgresExtensions/PostgresCapabilityProviderTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresCapabilityProbeIntegrationTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TableRewriteStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/TableRewriteStrategyTests.cs
 ---
 
 # Postgres Extensions

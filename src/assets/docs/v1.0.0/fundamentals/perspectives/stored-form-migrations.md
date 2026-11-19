@@ -39,7 +39,7 @@ codeReferences:
   - tools/Whizbang.CLI/Program.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/DeclaredJsonConverterIgnoredTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/StoredFormAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/StoredFormAttributeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/StoredFormMigrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/StoredFormMigrationSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StoredFormMigrationWorkerTests.cs

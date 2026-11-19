@@ -25,12 +25,12 @@ codeReferences:
   - src/Whizbang.Core/Observability/MessageEnvelope.cs
   - src/Whizbang.Core/Configuration/WhizbangOptions.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/ReceptorInvocationTrackingTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ReceptorFiringLockInTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/EnvelopeReceptorDedupStoreTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/DuplicateReceptorFireExceptionTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/LifecycleStageTrackerTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherLocalDispatchRecordTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ReceptorInvocationTrackingTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ReceptorFiringLockInTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EnvelopeReceptorDedupStoreTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/DuplicateReceptorFireExceptionTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/LifecycleStageTrackerTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherLocalDispatchRecordTests.cs
   - tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorCoverageTests.cs
   - samples/ECommerce/tests/ECommerce.Lifecycle.Integration.Tests/PostAllPerspectivesTests.cs
   - samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Lifecycle/PerspectiveLifecycleTests.cs

@@ -55,14 +55,14 @@ testReferences:
   - tests/Whizbang.Hosting.AspNet.Component.Tests/StartupStatusEndpointsTests.cs
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/WhizbangStartupStatusEndpointBaseTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/StartupStatusQueryTests.cs
-  - tests/Whizbang.Core.Tests/Startup/StartupStagesTests.cs
-  - tests/Whizbang.Core.Tests/Startup/StartupStageReporterTests.cs
-  - tests/Whizbang.Core.Tests/Schema/SchemaInitializationStagesTests.cs
-  - tests/Whizbang.Core.Tests/Startup/StartupStandDownTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/StartupStagesTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/StartupStageReporterTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Schema/SchemaInitializationStagesTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/StartupStandDownTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageHostTests.cs
-  - tests/Whizbang.Core.Tests/Startup/StartupStageHostLifecycleTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/StartupStageHostLifecycleTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/HeartbeatStartPointTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/HeartbeatWorkerStartupBeatTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartingInstanceHeartbeatE2ETests.cs
@@ -72,12 +72,12 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceTransitionSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RecordHeartbeatBackfillTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
-  - tests/Whizbang.Core.Tests/Startup/StartupStageRunControlTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/StartupStageRunControlTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/StartupWiringAuditTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperHeartbeatPhaseOrderTests.cs
-  - tests/Whizbang.Core.Tests/Startup/StartupStageGateTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/StartupStageGateTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/StartupStageGatedServiceTests.cs
-  - tests/Whizbang.Core.Tests/Workers/WorkerPipelineStartupStageTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/WorkerPipelineStartupStageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageWiringTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupPreflightHostTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaBootstrapPhaseTests.cs

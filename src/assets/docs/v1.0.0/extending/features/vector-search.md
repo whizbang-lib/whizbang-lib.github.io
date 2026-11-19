@@ -20,7 +20,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/VectorSearchExtensionsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/VectorSearchIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/VectorFieldPackageReferenceAnalyzerTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/VectorFieldAttributeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/VectorFieldAttributeTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

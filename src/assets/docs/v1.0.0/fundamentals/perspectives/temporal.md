@@ -18,11 +18,11 @@ codeReferences:
   - src/Whizbang.Core/Lenses/TemporalPerspectiveRow.cs
   - src/Whizbang.Core/Lenses/ITemporalLensQuery.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Perspectives/ITemporalPerspectiveForTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/ITemporalPerspectiveStoreTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/TemporalActionTypeTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/TemporalPerspectiveRowTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/ITemporalLensQueryTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/ITemporalPerspectiveForTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/ITemporalPerspectiveStoreTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/TemporalActionTypeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/TemporalPerspectiveRowTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Lenses/ITemporalLensQueryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

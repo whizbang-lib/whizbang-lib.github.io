@@ -19,11 +19,11 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MaintenanceTests.cs
-  - tests/Whizbang.Core.Tests/Workers/RetentionSettingsValidationTests.cs
-  - tests/Whizbang.Core.Tests/Workers/RetentionSettingsBridgeTests.cs
-  - tests/Whizbang.Core.Tests/Workers/RetentionSettingsBindingTests.cs
-  - tests/Whizbang.Core.Tests/Workers/HousekeepingHigherRankDeferralTests.cs
-  - tests/Whizbang.Core.Tests/Workers/HousekeepingPersistedDeferralTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/RetentionSettingsValidationTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/RetentionSettingsBridgeTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/RetentionSettingsBindingTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/HousekeepingHigherRankDeferralTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/HousekeepingPersistedDeferralTests.cs
 ---
 
 # Maintenance Cycle

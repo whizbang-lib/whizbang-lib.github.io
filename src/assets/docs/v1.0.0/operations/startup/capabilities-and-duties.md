@@ -47,10 +47,10 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Chaos/RoleAssignmentChaosTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Chaos/MaintainerAcquisitionVacuumTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkTableVacuumTests.cs
-  - tests/Whizbang.Core.Tests/Startup/MaintainerDutyTests.cs
-  - tests/Whizbang.Core.Tests/Workers/IntegrityTimerWorkersOnTheMaintainerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/IntegrityDeliveryWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/WorkTableVacuumOnAcquisitionTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/MaintainerDutyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/IntegrityTimerWorkersOnTheMaintainerTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/IntegrityDeliveryWorkerTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/WorkTableVacuumOnAcquisitionTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/DutyHolderWorkerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleAssignmentElectorE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleAssignmentResilienceSqlTests.cs
@@ -61,7 +61,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Startup/CoordinationSourceGuardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleHolderLivenessE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleHolderLivenessSqlTests.cs
-  - tests/Whizbang.Core.Tests/Startup/DutyGrantContractTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/DutyGrantContractTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperTableMaintenanceTests.cs
 ---
 

@@ -23,9 +23,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/111_PerspectiveRowDestructionSeam.sql
   - src/Whizbang.Testing/MaintenanceTestDriver.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerRowGuardTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveRowSweepTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerStreamGroupCascadeTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerRowGuardTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PerspectiveRowSweepTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerStreamGroupCascadeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveRowGuardEndToEndTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamGroupCascadeSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperRowRetentionTests.cs

@@ -36,12 +36,12 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowOutboxFlushFailureTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/CoalescingOutboxBatchStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Workers/BatchStrategyResolutionTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/BatchStrategyResolutionTests.cs
   - tests/Whizbang.Core.Component.Tests/Dispatcher/LocalInvokeResultOutboxFlushFailureComponentTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatcherAmbientContextTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OutboxFlushFailureCallbackTests.cs
-  - tests/Whizbang.Core.Tests/Workers/BatchStrategyFlushCallbackWiringTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/DefaultDeadLetterRecoveryPolicyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/OutboxFlushFailureCallbackTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/BatchStrategyFlushCallbackWiringTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/DefaultDeadLetterRecoveryPolicyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OutboxFlushPoolExhaustionTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperOutboxDeadLetterTests.cs
 ---

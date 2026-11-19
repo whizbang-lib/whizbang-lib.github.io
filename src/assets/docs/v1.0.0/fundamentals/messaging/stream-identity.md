@@ -19,9 +19,9 @@ codeReferences:
   - src/Whizbang.Core/Transports/TransportManager.cs
   - src/Whizbang.Core/Perspectives/RebuildRowRouting.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/StreamIdentityTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/StreamResolutionParityTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/StreamResolutionSitesTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/StreamIdentityTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/StreamResolutionParityTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/StreamResolutionSitesTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/StreamResolutionSourceGuardTests.cs
 ---
 

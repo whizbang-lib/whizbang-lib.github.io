@@ -68,22 +68,22 @@ codeReferences:
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
 testReferences:
   - tests/Whizbang.Archive.AzureBlob.Tests/AzureBlobArchiveLocationTests.cs
-  - tests/Whizbang.Core.Tests/Archival/StreamLifecycleOptionsBinderTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TableRewriteStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PartitionManagementStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OnlineTableRewriteStepTests.cs
-  - tests/Whizbang.Core.Tests/Workers/QueueIndexReindexStepTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TableRewriteSettingsTests.cs
-  - tests/Whizbang.Core.Tests/Capabilities/CapabilityAutoProvisionTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/StreamLifecycleOptionsBinderTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/TableRewriteStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PartitionManagementStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/OnlineTableRewriteStepTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/QueueIndexReindexStepTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/TableRewriteSettingsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityAutoProvisionTests.cs
   - tests/Whizbang.Core.Tests/Configuration/UnknownConfigurationKeyCheckTests.cs
   - tests/Whizbang.Core.Component.Tests/Configuration/UnknownConfigurationKeyStartupValidatorTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/WorkCoordinatorGateInteractiveReserveTests.cs
   - tests/Whizbang.Core.Tests/ServiceCollectionExtensionsTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateRegistrationTests.cs
-  - tests/Whizbang.Core.Tests/Workers/RetentionSettingsBridgeTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/EventStoreMetadataSettingsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/RetentionSettingsBindingTests.cs
-  - tests/Whizbang.Core.Tests/Workers/RetentionSettingsValidationTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/WorkCoordinatorGateRegistrationTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/RetentionSettingsBridgeTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EventStoreMetadataSettingsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/RetentionSettingsBindingTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/RetentionSettingsValidationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RetentionSettingsSyncSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperRetentionSettingsSyncTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
@@ -95,20 +95,20 @@ testReferences:
   - tests/Whizbang.Sagas.Tests/SagaOptionsConfigurationBindingTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/HotChocolateOptionsConfigurationBindingTests.cs
   - tests/Whizbang.Core.Tests/Resilience/CircuitBreakerOptionsConfigurationTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TransportConsumerOptionsConfigurationTests.cs
-  - tests/Whizbang.Core.Tests/Workers/ServiceBusConsumerOptionsConfigurationTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/TransportConsumerOptionsConfigurationTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/ServiceBusConsumerOptionsConfigurationTests.cs
   - tests/Whizbang.Core.Component.Tests/Tags/TagCoalesceConfigurationBinderTests.cs
   - tests/Whizbang.Core.Tests/Configuration/ConfigurationValueBinderTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQOptionsConfigurationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresOptionsConfigurationTests.cs
   - tests/Whizbang.Core.Tests/Observability/TableStatisticsRegistrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperTableStatisticsDatabaseTests.cs
-  - tests/Whizbang.Core.Tests/Workers/DeadLetterLoggingOptionsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/DeadLetterLoggingWiringTests.cs
-  - tests/Whizbang.Core.Tests/Workers/DatabaseFailureEscalationOptionsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/DatabaseFailureEscalationWiringTests.cs
-  - tests/Whizbang.Core.Tests/Startup/RoleAssignmentOptionsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/WorkTableVacuumOnAcquisitionTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/DeadLetterLoggingOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/DeadLetterLoggingWiringTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/DatabaseFailureEscalationOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/DatabaseFailureEscalationWiringTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/RoleAssignmentOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/WorkTableVacuumOnAcquisitionTests.cs
 ---
 
 This page lists **every configuration surface Whizbang exposes**: the sections the library binds from `IConfiguration` automatically, the sections you can opt into binding with a helper, and the (much larger) set of options classes that are configured in code — plus the recipe for making any of them configuration-driven. Each options class lists its properties, types, defaults, and a link to the page that covers it in depth.

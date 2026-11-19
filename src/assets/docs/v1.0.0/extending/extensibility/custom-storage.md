@@ -13,8 +13,8 @@ tags: 'storage, iperspectivestore, custom-backends, redis, mongodb'
 codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveStore.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveStoreTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveStoreDefaultsTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/IPerspectiveStoreTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/IPerspectiveStoreDefaultsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePostgresPerspectiveStoreTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/DapperPostgresPerspectiveStoreTests.cs
 lastMaintainedCommit: '01f07906'

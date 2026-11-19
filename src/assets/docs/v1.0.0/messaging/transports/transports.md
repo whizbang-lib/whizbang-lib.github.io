@@ -33,8 +33,8 @@ testReferences:
   - tests/Whizbang.Transports.Tests/BulkPublishTests.cs
   - tests/Whizbang.Transports.Component.Tests/SubscribeBatchTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportBatchCollectorTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TransportPublishStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MessagePublishStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/TransportPublishStrategyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MessagePublishStrategyTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerTests.cs
 lastMaintainedCommit: '01f07906'
 ---

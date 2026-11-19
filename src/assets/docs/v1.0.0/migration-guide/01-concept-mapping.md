@@ -15,10 +15,10 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IEventStore.cs
   - src/Whizbang.Core/Perspectives/IGlobalPerspectiveFor.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/IEventStoreDefaultMethodTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/EventStoreAppendBatchTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherLocalInvokeAndSyncTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherDeliveryReceiptTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/IEventStoreDefaultMethodTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EventStoreAppendBatchTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherLocalInvokeAndSyncTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherDeliveryReceiptTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

@@ -38,38 +38,38 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/FoldedVersionPrefix.cs
   - src/Whizbang.Data.Postgres/Migrations/466_FlaggedCursorsBelowTheirStreamAreQueued.sql
 testReferences:
-  - tests/Whizbang.Core.Tests/Perspectives/ReplayEventOrderTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindOptionsTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveSnapshotAndRewindTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/ReplayEventOrderTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRewindOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveSnapshotAndRewindTests.cs
   - tests/Whizbang.Core.Component.Tests/Perspectives/PerspectiveRewindCompletionGapTests.cs
   - tests/Whizbang.Core.Tests/Observability/PerspectiveRewindMetricsTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerRewindTests.cs
   - tests/Whizbang.Core.Tests/Observability/PerspectiveMetricsTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.StragglerDropped.cs
   - tests/Whizbang.Core.Tests/Events/System/StreamRewindEventTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/OverwriteOnlyRewindTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/OverwriteOnlyRewindTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.RewindFailure.cs
-  - tests/Whizbang.Core.Tests/Perspectives/LastInReplayOrderTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/LastInReplayOrderTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveRunnerOverwriteOnlyTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/CollectiveReplayRunnerTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/CollectiveReplayRunnerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CollectiveReplayRebuildIntegrationTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/RewindDeletedArchiveTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/RewindDeletedArchiveTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/ArchiveReadThroughIntegrationTests.cs
-  - tests/Whizbang.Core.Tests/Workers/StartupRewindSetTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/StartupRewindSetTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerStartupRewindBarrierTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerStartupAndMaintenanceTests.cs
-  - tests/Whizbang.Core.Tests/Workers/RewindRepeatGuardTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/RewindRepeatGuardTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.RewindRepeat.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRewindLoopTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Cursors/PerspectiveCursorOneOrderSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.OneOrder.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveCursorCacheReplayedThroughTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindWriteCheckTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PerspectiveCursorCacheReplayedThroughTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRewindWriteCheckTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRewindLoopTests.IdOrder.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreReadAfterVersionTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/StreamReadAnchorTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/ReplayFloorTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/FoldedVersionPrefixTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/StreamReadAnchorTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/ReplayFloorTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/FoldedVersionPrefixTests.cs
 ---
 
 # Perspective Rewind

@@ -25,8 +25,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OperationalTableRegistryGuardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OperationalRetentionSweepSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperOperationalRetentionTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OperationalRetentionOptionsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerOperationalRetentionTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/OperationalRetentionOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerOperationalRetentionTests.cs
 ---
 
 # Operational Retention

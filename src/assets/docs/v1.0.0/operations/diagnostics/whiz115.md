@@ -24,7 +24,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/ModelAction.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/PerspectiveApplyReturnShapeTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/ModelActionTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/ModelActionTests.cs
 lastMaintainedCommit: '54643053'
 ---
 

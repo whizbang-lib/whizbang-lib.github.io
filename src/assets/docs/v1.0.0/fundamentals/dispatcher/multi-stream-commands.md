@@ -30,10 +30,10 @@ codeReferences:
   - src/Whizbang.Data.Postgres/RebuildBackgroundQueue.cs
   - src/Whizbang.Core/Workers/NullPartitionAssignmentSource.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandIntakeTests.cs
-  - tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandRegistrationTests.cs
-  - tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandWorkerTests.cs
-  - tests/Whizbang.Core.Tests/MultiStream/MultiStreamScopeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/MultiStream/MultiStreamCommandIntakeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/MultiStream/MultiStreamCommandRegistrationTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/MultiStream/MultiStreamCommandWorkerTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/MultiStream/MultiStreamScopeTests.cs
   - tests/Whizbang.Core.Component.Tests/MultiStream/MultiStreamCommandWorkerLoopTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MultiStream/MultiStreamCommandStoreSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MultiStream/MultiStreamCommandPostgresRegistrationTests.cs
@@ -41,7 +41,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MultiStream/RebuildCommandRoutingTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MultiStream/RebuildBackgroundWorkerTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MultiStream/DapperMultiStreamCommandTests.cs
-  - tests/Whizbang.Core.Tests/MultiStream/RebuildPerspectiveStreamsHandlerTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/MultiStream/RebuildPerspectiveStreamsHandlerTests.cs
 lastMaintainedCommit: '78370069'
 ---
 
