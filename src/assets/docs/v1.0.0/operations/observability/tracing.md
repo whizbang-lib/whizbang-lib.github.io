@@ -19,12 +19,14 @@ codeReferences:
   - src/Whizbang.Core/Tracing/HandlerStatus.cs
   - src/Whizbang.Core/Tracing/WhizbangTraceAttribute.cs
   - src/Whizbang.Core/Observability/WhizbangActivitySource.cs
+  - src/Whizbang.Observability/DependencyInjection/WhizbangTracingRegistration.cs
   - src/Whizbang.Core/Messaging/ReceptorInvoker.cs
 testReferences:
   - tests/Whizbang.Observability.Tests/TracerTests.cs
   - tests/Whizbang.Observability.Tests/TracerPatternMatchingTests.cs
   - tests/Whizbang.Core.Tests/Tracing/TracingOptionsTests.cs
   - tests/Whizbang.Observability.Tests/WhizbangActivitySourceTests.cs
+  - tests/Whizbang.Observability.Tests/DependencyInjection/WhizbangTracingRegistrationTests.cs
   - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ReceptorInvokerBranchCoverageTests.cs
 lastMaintainedCommit: '01f07906'
 ---
@@ -340,13 +342,23 @@ builder.Services.AddWhizbang(options => {
 ### Collecting activities {#collecting-activities}
 
 Whizbang's spans come from `ActivitySource`s named `Whizbang.*`: `Whizbang.Execution`, `Whizbang.Transport`,
-`Whizbang.Hosting`, `Whizbang.Tracing` and `Whizbang.MessageTags`. The simplest subscription takes all of them,
-including any added later:
+`Whizbang.Hosting`, `Whizbang.Tracing`, [`Whizbang.Integrity`](../../resilience/stream-integrity#integrity-traces) and
+`Whizbang.MessageTags`. `WhizbangActivitySource.All` lists every one of them, and `AddWhizbangInstrumentation()` on a
+tracer builder (in `Whizbang.Observability`) subscribes that list, as the metrics overload subscribes
+`WhizbangMeters.All`. A source a later release adds joins the list, so the subscription follows it with no edit:
 
-```csharp{title="Subscribe to every Whizbang activity source" description="One wildcard source instead of a hand-kept list" category="Configuration" difficulty="BEGINNER" tags=["Tracing", "OpenTelemetry"] unverified="OTel-exporter setup, not exercised by tests"}
+```csharp{title="Subscribe to every Whizbang activity source" description="The turnkey subscription, or one wildcard source" category="Configuration" difficulty="BEGINNER" tags=["Tracing", "OpenTelemetry"] unverified="OTel-exporter setup, not exercised by tests"}
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing => tracing.AddWhizbangInstrumentation())
+    .WithMetrics(metrics => metrics.AddWhizbangInstrumentation());
+
+// Equivalent for tracing: one wildcard source.
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracing => tracing.AddSource("Whizbang.*"));
 ```
+
+A test fails the build when an `ActivitySource` declared on `WhizbangActivitySource` is missing from the list
+(`IntegrityTracingTests.EveryActivitySourceWhizbangDeclares_IsOnTheListAsync`).
 
 An `ActivitySource` is not an EventSource, so `dotnet-trace collect --providers Whizbang.Execution` collects nothing:
 no EventPipe provider has that name. To collect activities from a running process without an OpenTelemetry SDK in it,
