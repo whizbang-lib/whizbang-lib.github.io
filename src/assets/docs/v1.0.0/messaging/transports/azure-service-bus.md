@@ -16,6 +16,7 @@ tags: >-
 codeReferences:
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs
   - src/Whizbang.Transports.AzureServiceBus/AsbReceiveDecisionMaker.cs
+  - src/Whizbang.Transports.AzureServiceBus/AsbReceiveLog.cs
   - src/Whizbang.Transports.AzureServiceBus/ServiceCollectionExtensions.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs
   - src/Whizbang.Transports.AzureServiceBus/AsbAcceptorGovernor.cs
@@ -29,6 +30,10 @@ codeReferences:
   - src/Whizbang.Transports.AzureServiceBus/ServiceBusEntityProvisioning.cs
   - src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusSubscriptionExtensions.cs
 testReferences:
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Component.Tests/AzureServiceBusPausedSubscriptionTests.cs
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Component.Tests/AzureServiceBusReceiveDiagnosticsTests.cs
   - >-
     tests/Whizbang.Transports.AzureServiceBus.Tests/AsbReceiveStoresBeforeSettlingTests.cs
   - >-
@@ -1280,6 +1285,88 @@ rules apply **idempotently** there: when a subscription's rules already match th
 state, they are left untouched, so a watchdog-triggered resubscribe does not churn rules (a
 delete-then-recreate would briefly leave the subscription ruleless, silently dropping
 messages published in that window).
+
+## Receive diagnostics {#receive-diagnostics}
+
+{verified: AzureServiceBusReceiveDiagnosticsTests.SessionBatch_PausedSubscription_LogsUnsettledWarningNamingTheMessageAsync, AzureServiceBusReceiveDiagnosticsTests.SessionBatch_HandsADeliveryToTheHandler_LogsItsIdAndDeliveryCountAtDebugAsync, AzureServiceBusReceiveDiagnosticsTests.Redelivery_HandledNormally_WritesOneInformationLineNamingItAsync}
+
+When the broker dead-letters a message with `MaxDeliveryCountExceeded`, the question is where each
+of its deliveries went. A delivery count only rises when a receiver took the message and did not
+settle it, so every delivery was either handed to the handler and left unsettled, or lost before
+the handler ever saw it (for example, held in a receiver's prefetch buffer when the receiver
+closed). The transport writes three lines, all under the `AzureServiceBusTransport` logger
+category, that answer it for any one message:
+
+| Level | Line | When it is written | Verified |
+|-------|------|--------------------|----------|
+| Warning | `Message <id> of type <type> on <topic>/<subscription> was returned to the broker unsettled at delivery <n>: <reason>` | The transport gives a delivery back without completing or dead-lettering it. The reason is either "the subscription is paused or disposed, so it was abandoned without being handled" or "the handler failed, so it was abandoned for redelivery". A delivery dead-lettered at the delivery limit is settled and does not write it. | {verified: AzureServiceBusReceiveDiagnosticsTests.SessionBatch_PausedSubscription_LogsUnsettledWarningNamingTheMessageAsync, AzureServiceBusReceiveDiagnosticsTests.NonSessionBatch_PausedSubscription_LogsUnsettledWarningNamingTheMessageAsync, AzureServiceBusReceiveDiagnosticsTests.Session_PausedSubscription_LogsUnsettledWarningNamingTheMessageAsync, AzureServiceBusReceiveDiagnosticsTests.NonSession_PausedSubscription_LogsUnsettledWarningNamingTheMessageAsync, AzureServiceBusReceiveDiagnosticsTests.SessionBatch_HandlerFails_LogsUnsettledWarningNamingTheMessageAsync, AzureServiceBusReceiveDiagnosticsTests.NonSessionBatch_HandlerFails_LogsUnsettledWarningNamingTheMessageAsync, AzureServiceBusReceiveDiagnosticsTests.SessionBatch_HandlerFailsAtTheDeliveryLimit_DeadLettersWithoutAnUnsettledWarningAsync} |
+| Debug | `Handing message <id> at delivery <n> from <topic>/<subscription> to the handler` | Every delivery, on every receive path (session and non-session, batch and single-message), just before the handler runs. | {verified: AzureServiceBusReceiveDiagnosticsTests.SessionBatch_HandsADeliveryToTheHandler_LogsItsIdAndDeliveryCountAtDebugAsync, AzureServiceBusReceiveDiagnosticsTests.NonSessionBatch_HandsADeliveryToTheHandler_LogsItsIdAndDeliveryCountAtDebugAsync, AzureServiceBusReceiveDiagnosticsTests.Session_HandsADeliveryToTheHandler_LogsItsIdAndDeliveryCountAtDebugAsync, AzureServiceBusReceiveDiagnosticsTests.NonSession_HandsADeliveryToTheHandler_LogsItsIdAndDeliveryCountAtDebugAsync} |
+| Information | `Message <id> of type <type> arrived on <topic>/<subscription> at delivery <n>: an earlier delivery was not settled` | Once per delivery whose delivery count is above 1, as it arrives and before anything else happens to it. | {verified: AzureServiceBusReceiveDiagnosticsTests.Redelivery_HandledNormally_WritesOneInformationLineNamingItAsync, AzureServiceBusReceiveDiagnosticsTests.FirstDelivery_WritesNoRedeliveryLineAsync} |
+
+The type is the envelope's payload type without its assembly, the named type itself when the
+delivery's `EnvelopeType` is not an envelope name, or `unknown` when it names none.
+{verified: AzureServiceBusReceiveDiagnosticsTests.MessageTypeOf_EnvelopeTypeEmptyOrNotAString_IsUnknownAsync, AzureServiceBusReceiveDiagnosticsTests.Session_PausedSubscription_LogsUnsettledWarningNamingTheMessageAsync}
+
+### Reading the lines for one message
+
+Search for the message id with the transport's category at Debug, then compare the delivery
+numbers each line reports:
+
+1. **Every delivery has a handed-to-handler line, and an unsettled Warning follows each one.**
+   The handler saw every delivery and the transport gave it back; the Warning's reason says why
+   (a paused or disposed subscription, or the handler failed, with the failure logged just before).
+   A paused subscription stops its processor, so it hands back at most the deliveries already in
+   flight when the pause landed; see [Paused subscriptions](#paused-subscriptions).
+2. **Every delivery has a handed-to-handler line and no Warning.** The handler saw it and returned,
+   and the transport then completed it; look for a completion failure (lock lost) logged after it.
+3. **Delivery numbers are missing from the handed-to-handler lines.** Those deliveries never reached
+   the handler. The broker counted them, but this code was never given them, so the loss is in the
+   receiver below the handler: a prefetched message dropped when its session closed or was released,
+   or a receiver in another process taking it. The Information line on the next delivery that does
+   arrive shows the count already risen.
+4. **No line at all for the message.** No delivery reached this process. Check which instances hold
+   receivers on that subscription.
+
+Debug is normally off in production, so turn it on for the `AzureServiceBusTransport` category on
+one instance while you investigate. Each line checks its level before it formats anything, so a
+disabled level costs one check per delivery and allocates nothing.
+{verified: AzureServiceBusReceiveDiagnosticsTests.HandsADeliveryToTheHandler_WithDebugOff_FormatsNothingAsync, AzureServiceBusReceiveDiagnosticsTests.Redelivery_WithInformationOff_WritesAndFormatsNothingAsync, AzureServiceBusReceiveDiagnosticsTests.ReturnedUnsettled_WithWarningOff_WritesAndFormatsNothingAsync}
+
+### Paused subscriptions {#paused-subscriptions}
+
+{verified: AzureServiceBusPausedSubscriptionTests.SessionBatch_PausedForAStandDown_StopsTakingCheckpointDeliveriesAsync, AzureServiceBusPausedSubscriptionTests.NonSessionBatch_Paused_StopsItsProcessorAsync, AzureServiceBusPausedSubscriptionTests.SessionBatch_ResumedAfterAPause_StartsItsProcessorAndHandlesDeliveriesAsync}
+
+A paused subscription stops its processor, so it takes no session and no message until it is
+resumed. The run-control path pauses every subscription when the run permit closes: on a pause,
+on a stop, and when an instance stands down for a newer version during a rolling upgrade.
+
+Stopping, rather than receiving and handing each delivery back, is what keeps a rolling upgrade
+from dead-lettering anything. Every hand-back (abandon) counts a delivery, and the instance that
+holds a session keeps it while messages keep arriving. All of one origin's integrity checkpoints
+share a session and arrive every minute, so a standing-down instance that kept its processor
+running held those sessions and burned every message in them to the dead-letter queue with
+`MaxDeliveryCountExceeded`. Stopped, it takes nothing, nothing is counted, and the newer instance
+takes the session at once. The RabbitMQ transport follows the same rule: a paused subscription
+cancels its consumer (see [RabbitMQ paused subscriptions](rabbitmq#paused-subscriptions)).
+
+- The stop is started when the pause lands, not awaited: the processor's stop waits for the
+  handlers in flight, and a pause can be reached from one of them. A delivery that reaches the
+  handler before the stop lands is handed back once, with the unsettled Warning above.
+  {verified: AzureServiceBusPausedSubscriptionTests.SessionBatch_ACheckpointInFlightAsThePauseLands_IsHandedBackOnceWithAWarningAsync}
+- If the processor cannot be stopped, the subscription stays paused and logs a Warning that it
+  keeps receiving; each delivery it takes is then handed back with the unsettled Warning.
+  {verified: AzureServiceBusPausedSubscriptionTests.SessionBatch_PauseCannotStopTheProcessor_LogsAWarningAndStaysPausedAsync}
+- Resuming waits for that stop to finish and starts the processor again.
+  {verified: AzureServiceBusPausedSubscriptionTests.SessionBatch_ResumedAfterAPause_StartsItsProcessorAndHandlesDeliveriesAsync, AzureServiceBusPausedSubscriptionTests.NonSessionBatch_ResumedAfterAPause_StartsItsProcessorAsync}
+- The [receive-liveness watchdog](#receive-liveness) does not treat a paused subscription's
+  silence as a stall: it neither counts that silence nor re-subscribes the subscription, so a
+  paused instance is never handed sessions by a recovery. Once the subscription is resumed it is
+  watched again from a fresh silence window. A subscription established again for the same entity
+  starts active and is watched.
+  {verified: AzureServiceBusTransportLivenessWiringTests.SessionSubscription_PausedPastTheSilenceThreshold_IsNotRecoveredAndTakesNoSessionsAsync, AzureServiceBusTransportLivenessWiringTests.NonSessionSubscription_PausedPastTheSilenceThreshold_IsNotRecoveredAsync, AzureServiceBusTransportLivenessWiringTests.Subscription_ResumedAfterALongPause_IsWatchedAgainFromAFreshWindowAsync, AzureServiceBusTransportLivenessWiringTests.Subscription_EstablishedAgainAfterAPausedOne_IsWatchedAsync}
+- A [namespace-throttle pause](#namespace-throttling) that ends while the subscription is paused
+  leaves the processor stopped until the subscription is resumed.
+  {verified: AzureServiceBusPausedSubscriptionTests.NamespaceThrottle_EndingWhileTheSubscriptionIsPaused_LeavesTheProcessorStoppedAsync}
 
 ## Observability
 
