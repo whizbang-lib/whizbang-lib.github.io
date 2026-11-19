@@ -1,24 +1,24 @@
 {
   "run": {
-    "runId": "44580371587",
-    "sha": "910588c1614f611956245ff899dbbc8b60736957",
+    "runId": "44589432560",
+    "sha": "decd9cb815e82b306dd961e1781ccb248f9deedd",
     "branch": "develop",
-    "libraryVersion": "0.4458.0-alpha.17",
-    "completedAt": "2026-11-19T17:59:19.231Z"
+    "libraryVersion": "0.4458.0-alpha.49",
+    "completedAt": "2026-11-19T18:47:44.552Z"
   },
   "total": {
-    "passed": 43242,
+    "passed": 43278,
     "failed": 0,
     "skipped": 12
   },
   "suites": {
     "azureblob": {
-      "passed": 72,
+      "passed": 73,
       "failed": 0,
       "skipped": 0
     },
     "component": {
-      "passed": 6124,
+      "passed": 6126,
       "failed": 0,
       "skipped": 0
     },
@@ -33,12 +33,12 @@
       "skipped": 3
     },
     "postgres-dapper": {
-      "passed": 1628,
+      "passed": 1629,
       "failed": 0,
       "skipped": 0
     },
     "postgres-efcore-": {
-      "passed": 10908,
+      "passed": 10928,
       "failed": 0,
       "skipped": 0
     },
@@ -58,7 +58,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 23521,
+      "passed": 23533,
       "failed": 0,
       "skipped": 8
     }
@@ -144,7 +144,7 @@
     },
     "Whizbang.Archive.AzureBlob.Integration.Tests": {
       "file": "Whizbang.Archive.AzureBlob.Integration.Tests.json",
-      "passed": 52,
+      "passed": 53,
       "failed": 0,
       "skipped": 0
     },
@@ -168,7 +168,7 @@
     },
     "Whizbang.Core.Component.Tests": {
       "file": "Whizbang.Core.Component.Tests.json",
-      "passed": 4747,
+      "passed": 4749,
       "failed": 0,
       "skipped": 0
     },
@@ -180,7 +180,7 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 3513,
+      "passed": 3517,
       "failed": 0,
       "skipped": 0
     },
@@ -204,19 +204,19 @@
     },
     "Whizbang.Core.Unit.Workers.Tests": {
       "file": "Whizbang.Core.Unit.Workers.Tests.json",
-      "passed": 3486,
+      "passed": 3487,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.Dapper.Postgres.Tests": {
       "file": "Whizbang.Data.Dapper.Postgres.Tests.json",
-      "passed": 1628,
+      "passed": 1629,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.EFCore.Postgres.Tests": {
       "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
-      "passed": 10908,
+      "passed": 10928,
       "failed": 0,
       "skipped": 0
     },
@@ -402,7 +402,7 @@
     },
     "Whizbang.TestAnalyzers.Tests": {
       "file": "Whizbang.TestAnalyzers.Tests.json",
-      "passed": 42,
+      "passed": 43,
       "failed": 0,
       "skipped": 0
     },
@@ -420,7 +420,7 @@
     },
     "Whizbang.Testing.Tests": {
       "file": "Whizbang.Testing.Tests.json",
-      "passed": 205,
+      "passed": 211,
       "failed": 0,
       "skipped": 0
     },
