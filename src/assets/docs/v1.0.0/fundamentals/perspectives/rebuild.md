@@ -401,6 +401,7 @@ public record RebuildResult(
   public int StreamsWriteRefused { get; init; }
   public int StreamsWithoutModel { get; init; }
   public int StreamsWithoutEvents { get; init; }
+  public int StreamsFailed { get; init; }
 }
 ```
 
@@ -415,11 +416,30 @@ public record RebuildResult(
 | `StreamsWriteRefused` | Streams whose fold differs from the stored row, and whose write the row's ordering guard refused. Their rows keep what they hold, and they are not rebuilt; each is logged at Warning |
 | `StreamsWithoutModel` | Streams whose events were folded but none produced a model, so there was nothing to write |
 | `StreamsWithoutEvents` | Streams with no events for this perspective |
+| `StreamsFailed` | Streams (and rows folded from re-keyed events) that threw while replaying. See [failed streams](#failed-streams). |
 
 **Naming streams and rebuilding none of them is a failure.** A rebuild of selected streams that refuses every one,
 or finds no events for any, returns `Success = false` with an `Error` that says which. Read as a success, it hid 32
 unrepaired rows behind a run that looked clean (#1162). A stream skipped for its archived data is the exception: it is
 reported in `StreamsSkipped`, so a rebuild of named streams that skipped them all succeeds.
+
+### A stream that fails to replay {#failed-streams}
+{verified: PerspectiveRebuilderFailedStreamsTests.RebuildStreamsAsync_OneOfThreeStreamsFails_IsNotASuccess_AndKeepsTheOtherTwoAsync, PerspectiveRebuilderFailedStreamsTests.RebuildInPlaceAsync_OneOfThreeStreamsFails_IsNotASuccess_AndKeepsTheOtherTwoAsync, PerspectiveRebuilderFailedStreamsTests.RebuildStreamsAsync_EveryStreamSucceeds_ReportsNoFailure_AndCompletesAsync, PerspectiveRebuilderFailedStreamsTests.RebuildStreamsAsync_ManyFailedStreams_NamesTheFirstFewAndCountsTheRestAsync, PerspectiveRebuilderFailedStreamsTests.RebuildStreamsAsync_EveryNamedStreamFails_SaysTheyFailedRatherThanThatNothingWasThereAsync}
+
+`StreamsFailed` counts the streams (and rows folded from re-keyed events) that threw while replaying. The rebuild
+carries on with the rest and keeps every stream that rebuilt, but a rebuild with any failed stream reports
+`Success = false`. Its `Error` names the count and the first five ids:
+
+```text
+2 of 40 stream(s) failed to replay: 0199..., 0199.... The 38 stream(s) that rebuilt are kept; each failure is logged with its exception.
+```
+
+With more than five failures the list ends with "and K more". The rebuild emits `PerspectiveRebuildFailed` instead of
+`PerspectiveRebuildCompleted`, and each failure is logged with its exception. Before #2376 a failed stream was logged
+and the run still reported success, so a rebuild that left streams unrebuilt read as clean.
+
+A caller checking whether anything was rebuilt should read `StreamsProcessed`, not `Success`. In a
+[blue-green](#blue-green) rebuild, the table swapped in holds no rebuilt row for a failed stream.
 
 ### A fold equal to the stored row {#already-correct}
 
@@ -602,7 +622,7 @@ run, which matters because a rebuild is usually an operational action someone ch
 | `PerspectiveRebuildStarted` | Once the stream set is final, carrying `TotalStreams` |
 | `PerspectiveRebuildProgress` | Every hundredth stream, and once when the last one is done |
 | `PerspectiveRebuildCompleted` | Success, carrying `StreamsProcessed`, `EventsReplayed` and `Duration` |
-| `PerspectiveRebuildFailed` | Failure, carrying the error and how far it got |
+| `PerspectiveRebuildFailed` | Failure, carrying the error and how far it got, including a run in which any stream [failed to replay](#failed-streams) |
 
 All four share one **rebuild stream id** per run, so a reader can group a single rebuild's events, and a
 failure that happened before any work publishes `Failed` without a `Started` — a rebuild that never ran

@@ -1003,6 +1003,17 @@ PrePerspectiveDetached → PrePerspectiveInline → apply events → save model 
 - `PostPerspectiveInline` fires AFTER the checkpoint cursor is saved
 - Each receptor type fires at exactly one point in this sequence
 
+### Which events a perspective stage receives {#perspective-stage-events}
+
+{verified: EventStoreReadAfterVersionTests.GetEventsBetweenPolymorphicAsync_AfterTheFirstEvent_WhoseIdIsTheHighest_ReadsThroughTheUpperVersionAsync, DapperPostgresEventStoreEdgeCaseTests.GetEventsBetweenPolymorphicAsync_AfterTheEventWithTheHighestId_ReadsByVersionThroughTheUpperAsync, InMemoryEventStoreReplayOrderTests.GetEventsBetweenPolymorphicAsync_BetweenTwoEvents_ReadsByTheirVersionsInStreamOrderAsync, EventStoreReadAfterVersionTests.GetEventsBetweenPolymorphicAsync_BetweenEventsTheStreamDoesNotHold_SelectsByTheirIdsAsync}
+
+The events a lifecycle receptor receives for a perspective's batch are those after the previous checkpoint's position
+in the stream, through the new checkpoint's, in stream order (version, then id). This is the same order the cursor and
+the replay use ([one order for a stream](../perspectives/rewind#one-order-for-a-stream)). Event ids don't decide
+membership or order, so a stream whose first event carries its highest id still delivers exactly the batch (#2381). A
+checkpoint the stream does not hold is compared by id. See
+[reading between checkpoints](../events/event-store#read-between).
+
 ### Generated Code Verification
 
 The generated registry pre-categorizes receptors by the exact (message type, stage) pair:

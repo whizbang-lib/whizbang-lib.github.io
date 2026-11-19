@@ -34,6 +34,7 @@ Comprehensive **troubleshooting guide** for Whizbang applications - common issue
 | **Duplicate Processing** | Side effects run twice | Non-idempotent receptor retried | Use `AttemptNumber` / `[ReceptorIdempotent]` |
 | **High Latency** | Slow responses | Database query | Add indexes |
 | **Memory Leak** | Memory grows indefinitely | Unclosed connections | Use `await using` |
+| **Generated code does not compile** | "The type or namespace X does not exist in the namespace Y.System" | Generators older than the `global::` qualification | [Upgrade the generators](#system-namespace) |
 
 ---
 
@@ -389,6 +390,29 @@ public class OrderProcessor : IDisposable {
   }
 }
 ```
+
+---
+
+## Issue 6: Generated Code Fails Under a `System` Namespace {#system-namespace}
+
+{verified: SystemChildNamespaceGenerationTests.WithoutSystemChildren_TheGeneratedCodeCompilesAsync, SystemChildNamespaceGenerationTests.WithSystemChildren_TheGeneratedCodeStillCompilesAsync, SystemChildNamespaceGenerationTests.CoreGenerators_NameEverySystemTypeThroughGlobalAsync, SystemChildNamespaceGenerationTests.EFCoreGenerators_NameEverySystemTypeThroughGlobalAsync, SystemChildNamespaceGenerationTests.TransportGenerators_NameEverySystemTypeThroughGlobalAsync, SystemChildNamespaceGenerationTests.TheScan_FindsABareSystemName_AndPassesGlobalUsingsAndNamespaceNamesAsync}
+
+### Symptom
+
+Generated code fails to compile with "the type or namespace X does not exist in the namespace Y.System", in a project
+whose namespaces contain a `System` segment: for example a test project `Company.Orders.Tests` next to a namespace
+`Company.Orders.System`.
+
+### Cause
+
+Inside `Company.Orders.Tests`, an unqualified `System.Guid` resolves `System` to the nearest enclosing match,
+`Company.Orders.System`, not the framework's root namespace.
+
+### Solution: Upgrade the Generators
+
+Generated code names every framework type through `global::` (`global::System.Guid`), so it compiles in such projects.
+If you see this error, upgrade the generators (#2400). Code you write yourself in such a project has the same rule:
+qualify with `global::` where a `System` child namespace is in scope.
 
 ---
 

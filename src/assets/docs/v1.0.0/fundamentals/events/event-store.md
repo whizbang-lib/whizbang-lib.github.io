@@ -397,7 +397,20 @@ own events) when any anchor is not held by its stream, because it cannot cut tha
 an archive places the hot events by the snapshot's version, which the caller passes, because the hot store may no
 longer hold the snapshot's event.
 
-The typed `ReadAsync` and the between-checkpoint reads keep `event_id` order.
+The typed `ReadAsync` keeps `event_id` order.
+
+### Reading between checkpoints {#read-between}
+
+{verified: EventStoreReadAfterVersionTests.GetEventsBetweenPolymorphicAsync_AfterTheFirstEvent_WhoseIdIsTheHighest_ReadsThroughTheUpperVersionAsync, EventStoreReadAfterVersionTests.GetEventsBetweenAsync_FromTheStartThroughVersionTwo_ReadsVersionsOneAndTwoInStreamOrderAsync, EventStoreReadAfterVersionTests.GetEventsBetweenPolymorphicAsync_BetweenEventsTheStreamDoesNotHold_SelectsByTheirIdsAsync, DapperPostgresEventStoreEdgeCaseTests.GetEventsBetweenPolymorphicAsync_AfterTheEventWithTheHighestId_ReadsByVersionThroughTheUpperAsync, DapperPostgresEventStoreEdgeCaseTests.GetEventsBetweenPolymorphicAsync_BetweenEventsTheStreamDoesNotHold_SelectsByTheirIdsAsync, InMemoryEventStoreReplayOrderTests.GetEventsBetweenPolymorphicAsync_BetweenTwoEvents_ReadsByTheirVersionsInStreamOrderAsync, InMemoryEventStoreReplayOrderTests.GetEventsBetweenAsync_FromTheStartThroughAnEvent_ReadsThroughItsVersionInStreamOrderAsync, InMemoryEventStoreReplayOrderTests.GetEventsBetweenPolymorphicAsync_BetweenEventsTheStreamDoesNotHold_SelectsByTheirIdsAsync, InMemoryEventStoreReplayOrderTests.GetEventsBetweenPolymorphicAsync_IdsFollowingVersions_ReadsTheSameEventsAsBeforeAsync, ArchiveAwareEventStoreDecoratorTests.ABetweenRead_ThroughAnArchivedEvent_KeepsTheArchivedEventsThroughItsVersion_WhateverTheirIdsAsync, ArchiveAwareEventStoreDecoratorTests.ABetweenRead_ThroughAHotEvent_KeepsEveryArchivedEvent_WhateverTheirIdsAsync, ArchiveAwareEventStoreDecoratorTests.ABetweenRead_ThroughAnEventNeitherStoreHolds_KeepsTheArchivedEventsAtOrBeforeItsIdAsync}
+
+`GetEventsBetweenAsync` and `GetEventsBetweenPolymorphicAsync` read the events **after `afterEventId`'s version
+through `upToEventId`'s version**, in stream order (version, then id). A null `afterEventId` reads from the stream's
+start. These reads give a perspective's lifecycle receptors the events of the batch between two checkpoints, so they
+use the same order as the cursor and the replay. Event ids don't decide membership or order: a stream whose first event
+carries its highest id still returns exactly the batch (#2381). The EF Core, Dapper Postgres and in-memory stores and
+the archive decorator all read this way.
+
+A checkpoint the stream does not hold has no position in it, so the read compares by id for it, as before.
 
 ## Decorator Stack
 
