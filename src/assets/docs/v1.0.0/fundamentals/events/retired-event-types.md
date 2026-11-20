@@ -76,8 +76,10 @@ paths read the same setting. Nothing else is configured or called.
   [rule fingerprint](../../resilience/stream-integrity#rule-fingerprint). Two services that disagree on it halt their
   pair through the [pair guard](../../resilience/stream-integrity#the-pair-guard) until both declare it, so a rollout
   that has reached only one of them compares nothing for the type instead of repairing a difference that is deliberate.
-- **Retire a type only once it is deleted.** A name this service still declares as an event type stops the host at
-  startup: a retirement purges events, and a type the service still declares still has readers here.
+- **Retire a type only once it is deleted.** A name this service still declares as an event type is not retired here:
+  its events are neither purged nor turned away at receive, and it keeps its declared rules in the rule fingerprint.
+  Every maintenance cycle, the first one after the host starts included, logs a warning naming it until the type is
+  deleted here or the name removed.
 - **A name nothing is stored under is reported** once a process, by the first maintenance cycle: the name is
   misspelled, or the type's history is already purged here. A name is matched without its assembly, under every
   assembly it was stored with.
@@ -85,7 +87,7 @@ paths read the same setting. Nothing else is configured or called.
 | Choice | Reason | Verified |
 |---|---|---|
 | A retirement is declared in configuration, by name, not with an attribute. | The type's class is deleted, so there is nothing left to put an attribute on, and the stored name is the one thing that still identifies its events. The rule still travels in the rule fingerprint like every other rule, so two services cannot quietly disagree. | {verified: CatalogRuleFingerprintSourceTests.For_CoversEachRetiredName_AsRetired_ThoughTheCatalogNoLongerDeclaresItAsync} |
-| A name this service still declares stops the host. | Purging the events of a type that is still declared would take history its readers still apply. | {verified: RetiredEventTypesOptionsTests.Validate_ANameThisServiceStillDeclares_FailsAndNamesItAsync, RetiredEventTypesOptionsTests.Validator_ReadsTheRegisteredCatalog_AndFailsTheHostOnAStillDeclaredNameAsync} |
+| A name this service still declares is warned about and skipped, not refused at startup. | A running service must never purge, or turn away, events its own readers still apply; but a service on an older contracts package that still has the type should keep running while the rollout reaches it. The skipped name is counted in the cycle's result and warned about every cycle, so it is never silent. | {verified: RetiredEventTypePurgeStepTests.Purge_SkipsANameThisServiceStillDeclares_CountsIt_AndWarnsEveryCycleAsync, RetiredEventTypesOptionsTests.EffectiveNames_LeaveOutANameThisServiceStillDeclares_AndStillDeclaredNamesItAsync, MessageDiscardPolicyTests.EvaluateReceive_ARetiredNameThisServiceStillDeclares_IsNotTurnedAwayAsync, CatalogRuleFingerprintSourceTests.RulesOf_ARetiredNameTheCatalogStillDeclares_KeepsItsDeclaredRulesAsync} |
 | An unknown name is reported, not refused. | Once a type's history is fully purged the name matches nothing, and the entry must stay while any peer still stores the type, so "nothing stored" is not an error. | {verified: RetiredEventTypePurgeStepTests.Purge_ReportsANameNothingIsStoredUnder_OnceAProcess_AndTheWaitingStreamsAsync} |
 
 ## What the purge does {#what-the-purge-does}
@@ -110,7 +112,9 @@ each its own transaction, each taking up to `BatchStreams` streams that hold a r
 
 A stream leaves whole or waits whole. Its retired events wait while the commit-order stamper has not reached one, while
 a [destruction hold](ephemeral-events) is active on one, or while a snapshot or a cursor rests on one; the other streams
-of the batch go on. Waiting streams are counted in each cycle's log line, so a hold that never lapses is seen. A
+of the batch go on. A waiting stream is counted and left, never forced: the count is in each cycle's log line
+("n streams wait for a destruction hold, a snapshot, the commit-order stamper or a perspective cursor") and in the
+step's result (`StreamsWaiting`), so a stream that can never progress is seen rather than silent. A
 superseding retired type counts its key once, as its slot: the whole stream leaves, so each slot is unfolded once, and a
 key whose copies of another type of its group stay keeps its slot, handed on to them.
 
@@ -139,6 +143,10 @@ and keeps its stream waiting, when:
 
 A snapshot resting on a retired event keeps its stream waiting until a newer snapshot replaces it: a rewind restores the
 snapshot and moves the cursor onto its event.
+
+A cursor with no earlier event to step back to, and a snapshot that is never replaced, keep their stream waiting for
+good. Such streams are counted and left as they are, by design: the count is in every cycle's log line, so they can be
+dealt with by hand. {verified: RetiredEventTypePurgeSqlTests.Retire_ACursorWithNoEarlierEventToStepBackTo_KeepsTheStreamWaitingAsync, RetiredEventTypePurgeStepTests.Purge_ReportsANameNothingIsStoredUnder_OnceAProcess_AndTheWaitingStreamsAsync}
 
 ## The receive boundary {#the-receive-boundary}
 
