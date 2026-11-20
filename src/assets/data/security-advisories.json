@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-01T13:40:47.148Z",
+  "fetchedAt": "2026-11-20T15:40:57.605Z",
   "source": "api.osv.dev",
   "packages": [
     "SoftwareExtravaganza.Whizbang.Archive.AzureBlob",
@@ -22,6 +22,7 @@
     "SoftwareExtravaganza.Whizbang.Observability",
     "SoftwareExtravaganza.Whizbang.Offloads.AzureBlob",
     "SoftwareExtravaganza.Whizbang.Offloads.InMemory",
+    "SoftwareExtravaganza.Whizbang.Rules",
     "SoftwareExtravaganza.Whizbang.Sagas",
     "SoftwareExtravaganza.Whizbang.Sagas.Contracts",
     "SoftwareExtravaganza.Whizbang.Sagas.Generators",
