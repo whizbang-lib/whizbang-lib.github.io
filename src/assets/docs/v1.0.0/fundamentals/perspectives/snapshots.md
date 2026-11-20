@@ -52,6 +52,7 @@ testReferences:
   - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/EphemeralRewindFloorRunnerTests.cs
   - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerReapDrivenSnapshotTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PurgedRowEphemeralHistorySqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ReapBoundaryFloorSqlTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -295,6 +296,9 @@ So a snapshot of a row whose model has collectives records a **mark**, H, in
 commit sequence at or below H was complete when the snapshot was taken. The snapshot is taken **prior to** any
 collective still in flight: such a collective counts as past H, and the next snapshot, taken once it completes,
 captures it. A rewind or a rebuild from the snapshot then folds exactly the collectives the snapshot does not hold.
+A [reap-boundary snapshot](../events/ephemeral-events#the-reap-boundary-snapshot) records the boundary's commit sequence
+as its collectives mark.
+{verified: CollectiveReplayRunnerTests.ABootstrapThroughTheBoundary_OfARowWithCollectives_HoldsTheCollectivesBeforeTheBoundary_AndRecordsItsMarkAsync}
 
 #### How the mark is read {#collectives-fence}
 
@@ -461,7 +465,7 @@ the same outcomes, and `Refused` only there; a runner that does not implement it
 A rewind restores from the latest snapshot placed *before* its late event in the stream (by stream version), so a snapshot is a floor only for a late event placed after it. A bootstrap the `PerspectiveWorker` takes snapshots the row as it is now, at the cursor's last event, and serves only a late event placed after the cursor. For an ephemeral perspective, whose earlier bodies are reaped once a snapshot covers them, a late event placed before every snapshot is dropped and logged rather than replayed (see [runtime guards](../events/ephemeral-events#runtime-guards)).
 {verified: SnapshotSelectionFollowsStreamOrderTests.AReapDrivenSnapshotAtTheTip_IsAFloorOnlyForALateEventAfterItAsync}
 
-The bootstrap the maintenance cycle takes before a reap sits lower: at the reap boundary, the last body it is about to reap. The model as of that position is folded from the snapshot below it over the bodies still stored, so a late event placed below the cursor but above the boundary still finds a floor. A perspective whose rows have collectives is still snapshotted at the cursor, and a live snapshot at the tip can replace the boundary snapshot in the stream's one slot; both are open limits. See [the reap-boundary snapshot](../events/ephemeral-events#the-reap-boundary-snapshot).
+The bootstrap the maintenance cycle takes before a reap sits lower: at the reap boundary, the last body it is about to reap. The model as of that position is folded from the snapshot below it over the bodies still stored, so a late event placed below the cursor but above the boundary still finds a floor. A row with collectives is folded with the collectives placed before the boundary. The boundary snapshot then holds the stream's one slot: a live or rewind snapshot at the tip fills the slot only when it is empty, and a snapshot covers bodies for the reap only once its own event is past its grace window. See [the reap-boundary snapshot](../events/ephemeral-events#the-reap-boundary-snapshot).
 {verified: ReapBoundarySnapshotRunnerTests.ALateEventBelowTheCursorAndAboveTheBoundary_RewindsFromTheBoundarySnapshot_AfterTheBodiesBelowAreReapedAsync}
 
 ### Ephemeral perspectives {#ephemeral-perspectives}
@@ -473,6 +477,11 @@ Whether a perspective snapshots is decided by what it **consumes**:
 | Only durable events | `SnapshotEveryNEvents`, keeping `MaxSnapshotsPerStream`. |
 | Durable and ephemeral events | `EphemeralSnapshotEveryNEvents`, keeping `EphemeralMaxSnapshotsPerStream`. |
 | Only ephemeral events | **None**, unless the perspective is marked `[KeepEphemeralRewindFloor]`, which takes the ephemeral cadence. |
+
+The ephemeral cadence fills the stream's one slot only while it is empty. Once the slot holds a snapshot, only the
+[reap-boundary bootstrap](../events/ephemeral-events#the-reap-boundary-snapshot) replaces it, so the floor moves only to
+a point the grace window has closed on.
+{verified: ReapBoundarySnapshotRunnerTests.ALiveSnapshot_FillsAnEmptySlotAsync, ReapBoundarySnapshotRunnerTests.ALiveSnapshot_DoesNotReplaceTheBoundarySnapshot_SoALateEventBelowTheTipStillFindsItsFloorAsync}
 
 The rule, and the reason for each row, are on the ephemeral events page: [snapshots follow what a read model consumes](../events/ephemeral-events#snapshots-follow-what-a-read-model-consumes).
 {verified: EphemeralRewindFloorRunnerTests.ALiveRun_OfAPerspectiveThatKeepsNoFloor_WritesNoSnapshotAsync, EphemeralRewindFloorRunnerTests.ALiveRun_OfAPerspectiveThatOptsIn_WritesItsSnapshotAsync, EphemeralRewindFloorRunnerTests.ABootstrap_OfAPerspectiveThatKeepsNoFloor_WritesNothing_AndReportsSnapshotsOffAsync}

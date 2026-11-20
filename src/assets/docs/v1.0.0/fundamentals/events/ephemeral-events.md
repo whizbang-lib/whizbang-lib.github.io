@@ -90,7 +90,12 @@ codeReferences:
   - src/Whizbang.Generators.Shared/Utilities/EphemeralResolver.cs
   - src/Whizbang.Generators/PerspectiveRunnerGenerator.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
+  - src/Whizbang.Data.Postgres/EphemeralSnapshotFloorSql.cs
+  - src/Whizbang.Data.Postgres/CoordinatorCatalogSql.cs
+  - src/Whizbang.Data.Postgres/Migrations/534_ATipSnapshotIsNoFloorUntilItsEventAgesOut.sql
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ReapBoundaryFloorSqlTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/CollectiveReplayRunnerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralHistoryReclassifySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HistoryWalkTargetNamingTests.cs
   - tests/Whizbang.Core.Tests/TypeNameFormatterTests.cs
@@ -278,7 +283,7 @@ The delete runs in SQL, inside each maintenance cycle. A body is deleted only wh
 |---|---|---|
 | Consumption | No perspective work item for the event is still unprocessed. An event no perspective consumes passes at once. | {verified: EphemeralBodyReaperSqlTests.Reap_EphemeralBody_GatedWhilePending_ReapedAfterConsumedAsync, EphemeralBodyReaperSqlTests.Reap_NoConsumingPerspective_EphemeralBodyReapedAsync} |
 | Rewind grace | The consumed body is older than the grace window: the type's `RewindGraceSeconds`, or the global `ephemeral_rewind_grace_seconds` (300 seconds unless configured). | {verified: EphemeralBodyReaperSqlTests.Reap_ConsumedEphemeralBody_HeldByGraceWindow_ReapedOnlyWhenAgedAsync, EphemeralBodyReaperSqlTests.Reap_PerTypeGraceOverride_ReapsAtItsOwnWindowAsync} |
-| Snapshot coverage | Each consuming perspective that [keeps a rewind floor](#snapshots-follow-what-a-read-model-consumes) has a snapshot at or past the event in its stream, so a rewind always has a floor to restore from, or has [purged its row](#a-purged-row-covers-its-history). A perspective that applies only ephemeral events keeps no floor, and does not hold the body. | {verified: EphemeralBodyReaperSqlTests.Reap_ConsumedBody_HeldUntilSnapshotCoversAsync, EphemeralBodyReaperSqlTests.Reap_SnapshotEarlierInTheStream_DoesNotCoverTheBodyAsync, EphemeralOnlyReadModelReapSqlTests.Reap_TheBodyOfAReadModelThatKeepsNoFloor_IsReapedWithoutASnapshotAsync, EphemeralOnlyReadModelReapSqlTests.Reap_ABodyAnotherConsumerStillNeedsCoveredFor_IsHeldAsync, PurgedRowEphemeralHistorySqlTests.Reap_TheBodiesOfAPurgedRow_AreReapedWithoutASnapshotAsync} |
+| Snapshot coverage | Each consuming perspective that [keeps a rewind floor](#snapshots-follow-what-a-read-model-consumes) has a snapshot at or past the event in its stream whose own event is past its grace window ([the reap-boundary snapshot](#the-reap-boundary-snapshot)), so a rewind always has a floor to restore from, or has [purged its row](#a-purged-row-covers-its-history). A perspective that applies only ephemeral events keeps no floor, and does not hold the body. | {verified: EphemeralBodyReaperSqlTests.Reap_ConsumedBody_HeldUntilSnapshotCoversAsync, EphemeralBodyReaperSqlTests.Reap_SnapshotEarlierInTheStream_DoesNotCoverTheBodyAsync, EphemeralOnlyReadModelReapSqlTests.Reap_TheBodyOfAReadModelThatKeepsNoFloor_IsReapedWithoutASnapshotAsync, EphemeralOnlyReadModelReapSqlTests.Reap_ABodyAnotherConsumerStillNeedsCoveredFor_IsHeldAsync, PurgedRowEphemeralHistorySqlTests.Reap_TheBodiesOfAPurgedRow_AreReapedWithoutASnapshotAsync, ReapBoundaryFloorSqlTests.Reap_BodiesBelowASnapshotWhoseEventIsStillInItsGrace_AreHeldAsync} |
 | TTL (`AfterTtl` only) | The event's stamped expiry has passed. | {verified: EphemeralBodyReaperSqlTests.Reap_AfterTtl_StampedExpiry_HeldUntilPast_ThenReapedAsync, EphemeralBodyReaperSqlTests.Reap_AfterTtl_PastExpiry_StillHeldUntilSnapshotCoversAsync} |
 | Holds | No destruction hold covers it (see [Destruction hooks](#destruction-hooks)). | {verified: EphemeralDestructionHoldSqlTests.Hold_KeepsBodyFromReap_ThenReapableWhenHoldLapses_AndHoldCleanedAsync} |
 | Debug mode | `debug_mode` is off. Under debug mode nothing is reaped, so bodies stay for forensics. | {verified: EphemeralBodyReaperSqlTests.Reap_DebugMode_RetainsConsumedEphemeralBodyAsync} |
@@ -508,7 +513,6 @@ event placed below the cursor but above the boundary then rewinds from that snap
 served only a late event placed after the cursor and the perspective dropped the rest.
 
 - **One snapshot slot per stream**, as before (`EphemeralMaxSnapshotsPerStream`).
-- **The coverage gate is unchanged.** A body is reaped once a snapshot at or after it covers it.
 - **A boundary that is the cursor** is snapshotted from the row, as before.
 - **A boundary that cannot be folded from what is stored** writes nothing and reports
   [`SnapshotBootstrapOutcome.Refused`](../perspectives/snapshots#bootstrap): the snapshot below it cannot be read, the
@@ -516,14 +520,34 @@ served only a late event placed after the cursor and the perspective dropped the
 - **A hand-written runner** that does not implement `IPerspectiveRunner.TryBootstrapSnapshotThroughAsync` bootstraps at
   the cursor, as before.
 
-**Open limits** (tracked in [whizbang-lib/whizbang#2456](https://github.com/whizbang-lib/whizbang/issues/2456)):
+**A row with collectives is folded with them.** When the model has [collectives](../messaging/collective-events), the
+fold to the boundary takes the row's collectives from the applier, as a rewind from the same floor does: those
+committed past the mark of the snapshot below (or every one, from the stream's start), each placed after every stream
+event it was committed after. The fold ends at the last stream event through the boundary, so a collective placed after
+all of them is left for a replay from the snapshot to fold. The snapshot records the boundary's commit sequence as its
+[collectives mark](../perspectives/snapshots#collectives). A collective of the row still in flight defers the bootstrap:
+nothing is written, it reports `Deferred`, and a later cycle takes it.
+{verified: CollectiveReplayRunnerTests.ABootstrapThroughTheBoundary_OfARowWithCollectives_HoldsTheCollectivesBeforeTheBoundary_AndRecordsItsMarkAsync, CollectiveReplayRunnerTests.ABootstrapThroughTheBoundary_FromASnapshotBelowIt_StartsTheCollectivesFromThatSnapshotsMarkAsync, CollectiveReplayRunnerTests.ABootstrapThroughTheBoundary_FoldsNoCollectiveCommittedBeforeTheStreamsFirstEvent_WhenThereWasNoRowAsync, CollectiveReplayRunnerTests.ABootstrapThroughTheBoundary_ThatMeetsACollectiveInFlight_IsDeferred_AndWritesNothingAsync}
 
-- **A perspective whose rows have collectives is still snapshotted at the cursor.** Folding such a row to the boundary
-  would also mean folding the collectives committed before it, and that fold is not built. A late event placed below
-  that snapshot finds no floor once the bodies below are reaped.
-- **A live snapshot at the tip can replace the boundary snapshot.** The stream keeps one slot, and a snapshot the run
-  takes at the tip during normal processing still satisfies the coverage gate. A late event below it then has no floor
-  again.
+**Only the boundary bootstrap moves the floor.** An ephemeral perspective's one snapshot is its rewind floor, and it
+moves only to a point the grace window has closed on. The reap-boundary bootstrap takes the slot, and any older
+snapshot is pruned. The live cadence and a rewind's cadence fill the slot only when it is empty; they never replace the
+snapshot there. A Sourced perspective's cadence is unchanged.
+{verified: ReapBoundarySnapshotRunnerTests.ABootstrapThroughALaterBoundary_TakesTheSlot_AndTheSnapshotBelowItGoesAsync, ReapBoundarySnapshotRunnerTests.ALiveSnapshot_DoesNotReplaceTheBoundarySnapshot_SoALateEventBelowTheTipStillFindsItsFloorAsync, ReapBoundarySnapshotRunnerTests.ARewind_DoesNotReplaceTheBoundarySnapshot_ItRestoredFromAsync, ReapBoundarySnapshotRunnerTests.ALiveSnapshot_FillsAnEmptySlotAsync}
+
+**A snapshot covers only once its own event is past its grace window** (migration 534). A snapshot at the tip, such as
+one the live cadence put in an empty slot, sits above bodies still inside the window, where a late event may yet land.
+Until its event ages out (the event type's `RewindGraceSeconds`, else `ephemeral_rewind_grace_seconds`) it covers
+nothing: the bodies below it stay, the pair is a reap-driven target at its reap boundary, and the destruction batch does
+not offer them. A snapshot whose event the store no longer holds is long past the window and covers as before. The
+target query and the destruction batch read the same condition as the reap's coverage gate, so all three agree on what
+is covered.
+{verified: ReapBoundaryFloorSqlTests.Reap_BodiesBelowASnapshotWhoseEventIsStillInItsGrace_AreHeldAsync, ReapBoundaryFloorSqlTests.Reap_OnceTheSnapshotsEventIsPastItsGrace_TheBodiesBelowItAreReapedAsync, ReapBoundaryFloorSqlTests.Reap_ASnapshotWhoseEventTheStoreNoLongerHolds_StillCoversAsync, ReapBoundaryFloorSqlTests.PairsNeedingSnapshot_APairCoveredOnlyByASnapshotStillInItsGrace_IsATarget_AtTheReapBoundaryAsync, ReapBoundaryFloorSqlTests.PairsNeedingSnapshot_APairWhoseSnapshotEventIsPastItsGrace_IsNotATargetAsync, ReapBoundaryFloorSqlTests.AboutToReap_BodiesBelowASnapshotWhoseEventIsStillInItsGrace_AreNotOfferedAsync}
+
+**Known trade-off.** A perspective that applies ephemeral and Sourced events together is ephemeral, so once its slot is
+taken it no longer gets a fresh snapshot at the tip from its live cadence, and a rewind of it starts from the
+boundary snapshot rather than near the tip, replaying more events. Whether such a perspective should keep a separate tip snapshot is an open
+question, tracked in [whizbang-lib/whizbang#2463](https://github.com/whizbang-lib/whizbang/issues/2463).
 
 See also [where a bootstrap snapshot sits](../perspectives/snapshots#bootstrap-floor).
 
@@ -708,9 +732,10 @@ straggler line above.
 [deleted archive](../perspectives/rewind#deleted-archive)). The skipped rewind still counts in `whizbang.perspective.rewinds` (and
 `whizbang.perspective.rewinds_triggered`), so a rewind count alone cannot tell a replay from a drop; this
 counter does. A count that keeps rising means late events are arriving later than the perspective's reorder
-window covers: snapshot more often (see [Snapshots](#snapshots); a perspective that applies only ephemeral
-events first needs `[KeepEphemeralRewindFloor]`) or widen the rewind grace window (see
-[When the body is deleted](#reap-gates)) so those events find a floor and rewind instead of being dropped. A
+window covers: widen the rewind grace window (see [When the body is deleted](#reap-gates)), which keeps
+the [reap boundary](#the-reap-boundary-snapshot) and its snapshot further below the tip, so those events find a floor
+and rewind instead of being dropped (a perspective that applies only ephemeral events first needs
+`[KeepEphemeralRewindFloor]` to keep a floor at all; see [Snapshots](#snapshots)). A
 drop refused for a deleted archive is told apart by its warning; neither setting changes it. A rewind that
 completes counts no drop.
 {verified: PerspectiveMetricsTests.PerspectiveMetrics_StragglersDropped_CountsUnderItsNameWithThePerspectiveTagAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_RewindThatCompletes_CountsNoDroppedStragglerAsync}
