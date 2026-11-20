@@ -24,7 +24,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/WorkCoordinatorFlushHelper.cs
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
   - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
-  - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Core/Lifecycle/DestructionStageReceptors.cs
@@ -614,7 +614,7 @@ Perspective lifecycle stages are new in v1.0.0 and enable deterministic test syn
 - Fires once per batch, not per event
 - Perspective may complete before this stage finishes
 
-**Hook Location**: Generated perspective runner (from `PerspectiveRunnerTemplate.cs`) before event processing loop begins
+**Hook Location**: Shared perspective runner logic (`PerspectiveRunnerBase`, from `PerspectiveRunnerBaseTemplate.cs`) before event processing loop begins
 
 #### `PrePerspectiveInline`
 
@@ -630,7 +630,7 @@ Perspective lifecycle stages are new in v1.0.0 and enable deterministic test syn
 - Fires once per batch, not per event
 - No events processed yet
 
-**Hook Location**: Generated perspective runner (from `PerspectiveRunnerTemplate.cs`) before event processing loop begins
+**Hook Location**: Shared perspective runner logic (`PerspectiveRunnerBase`, from `PerspectiveRunnerBaseTemplate.cs`) before event processing loop begins
 
 #### `PostPerspectiveDetached`
 
@@ -646,7 +646,7 @@ Perspective lifecycle stages are new in v1.0.0 and enable deterministic test syn
 - Perspective data writes are flushed
 - Checkpoint not yet committed
 
-**Hook Location**: Generated perspective runner (from `PerspectiveRunnerTemplate.cs`) after perspective data is flushed, before checkpoint save
+**Hook Location**: Shared perspective runner logic (`PerspectiveRunnerBase`, from `PerspectiveRunnerBaseTemplate.cs`) after perspective data is flushed, before checkpoint save
 
 **Example**:
 ```csharp{title="`PostPerspectiveDetached`" description="PostPerspectiveDetached" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "PostPerspectiveDetached"] tests=["ReceptorDiscoveryGeneratorTests.Generator_ReceptorWithFireAt_RegisteredOnlyAtSpecifiedStageAsync", "LifecycleCoordinatorTests.AdvanceTo_SetsCorrectContextProperties_OnReceptorInvocationAsync", "LifecycleStageTests.LifecycleStage_PostPerspectiveDetached_IsDefinedAsync"]}
@@ -1202,8 +1202,8 @@ See [Lifecycle Receptors](../receptors/lifecycle-receptors.md) for API details.
 | `PreDistribute*` / `DistributeDetached` / `PostDistribute*` | `WorkCoordinatorFlushHelper.cs` | Around the flush's outbox and inbox store calls |
 | `PreOutbox*` / `PostOutbox*` | `OutboxPublishWorker.cs` | Around transport publish |
 | `PreInbox*` / `PostInbox*` | `InboxDispatchWorker.cs` | Around receptor dispatch (`PostInbox` fires after event storage) |
-| `PrePerspective*` | `PerspectiveRunnerTemplate.cs` | Before event processing loop (once per batch) |
-| `PostPerspectiveDetached` | `PerspectiveRunnerTemplate.cs` | After perspective data flush, before checkpoint save |
+| `PrePerspective*` | `PerspectiveRunnerBaseTemplate.cs` | Before event processing loop (once per batch) |
+| `PostPerspectiveDetached` | `PerspectiveRunnerBaseTemplate.cs` | After perspective data flush, before checkpoint save |
 | `PostPerspectiveInline` | `PerspectiveWorker.cs` | After checkpoint commit (data + checkpoint durable) |
 | `PostAllPerspectives*` | `PerspectiveWorker.cs` | After ALL perspectives complete (WhenAll) — managed by [Lifecycle Coordinator](lifecycle-coordinator.md) |
 | `PostLifecycle*` | `PerspectiveWorker.cs`, `TransportConsumerWorker.cs`, `Dispatcher.cs` | After all processing completes — managed by [Lifecycle Coordinator](lifecycle-coordinator.md) |
