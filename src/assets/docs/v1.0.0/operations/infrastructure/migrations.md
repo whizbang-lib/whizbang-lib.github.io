@@ -320,6 +320,18 @@ caller holds the initialization lock.
 Both halves are proven against a real database, including that removing the marker brings the failure
 back, so the boundary cannot quietly become a comment that means nothing.
 
+A committed rewrite can still meet an older snapshot: a transaction that began before the commit can
+still see the row versions the rewrite replaced, and a plain `CREATE INDEX` indexes those too. So after
+it commits, the stored-format rewrite phase waits until no snapshot older than its commit is left, up
+to the schema command timeout. It waits only when a rewrite marked a table it changed. A pass that
+wrote nothing but its own bookkeeping (the rewrite ledger's row for a table, a stored-form journal
+entry) replaced nothing an index reads, so it waits for no one. Waiting on that bookkeeping write
+alone used to make a restart wait for every older writing transaction on the database server, other
+databases included. The mark is also what has the table analyzed after the commit, so every rewrite
+the phase runs, [stored-form migrations](../../fundamentals/perspectives/stored-form-migrations.md#safety)
+included, must mark each table whose rows it changes.
+{verified: CanonicalTemporalRewritePhaseTests.APassThatOnlyRecordsItsBookkeepingWaitsForNoOneAsync, StoredFormMigrationTests.AGeneratedMigrationThatConvertedRows_MarksItsTableAsync, StoredFormMigrationTests.AGeneratedMigrationWithNothingToConvert_DoesNotMarkItsTableAsync, StoredFormMigrationTests.ACustomMigration_MarksItsTableAsync}
+
 ## One transaction per step {#one-transaction-per-step}
 {verified: MigrationStepTransactionTests.AFailureInOneFile_KeepsTheFilesBeforeIt_AndTheRetryAppliesOnlyFromItOnAsync, StartupMigrationStepsTests.AFailedStep_KeepsWhatCommitted_RecordsItsError_AndTheRetryResumesThereAsync}
 
