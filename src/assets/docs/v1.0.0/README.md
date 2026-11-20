@@ -48,6 +48,8 @@ and the **[Quick Start](./getting-started/quick-start.md)**.
   [database-availability middleware](./resilience/database-availability-middleware.md)
 - **[Extending](./extending/source-generators/receptor-discovery.md)** — source
   generators, analyzers, attributes, and extension points
+- **[Upgrade Guide](./upgrading/upgrade-guide.md)**: the behavior changes between Whizbang
+  releases, and [moving from .NET 10 to .NET 11](./upgrading/dotnet-10-to-11.md)
 - **[Migration Guide](./migration-guide/README.md)** — moving from
   Marten/Wolverine and other frameworks
 
