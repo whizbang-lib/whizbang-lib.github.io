@@ -571,12 +571,15 @@ Stored-form migrations run inside the stored-format rewrite phase, so they share
   later one.
 - **Before the indexes.** The pass commits before the transaction that builds indexes, so an index
   over a converted key is built over converted values.
-- **The superseded-row-version fence.** After a pass that converted anything, the phase waits until
-  no snapshot older than its commit is left, up to the schema command timeout. So a plain
-  `CREATE INDEX` cannot trip over a row version the migration replaced (the #949 fence). A pass that
-  wrote nothing does not wait. The fence counts any write, and a migration writes its journal row on
-  the pass that converts and on the pass that settles, so each migration can make the phase wait at
-  most twice over its life. A settled migration writes nothing.
+- **The superseded-row-version fence.** A stored-form migration that converted rows marks its
+  table, as every rewrite the phase runs does. After the pass commits, a marked table is analyzed,
+  and the phase waits until no snapshot older than its commit is left, up to the schema command
+  timeout. So a plain `CREATE INDEX` cannot trip over a row version the migration replaced (the #949
+  fence). The phase waits only when a table was marked: a migration that converted nothing leaves no
+  mark, and its journal row alone (written on the pass that settles it) makes the phase wait for no
+  one. A custom migration is never assumed to have changed nothing, so it always marks its table. A
+  settled migration writes nothing.
+  {verified: StoredFormMigrationTests.AGeneratedMigrationThatConvertedRows_MarksItsTableAsync, StoredFormMigrationTests.AGeneratedMigrationWithNothingToConvert_DoesNotMarkItsTableAsync, StoredFormMigrationTests.ACustomMigration_MarksItsTableAsync, CanonicalTemporalRewritePhaseTests.APassThatOnlyRecordsItsBookkeepingWaitsForNoOneAsync}
 - **Mixed fleets.** The migrator warns, as it does for the temporal rewrite, when other releases are
   alive. A generated migration settles only after a clean pass, so rows an older release writes
   during a rolling deploy are converted on the next start.

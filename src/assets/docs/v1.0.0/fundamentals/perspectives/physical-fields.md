@@ -44,6 +44,7 @@ codeReferences:
   - src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldRegistry.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldExpressionVisitor.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/GroupedRowsRewriter.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldQueryInterceptor.cs
   - src/Whizbang.Data.EFCore.Postgres/SplitModeChangeTrackerHydrator.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
@@ -651,6 +652,29 @@ var products = await lens.Query
 A filter, sort or other operator written over the model after the projection keeps the query as it was, because the
 copy runs on the client after the query; write it over the row before the projection, as above. A count over the
 projection, and `Extracted` and `JsonOnly` models, whose documents hold their fields, are not rewritten.
+
+### Groupings and aggregates over a projected model {#grouping-a-projected-model}
+{verified: PhysicalFieldGroupingSqlTests.GroupBy_APromotedField_GroupsByItsColumnAsync, PhysicalFieldGroupingSqlTests.GroupBy_ACompositeKey_GroupsByEachColumnAsync, PhysicalFieldGroupingSqlTests.GroupBy_AnAggregateOverTheMembers_ReadsTheColumnAsync, PhysicalFieldGroupingSqlTests.GroupBy_AFilterOverTheMembersBeforeAnAggregate_ReadsTheColumnAsync, PhysicalFieldGroupingSqlTests.GroupBy_WithAnElementSelector_ReadsTheColumnAsync, PhysicalFieldGroupingSqlTests.GroupBy_WithAResultSelector_ReadsTheColumnAsync, PhysicalFieldGroupingSqlTests.GroupBy_WithAnElementAndAResultSelector_ReadsTheColumnAsync, PhysicalFieldGroupingSqlTests.GroupBy_AMemberUseTheColumnFormCannotExpress_StillGroupsByTheColumnAsync, SplitModeProductionTests.GroupBy_OverTheProjectedModel_GroupsAndSumsByTheColumnsAsync, SplitModeProductionTests.Aggregate_OverTheProjectedModel_ReadsTheColumnAsync}
+
+After `Select(r => r.Data)`, a `GroupBy` key, its element and result selectors, an aggregate over a group's members,
+and `Sum`, `Min`, `Max`, `Average`, `Count`, `LongCount`, `Any` or `All` over the projected model read a
+`[PhysicalField]` from its column, as the row form (`r.Data.Status`) does. Under `FieldStorageMode.Split` the document
+holds the field's default, so before this a grouping put every row in one group and a sum came back zero, while the
+query still succeeded. There is no need to project the key before grouping.
+
+```csharp{title="Grouping a projected Split model" description="The key and the sum read the promoted columns." category="Querying" difficulty="INTERMEDIATE" tags=["perspectives", "physical-fields", "split", "querying"] tests=["PhysicalFieldGroupingSqlTests.GroupBy_AnAggregateOverTheMembers_ReadsTheColumnAsync", "SplitModeProductionTests.GroupBy_OverTheProjectedModel_GroupsAndSumsByTheColumnsAsync"]}
+var totals = await lens.Query
+  .Select(r => r.Data)
+  .GroupBy(x => x.Status)
+  .Select(g => new { g.Key, Count = g.Count(), Total = g.Sum(x => x.Price) })
+  .ToListAsync();
+// GROUP BY status, sum(price): both read from their columns
+```
+
+One limit remains. An operator over a group's members whose result is a model, such as an ordering followed by
+`First` (`g.OrderBy(x => x.Price).First()`), and a use of the group itself as a value, still read the document for
+that part. The key still groups by its column. Write that part over the row before the projection when it needs a
+promoted field.
 
 ## Defining Physical Fields
 

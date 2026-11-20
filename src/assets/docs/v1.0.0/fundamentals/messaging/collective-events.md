@@ -400,6 +400,19 @@ order the live sink applied them in. The order in which *rows* are
 rebuilt is unspecified and does not matter, because each row's replay
 carries the cross-stream events it needs.
 
+A collective is folded after every stream event it was committed after,
+wherever the replay places that event. A stream's replay order does not
+always rise with its commit sequence: a late-arriving event replays at
+its origin position, ahead of older events committed before it arrived.
+Placing a collective before the first stream event committed after it
+would put it ahead of such a late event and of the older events
+replaying after it, which would then overwrite the collective's change
+while the rebuild reported success. "Committed after" compares commit
+sequences when both carry one, and message ids otherwise. Rebuild a
+perspective that has collective applies and late-arriving events to
+correct rows an earlier rebuild wrote.
+{verified: CollectiveReplayApplierCoverageTests.InterleaveAfterAsync_WithALateEventReplayedAtItsOrigin_KeepsEachCollectiveAfterEveryEventItFollowedAsync, CollectiveReplayApplierCoverageTests.InterleaveAfterAsync_WithAnUnsequencedLateEvent_KeepsEachCollectiveAfterEveryEventItFollowedAsync, CollectiveReplayApplierCoverageTests.InterleaveAfterAsync_WhenOnlyUnsequencedEventsFollow_PlacesASequencedCollectiveByTheirIdsAsync}
+
 For an operator this is the property that makes a targeted repair safe:
 replaying a known-stale row through its perspective reproduces the
 collective mutations that row received, so a repair scoped to a handful
