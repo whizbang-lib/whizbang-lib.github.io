@@ -547,7 +547,7 @@ Whizbang:OperationalRetention:MaxBatchesPerCycle must be at least 1 (was 0); a c
 
 ## Build-time diagnostics (WHIZ###)
 
-Compile-time errors, warnings and notices from Whizbang's source generators and analyzers use `WHIZ###` IDs and surface in build output and the IDE, not at runtime. Every ID has its own page; each ID means one thing. WHIZ060 to WHIZ063 are also covered together on the [Serializable Property Analyzer](serializable-property-analyzer.md) page. Ten IDs are **retired** (WHIZ003, WHIZ005, WHIZ020, WHIZ023, WHIZ042, WHIZ050, WHIZ051, WHIZ052, WHIZ057 and WHIZ803): they were declared but never reported, are no longer in the generator package, and are never reused. Their pages explain what each described; delete any suppression of them.
+Compile-time errors, warnings and notices from Whizbang's source generators and analyzers use `WHIZ###` IDs and surface in build output and the IDE, not at runtime. Every ID has its own page; each ID means one thing. WHIZ060 to WHIZ063 are also covered together on the [Serializable Property Analyzer](serializable-property-analyzer.md) page. Eleven IDs are **retired** and never reused. Ten (WHIZ003, WHIZ005, WHIZ020, WHIZ023, WHIZ042, WHIZ050, WHIZ051, WHIZ052, WHIZ057 and WHIZ803) were declared but never reported and are no longer in the generator package. WHIZ017 was reported until #1905 made the case it warned about impossible, and is no longer reported. Their pages explain what each described; delete any suppression of them.
 
 WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests and never ship in a package; they have pages like every other ID and are listed together in [Repository Checks and Diagnostic IDs](../../../contributors/repository-checks.md), with the registry every new ID is taken from.
 
@@ -569,7 +569,7 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ014 | Warning | [Receptor May Not Be Constructible by Dependency Injection](whiz014.md) |
 | WHIZ015 | Warning | [Generic Message Types Are Not Supported](whiz015.md) |
 | WHIZ016 | Warning | [Stream ID Override Has Nothing to Override](whiz016.md) |
-| WHIZ017 | Warning | [Stream ID Generation Opt-Out Cannot Hold Across Assemblies](whiz017.md) |
+| WHIZ017 | Retired | [Stream ID Generation Opt-Out Cannot Hold Across Assemblies](whiz017.md) (retired in #1905: the opt-out now holds across assemblies, ID never reused) |
 | WHIZ018 | Error | [Stream ID Inherits From A Type That Is Not A Strong ID](whiz018.md) |
 | WHIZ019 | Error | [InheritFrom On A Stream ID That Is Not A Strong ID](whiz019.md) |
 | WHIZ020 | Retired | [WhizbangId Discovered](whiz020.md) (retired: never reported, ID never reused) |
@@ -588,6 +588,7 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ033 | Warning | [Perspective Model Missing StreamId](whiz033.md) |
 | WHIZ034 | Warning | [InheritFrom Lists The Stream ID's Own Type](whiz034.md) |
 | WHIZ035 | Warning | [IHasStreamId Is Written Instead Of A Strong-ID Stream ID](whiz035.md) |
+| WHIZ036 | Error | [Stream ID Is Ambiguous](whiz036.md) |
 | WHIZ040 | Info | [User Service Discovered](whiz040.md) |
 | WHIZ041 | Info | [Abstract Class Skipped](whiz041.md) |
 | WHIZ042 | Retired | [No User Services Found](whiz042.md) (retired: never reported, ID never reused) |
