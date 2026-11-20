@@ -82,12 +82,22 @@ public class EFCoreRecordHeartbeatTests : EFCoreTestBase {
 `EFCoreTestBase.cs` in the Postgres reference provides:
 
 - Shared testcontainer (`SharedPostgresContainer`) that starts once and is reused.
-- Per-test database isolation via `CREATE DATABASE test_<guid>` + cleanup.
+- Per-test database isolation: every EF Core Postgres fixture creates its scratch database through
+  `PerTestDatabaseFactory` (a copy of the migrated template) and drops it in its teardown.
 - Pre-configured `NpgsqlDataSource` with JSON serializer + pgvector mappings.
 - `EnsureWhizbangDatabaseInitializedAsync()` runs all migrations.
 - Helper methods like `CreateTestEnvelope` and `CreateTestOutboxMessage`.
 
 Adapt for your engine — the principle is "fresh schema per test, container reused across tests."
+
+A fixture tears down in exactly one place (#1954). TUnit runs a fixture's `[After(Test)]` hooks and then disposes the
+instance when it is `IAsyncDisposable` or `IDisposable`, so a fixture that is both runs its teardown twice. Idempotent
+teardown hides that; a teardown that is not (a second drop of a database name another test already reuses, a second
+dispose of a shared data source) fails only when the suites run together. Keep the teardown in the `[After(Test)]`
+hook, which runs whether the test passed or failed, and do not make the fixture disposable. A guard test reads every
+fixture in the test assembly, base classes included, and fails one that is both.
+
+{verified: SingleTeardownGuardTests.NoFixtureWithATestTeardownHook_IsAlsoDisposableAsync}
 
 Because every test process on a machine shares that one container, a test that terminates or cancels backends must end only its own database's: name the database (`datname`, `current_database()`, or an advisory lock's `database`) or end one backend whose pid it was handed, never every backend in the cluster. A cluster-wide termination ends other test processes' sessions, and they fail only when the suites run together. A guard test fails any termination that does neither.
 
