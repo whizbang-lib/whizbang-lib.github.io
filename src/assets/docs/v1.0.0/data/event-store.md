@@ -33,6 +33,11 @@ codeReferences:
   - src/Whizbang.Generators/StoredMetadataRegistryGenerator.cs
   - src/Whizbang.Data.Postgres/MetadataDistillationStep.cs
   - src/Whizbang.Data.Postgres/Migrations/298_ConvertHistoricalMetadata.sql
+  - src/Whizbang.Data.Postgres/Migrations/537_StoredMetadataLeavesOutWhatTheRowHolds.sql
+  - src/Whizbang.Core/Observability/EnvelopeMetadata.cs
+  - src/Whizbang.Core/Data/IJsonbPersistenceAdapter.cs
+  - src/Whizbang.Core/Messaging/HeartbeatRequest.cs
+  - src/Whizbang.Data.Postgres/MetadataTrimGateStep.cs
   - src/Whizbang.Data.Postgres/MetadataHistoryConversionStep.cs
   - src/Whizbang.Data.Postgres/PostgresRouteTraceStore.cs
 testReferences:
@@ -44,6 +49,12 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MetadataHistoryConversionSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/MetadataHistoryConversionCostScenarioTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStoredMetadataTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StoredMetadataRowValuesSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StoredMetadataRowValuesReadTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStoredMetadataRowValuesTests.cs
+  - tests/Whizbang.Core.Tests/Observability/EnvelopeMetadataRowValuesTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StoredMetadataTrimGateSqlTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/HeartbeatRequestStoredFormLevelTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -292,10 +303,10 @@ The slim form is [`EnvelopeMetadata.ToSlim()`](../messaging/message-envelopes#st
 
 | Kept | Why |
 |---|---|
-| The message id, and every top-level key except `dc` and `rin` | Each store reads its own keys back: the EF Core store's `MessageId`, the Dapper store's `message_id`, `correlation_id`, `causation_id` and `pri`, the ephemeral expiry the TTL reapers and the retry midpoint read (`ephemeral_expires_at`), the ephemeral TTL (`ett`). |
+| Every top-level key except `dc` and `rin` (the message id only when it is not the row's event id, see [below](#row-values)) | Each store reads its own keys back: the EF Core store's `MessageId`, the Dapper store's `message_id`, `correlation_id`, `causation_id` and `pri`, the ephemeral expiry the TTL reapers and the retry midpoint read (`ephemeral_expires_at`), the ephemeral TTL (`ett`). |
 | The first hop's timestamp, correlation id, causation id and stream id | Readers take the message time, correlation and causation from the first hop (`GetMessageTimestamp`, `GetCorrelationId`, `GetCausationId`). |
 | The first hop's trace parent (`tp`) | Perspective spans and perspective-stage receptor spans keep joining the trace the event started in. It stays inside the hop, where those readers already look. |
-| The scope, folded over every Current hop into one delta (`sc`) | Scope and security checks read it from the hops. One scoped hop (the usual case) is copied as it is; several are folded the way `ScopeDelta.ApplyTo` applies them. |
+| The scope, folded over every Current hop into one delta (`sc`), unless it is the row's scope column alone ([below](#row-values)) | Scope and security checks read it from the hops. One scoped hop (the usual case) is copied as it is; several are folded the way `ScopeDelta.ApplyTo` applies them. |
 | `rid`, the route id | Says how the event got here for as long as its route is kept, with no rewrite of the row. |
 
 Dropped: the dispatch context (`dc`), receptor invocations (`rin`), and from the hops every service instance, topic,
@@ -304,10 +315,81 @@ These matter while a message is delivered, and the outbox and inbox rows keep th
 envelope accessors that read hop detail (`GetCallerInfo`, `GetCurrentTopic` and the like) return what the slim form
 carries; the full picture comes from the [trace store](../fundamentals/persistence/observability#routes-and-traces).
 
-The slim hop keeps its scope rather than rebuilding it from the row's `scope` column on read: that column holds only
-the perspective scope (tenant, user, customer, organization, allowed principals, extensions), while the hop's delta
-also carries roles, permissions, principals, claims, the actual and effective principal and the context type, and the
-EF Core direct append writes no scope column at all. {verified: StoredMetadataRouteCorpusTests.SlimForm_InSql_ReadsLikeToSlim_ForEveryCorpusEntryAsync}
+The slim hop keeps a scope the row's `scope` column cannot rebuild: that column holds only the perspective scope
+(tenant, user, customer, organization, allowed principals, extensions), while the hop's delta can also carry roles,
+permissions, principals, claims, the actual and effective principal and the context type, and the EF Core direct
+append writes no scope column at all. A hop scope that is the column and nothing more is left out, as the next section
+says. {verified: StoredMetadataRouteCorpusTests.SlimForm_InSql_ReadsLikeToSlim_ForEveryCorpusEntryAsync, StoredMetadataRowValuesSqlTests.OutboxChain_KeepsWhatTheRowDoesNotHoldAsync}
+
+### What the row already holds {#row-values}
+
+{verified: StoredMetadataRowValuesSqlTests.OutboxChain_LeavesOutTheMessageIdAndTheHopScopeTheRowHolds_AndNothingElseAsync, StoredMetadataRowValuesReadTests.EveryReader_ReadsATrimmedRow_AsItReadTheSameRowInTheSlimFormAsync, DapperStoredMetadataRowValuesTests.EveryReader_ReadsATrimmedRow_AsItReadTheSameRowInTheSlimFormAsync}
+
+The slim form still repeated two values the event row holds in its own columns: the message id, which is the row's
+`event_id`, and the slim hop's scope, which is the row's `scope`. Once [the trim gate](#trim-gate) is open, every write
+path leaves both out of the stored metadata (`_wh_trim_row_values`), and every reader rebuilds them from the row:
+
+| Left out | When | Rebuilt by readers from | Verified |
+|---|---|---|---|
+| The message id (`MessageId`, or `message_id` in the Dapper store's form) | it equals the row's `event_id` | `event_id` (`EnvelopeMetadata.MessageIdOf`, and the Dapper store's readers) | {verified: StoredMetadataRowValuesSqlTests.DirectAppend_LeavesOutTheMessageIdInEitherDriversForm_AndTheScopeTheColumnHoldsAsync, EnvelopeMetadataRowValuesTests.Read_MetadataWithoutAMessageId_ReadsTheRest_AndTheMessageIdIsTheRowsEventIdAsync} |
+| The slim hop's scope (`sc`) | it is the scope value alone (`{"v":{"Sc":...}}`), it names something a reader restores, and it equals the `scope` column | `scope`, restored onto the first hop as every reader already did for a hop without one | {verified: StoredMetadataRowValuesSqlTests.OutboxChain_AScopeColumnInItsWrittenForm_MatchesTheHopScopeItEqualsAsync} |
+
+Everything else is kept, and so is either value whenever the row does not hold it: a message id other than the
+row's event id, a hop scope that differs from the column, one carrying roles, claims or principals, one naming nothing
+a reader restores (allowed principals alone), and every hop scope of a row stored without a scope column. Full rows
+(debug mode, `Full`, a type kept full) are the metadata as written and keep both. The staged full form is unchanged.
+{verified: StoredMetadataRowValuesSqlTests.OutboxChain_KeepsWhatTheRowDoesNotHoldAsync, StoredMetadataRowValuesSqlTests.FullRows_KeepEverythingAsync}
+
+An event reads back the same whether its row was written before this or after: every read path of both stores is
+checked against the same events in both forms. History conversion trims the slim rows written before it
+([below](#history-conversion)), and [reconstruction](#reconstruction) puts both values back, so the trace store's
+answer is the metadata as it was. No digest, epoch, fingerprint or route id reads a row's metadata, so none changes.
+{verified: StoredMetadataRowValuesReadTests.EveryReader_ReadsATrimmedRow_AsItReadTheSameRowInTheSlimFormAsync, DapperStoredMetadataRowValuesTests.EveryReader_ReadsATrimmedRow_AsItReadTheSameRowInTheSlimFormAsync, StoredMetadataRowValuesSqlTests.TraceMetadata_PutsTheMessageIdAndTheScopeBack_FromTheRowAndFromItsTraceAsync}
+
+What it saves, measured on a scratch database over 1,000 slim rows of a dispatched event's usual shape (two hops
+before slimming, a trace parent, a tenant and user scope), stored size per row (`pg_column_size`):
+
+| Scope values | Slim row | Trimmed row | Saved |
+|---|---|---|---|
+| GUID tenant and user | 514 B | 326 B | 188 B (37%) |
+| Short tenant and user (`acme-tenant`, `user-42`) | 460 B | 326 B | 134 B (29%) |
+
+The saving is the message id (about 56 bytes) plus the hop scope, which grows with the tenant and user values. Putting
+the two values back from the row gave every measured row exactly its slim form again.
+
+### When the write paths start trimming {#trim-gate}
+
+{verified: StoredMetadataTrimGateSqlTests.Gate_StaysClosedWhileALiveInstanceLacksTheMarker_AndOpensOnceItIsGoneOrStaleAsync, StoredMetadataTrimGateSqlTests.Writes_BeforeTheGateOpens_AreUntrimmedAndReadByAnEarlierReader_AndAfterItAreTrimmedAsync}
+
+A release before this one requires the message id when it reads an event row, and the write paths are SQL, so they
+would trim on behalf of every instance as soon as the migration ran, including the instances of the earlier release
+still running during a rolling update. So the change ships in two stages within this one release, and the second
+starts by itself once the whole fleet can take it:
+
+1. **Readers first.** From the moment the migration runs, every reader of this release reads both forms. The write
+   paths keep writing the slim form an earlier release reads.
+2. **Writers once every live instance reads.** Each heartbeat of this release records `stored_form_level` (1) in its
+   instance row's metadata (`wh_service_instances.metadata`); an earlier release records none. The
+   `metadata-trim-gate` maintenance step asks `wh_open_metadata_trim_gate` each cycle, and it latches the
+   `wh_settings` row `metadata_trim_row_values` once at least one instance is live (by the
+   [one liveness rule](../fundamentals/workers/instance-liveness)) and every live instance records level 1 or higher.
+   From then on the write paths trim.
+
+| Question | Answer | Verified |
+|---|---|---|
+| What does a write cost? | One primary-key read of `wh_settings` per call (`_wh_metadata_trim_on`), beside the settings read it already makes. The fleet is read by the maintenance step, never by a write | {verified: StoredMetadataTrimGateSqlTests.Writes_BeforeTheGateOpens_AreUntrimmedAndReadByAnEarlierReader_AndAfterItAreTrimmedAsync} |
+| Can an earlier release read the rows written before the gate opened? | Yes: they keep the message id and hop scope | {verified: StoredMetadataTrimGateSqlTests.Writes_BeforeTheGateOpens_AreUntrimmedAndReadByAnEarlierReader_AndAfterItAreTrimmedAsync} |
+| A new service, or a fresh database? | The registry is empty until the first heartbeat, and an empty registry keeps the gate closed; it opens on the first cycle after this instance has registered | {verified: StoredMetadataTrimGateSqlTests.Gate_AFreshService_OpensOnlyOnceThisInstanceHasRegisteredWithItsMarkerAsync} |
+| An instance of an earlier release is still live? | Closed: the step reports `closed (n of m live instances read trimmed rows)`; it opens once that instance is gone or no longer live | {verified: StoredMetadataTrimGateSqlTests.Gate_StaysClosedWhileALiveInstanceLacksTheMarker_AndOpensOnceItIsGoneOrStaleAsync} |
+| Can it close again? | No: the latch is one-way, so a flapping fleet never turns trimming on and off | {verified: StoredMetadataTrimGateSqlTests.Gate_OnceOpen_StaysOpen_WhenAnInstanceWithoutTheMarkerAppearsAsync} |
+| History conversion? | It follows the gate: while closed it converts rows written before slim metadata to the slim form an earlier release reads and leaves slim rows alone; opening the gate starts its walk over, and the walk trims | {verified: StoredMetadataTrimGateSqlTests.Conversion_WaitsForTheGate_ThenTrimsWhatItWroteAndWhatWasSlimAsync} |
+
+:::warning
+**No rollback below this release once the gate has opened.** After the latch, rows are written without their message
+id, and a release before this one cannot read them. Rolling the library back below this release, or starting an
+instance of an earlier release against the same database, is not supported from then on. Before the latch it is: every
+row is still in the form an earlier release reads.
+:::
 
 ### Keeping an event type full {#keeping-an-event-type-full}
 
@@ -457,7 +539,9 @@ entry per event.
 Rows written before slim metadata keep every hop in the row. Every row written since carries its route id (`rid`),
 slim or full, so a row without one is a row written before it. The `metadata-history-conversion` maintenance step (both
 drivers) converts those rows once: it rewrites each one to exactly what a write path stores for it now, the slim form
-plus its route id. It is the only place event rows are rewritten.
+plus its route id, less [what the row already holds](#row-values). It also trims a row already in the slim form that
+still holds its message id or hop scope where its columns hold them, without counting its route again. It is the only
+place event rows are rewritten. {verified: StoredMetadataRowValuesSqlTests.Convert_ARowWrittenBeforeSlimMetadata_BecomesTheTrimmedFormAsync, StoredMetadataRowValuesSqlTests.Convert_ASlimRowWrittenBeforeTheTrim_IsTrimmed_AndItsRouteIsNotCountedAgainAsync}
 
 It runs in the maintenance cycle, so it waits for the service to settle and runs only on the holder of the maintainer
 duty. It calls `wh_convert_event_metadata_history` in batches, each batch its own transaction, until a batch comes back
@@ -465,16 +549,19 @@ short, a batch does not come back `ok`, the cycle's batch limit is reached, or i
 [The cycle's budget](#history-conversion-budget)). Each batch:
 
 1. reads the next rows past its cursor (`wh_metadata_history_conversion`) in event id order, through the key index;
-2. leaves alone a row that already has a route id, a row of a type [kept full](#keeping-an-event-type-full), a row whose
+2. leaves alone a row that already has a route id and holds nothing [its columns hold](#row-values), a full row with a
+   route id (it is the metadata as written), a row of a type [kept full](#keeping-an-event-type-full), a row whose
    metadata is not a JSON object, and a body without its pointer (it has no type to compute a route from);
-3. rewrites each remaining row to the slim form plus its route id, computed from its type name and hops as every write
-   path computes it;
-4. under `Linked`, counts each converted event on its route with **one upsert per route**, first and last seen at the
+3. rewrites each row without a route id to the slim form plus its route id, computed from its type name and hops as
+   every write path computes it, less what its row holds, and trims each slim row of what its row holds;
+4. under `Linked`, counts each event converted from the full form on its route with **one upsert per route**, first and last seen at the
    time the event was stored, and writes its trace when the event is still inside the
    [trace window](#retention), so [reconstruction](#reconstruction) of a recent event stays lossless;
 5. moves its cursor past what it read and reports `rows_affected`.
 
-When a batch reads to the end of the table, the conversion is complete and later cycles read nothing. On a database
+When a batch reads to the end of the table, the conversion is complete and later cycles read nothing. Opening [the trim gate](#trim-gate)
+starts the walk over, in the statement that latches it, so it trims the slim rows written before; until then it trims
+nothing. The rows already trimmed are passed over. On a database
 created at this version every row already carries its route id, so the first cycles only read the table once, when it
 is still small, and complete.
 
@@ -573,7 +660,13 @@ Each choice below is locked by the test beside it, which fails if the behavior f
 | A decision's reason, configuration and time are not part of the route | They vary per message | {verified: RouteNormalizerTests.RouteId_IgnoresAPolicyDecisionsReasonConfigurationAndTimeAsync} |
 | The slim form reduces only the hop list and drops `dc` and `rin` | Each store's reader still finds its own keys (the Dapper store's `message_id`, `pri`) | {verified: StoredMetadataWriteSqlTests.DirectAppend_KeysTheSlimFormDoesNotReduce_AreKeptAsWrittenAsync} |
 | The trace parent stays in the slim hop | Perspective spans keep the event's trace, read where they already look | {verified: StoredMetadataWriteSqlTests.OutboxChain_DefaultForm_StoresTheSlimRow_AndStagesTheFullFormAsync} |
-| The slim hop keeps the folded scope | The row's scope column holds less than the hop's delta, and EF Core direct appends write none | {verified: StoredMetadataRouteCorpusTests.SlimForm_InSql_ReadsLikeToSlim_ForEveryCorpusEntryAsync} |
+| The slim hop keeps the folded scope, unless it is the scope column alone | The row's scope column holds less than a delta with roles or claims, and EF Core direct appends write none; a delta that is the column and nothing more is rebuilt from it exactly | {verified: StoredMetadataRouteCorpusTests.SlimForm_InSql_ReadsLikeToSlim_ForEveryCorpusEntryAsync, StoredMetadataRowValuesSqlTests.OutboxChain_KeepsWhatTheRowDoesNotHoldAsync} |
+| The message id is left out only when it is the row's event id | A different one is not the row's to rebuild; readers return a kept one as written | {verified: StoredMetadataRowValuesSqlTests.OutboxChain_KeepsWhatTheRowDoesNotHoldAsync, EnvelopeMetadataRowValuesTests.MessageIdOf_AStoredMessageId_IsKept_EvenWhenItIsNotTheEventIdAsync} |
+| A stored document reads without a message id | The row's event id is the message id; `EnvelopeMetadata.MessageId` is no longer required on read, and every reader asks `MessageIdOf` | {verified: EnvelopeMetadataRowValuesTests.Read_MetadataWithoutAMessageId_ReadsTheRest_AndTheMessageIdIsTheRowsEventIdAsync, StoredMetadataRowValuesReadTests.EveryReader_ReadsATrimmedRow_AsItReadTheSameRowInTheSlimFormAsync} |
+| The hop scope is compared as a value, not as text | The column's written form carries empty lists and null values the hop's does not; text equality would never match | {verified: StoredMetadataRowValuesSqlTests.OutboxChain_AScopeColumnInItsWrittenForm_MatchesTheHopScopeItEqualsAsync} |
+| A hop scope that names nothing a reader restores is kept | A reader restores a scope that names nothing as no scope at all, so leaving it out would lose it | {verified: StoredMetadataRowValuesSqlTests.OutboxChain_KeepsWhatTheRowDoesNotHoldAsync} |
+| Full rows are not trimmed, at write or by conversion | A full row is the metadata as written, which is why it is kept full | {verified: StoredMetadataRowValuesSqlTests.FullRows_KeepEverythingAsync, StoredMetadataRowValuesSqlTests.Convert_AFullRowWithItsRouteId_IsNotTouchedAsync} |
+| Reconstruction puts both values back | The trace store answers with the metadata as it was | {verified: StoredMetadataRowValuesSqlTests.TraceMetadata_PutsTheMessageIdAndTheScopeBack_FromTheRowAndFromItsTraceAsync} |
 | A full row carries `rid` and is still staged under `Linked` | Routes cover every type | {verified: StoredMetadataWriteSqlTests.FullListedType_KeepsTheFullRow_ByTypeAndByNamespaceAsync, StoredMetadataWriteSqlTests.DebugMode_KeepsEveryRowFullAsync} |
 | Distillation removes what it distills, oldest event id first | Each staged row counts once with no cursor; the key index serves the order | {verified: MetadataDistillationSqlTests.Distill_TakesAtMostTheBatch_OldestFirstAsync} |
 | 2,000 rows a batch, 50 batches a cycle | A transaction holds one batch; a backlog drains over cycles | {verified: MetadataDistillationSqlTests.Step_StopsAtTheCycleLimit_AndTheNextCycleGoesOnAsync} |
@@ -584,7 +677,16 @@ Each choice below is locked by the test beside it, which fails if the behavior f
 | Staging has one index | The hot path pays one index entry; the trace store scans staging for its non-key queries | {verified: RouteTraceStoreTests.TraceStore_AnswersEveryQuery_LikeTheInMemoryStore_OnTheSameCorpusAsync} |
 | Each store registers on its own | Use either without the other | {verified: RouteTraceStoreTests.Registration_EitherStoreAlone_NeedsNotTheOtherAsync} |
 | History is the rows without a route id | Every row written since slim metadata carries one, slim or full, so no marker is needed and a converted row is never chosen again | {verified: MetadataHistoryConversionSqlTests.Convert_ARowWithoutARouteId_BecomesSlimWithItsRouteId_AndARowWithOneIsUntouchedAsync, MetadataHistoryConversionSqlTests.Convert_AConvertedRow_IsNotTouchedAgain_EvenFromTheStartAsync} |
-| A converted row is exactly what a write path stores for it now | One stored form, whenever the row was written | {verified: MetadataHistoryConversionSqlTests.Convert_ARowWithoutARouteId_BecomesSlimWithItsRouteId_AndARowWithOneIsUntouchedAsync, DapperStoredMetadataTests.AddWhizbangPostgres_RegistersTheHistoryConversionStep_ThatConvertsTheStoresOwnFormAsync} |
+| A converted row is exactly what a write path stores for it now | One stored form, whenever the row was written | {verified: MetadataHistoryConversionSqlTests.Convert_ARowWithoutARouteId_BecomesSlimWithItsRouteId_AndARowWithOneIsUntouchedAsync, DapperStoredMetadataTests.AddWhizbangPostgres_RegistersTheHistoryConversionStep_ThatConvertsTheStoresOwnFormAsync, StoredMetadataRowValuesSqlTests.Convert_ARowWrittenBeforeSlimMetadata_BecomesTheTrimmedFormAsync} |
+| Trimming a slim row counts no route | Its route was counted when it was written | {verified: StoredMetadataRowValuesSqlTests.Convert_ASlimRowWrittenBeforeTheTrim_IsTrimmed_AndItsRouteIsNotCountedAgainAsync} |
+| Opening the trim gate restarts the conversion's walk, in the same statement | The slim rows written before lie behind a completed cursor; the latch is written once, so the walk restarts once | {verified: StoredMetadataTrimGateSqlTests.Conversion_WaitsForTheGate_ThenTrimsWhatItWroteAndWhatWasSlimAsync} |
+| Writers trim only once every live instance reads trimmed rows | A customer may upgrade to any single release; a rolling update must never hand an earlier instance a row it cannot read | {verified: StoredMetadataTrimGateSqlTests.Gate_StaysClosedWhileALiveInstanceLacksTheMarker_AndOpensOnceItIsGoneOrStaleAsync, StoredMetadataTrimGateSqlTests.Writes_BeforeTheGateOpens_AreUntrimmedAndReadByAnEarlierReader_AndAfterItAreTrimmedAsync} |
+| The marker is an explicit level in the heartbeat's metadata, not the library version | Prerelease and locally built versions do not compare reliably; a missing marker (an earlier release) means "cannot read" | {verified: HeartbeatRequestStoredFormLevelTests.MetadataJson_KeepsTheCallersKeys_AndTheMarkerIsAlwaysThisBuildsAsync, DapperStoredMetadataRowValuesTests.RecordHeartbeatAsync_WritesTheStoredFormLevel_TheTrimGateCountsAsync} |
+| Every driver writes the marker through `HeartbeatRequest.MetadataJson` | No caller or driver can leave it out | {verified: StoredMetadataTrimGateSqlTests.Gate_AFreshService_OpensOnlyOnceThisInstanceHasRegisteredWithItsMarkerAsync, DapperStoredMetadataRowValuesTests.RecordHeartbeatAsync_WritesTheStoredFormLevel_TheTrimGateCountsAsync} |
+| The fleet is judged by a maintenance step, the write paths read one flag | No write pays a fleet scan | {verified: StoredMetadataTrimGateSqlTests.Step_IsNamed_AndRunsTheGateAsync} |
+| An empty registry keeps the gate closed | A fresh database opens it once this instance's own marker is in, never before any instance is known | {verified: StoredMetadataTrimGateSqlTests.Gate_AFreshService_OpensOnlyOnceThisInstanceHasRegisteredWithItsMarkerAsync} |
+| The latch is one-way | Trimmed rows exist once it opens; closing it would only mix forms, never make them readable again | {verified: StoredMetadataTrimGateSqlTests.Gate_OnceOpen_StaysOpen_WhenAnInstanceWithoutTheMarkerAppearsAsync} |
+| Only the value `true` opens it | A hand-written row must not open it by accident | {verified: StoredMetadataTrimGateSqlTests.Gate_ASettingWrittenByHandOtherThanTrue_IsNotOpenAsync} |
 | `ConvertHistory` is on by default | An upgraded database reclaims the space without an opt-in; the full form survives as a trace for recent events and as a route for all | {verified: ProcessWideOptionsBindingTests.EventStoreMetadata_Unconfigured_IsLinkedWithNothingKeptFullAsync, EventStoreMetadataSettingsTests.ConvertHistory_IsPublishedEveryTime_InBothDirectionsAsync} |
 | Only an explicit off turns the conversion off | A missing or mistyped value is the default, as every metadata setting reads | {verified: MetadataHistoryConversionSqlTests.Convert_AnyOtherConvertHistoryValue_RunsTheTaskAsync, MetadataHistoryConversionSqlTests.Convert_UnderTheFullFormOrSwitchedOff_SkipsTheTaskAsync} |
 | Skipped under debug mode and under `Full` | Both keep every row full; converting history would contradict them | {verified: MetadataHistoryConversionSqlTests.Convert_UnderDebugMode_SkipsTheTask_AndRunsOnceItIsOffAsync, MetadataHistoryConversionSqlTests.Convert_UnderTheFullFormOrSwitchedOff_SkipsTheTaskAsync} |
