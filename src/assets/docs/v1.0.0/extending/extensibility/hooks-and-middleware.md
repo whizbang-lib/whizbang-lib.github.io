@@ -7,645 +7,91 @@ version: 1.0.0
 category: Extensibility
 order: 1
 description: >-
-  Pipeline behaviors for cross-cutting concerns - logging, validation, retry,
-  caching, and custom pre/post processing
+  Where cross-cutting work goes in Whizbang: receptor interceptors before a
+  receptor runs, lifecycle receptors at later stages, and the framework's own
+  tracing, retry and audit. Replaces the removed pipeline behaviors.
 tags: >-
-  extensibility, pipeline-behavior, middleware, hooks, cross-cutting-concerns,
-  aop
+  extensibility, receptor-interceptor, middleware, hooks, cross-cutting-concerns,
+  lifecycle, upgrading
 codeReferences:
-  - src/Whizbang.Core/Pipeline/IPipelineBehavior.cs
-  - src/Whizbang.Core/SystemEvents/CommandAuditPipelineBehavior.cs
+  - src/Whizbang.Core/Security/IReceptorInterceptor.cs
+  - src/Whizbang.Core/Security/ReceptorInterceptorPipeline.cs
   - src/Whizbang.Core/SystemEvents/SystemEventServiceCollectionExtensions.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Pipeline/PipelineBehaviorTests.cs
-  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/CommandAuditPipelineBehaviorTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Security/ReceptorInterceptorDispatchTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/CommandAuditDispatchTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Hooks and Middleware
 
-**Pipeline behaviors** enable cross-cutting concerns without modifying business logic. Behaviors intercept messages before/after receptor execution, allowing logging, validation, retry logic, caching, and other concerns to be injected declaratively.
+Whizbang has no wrapping middleware chain around a receptor. Cross-cutting work hooks in at the points the framework
+already owns, so it runs on every path a message takes (local dispatch, cascade, inbox delivery and every lifecycle
+stage) without a receptor having to opt in:
 
-## Why Pipeline Behaviors?
+| You want to | Use |
+|-------------|-----|
+| Decide, before a receptor runs, whether it may handle a message (authorization, tenancy, rate limits, allowlists) | A [receptor interceptor](#receptor-interceptors) (`IReceptorInterceptor`) |
+| Run code at a later point in a message's life (after it is stored, after perspectives caught up) | A [lifecycle receptor](../../fundamentals/receptors/lifecycle-receptors.md) with `[FireAt]` |
+| Trace or time message handling | The framework's [tracing](../../operations/observability/tracing.md) and OpenTelemetry integration |
+| Retry a failed delivery, or park one for review | The inbox retry policy and the [dead-letter queue](../../operations/dead-letter-queue/internal-dlq.md) |
+| Audit commands | [Command auditing](../../fundamentals/security/audit-logging.md#command-auditing) (`EnableCommandAudit()`) |
 
-**Separate cross-cutting concerns from business logic**:
+## Receptor interceptors {#receptor-interceptors}
 
-| Without Behaviors | With Behaviors | Benefit |
-|-------------------|----------------|---------|
-| **Logging in every receptor** | Single logging behavior | DRY principle |
-| **Validation scattered** | Centralized validation behavior | Consistency |
-| **Retry logic duplicated** | Reusable retry behavior | Maintainability |
-| **Caching per-handler** | Generic caching behavior | Reduced complexity |
-| **Timing/metrics manual** | Automatic timing behavior | Complete coverage |
+An `IReceptorInterceptor` is asked immediately before every receptor invocation. It sees the receptor type, the
+message envelope and the scope context the receptor would read, and answers allow or deny. Every registered
+interceptor must allow; the first denial decides what happens to the message.
+{verified: ReceptorInterceptorDispatchTests.LocalInvoke_DeniedReceptor_DoesNotRunAndAppendsNothingAsync, ReceptorInterceptorDispatchTests.LocalInvoke_InterceptorSeesTheScopeContextTheReceptorSeesAsync, ReceptorInterceptorDispatchTests.Cascade_DeniedReceptorOfTheCascadedEvent_DoesNotRunAsync}
 
-**Use Cases**:
-- ✅ **Logging** - Structured logging for all messages
-- ✅ **Validation** - Input validation before processing
-- ✅ **Retry Logic** - Automatic retry on transient failures
-- ✅ **Caching** - Response caching for idempotent queries
-- ✅ **Performance Metrics** - Timing and throughput tracking
-- ✅ **Authorization** - Permission checks
-- ✅ **Transaction Management** - Automatic transaction boundaries
-- ✅ **Error Handling** - Centralized exception handling
-
----
-
-## Architecture
-
-### Pipeline Execution Flow
-
-```mermaid{caption="Pipeline execution — each behavior does its Before work, calls next() to thread into the next behavior, and unwraps its After work on the way back before the receptor runs." tests=["PipelineBehaviorTests.Handle_CanPreProcessRequestAsync", "PipelineBehaviorTests.Handle_CanPostProcessResponseAsync"]}
-flowchart TD
-    Send["IDispatcher.SendAsync(command)"]
-    Response["Response"]
-
-    subgraph Chain["Pipeline Chain (behaviors + receptor)"]
-        Logging["LoggingBehavior<br/>Before: Log request<br/>Call next() → ValidationBehavior<br/>After: Log response"]
-        Validation["ValidationBehavior<br/>Before: Validate request<br/>Call next() → RetryBehavior<br/>After: No post-processing"]
-        Retry["RetryBehavior<br/>Before: No pre-processing<br/>Call next() → OrderReceptor (with retry)<br/>After: No post-processing"]
-        Receptor["OrderReceptor.HandleAsync()<br/>Business logic execution"]
-
-        Logging --> Validation
-        Validation --> Retry
-        Retry --> Receptor
-    end
-
-    Send -->|"1. Create pipeline"| Chain
-    Chain -->|"2. Return result"| Response
-
-    class Logging,Validation,Retry,Receptor layer-core
-```
-
----
-
-## IPipelineBehavior Interface
-
-### Definition
-
-```csharp{title="Definition" description="Definition" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Definition"] tests=["PipelineBehaviorTests.Handle_CanPreProcessRequestAsync", "PipelineBehaviorTests.Handle_CanPostProcessResponseAsync", "PipelineBehaviorTests.Handle_CanShortCircuitPipelineAsync"]}
-namespace Whizbang.Core.Pipeline;
-
-public interface IPipelineBehavior<in TRequest, TResponse> {
-  Task<TResponse> HandleAsync(
-    TRequest request,
-    Func<Task<TResponse>> continuation,
-    CancellationToken cancellationToken = default
-  );
+```csharp{title="Receptor interceptor" description="An interceptor that denies receptors outside the caller's tenant, registered once as a singleton." category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Receptors", "Interceptors"] tests=["ReceptorInterceptorDispatchTests.LocalInvoke_DeniedReceptor_DoesNotRunAndAppendsNothingAsync", "ReceptorInterceptorDispatchTests.LocalInvoke_InterceptorSeesTheScopeContextTheReceptorSeesAsync"]}
+public sealed class TenantRequiredInterceptor : IReceptorInterceptor {
+  public ValueTask<InterceptorResult> CanInvokeAsync(
+      Type receptorType, IMessageEnvelope envelope, IScopeContext? context, CancellationToken ct = default) =>
+    new(context?.Scope.TenantId is null
+      ? InterceptorResult.Deny(DeniedAction.DeadLetter, "No tenant in scope")
+      : InterceptorResult.Allowed);
 }
+
+services.AddSingleton<IReceptorInterceptor, TenantRequiredInterceptor>();
 ```
 
-**Parameters**:
-- `request` - The message being processed (command or query)
-- `continuation` - Delegate to invoke next behavior or receptor
-- `cancellationToken` - Cancellation token
+An interceptor decides; it does not wrap the receptor, so it cannot change the message or the receptor's result. With
+none registered, no dispatch path does any interceptor work. An interceptor that applies to a synchronous receptor
+(`ISyncReceptor`) must complete synchronously. What each `DeniedAction` does on local dispatch and on inbox delivery,
+and how `[RequirePermission]` is enforced with `DefaultRequirePermissionInterceptor`, is on the
+[Receptor Permission Gate](../../fundamentals/security/security.md#receptor-permission-gate) page.
+{verified: ReceptorInterceptorDispatchTests.NoInterceptors_ReceptorRuns_AndTheDispatcherHoldsNoPipelineAsync, ReceptorInterceptorDispatchTests.LocalInvoke_DropQuiet_SkipsTheReceptorWithoutThrowingAsync}
 
-**Return**: Response from receptor (potentially modified by behavior)
+The framework runs its own admission work at the same gate, after every interceptor allowed: command auditing records
+each receptor admitted to handle a command, so a denied receptor is never audited.
+{verified: CommandAuditDispatchTests.DeniedReceptor_IsNotAudited_WhateverTheRegistrationOrderAsync}
 
-### Base Class
+## Upgrading from pipeline behaviors {#upgrading}
 
-```csharp{title="Base Class" description="Base Class" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Base", "Class"] tests=["PipelineBehaviorTests.ExecuteNextAsync_ShouldInvokeNextDelegateAsync", "PipelineBehaviorTests.Handle_CanPreProcessRequestAsync", "PipelineBehaviorTests.Handle_CanPostProcessResponseAsync", "PipelineBehaviorTests.Handle_CanShortCircuitPipelineAsync"]}
-public abstract class PipelineBehavior<TRequest, TResponse>
-  : IPipelineBehavior<TRequest, TResponse> {
-
-  public abstract Task<TResponse> HandleAsync(
-    TRequest request,
-    Func<Task<TResponse>> continuation,
-    CancellationToken cancellationToken = default
-  );
-
-  protected async Task<TResponse> ExecuteNextAsync(Func<Task<TResponse>> continuation) {
-    return await continuation();
-  }
-}
-```
-
----
-
-## Example Behaviors
-
-:::note
-The behaviors below are **example implementations** you write in your application. The library itself ships one built-in behavior: `CommandAuditPipelineBehavior<TCommand, TResponse>` (in `Whizbang.Core.SystemEvents`), registered automatically by `services.AddSystemEventAuditing(...)` to emit `CommandAudited` system events after command processing.
+:::breaking
+`IPipelineBehavior<TRequest, TResponse>` and `PipelineBehavior<TRequest, TResponse>` (namespace
+`Whizbang.Core.Pipeline`) and `CommandAuditPipelineBehavior<TCommand, TResponse>` are removed
+([#2470](https://github.com/whizbang-lib/whizbang/issues/2470)). The dispatcher never ran a pipeline behavior, so a
+behavior an application registered never ran either, and `EnableCommandAudit()` audited nothing.
 :::
 
-### 1. Logging Behavior
-
-```csharp{title="Logging Behavior" description="Logging Behavior" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Logging", "Behavior"] unverified="user extension example — LoggingBehavior you implement, not a library type"}
-using Microsoft.Extensions.Logging;
-using Whizbang.Core.Pipeline;
-
-public class LoggingBehavior<TRequest, TResponse>
-  : IPipelineBehavior<TRequest, TResponse> {
-
-  private readonly ILogger<LoggingBehavior<TRequest, TResponse>> _logger;
-
-  public LoggingBehavior(ILogger<LoggingBehavior<TRequest, TResponse>> logger) {
-    _logger = logger;
-  }
-
-  public async Task<TResponse> HandleAsync(
-    TRequest request,
-    Func<Task<TResponse>> next,
-    CancellationToken cancellationToken
-  ) {
-    var requestName = typeof(TRequest).Name;
-    var requestId = Guid.NewGuid();
-
-    // Before: Log request
-    _logger.LogInformation(
-      "Processing {RequestName} ({RequestId}): {@Request}",
-      requestName,
-      requestId,
-      request
-    );
-
-    try {
-      // Execute next behavior or receptor
-      var response = await next();
-
-      // After: Log success
-      _logger.LogInformation(
-        "Completed {RequestName} ({RequestId}): {@Response}",
-        requestName,
-        requestId,
-        response
-      );
-
-      return response;
-    } catch (Exception ex) {
-      // After: Log failure
-      _logger.LogError(
-        ex,
-        "Failed {RequestName} ({RequestId}): {Error}",
-        requestName,
-        requestId,
-        ex.Message
-      );
-      throw;
-    }
-  }
-}
-```
-
-**Registration**:
-```csharp{title="Logging Behavior (2)" description="Registration:" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Logging", "Behavior"] unverified="DI registration for a user behavior — no library test asserts this"}
-builder.Services.AddTransient(
-  typeof(IPipelineBehavior<,>),
-  typeof(LoggingBehavior<,>)
-);
-```
-
-### 2. Validation Behavior
-
-```csharp{title="Validation Behavior" description="Validation Behavior" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Validation", "Behavior"] unverified="user extension example — FluentValidation behavior you implement, not a library type"}
-using FluentValidation;
-using Whizbang.Core.Pipeline;
-
-public class ValidationBehavior<TRequest, TResponse>
-  : IPipelineBehavior<TRequest, TResponse> {
-
-  private readonly IEnumerable<IValidator<TRequest>> _validators;
-
-  public ValidationBehavior(IEnumerable<IValidator<TRequest>> validators) {
-    _validators = validators;
-  }
-
-  public async Task<TResponse> HandleAsync(
-    TRequest request,
-    Func<Task<TResponse>> next,
-    CancellationToken cancellationToken
-  ) {
-    // No validators registered - skip validation
-    if (!_validators.Any()) {
-      return await next();
-    }
-
-    // Validate request
-    var context = new ValidationContext<TRequest>(request);
-    var validationResults = await Task.WhenAll(
-      _validators.Select(v => v.ValidateAsync(context, cancellationToken))
-    );
-
-    var failures = validationResults
-      .SelectMany(r => r.Errors)
-      .Where(f => f != null)
-      .ToList();
-
-    if (failures.Any()) {
-      throw new ValidationException(failures);
-    }
-
-    // Validation passed - continue
-    return await next();
-  }
-}
-```
-
-**Registration**:
-```csharp{title="Validation Behavior (2)" description="Registration:" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Validation", "Behavior"] unverified="DI registration for a user behavior — no library test asserts this"}
-// Register validators
-builder.Services.AddValidatorsFromAssemblyContaining<CreateOrderValidator>();
-
-// Register behavior
-builder.Services.AddTransient(
-  typeof(IPipelineBehavior<,>),
-  typeof(ValidationBehavior<,>)
-);
-```
-
-### 3. Retry Behavior
-
-```csharp{title="Retry Behavior" description="Retry Behavior" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Retry", "Behavior"] unverified="user extension example — Polly-based behavior you implement, not a library type"}
-using Polly;
-using Whizbang.Core.Pipeline;
-
-public class RetryBehavior<TRequest, TResponse>
-  : IPipelineBehavior<TRequest, TResponse> {
-
-  private readonly ILogger<RetryBehavior<TRequest, TResponse>> _logger;
-
-  public RetryBehavior(ILogger<RetryBehavior<TRequest, TResponse>> logger) {
-    _logger = logger;
-  }
-
-  public async Task<TResponse> HandleAsync(
-    TRequest request,
-    Func<Task<TResponse>> next,
-    CancellationToken cancellationToken
-  ) {
-    // Define retry policy
-    var retryPolicy = Policy
-      .Handle<DbException>()  // Transient database failures
-      .Or<HttpRequestException>()  // Transient HTTP failures
-      .WaitAndRetryAsync(
-        retryCount: 3,
-        sleepDurationProvider: retryAttempt =>
-          TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),  // Exponential backoff
-        onRetry: (exception, timeSpan, retryCount, context) => {
-          _logger.LogWarning(
-            exception,
-            "Retry {RetryCount} for {RequestName} after {Delay}s",
-            retryCount,
-            typeof(TRequest).Name,
-            timeSpan.TotalSeconds
-          );
-        }
-      );
-
-    // Execute with retry
-    return await retryPolicy.ExecuteAsync(async () => await next());
-  }
-}
-```
-
-### 4. Caching Behavior
-
-```csharp{title="Caching Behavior" description="Caching Behavior" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Caching", "Behavior"] unverified="user extension example — IMemoryCache behavior you implement, not a library type"}
-using Microsoft.Extensions.Caching.Memory;
-using Whizbang.Core.Pipeline;
-
-public class CachingBehavior<TRequest, TResponse>
-  : IPipelineBehavior<TRequest, TResponse>
-  where TRequest : ICacheableQuery {  // Marker interface
-
-  private readonly IMemoryCache _cache;
-  private readonly ILogger<CachingBehavior<TRequest, TResponse>> _logger;
-
-  public CachingBehavior(
-    IMemoryCache cache,
-    ILogger<CachingBehavior<TRequest, TResponse>> logger
-  ) {
-    _cache = cache;
-    _logger = logger;
-  }
-
-  public async Task<TResponse> HandleAsync(
-    TRequest request,
-    Func<Task<TResponse>> next,
-    CancellationToken cancellationToken
-  ) {
-    var cacheKey = $"{typeof(TRequest).Name}:{request.GetCacheKey()}";
-
-    // Check cache
-    if (_cache.TryGetValue<TResponse>(cacheKey, out var cachedResponse)) {
-      _logger.LogDebug("Cache hit for {CacheKey}", cacheKey);
-      return cachedResponse!;
-    }
-
-    // Cache miss - execute handler
-    _logger.LogDebug("Cache miss for {CacheKey}", cacheKey);
-    var response = await next();
-
-    // Store in cache
-    var cacheOptions = new MemoryCacheEntryOptions {
-      AbsoluteExpirationRelativeToNow = request.GetCacheDuration()
-    };
-
-    _cache.Set(cacheKey, response, cacheOptions);
-    return response;
-  }
-}
-
-// Marker interface for cacheable queries
-public interface ICacheableQuery {
-  string GetCacheKey();
-  TimeSpan GetCacheDuration();
-}
-```
-
-### 5. Performance Timing Behavior
-
-```csharp{title="Performance Timing Behavior" description="Performance Timing Behavior" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Performance", "Timing"] unverified="user extension example — Stopwatch behavior you implement, not a library type"}
-using System.Diagnostics;
-using Whizbang.Core.Pipeline;
-
-public class PerformanceBehavior<TRequest, TResponse>
-  : IPipelineBehavior<TRequest, TResponse> {
-
-  private readonly ILogger<PerformanceBehavior<TRequest, TResponse>> _logger;
-
-  public PerformanceBehavior(ILogger<PerformanceBehavior<TRequest, TResponse>> logger) {
-    _logger = logger;
-  }
-
-  public async Task<TResponse> HandleAsync(
-    TRequest request,
-    Func<Task<TResponse>> next,
-    CancellationToken cancellationToken
-  ) {
-    var stopwatch = Stopwatch.StartNew();
-
-    try {
-      var response = await next();
-      stopwatch.Stop();
-
-      var elapsedMs = stopwatch.ElapsedMilliseconds;
-      var requestName = typeof(TRequest).Name;
-
-      if (elapsedMs > 500) {
-        // Slow request warning
-        _logger.LogWarning(
-          "Slow request: {RequestName} took {ElapsedMs}ms",
-          requestName,
-          elapsedMs
-        );
-      } else {
-        _logger.LogInformation(
-          "{RequestName} completed in {ElapsedMs}ms",
-          requestName,
-          elapsedMs
-        );
-      }
-
-      return response;
-    } catch {
-      stopwatch.Stop();
-      throw;
-    }
-  }
-}
-```
-
----
-
-## Registration and Ordering
-
-### Registration
-
-```csharp{title="Registration" description="Registration" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Registration"] unverified="DI registration/ordering config for user behaviors"}
-using Microsoft.Extensions.DependencyInjection;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Behaviors execute in registration order
-builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));       // 1st
-builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));   // 2nd
-builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(RetryBehavior<,>));        // 3rd
-builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));  // 4th
-
-var app = builder.Build();
-```
-
-**Execution Order**:
-1. **LoggingBehavior** - Logs request
-2. **ValidationBehavior** - Validates request
-3. **RetryBehavior** - Wraps execution with retry
-4. **PerformanceBehavior** - Measures timing
-5. **Receptor** - Business logic
-
-### Conditional Registration
-
-```csharp{title="Conditional Registration" description="Conditional Registration" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Conditional", "Registration"] unverified="DI registration config for user behaviors"}
-// Only register in development
-if (builder.Environment.IsDevelopment()) {
-  builder.Services.AddTransient(
-    typeof(IPipelineBehavior<,>),
-    typeof(DebugBehavior<,>)
-  );
-}
-
-// Only register for specific message types
-builder.Services.AddTransient<IPipelineBehavior<CreateOrder, OrderCreated>,
-  OrderValidationBehavior>();
-```
-
----
-
-## Advanced Patterns
-
-### Short-Circuiting
-
-```csharp{title="Short-Circuiting" description="Short-Circuiting" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Short-Circuiting"] unverified="user extension example — AuthorizationBehavior you implement, not a library type"}
-public class AuthorizationBehavior<TRequest, TResponse>
-  : IPipelineBehavior<TRequest, TResponse>
-  where TRequest : IAuthorizedRequest {
-
-  private readonly IAuthorizationService _authService;
-
-  public async Task<TResponse> HandleAsync(
-    TRequest request,
-    Func<Task<TResponse>> next,
-    CancellationToken cancellationToken
-  ) {
-    // Check authorization
-    var isAuthorized = await _authService.IsAuthorizedAsync(
-      request.UserId,
-      request.RequiredPermission
-    );
-
-    if (!isAuthorized) {
-      // Short-circuit - do NOT call next()
-      throw new UnauthorizedAccessException(
-        $"User {request.UserId} lacks permission {request.RequiredPermission}"
-      );
-    }
-
-    // Authorized - continue
-    return await next();
-  }
-}
-```
-
-### Response Modification
-
-```csharp{title="Response Modification" description="Response Modification" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Response", "Modification"] unverified="user extension example — EnrichmentBehavior you implement, not a library type"}
-public class EnrichmentBehavior<TRequest, TResponse>
-  : IPipelineBehavior<TRequest, TResponse>
-  where TResponse : IEnrichableResponse {
-
-  private readonly IUserContextService _userContext;
-
-  public async Task<TResponse> HandleAsync(
-    TRequest request,
-    Func<Task<TResponse>> next,
-    CancellationToken cancellationToken
-  ) {
-    // Execute handler
-    var response = await next();
-
-    // Modify response
-    response.UserId = _userContext.GetCurrentUserId();
-    response.Timestamp = DateTimeOffset.UtcNow;
-
-    return response;
-  }
-}
-```
-
-### Transaction Management
-
-```csharp{title="Transaction Management" description="Transaction Management" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Transaction", "Management"] unverified="user extension example — TransactionBehavior you implement, not a library type"}
-public class TransactionBehavior<TRequest, TResponse>
-  : IPipelineBehavior<TRequest, TResponse>
-  where TRequest : ITransactionalCommand {
-
-  private readonly IDbConnectionFactory _connectionFactory;
-
-  public async Task<TResponse> HandleAsync(
-    TRequest request,
-    Func<Task<TResponse>> next,
-    CancellationToken cancellationToken
-  ) {
-    using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
-    using var transaction = await connection.BeginTransactionAsync(cancellationToken);
-
-    try {
-      // Execute within transaction
-      var response = await next();
-
-      // Commit on success
-      await transaction.CommitAsync(cancellationToken);
-      return response;
-    } catch {
-      // Rollback on failure
-      await transaction.RollbackAsync(cancellationToken);
-      throw;
-    }
-  }
-}
-```
-
----
-
-## Best Practices
-
-### DO ✅
-
-- ✅ **Keep behaviors small and focused** - Single responsibility
-- ✅ **Register in logical order** (logging → validation → retry → handler)
-- ✅ **Use marker interfaces** for conditional behaviors (ICacheableQuery)
-- ✅ **Always call next()** unless intentionally short-circuiting
-- ✅ **Handle exceptions appropriately** (log, wrap, or propagate)
-- ✅ **Use async/await consistently** - Don't block
-- ✅ **Make behaviors reusable** - Generic across message types
-
-### DON'T ❌
-
-- ❌ Put business logic in behaviors (keep in receptors)
-- ❌ Mutate request in behaviors (immutable messages)
-- ❌ Forget to call next() (pipeline will hang)
-- ❌ Swallow exceptions silently (breaks error handling)
-- ❌ Register too many behaviors (keep pipeline lean)
-- ❌ Use behaviors for message routing (use policies instead)
-
----
-
-## Troubleshooting
-
-### Problem: Behavior Not Executing
-
-**Symptoms**: Behavior code never runs.
-
-**Causes**:
-1. Not registered in DI
-2. Wrong generic type registration
-
-**Solution**:
-```csharp{title="Problem: Behavior Not Executing" description="Problem: Behavior Not Executing" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Problem:", "Behavior"] unverified="counter-example — wrong vs correct DI registration"}
-// ❌ WRONG: Concrete type registration
-builder.Services.AddTransient<LoggingBehavior<CreateOrder, OrderCreated>>();
-
-// ✅ CORRECT: Open generic registration
-builder.Services.AddTransient(
-  typeof(IPipelineBehavior<,>),
-  typeof(LoggingBehavior<,>)
-);
-```
-
-### Problem: Pipeline Hangs
-
-**Symptoms**: Request never completes.
-
-**Cause**: Behavior doesn't call `next()`.
-
-**Solution**:
-```csharp{title="Problem: Pipeline Hangs" description="Problem: Pipeline Hangs" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Problem:", "Pipeline"] unverified="counter-example — forgetting next() vs calling it"}
-// ❌ WRONG: Forgot to call next()
-public async Task<TResponse> HandleAsync(TRequest request, Func<Task<TResponse>> next, ...) {
-  _logger.LogInformation("Processing...");
-  // Missing: await next()
-  return default!;  // Never executes handler!
-}
-
-// ✅ CORRECT: Always call next()
-public async Task<TResponse> HandleAsync(TRequest request, Func<Task<TResponse>> next, ...) {
-  _logger.LogInformation("Processing...");
-  return await next();  // ⭐ Essential
-}
-```
-
-### Problem: Wrong Execution Order
-
-**Symptoms**: Behaviors run in unexpected order.
-
-**Cause**: Registration order determines execution order.
-
-**Solution**:
-```csharp{title="Problem: Wrong Execution Order" description="Problem: Wrong Execution Order" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Problem:", "Wrong"] unverified="DI registration-ordering config for user behaviors"}
-// Execution order = registration order
-builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(FirstBehavior<,>));   // Runs 1st
-builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(SecondBehavior<,>));  // Runs 2nd
-builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ThirdBehavior<,>));   // Runs 3rd
-```
-
----
+What to do with code that used them:
+
+- **A behavior that checked or rejected a message before the receptor** (authorization, validation that should stop
+  the message): move it to an `IReceptorInterceptor` and deny with the `DeniedAction` that fits.
+- **A behavior that logged or timed handling**: use the framework's [tracing](../../operations/observability/tracing.md),
+  or allow from an interceptor after logging what it needs.
+- **A behavior that retried**: delivery retry belongs to the inbox and its retry policy; a receptor that calls an
+  unreliable dependency retries that call itself.
+- **Command auditing**: keep `EnableCommandAudit()`. `AddSystemEvents(o => o.EnableCommandAudit())` is enough, and a
+  command type that should be audited must implement `ICommand`. See
+  [Command auditing](../../fundamentals/security/audit-logging.md#command-auditing).
+- **Registrations** of `typeof(IPipelineBehavior<,>)` no longer compile; delete them.
 
 ## Further Reading
 
-**Extensibility**:
-- [Custom Receptors](custom-receptors.md) - Advanced receptor patterns
-- [Custom Policies](custom-policies.md) - Dynamic routing logic
-
-**Core Concepts**:
-- [Receptors](../../fundamentals/receptors/receptors.md) - Message handlers
-- [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - Message routing
-
-**Infrastructure**:
-- [Policies](../../operations/infrastructure/policies.md) - Policy-based routing
-
-**External Resources**:
-- [MediatR Pipeline Behaviors](https://github.com/jbogard/MediatR/wiki/Behaviors)
-- [ASP.NET Core Middleware](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/)
-
----
-
-*Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*
+- [Receptor Permission Gate](../../fundamentals/security/security.md#receptor-permission-gate) - interceptors in full
+- [Lifecycle Receptors](../../fundamentals/receptors/lifecycle-receptors.md) - running code at a lifecycle stage
+- [Custom Receptors](custom-receptors.md) - advanced receptor patterns
+- [System Events](../../fundamentals/events/system-events.md#command-auditing) - command auditing on the system-event side

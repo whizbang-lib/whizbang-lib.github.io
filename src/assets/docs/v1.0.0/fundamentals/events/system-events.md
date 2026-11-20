@@ -28,7 +28,7 @@ codeReferences:
   - src/Whizbang.Core/SystemEvents/AuditLedger.cs
   - src/Whizbang.Core/SystemEvents/EventAudited.cs
   - src/Whizbang.Core/SystemEvents/CommandAudited.cs
-  - src/Whizbang.Core/SystemEvents/CommandAuditPipelineBehavior.cs
+  - src/Whizbang.Core/SystemEvents/CommandAuditRecorder.cs
   - src/Whizbang.Core/SystemEvents/AuditingEventStoreDecorator.cs
   - src/Whizbang.Core/SystemEvents/SystemEventServiceCollectionExtensions.cs
   - src/Whizbang.Core/SystemEvents/Security/ScopeContextEstablished.cs
@@ -48,7 +48,7 @@ testReferences:
   - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/SystemEventTransportFilterTests.cs
   - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/SystemEventOptionsTests.cs
   - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditingEventStoreDecoratorTests.cs
-  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/CommandAuditPipelineBehaviorTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/CommandAuditDispatchTests.cs
   - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/SystemEventServiceCollectionExtensionsTests.cs
   - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/SystemEventSelfAuditPreventionTests.cs
   - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/EventAuditedTests.cs
@@ -70,7 +70,7 @@ graph TB
     DI["Domain Infrastructure (Events, Commands, Perspectives)"]
     EM["System Event Emitter"]
     E1["EventAudited (domain event stored)"]
-    E2["CommandAudited (command processed)"]
+    E2["CommandAudited (command admitted to a receptor)"]
     E3["ScopeContextEstablished (security context set)"]
     E4["AccessGranted/AccessDenied (authorization)"]
     E5["PermissionChanged (role/permission changes)"]
@@ -393,9 +393,9 @@ reads the stored audit record. See [Payload Size Thresholds](../messages/message
 
 ### CommandAudited
 
-Emitted when a command is processed by a receptor (when `EnableCommandAudit()` is configured).
+Emitted when a receptor is admitted to handle a command (when `EnableCommandAudit()` is configured). See [Command auditing](#command-auditing).
 
-```csharp{title="CommandAudited" description="Emitted when a command is processed by a receptor (when EnableCommandAudit() is configured)." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "CommandAudited"] tests=["CommandAuditTests.CommandAudited_ImplementsISystemEvent_Async", "CommandAuditTests.CommandAudited_HasRequiredProperties_Async", "CommandAuditTests.CommandAudited_HasAuditEventAttribute_WithExcludeTrue_Async"]}
+```csharp{title="CommandAudited" description="Emitted when a receptor is admitted to handle a command (when EnableCommandAudit() is configured)." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "CommandAudited"] tests=["CommandAuditTests.CommandAudited_ImplementsISystemEvent_Async", "CommandAuditTests.CommandAudited_HasRequiredProperties_Async", "CommandAuditTests.CommandAudited_HasAuditEventAttribute_WithExcludeTrue_Async"]}
 [AuditEvent(Exclude = true, Reason = "System event - prevents infinite self-auditing loop")]
 public sealed record CommandAudited : ISystemEvent {
   /// <summary>
@@ -784,7 +784,7 @@ services.AddWhizbang();
 
 To keep the default emitter but store fewer kinds, turn the kinds off in [`SystemEventOptions`](#configuration) instead. A host that builds `SystemEventEmitter` itself hands it one `IEventStore`, which the emitter holds, so it registers the emitter with the store's lifetime or shorter (scoped for the EF Core store).
 
-Note that the built-in **event** audit path does not go through the emitter at all: it uses the [auditing decorator](#event-auditing) and the deferred outbox channel. The emitter is used by the command-audit pipeline behavior and for manual emission.
+Note that the built-in **event** audit path does not go through the emitter at all: it uses the [auditing decorator](#event-auditing) and the deferred outbox channel. The emitter is used by [command auditing](#command-auditing) and for manual emission.
 
 **Manual emission** (advanced scenarios):
 
@@ -1068,7 +1068,6 @@ services.AddSystemEventAuditing(options => {
 
 ---
 
-<a id="command-auditing"></a>
 The record reaches the outbox on the next flush of whatever work coordinator strategy the service runs: every
 strategy drains the deferred channel first (see
 [Deferred Event Channel](../dispatcher/message-cascade#deferred-event-channel)).
@@ -1078,65 +1077,45 @@ Under every strategy except Immediate, including the default Scoped strategy, th
 to be queued and never stored, so it was lost and held in memory with the audited event's body.
 :::
 
-## Command Auditing Pipeline Behavior
+<a id="command-auditing"></a>
 
-The `CommandAuditPipelineBehavior<TCommand, TResponse>` automatically emits `CommandAudited` system events for commands processed by receptors:
+## Command Auditing
 
-```csharp{title="Command Auditing Pipeline Behavior" description="The CommandAuditPipelineBehavior<TCommand, TResponse> automatically emits CommandAudited system events for commands" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Command", "Auditing"] tests=["CommandAuditPipelineBehaviorTests.HandleAsync_WhenCommandAuditEnabled_EmitsAuditEventAsync", "CommandAuditPipelineBehaviorTests.HandleAsync_WhenCommandAuditDisabled_DoesNotEmitAuditAsync", "CommandAuditPipelineBehaviorTests.HandleAsync_WithExcludedCommand_DoesNotEmitAuditAsync", "CommandAuditPipelineBehaviorTests.HandleAsync_ExecutesContinuation_ReturnsResultAsync"]}
-public sealed class CommandAuditPipelineBehavior<TCommand, TResponse> : PipelineBehavior<TCommand, TResponse>
-    where TCommand : notnull {
-  private readonly ISystemEventEmitter _emitter;
-  private readonly SystemEventOptions _options;
-  private readonly IMessageContext? _context;
+With `EnableCommandAudit()`, Whizbang emits one `CommandAudited` for each receptor admitted to handle a command. The
+record is written at the receptor admission gate, the same gate the [receptor interceptors](../security/security.md#receptor-permission-gate)
+run at, so every path a receptor runs on is covered: local invoke, send, a cascade, inbox delivery and every other
+lifecycle stage.
+{verified: CommandAuditDispatchTests.LocalInvoke_CommandAuditEnabled_EmitsOneCommandAuditedAsync, CommandAuditDispatchTests.Send_CommandAuditEnabled_EmitsOneCommandAuditedAsync, CommandAuditDispatchTests.InboxDelivery_CommandAuditEnabled_EmitsOneCommandAuditedAsync, CommandAuditDispatchTests.PipelineAdmitAsync_RecordsAnAdmittedCommand_AndNotADeniedOneAsync}
 
-  public override async Task<TResponse> HandleAsync(
-      TCommand request,
-      Func<Task<TResponse>> continuation,
-      CancellationToken cancellationToken = default) {
-    // Execute the next behavior or handler
-    var response = await ExecuteNextAsync(continuation);
+- **Only an `ICommand` is audited.** An event, a message that does not implement `ICommand` and a type marked
+  `[AuditEvent(Exclude = true)]` are not.
+  {verified: CommandAuditDispatchTests.OnlyAnICommand_IsAuditedAsync, CommandAuditDispatchTests.ExcludedCommand_IsNotAuditedAsync}
+- **Recorded after every interceptor allows, before the receptor runs.** A receptor an interceptor denies is not
+  audited, whatever order the interceptors were registered in. A command whose receptor then fails is still in the
+  trail, because the record describes what was requested.
+  {verified: CommandAuditDispatchTests.DeniedReceptor_IsNotAudited_WhateverTheRegistrationOrderAsync}
+- **Synchronous receptors are recorded fire-and-forget.** An `ISyncReceptor` runs on the caller's thread and cannot
+  wait for the store, so its record is emitted without waiting; a failure to store it is logged and counted. Every
+  other receptor waits for its record before it runs.
+  {verified: CommandAuditDispatchTests.LocalInvoke_SyncReceptor_EmitsOneCommandAuditedAsync}
+- **`ResponseType` is null.** The record is written before the receptor has answered, so it names no response type.
+- **Scope and correlation are filled.** `TenantId` and `UserId` come from the scope context the receptor sees,
+  `CorrelationId` and `CausationId` from the envelope, and `Scope` holds whichever of the three keys are known (null
+  when none is).
+  {verified: CommandAuditDispatchTests.Record_CarriesTheScopeTheReceptorSeesAndTheEnvelopesLineageAsync, CommandAuditDispatchTests.Record_WithNoScopeAndNoLineage_HasNoScopeAsync}
+- **Off costs nothing.** Without `EnableCommandAudit()` no recorder is registered, so a host that also registers no
+  receptor interceptor does no admission work per message.
+  {verified: CommandAuditDispatchTests.CommandAuditOff_NothingIsAudited_AndTheDispatcherHoldsNoPipelineAsync, CommandAuditDispatchTests.RecorderRegistered_ButTheOptionsInForceSayOff_NothingIsAuditedAsync}
 
-    // Check if command auditing is enabled
-    if (!_options.CommandAuditEnabled) {
-      return response;
-    }
+`AddSystemEvents(o => o.EnableCommandAudit())` is all the registration command audit needs; see
+[Registration and Setup](#registration). The design choices behind it are on
+[Audit Logging](../security/audit-logging.md#command-auditing).
 
-    // Check if this command type should be excluded from audit
-    if (_emitter.ShouldExcludeFromAudit(typeof(TCommand))) {
-      return response;
-    }
-
-    // Extract receptor name from context metadata
-    var receptorName = _extractReceptorName();
-
-    // Emit the audit event
-    await _emitter.EmitCommandAuditedAsync(
-        request,
-        response,
-        receptorName,
-        _context,
-        cancellationToken);
-
-    return response;
-  }
-}
-```
-
-**Registration** (automatic with `AddSystemEventAuditing`):
-
-```csharp{title="Command Auditing Pipeline Behavior (2)" description="Registration (automatic with AddSystemEventAuditing):" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Command", "Auditing"] tests=["SystemEventServiceCollectionExtensionsTests.AddSystemEventAuditing_RegistersPipelineBehaviorAsync"]}
-services.AddSystemEventAuditing(options => {
-  options.EnableCommandAudit();
-});
-```
-
-The pipeline behavior is registered automatically:
-
-```csharp{title="Command Auditing Pipeline Behavior (3)" description="The pipeline behavior is registered automatically:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Command", "Auditing"] tests=["SystemEventServiceCollectionExtensionsTests.AddSystemEventAuditing_RegistersPipelineBehaviorAsync"]}
-services.TryAddSingleton(
-    typeof(IPipelineBehavior<,>),
-    typeof(CommandAuditPipelineBehavior<,>));
-```
+:::updated
+Command auditing used to be a pipeline behavior (`CommandAuditPipelineBehavior`) that the dispatcher never ran, so no
+command was audited. The behavior and `IPipelineBehavior` are removed; see
+[Hooks and Middleware](../../extending/extensibility/hooks-and-middleware.md#upgrading).
+:::
 
 ---
 
@@ -1151,7 +1130,7 @@ System events are stored apart from domain events, on one of two kinds of stream
 | Security | `AccessDenied`, `AccessGranted`, `PermissionChanged`, `ScopeContextEstablished` | `$wb-system`, even when the record carries a tenant | {verified: SystemEventStreamRoutingTests.StreamFor_NamesTheLedgerForAuditKindsAndTheGlobalStreamForTheRestAsync} |
 | Advisory | `PerspectiveIndexAdvised`, `PerspectiveScanAdvised` | `$wb-system` | {verified: SystemEventStreamRoutingTests.EmitAsync_AnAdvisory_StaysOnTheGlobalSystemStreamAsync} |
 
-An audit record is a ledger entry about a domain event, so it lives with the rest of its tenant's audit trail. It goes to the same ledger stream whichever path produced it: the outbox path (the [auditing decorator](#event-auditing)), the command-audit pipeline behavior, or an `EventAudited` or `CommandAudited` handed to `EmitAsync` directly. The [per-tenant audit ledger](../security/audit-logging#audit-ledger) explains how the stream id is derived. Security facts and advisories are facts about the system as a whole and share the one global stream. `SystemEventStreams.StreamFor` is the single place that decides, and the emitter builds the same envelope (priority band, hop, scope) for both, so only the stream id differs.
+An audit record is a ledger entry about a domain event, so it lives with the rest of its tenant's audit trail. It goes to the same ledger stream whichever path produced it: the outbox path (the [auditing decorator](#event-auditing)), [command auditing](#command-auditing), or an `EventAudited` or `CommandAudited` handed to `EmitAsync` directly. The [per-tenant audit ledger](../security/audit-logging#audit-ledger) explains how the stream id is derived. Security facts and advisories are facts about the system as a whole and share the one global stream. `SystemEventStreams.StreamFor` is the single place that decides, and the emitter builds the same envelope (priority band, hop, scope) for both, so only the stream id differs.
 
 ```csharp{title="System Event Stream" description="The global $wb-system stream constants and StreamFor, which chooses the ledger for audit records and the global stream for every other kind." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "System", "Audit-Ledger"] tests=["ISystemEventTests.SystemEventStreamName_IsConstant_ForDedicatedStreamAsync", "SystemEventStreamRoutingTests.StreamFor_NamesTheLedgerForAuditKindsAndTheGlobalStreamForTheRestAsync"]}
 public static class SystemEventStreams {
@@ -1220,7 +1199,7 @@ SystemEventFireAndForget.Emit(
 
 ### Basic Registration
 
-```csharp{title="Basic Registration" description="Basic Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Basic", "Registration"] tests=["SystemEventServiceCollectionExtensionsTests.AddSystemEvents_RegistersTransportPublishFilterAsync", "SystemEventServiceCollectionExtensionsTests.AddSystemEvents_WithEventAuditEnabled_DecoratesEventStoreAsync"]}
+```csharp{title="Basic Registration" description="Basic Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Basic", "Registration"] tests=["SystemEventServiceCollectionExtensionsTests.AddSystemEvents_RegistersTransportPublishFilterAsync", "SystemEventServiceCollectionExtensionsTests.AddSystemEvents_WithEventAuditEnabled_DecoratesEventStoreAsync", "SystemEventServiceCollectionExtensionsTests.AddSystemEvents_CommandAuditEnabled_RegistersOneCommandAuditRecorderAsync"]}
 services.AddSystemEvents(options => {
   options.EnableAudit();
 });
@@ -1230,10 +1209,11 @@ This registers:
 - `ITransportPublishFilter` (→ `SystemEventTransportFilter`) for transport filtering
 - The `AuditingEventStoreDecorator` around an already-registered `IEventStore`, when `EnableEventAudit()` is set
 - The default `ISystemEventEmitter` (the same one `AddWhizbang()` registers; see [Registered by default](#emitter-registration)), unless one is already registered
+- [Command auditing](#command-auditing), when `EnableCommandAudit()` is set. `AddSystemEvents` is enough for it; nothing else needs to be registered.
 
 ### Full Auditing Registration
 
-```csharp{title="Full Auditing Registration" description="Full Auditing Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Full", "Auditing"] tests=["SystemEventServiceCollectionExtensionsTests.AddSystemEventAuditing_RegistersBaseServicesAsync", "SystemEventServiceCollectionExtensionsTests.AddSystemEventAuditing_RegistersPipelineBehaviorAsync"]}
+```csharp{title="Full Auditing Registration" description="Full Auditing Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Full", "Auditing"] tests=["SystemEventServiceCollectionExtensionsTests.AddSystemEventAuditing_RegistersBaseServicesAsync", "CommandAuditDispatchTests.EveryServiceAddSystemEventAuditingRegisters_IsResolvedOnARealDispatchAsync"]}
 services.AddSystemEventAuditing(options => {
   options.EnableEventAudit();
   options.EnableCommandAudit();
@@ -1241,8 +1221,9 @@ services.AddSystemEventAuditing(options => {
 ```
 
 This registers:
-- All basic system event services (everything `AddSystemEvents` does)
-- `CommandAuditPipelineBehavior<,>` for command auditing
+- All basic system event services (everything `AddSystemEvents` does), command auditing included
+
+It adds nothing for command auditing that `AddSystemEvents` does not already register.
 
 ### Complete Setup Example
 
