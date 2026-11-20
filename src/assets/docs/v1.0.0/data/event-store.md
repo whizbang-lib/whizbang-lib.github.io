@@ -36,6 +36,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/537_StoredMetadataLeavesOutWhatTheRowHolds.sql
   - src/Whizbang.Core/Observability/EnvelopeMetadata.cs
   - src/Whizbang.Core/Data/IJsonbPersistenceAdapter.cs
+  - src/Whizbang.Core/Messaging/HeartbeatRequest.cs
+  - src/Whizbang.Data.Postgres/MetadataTrimGateStep.cs
   - src/Whizbang.Data.Postgres/MetadataHistoryConversionStep.cs
   - src/Whizbang.Data.Postgres/PostgresRouteTraceStore.cs
 testReferences:
@@ -51,6 +53,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StoredMetadataRowValuesReadTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStoredMetadataRowValuesTests.cs
   - tests/Whizbang.Core.Tests/Observability/EnvelopeMetadataRowValuesTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StoredMetadataTrimGateSqlTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/HeartbeatRequestStoredFormLevelTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -322,8 +326,8 @@ says. {verified: StoredMetadataRouteCorpusTests.SlimForm_InSql_ReadsLikeToSlim_F
 {verified: StoredMetadataRowValuesSqlTests.OutboxChain_LeavesOutTheMessageIdAndTheHopScopeTheRowHolds_AndNothingElseAsync, StoredMetadataRowValuesReadTests.EveryReader_ReadsATrimmedRow_AsItReadTheSameRowInTheSlimFormAsync, DapperStoredMetadataRowValuesTests.EveryReader_ReadsATrimmedRow_AsItReadTheSameRowInTheSlimFormAsync}
 
 The slim form still repeated two values the event row holds in its own columns: the message id, which is the row's
-`event_id`, and the slim hop's scope, which is the row's `scope`. Every write path leaves both out of the stored
-metadata (`_wh_trim_row_values`), and every reader rebuilds them from the row:
+`event_id`, and the slim hop's scope, which is the row's `scope`. Once [the trim gate](#trim-gate) is open, every write
+path leaves both out of the stored metadata (`_wh_trim_row_values`), and every reader rebuilds them from the row:
 
 | Left out | When | Rebuilt by readers from | Verified |
 |---|---|---|---|
@@ -353,13 +357,38 @@ before slimming, a trace parent, a tenant and user scope), stored size per row (
 The saving is the message id (about 56 bytes) plus the hop scope, which grows with the tenant and user values. Putting
 the two values back from the row gave every measured row exactly its slim form again.
 
+### When the write paths start trimming {#trim-gate}
+
+{verified: StoredMetadataTrimGateSqlTests.Gate_StaysClosedWhileALiveInstanceLacksTheMarker_AndOpensOnceItIsGoneOrStaleAsync, StoredMetadataTrimGateSqlTests.Writes_BeforeTheGateOpens_AreUntrimmedAndReadByAnEarlierReader_AndAfterItAreTrimmedAsync}
+
+A release before this one requires the message id when it reads an event row, and the write paths are SQL, so they
+would trim on behalf of every instance as soon as the migration ran, including the instances of the earlier release
+still running during a rolling update. So the change ships in two stages within this one release, and the second
+starts by itself once the whole fleet can take it:
+
+1. **Readers first.** From the moment the migration runs, every reader of this release reads both forms. The write
+   paths keep writing the slim form an earlier release reads.
+2. **Writers once every live instance reads.** Each heartbeat of this release records `stored_form_level` (1) in its
+   instance row's metadata (`wh_service_instances.metadata`); an earlier release records none. The
+   `metadata-trim-gate` maintenance step asks `wh_open_metadata_trim_gate` each cycle, and it latches the
+   `wh_settings` row `metadata_trim_row_values` once at least one instance is live (by the
+   [one liveness rule](../fundamentals/workers/instance-liveness)) and every live instance records level 1 or higher.
+   From then on the write paths trim.
+
+| Question | Answer | Verified |
+|---|---|---|
+| What does a write cost? | One primary-key read of `wh_settings` per call (`_wh_metadata_trim_on`), beside the settings read it already makes. The fleet is read by the maintenance step, never by a write | {verified: StoredMetadataTrimGateSqlTests.Writes_BeforeTheGateOpens_AreUntrimmedAndReadByAnEarlierReader_AndAfterItAreTrimmedAsync} |
+| Can an earlier release read the rows written before the gate opened? | Yes: they keep the message id and hop scope | {verified: StoredMetadataTrimGateSqlTests.Writes_BeforeTheGateOpens_AreUntrimmedAndReadByAnEarlierReader_AndAfterItAreTrimmedAsync} |
+| A new service, or a fresh database? | The registry is empty until the first heartbeat, and an empty registry keeps the gate closed; it opens on the first cycle after this instance has registered | {verified: StoredMetadataTrimGateSqlTests.Gate_AFreshService_OpensOnlyOnceThisInstanceHasRegisteredWithItsMarkerAsync} |
+| An instance of an earlier release is still live? | Closed: the step reports `closed (n of m live instances read trimmed rows)`; it opens once that instance is gone or no longer live | {verified: StoredMetadataTrimGateSqlTests.Gate_StaysClosedWhileALiveInstanceLacksTheMarker_AndOpensOnceItIsGoneOrStaleAsync} |
+| Can it close again? | No: the latch is one-way, so a flapping fleet never turns trimming on and off | {verified: StoredMetadataTrimGateSqlTests.Gate_OnceOpen_StaysOpen_WhenAnInstanceWithoutTheMarkerAppearsAsync} |
+| History conversion? | It follows the gate: while closed it converts rows written before slim metadata to the slim form an earlier release reads and leaves slim rows alone; opening the gate starts its walk over, and the walk trims | {verified: StoredMetadataTrimGateSqlTests.Conversion_WaitsForTheGate_ThenTrimsWhatItWroteAndWhatWasSlimAsync} |
+
 :::warning
-**Upgrading with instances still on an earlier release.** Once this release's migrations run, every write path stores
-rows without their message id, including writes made by instances still running an earlier release, since the write
-paths are SQL. An earlier release requires the message id when it reads an event row, so on such an instance a
-perspective or replay that reaches a trimmed row fails to read it until that instance is replaced. Finish a rolling
-update promptly, or update every instance of a service together. A library earlier than this release cannot read the
-trimmed rows at all, so rolling the library back after the migration is not supported.
+**No rollback below this release once the gate has opened.** After the latch, rows are written without their message
+id, and a release before this one cannot read them. Rolling the library back below this release, or starting an
+instance of an earlier release against the same database, is not supported from then on. Before the latch it is: every
+row is still in the form an earlier release reads.
 :::
 
 ### Keeping an event type full {#keeping-an-event-type-full}
@@ -530,9 +559,9 @@ short, a batch does not come back `ok`, the cycle's batch limit is reached, or i
    [trace window](#retention), so [reconstruction](#reconstruction) of a recent event stays lossless;
 5. moves its cursor past what it read and reports `rows_affected`.
 
-When a batch reads to the end of the table, the conversion is complete and later cycles read nothing. The upgrade that
-added [the trim](#row-values) starts the walk over once (`wh_settings` row `metadata_row_values_trimmed`), so it trims
-the slim rows written before it; the rows already trimmed are passed over. On a database
+When a batch reads to the end of the table, the conversion is complete and later cycles read nothing. Opening [the trim gate](#trim-gate)
+starts the walk over, in the statement that latches it, so it trims the slim rows written before; until then it trims
+nothing. The rows already trimmed are passed over. On a database
 created at this version every row already carries its route id, so the first cycles only read the table once, when it
 is still small, and complete.
 
@@ -650,7 +679,14 @@ Each choice below is locked by the test beside it, which fails if the behavior f
 | History is the rows without a route id | Every row written since slim metadata carries one, slim or full, so no marker is needed and a converted row is never chosen again | {verified: MetadataHistoryConversionSqlTests.Convert_ARowWithoutARouteId_BecomesSlimWithItsRouteId_AndARowWithOneIsUntouchedAsync, MetadataHistoryConversionSqlTests.Convert_AConvertedRow_IsNotTouchedAgain_EvenFromTheStartAsync} |
 | A converted row is exactly what a write path stores for it now | One stored form, whenever the row was written | {verified: MetadataHistoryConversionSqlTests.Convert_ARowWithoutARouteId_BecomesSlimWithItsRouteId_AndARowWithOneIsUntouchedAsync, DapperStoredMetadataTests.AddWhizbangPostgres_RegistersTheHistoryConversionStep_ThatConvertsTheStoresOwnFormAsync, StoredMetadataRowValuesSqlTests.Convert_ARowWrittenBeforeSlimMetadata_BecomesTheTrimmedFormAsync} |
 | Trimming a slim row counts no route | Its route was counted when it was written | {verified: StoredMetadataRowValuesSqlTests.Convert_ASlimRowWrittenBeforeTheTrim_IsTrimmed_AndItsRouteIsNotCountedAgainAsync} |
-| The trim's upgrade restarts the walk once, by a settings marker | The slim rows written before it lie behind a completed cursor; the marker keeps a re-run of the migration from restarting it again | {verified: StoredMetadataRowValuesSqlTests.Convert_ASlimRowWrittenBeforeTheTrim_IsTrimmed_AndItsRouteIsNotCountedAgainAsync} |
+| Opening the trim gate restarts the conversion's walk, in the same statement | The slim rows written before lie behind a completed cursor; the latch is written once, so the walk restarts once | {verified: StoredMetadataTrimGateSqlTests.Conversion_WaitsForTheGate_ThenTrimsWhatItWroteAndWhatWasSlimAsync} |
+| Writers trim only once every live instance reads trimmed rows | A customer may upgrade to any single release; a rolling update must never hand an earlier instance a row it cannot read | {verified: StoredMetadataTrimGateSqlTests.Gate_StaysClosedWhileALiveInstanceLacksTheMarker_AndOpensOnceItIsGoneOrStaleAsync, StoredMetadataTrimGateSqlTests.Writes_BeforeTheGateOpens_AreUntrimmedAndReadByAnEarlierReader_AndAfterItAreTrimmedAsync} |
+| The marker is an explicit level in the heartbeat's metadata, not the library version | Prerelease and locally built versions do not compare reliably; a missing marker (an earlier release) means "cannot read" | {verified: HeartbeatRequestStoredFormLevelTests.MetadataJson_KeepsTheCallersKeys_AndTheMarkerIsAlwaysThisBuildsAsync, DapperStoredMetadataRowValuesTests.RecordHeartbeatAsync_WritesTheStoredFormLevel_TheTrimGateCountsAsync} |
+| Every driver writes the marker through `HeartbeatRequest.MetadataJson` | No caller or driver can leave it out | {verified: StoredMetadataTrimGateSqlTests.Gate_AFreshService_OpensOnlyOnceThisInstanceHasRegisteredWithItsMarkerAsync, DapperStoredMetadataRowValuesTests.RecordHeartbeatAsync_WritesTheStoredFormLevel_TheTrimGateCountsAsync} |
+| The fleet is judged by a maintenance step, the write paths read one flag | No write pays a fleet scan | {verified: StoredMetadataTrimGateSqlTests.Step_IsNamed_AndRunsTheGateAsync} |
+| An empty registry keeps the gate closed | A fresh database opens it once this instance's own marker is in, never before any instance is known | {verified: StoredMetadataTrimGateSqlTests.Gate_AFreshService_OpensOnlyOnceThisInstanceHasRegisteredWithItsMarkerAsync} |
+| The latch is one-way | Trimmed rows exist once it opens; closing it would only mix forms, never make them readable again | {verified: StoredMetadataTrimGateSqlTests.Gate_OnceOpen_StaysOpen_WhenAnInstanceWithoutTheMarkerAppearsAsync} |
+| Only the value `true` opens it | A hand-written row must not open it by accident | {verified: StoredMetadataTrimGateSqlTests.Gate_ASettingWrittenByHandOtherThanTrue_IsNotOpenAsync} |
 | `ConvertHistory` is on by default | An upgraded database reclaims the space without an opt-in; the full form survives as a trace for recent events and as a route for all | {verified: ProcessWideOptionsBindingTests.EventStoreMetadata_Unconfigured_IsLinkedWithNothingKeptFullAsync, EventStoreMetadataSettingsTests.ConvertHistory_IsPublishedEveryTime_InBothDirectionsAsync} |
 | Only an explicit off turns the conversion off | A missing or mistyped value is the default, as every metadata setting reads | {verified: MetadataHistoryConversionSqlTests.Convert_AnyOtherConvertHistoryValue_RunsTheTaskAsync, MetadataHistoryConversionSqlTests.Convert_UnderTheFullFormOrSwitchedOff_SkipsTheTaskAsync} |
 | Skipped under debug mode and under `Full` | Both keep every row full; converting history would contradict them | {verified: MetadataHistoryConversionSqlTests.Convert_UnderDebugMode_SkipsTheTask_AndRunsOnceItIsOffAsync, MetadataHistoryConversionSqlTests.Convert_UnderTheFullFormOrSwitchedOff_SkipsTheTaskAsync} |
