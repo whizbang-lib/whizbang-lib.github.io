@@ -16,6 +16,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/016_UpdatePerspectiveCheckpoints.sql
   - src/Whizbang.Data.Postgres/Migrations/255_LeaseRenewalIsScopedToTheHolder.sql
   - src/Whizbang.Data.Postgres/Migrations/374_RetiredWorkSettlesTheRewindFlag.sql
+  - src/Whizbang.Data.Postgres/Migrations/531_ACursorIsNotHeldByTheRowsOfItsOwnRun.sql
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Core/Messaging/WorkCategory.cs
   - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
@@ -171,10 +172,10 @@ A perspective completion carries the last event the run applied (`LastEventId`),
 
 - A missing cursor is created at that event.
 - An existing cursor advances when the event sorts later in its stream (by stream version), and is never moved back by an earlier one.
-- It never passes the first event still unprocessed for that perspective, so an event behind the cursor is never skipped.
+- It never passes the first event still unprocessed for that perspective, so an event behind the cursor is never skipped. The pending rows of the events the completion itself reports applied (its `LastEventId` and `ProcessedEventIds`) do not count: see [a cursor flushed before its own run's rows](#cursor-before-its-own-rows).
 - Two completions for the same stream and perspective in one batch keep the later event.
 - A completion with no event (a run that applied nothing) records no position, and an event the store does not hold is skipped without failing the rest of the batch.
-- The status becomes completed for every reported stream with nothing left unprocessed, whether or not its position moved.
+- The status becomes completed for every reported stream with nothing left unprocessed, whether or not its position moved. Here too, the rows of the events the completion reports applied are not "left unprocessed".
 
 The position comes from the completion as well as from the processed `wh_perspective_events` rows: in production those rows are deleted as they complete, before the cursor is written, and only debug mode keeps them. Until #1363, the cursor was derived from those rows, so a missing cursor was never created and an existing one never advanced; only its status changed.
 
@@ -218,6 +219,26 @@ WHERE split_part(e.event_type, ',', 1) = ANY (:'handled'::text[])
 Both counts fall as the fixed release completes new work: each completion creates or advances its stream's cursor. A stream that receives no new events keeps its old cursor until it is next processed or rebuilt.
 
 **To repair rather than measure**, rebuild the affected records (`RebuildMode.SelectedStreams` with their stream ids). The rebuild replays each record on the instance that owns it and writes the cursor from what it applied, so it is exact where these queries can only estimate. Do not move cursors with SQL: a cursor set past an event the perspective has not applied makes that event look like a late arrival and triggers a replay, and SQL cannot tell which events were applied.
+
+### A cursor flushed before its own run's rows still moves {#cursor-before-its-own-rows}
+{verified: PerspectiveCursorAdvanceSqlTests.CompletePerspective_TheCursorFlushedBeforeItsWork_MovesToTheReportedEventAsync, PerspectiveCursorAdvanceSqlTests.CompletePerspective_APendingEventTheRunDidNotReport_StillHoldsTheCursorBeforeItAsync, PerspectiveCursorAdvanceSqlTests.CompletePerspective_AnEarlierEventStillPending_HoldsTheCursorBeforeItAsync}
+
+A perspective run reports its cursor and retires its `wh_perspective_events` rows through the same flusher, which cuts
+batches by size and by time, so the cursor can reach `complete_perspective` in an earlier flush than the rows (the
+[ordering race](#rewind-flag-settles) below). Before migration 531 the gap rule above then saw the run's own events still
+pending and held the cursor before them, and the later flush that retired the rows carried no cursor. A stream that
+received no further event kept, for good, a cursor naming an event its perspective had already applied, and the
+[superseding reaper](../events/superseding-events#the-reaper) kept that event because a cursor named it.
+
+`update_perspective_cursors` now leaves out of the gap rule, and out of the "nothing left unprocessed" test for the
+status, the pending rows of the events each completion reports applied: its `LastEventId` and its `ProcessedEventIds`,
+which the batched path already sends. So the cursor moves to the reported event whichever flush carries the rows. A
+pending event the run did **not** report still holds the cursor before it, as before, so an event behind the cursor is
+still never skipped.
+
+Nothing to change. Migration 531 does not move cursors already left behind this way: each moves with its stream's next
+completion, or with a rebuild of the record (`RebuildMode.SelectedStreams`). One resting on an older copy of a
+superseded key is also [handed on by the reaper](../events/superseding-events#the-reaper) once the newer copy is applied.
 
 ### Retired work settles a rewind flag {#rewind-flag-settles}
 {verified: PerspectiveRewindFlagSettleSqlTests.CompletePerspective_TheCursorFlushedBeforeItsWork_ClearsTheRewindFlagWhenTheWorkIsRetiredAsync, PerspectiveRewindFlagSettleSqlTests.CompletePerspective_DebugMode_ClearsTheRewindFlagWhenTheLastRowIsStampedAsync, PerspectiveRewindFlagSettleSqlTests.CompletePerspective_RetiringOneOfTwoPendingRows_KeepsTheRewindFlagAsync, PerspectiveRewindFlagSettleSqlTests.CompletePerspective_AFlaggedCursorOfAnotherPerspective_IsLeftAloneAsync, PerspectiveRewindFlagSettleSqlTests.SettleStaleRewindFlags_ClearsFlagsWithNoPendingWork_AndKeepsFlagsThatStillHaveSomeAsync}

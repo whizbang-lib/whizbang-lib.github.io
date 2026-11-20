@@ -811,7 +811,7 @@ Each cycle:
    table was queued with one), ties in name order.
 3. **Spends a byte budget.** A table is rewritten only when its heap and its TOAST relation together
    (`pg_table_size`, which an online rewrite copies) fit what is left of `OnlineRewriteMaxBytesPerCycle`; one that does not fit is deferred to a later cycle, and the next smaller table that
-   fits is taken. A table larger than the whole budget is never rewritten, and the log names the setting to raise.
+   fits is taken. A table larger than the whole budget gets [a cycle of its own](#online-rewrite-over-budget).
 4. **Rewrites each table and re-measures.** For pg_squeeze it checks the
    [prerequisites](#online-rewrite-prerequisites) for the table, then calls pg_squeeze. For pg_repack it starts the
    client with the connection in its environment, as [pg_repack](#pg-repack) describes. Either way it then runs
@@ -839,7 +839,7 @@ flowchart TD
 | Key | Environment variable | Default | Meaning |
 |---|---|---|---|
 | `Whizbang:Workers:Maintenance:TableRewriteStrategy` | `Whizbang__Workers__Maintenance__TableRewriteStrategy` | `Auto` | `PgSqueeze`, or `PgRepack` in process, turns the online rewrite on; `Auto` turns it on when either tool is `Ready`. |
-| `Whizbang:Workers:Maintenance:OnlineRewriteMaxBytesPerCycle` | `Whizbang__Workers__Maintenance__OnlineRewriteMaxBytesPerCycle` | `1073741824` (1 GiB) | The most bytes one cycle rewrites, through either tool, counting each table's heap and its TOAST relation (indexes are not counted). pg_squeeze and pg_repack each write a full copy of the table, plus the WAL for it, so this bounds the extra disk and WAL one cycle can cause. `0` rewrites nothing. |
+| `Whizbang:Workers:Maintenance:OnlineRewriteMaxBytesPerCycle` | `Whizbang__Workers__Maintenance__OnlineRewriteMaxBytesPerCycle` | `1073741824` (1 GiB) | The most bytes one cycle rewrites, through either tool, counting each table's heap and its TOAST relation (indexes are not counted). pg_squeeze and pg_repack each write a full copy of the table, plus the WAL for it, so this bounds the extra disk and WAL one cycle can cause, except in a cycle that rewrites [one table larger than it](#online-rewrite-over-budget), which copies that whole table. `0` rewrites nothing. |
 
 ```json{title="Online rewrite with a 4 GiB budget per cycle" description="Selects pg_squeeze for table rewrites and lets each maintenance cycle rewrite up to 4 GiB of queued tables." category="Configuration" difficulty="INTERMEDIATE" tags=["storage", "table-rewrite", "pg_squeeze", "maintenance", "configuration"] tests=["OnlineTableRewriteStepTests.TheBudget_DefaultsToOneGibibyte_AndBindsFromConfigurationAsync", "OnlineTableRewriteStepTests.Budget_SkipsATableThatWouldOverrunIt_AndTakesASmallerOneThatFitsAsync"]}
 {
@@ -874,6 +874,26 @@ it measures at or above the threshold and its floor, as before. A replayed migra
 rewritten table again must not rewrite it again, and an external pg_repack job reads the same
 `wh_tables_needing_rewrite()`, so the requests are reported in the line above rather than rewritten.
 {verified: RewriteRegrowthFloorSqlTests.TheQueueStatus_CountsTheQueue_AndTheTablesTheFloorHeldBackAsync, TableRewriteRequestSqlTests.LeanTable_IsNotOfferedForRewrite_EvenWhenRequestedAsync}
+
+### A table larger than the budget gets a cycle of its own {#online-rewrite-over-budget}
+{verified: OnlineTableRewriteStepTests.Budget_ATableLargerThanTheWholeBudget_FirstInTheQueue_GetsTheCycleToItselfAsync, OnlineTableRewriteStepTests.Budget_ATableLargerThanTheWholeBudget_BehindOneAlreadyTaken_WaitsForACycleOfItsOwnAsync, OnlineTableRewriteStepTests.Budget_OfZero_RewritesNothingAsync}
+
+The largest tables, typically the event store and its event bodies, hold most of the index bloat, and they are often
+larger than `OnlineRewriteMaxBytesPerCycle`. Such a table is not passed over: it is rewritten alone, by the first cycle
+that reaches it before taking any other table.
+
+- **Reached first, it takes the whole cycle.** The cycle rewrites that table, spends the whole budget on it, and defers
+  every table queued behind it to a later cycle. The log says so at Information:
+  `Online rewrite: wh_event_store (2147483648 bytes) is larger than Whizbang:Workers:Maintenance:OnlineRewriteMaxBytesPerCycle (1073741824), so this cycle rewrites it alone`.
+- **Reached after another table, it waits.** A cycle that already took a smaller table counts it over budget and leaves
+  its request queued, with the line
+  `... is larger than Whizbang:Workers:Maintenance:OnlineRewriteMaxBytesPerCycle (1073741824), so it waits for a cycle that reaches it before any other table`.
+- **A budget of `0` still rewrites nothing**, a table over the budget included. `0` is how online rewrites are turned
+  off; no setting restores the old behavior of never rewriting a table larger than the budget.
+
+So a cycle never copies more than the larger of the budget and that one table. **Plan the headroom for it:** while
+pg_squeeze or pg_repack rewrites such a table, the database needs free disk, and WAL headroom, of about that table's
+size (heap plus TOAST), not just the budget.
 
 ### Prerequisites checked before each call {#online-rewrite-prerequisites}
 {verified: PgSqueezePrerequisitesTests.EveryPrerequisiteMet_IsNothingUnmetAsync, PgSqueezePrerequisitesTests.TheFirstUnmetPrerequisite_IsTheOneReportedAsync, OnlineTableRewriteSqlTests.ThePrerequisiteQuery_ReadsTheServersFactsAsync, OnlineTableRewriteSqlTests.Squeeze_OnAServerWithoutPgSqueeze_IsReportedAndNotAttemptedAsync}

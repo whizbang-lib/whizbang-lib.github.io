@@ -434,7 +434,8 @@ for the message that failed:
 | Where the flush runs | Stage | What a throwing receptor does to its own message |
 |---|---|---|
 | Outbox batch flush (the default stream-affinity path) | `PreDistributeInline`, `PostDistributeInline` | Nothing more: the message is stored and published as usual. Nothing in this path can refuse the write, and skipping the store would lose the message. |
-| Strategy flush (immediate, scoped, interval, batch) | `PreDistributeInline` | Unchanged: the first failure stops the stage, nothing in the flush is stored, and the exception reaches the flush's caller. Before the store a receptor can still refuse the write, so receptors after it do not act on messages that will not be stored. |
+| Strategy flush (immediate, scoped) | `PreDistributeInline` | Unchanged: the first failure stops the stage, nothing in the flush is stored, and the exception reaches the flush's caller. Before the store a receptor can still refuse the write, so receptors after it do not act on messages that will not be stored. These flushes carry only their caller's own messages. |
+| Strategy flush (interval, batch) | `PreDistributeInline` | Refuses only that message: it is not stored or distributed, and its failure is logged against it. Every other message in the flush is stored and distributed, and nothing is thrown, since the flush belongs to no one caller. See [a refusal on a shared flush](#pre-store-refusal-on-a-shared-flush). |
 | Strategy flush (immediate, scoped, interval, batch) | `PostDistributeInline` | Every message's receptors run, each failure is logged, and then the first failure is thrown to the flush's caller, as it always was. The messages are already stored. |
 | Any flush | `PreDistributeDetached`, `DistributeDetached`, `PostDistributeDetached` | Logged; nothing waits on a detached stage. |
 
@@ -462,6 +463,23 @@ in the error reference.
 **Only the Distribute stages isolate receptors.** At every other stage the first receptor that throws is the message's
 outcome (a retry, a dead letter, or the caller's exception), and the receptors after it do not run against a message
 that failed.
+
+##### A refusal on a shared flush costs only its own message {#pre-store-refusal-on-a-shared-flush}
+{verified: LifecycleStageFailureIsolationTests.SharedFlush_PreDistributeInlineFailure_RefusesOnlyThatMessage_StoresTheRest_AndThrowsNothingAsync, LifecycleStageFailureIsolationTests.IntervalStrategy_PreDistributeInlineFailure_StoresEveryOtherCallersMessage_AndThrowsToNoCallerAsync, LifecycleStageFailureIsolationTests.BatchStrategy_PreDistributeInlineFailure_StoresEveryOtherCallersMessage_AndThrowsToNoCallerAsync, LifecycleStageFailureIsolationTests.StrategyFlush_PreDistributeInlineFailure_StopsAndStoresNothingAsync}
+
+The interval and batch strategies flush the queued messages of many callers, and they clear the queue before the flush runs. Stopping
+such a flush at the first `PreDistributeInline` failure lost every message in it, the other callers' included, and
+threw to a flush no caller was waiting on. So these two flushes run `PreDistributeInline` for every message, record
+each message a receptor (or the reading of its payload) failed for, and then store and distribute every message but
+those. Each failure is logged against its receptor and message, as above, and the flush adds one `Warning` naming the
+refused messages:
+
+```text
+{Count} message(s) refused by a PreDistributeInline receptor were not stored by the {Strategy} flush; every other message in it was: {MessageIds}
+```
+
+The immediate and scoped strategies are unchanged: their flush carries only the caller's own messages, so the first
+failure still stops it before the store and is thrown to that caller.
 
 Source: [`LifecycleInvocationHelper`](https://github.com/whizbang-lib/whizbang/blob/develop/src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs),
 [`IReceptorInvoker.InvokeEveryReceptorAsync`](https://github.com/whizbang-lib/whizbang/blob/develop/src/Whizbang.Core/Messaging/IReceptorInvoker.cs),
