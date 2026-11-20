@@ -25,6 +25,8 @@ codeReferences:
   - src/Whizbang.Generators/PerspectiveCurrentModelAnalyzer.cs
   - src/Whizbang.Generators/Analyzers/PerspectiveContractAnalyzer.cs
   - src/Whizbang.Data.Postgres/Migrations/264_DrainSaysWhichEventIsFirstInItsStream.sql
+  - src/Whizbang.Core/Workers/PurgeMarkerBackfillStep.cs
+  - src/Whizbang.Data.Postgres/Migrations/533_RowsPurgedBeforeMarkersGetTheirMarker.sql
 testReferences:
   - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/ReplayEventOrderTests.cs
   - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/IPerspectiveWithActionsForTests.cs
@@ -42,6 +44,8 @@ testReferences:
   - tests/Whizbang.Generators.Tests/PerspectiveWithActionsArityTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveApplyReturnShapeTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveDuplicateApplyTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PurgeMarkerBackfillStepTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PurgeMarkerBackfillSqlTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -532,6 +536,36 @@ public class OrderPerspective :
 **Why a return value, not an attribute.** `Resurrect` sits beside `Purge` in the vocabulary Apply already uses for a row's lifecycle, so the decision lives in the same pure function as the purge and can depend on the event's content (reopen only when the reason allows it). Replay and rebuild fold the same results, so they reach the same answer with nothing else to consult. An Apply that returns a plain `TModel` cannot resurrect; return `ApplyResult<TModel>` from the events that should.
 
 The markers are written by both Postgres drivers. A store without them (a custom driver that registers no `IPerspectivePurgeMarkerStore`) still honors a purge within its batch, as before.
+
+### Rows purged before purge markers existed {#purge-marker-backfill}
+{verified: PurgeMarkerBackfillSqlTests.Backfill_AMissingRowWhoseLastEventCanOnlyPurge_IsMarkedWithThatEvent_AndItsCompanionsThenGoAsync, PurgeMarkerBackfillSqlTests.Backfill_ALastEventThatPurgesOnlyConditionally_IsNotMarkedAsync, PurgeMarkerBackfillSqlTests.Backfill_ARowThatWasNeverCreated_IsNotMarkedAsync, PurgeMarkerBackfillSqlTests.Backfill_ALiveRow_APendingStream_AndAnUnregisteredPerspective_AreNotMarkedAsync, PurgeMarkerBackfillSqlTests.Backfill_AnExistingMarker_AndAnOperatorMarker_AreLeftAsTheyAreAsync, PurgeMarkerBackfillSqlTests.Backfill_ExaminesAtMostTheBatchSize_AndTheRestOnALaterCallAsync, PurgeMarkerBackfillSqlTests.CountUnmarked_CountsOnlyTheMissingRowsTheBackfillCannotProve_UpToTheCapAsync, PurgeMarkerBackfillStepTests.Run_PassesOnlyTheEventTypesThatCanOnlyPurge_PerPerspective_AndReportsTheMarkersWrittenAsync, PerspectiveRegistryUnconditionalPurgeTests.Registry_AnApplyThatCanOnlyPurge_ListsItsEventTypeAsync, PerspectiveRegistryUnconditionalPurgeTests.Registry_AConditionalPurge_IsNotListedAsync}
+
+The maintenance cycle removes a purged row's cursor and snapshots only for a pair that carries a purge marker (see
+[snapshots of a purged row](snapshots#purged-row)). A row purged before markers were written has none, so it kept its
+cursor and snapshots for good. A maintenance step, `purge-marker-backfill`, writes the missing markers, but only where
+the purge is proven:
+
+- **The row is missing** from the table the perspective writes, and the pair carries no marker.
+- **No work is pending** for the stream and perspective.
+- **The cursor's last event can only purge.** Its type is one whose `Apply` on that perspective is an unconditional
+  purge, by the same build-time rule as [streams that end in a purge](rebuild#terminal-purges). The generated registry
+  lists those types per perspective (`PerspectiveRegistrationInfo.UnconditionalPurgeEventTypes`).
+
+The marker it writes names that last event, and the next cycle then removes the pair's cursor and snapshots. Each cycle
+writes at most 5,000 markers; once a cycle writes none, the backfill is done until the host restarts.
+
+**Conditional purges are not backfilled.** A missing row can also be a row never created, a row an older build
+evicted, or a row a conditional `Apply` purged, and a marker on the wrong pair would make the runner skip the stream's
+later events. So a pair whose last event can leave a row in place gets no marker: it keeps its cursor and snapshots, as
+before. When the backfill finishes, the step logs once, at Information, how many missing rows it left unmarked (counted
+up to 10,000):
+
+```text
+Purge-marker backfill done: {Unmarked} missing row(s) (counted up to {Cap}) keep their cursor and snapshots, because their last event can leave a row in place (a conditional purge, or a row never created), so a marker could skip later events
+```
+
+Existing markers, including those an [operator purge](../../operations/infrastructure/purging-streams.md) wrote, are
+left as they are. Migration 533 adds the backfill; nothing needs to be run by hand.
 
 ---
 

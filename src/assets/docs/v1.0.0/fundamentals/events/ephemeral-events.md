@@ -32,6 +32,8 @@ codeReferences:
   - src/Whizbang.Core/Configuration/EphemeralBlockerReportOptions.cs
   - src/Whizbang.Core/Observability/EphemeralBlockerMetrics.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveRunnerRegistry.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveRunner.cs
+  - src/Whizbang.Core/Perspectives/SnapshotBootstrapOutcome.cs
   - src/Whizbang.Generators/PerspectiveRunnerRegistryGenerator.cs
   - src/Whizbang.Core/SystemEvents/AuditEligibility.cs
   - src/Whizbang.Core/Attributes/EphemeralAttribute.cs
@@ -124,6 +126,7 @@ testReferences:
   - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/ScheduledPrefixTruncateRenameTests.cs
   - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerDestructionHookTests.cs
   - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerReapDrivenSnapshotTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/ReapBoundarySnapshotRunnerTests.cs
   - tests/Whizbang.Core.Tests/Fingerprint/TypeDefinitionReconcilerBranchCoverageTests.cs
   - tests/Whizbang.Core.Tests/Fingerprint/TypeDefinitionReconcilerCoverageTests.cs
   - tests/Whizbang.Generators.Tests/EphemeralAnalyzerTests.cs
@@ -286,7 +289,8 @@ table is never touched, however old or consumed it is.
 
 So that the coverage gate does not hold bodies indefinitely, each maintenance cycle first takes a
 snapshot for every (stream, perspective) pair whose consumed, aged bodies are not yet covered, and
-only then runs the delete. A perspective that keeps no rewind floor and a row its perspective purged
+only then runs the delete. That snapshot is taken [through the reap boundary](#the-reap-boundary-snapshot), not at
+the cursor. A perspective that keeps no rewind floor and a row its perspective purged
 are never picked: neither has a snapshot to take, and neither holds the body. The cycle logs a
 snapshot only when one was written (see [Bootstrap](../perspectives/snapshots#bootstrap)).
 {verified: MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_ReapDrivenSnapshot_BootstrapsEachTargetPairAsync, EphemeralSnapshotTargetSqlTests.GetEphemeralPairsNeedingSnapshot_ReturnsConsumedAgedUncovered_ThenDropsAfterSnapshotAsync, EphemeralOnlyReadModelReapSqlTests.PairsNeedingSnapshot_AReadModelThatKeepsNoFloor_IsNotATarget_AndItsBodyIsOfferedForDestructionAsync, PurgedRowEphemeralHistorySqlTests.PairsNeedingSnapshot_APurgedPair_IsNotATarget_AndItsBodyIsOfferedForDestructionAsync, MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_AStreamWithNoRow_IsNotLoggedAsASnapshot_ButAsAMissingRowAsync}
@@ -488,11 +492,40 @@ of this release has registered, a service on another driver, and an older instan
 them.
 {verified: EphemeralRewindFloorGeneratorTests.Associations_OfAnEphemeralOnlyPerspective_RegisterTheNoFloorMarkerAsync, EphemeralRewindFloorGeneratorTests.Associations_TheMarker_ChangesTheAssociationsHash_SoAStartupWithItReRegistersAsync, EphemeralOnlyReadModelReapSqlTests.Reap_TheSameReadModelWithoutTheMarker_HoldsTheBodyAsync, EphemeralOnlyReadModelReapSqlTests.Reap_TheMarkerDoesNotSkipTheOtherGates_ABodyInItsGraceIsKeptAsync}
 
-**Which late events a snapshot serves.** A rewind restores from the latest snapshot placed before its late
-event, and the snapshot the maintenance cycle takes is the row as it is now, at the cursor's last event.
-It serves a late event placed after it and not one placed before it, which a perspective with a floor
-then drops the same way. See [where a bootstrap snapshot sits](../perspectives/snapshots#bootstrap-floor).
-{verified: SnapshotSelectionFollowsStreamOrderTests.AReapDrivenSnapshotAtTheTip_IsAFloorOnlyForALateEventAfterItAsync}
+#### The reap-boundary snapshot {#the-reap-boundary-snapshot}
+{verified: ReapBoundarySnapshotRunnerTests.ABootstrapThroughTheBoundary_SnapshotsTheModelAsOfTheBoundary_NotTheRowAtTheCursorAsync, ReapBoundarySnapshotRunnerTests.ALateEventBelowTheCursorAndAboveTheBoundary_RewindsFromTheBoundarySnapshot_AfterTheBodiesBelowAreReapedAsync, ReapBoundarySnapshotRunnerTests.ALaterBootstrap_FoldsFromTheSnapshotBelowItsBoundary_OverTheBodiesStillStoredAsync, ReapBoundarySnapshotRunnerTests.ABootstrap_WhoseSnapshotBelowCannotBeRead_IsRefused_AndWritesNothingAsync, ReapBoundarySnapshotRunnerTests.ABootstrapWhoseBoundaryIsTheCursor_SnapshotsTheRowAtTheCursor_AsBeforeAsync, PurgedRowEphemeralHistorySqlTests.PairsNeedingSnapshot_NameTheReapBoundary_TheLastBodyAboutToBeReaped_NotTheCursorAsync, MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_ATargetWithAReapBoundary_IsBootstrappedThroughItAsync, MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_ATargetThatNamesNoBoundary_IsBootstrappedAtTheCursorAsync}
+
+Before a maintenance cycle reaps a stream's consumed ephemeral bodies, it bootstraps a snapshot for each
+(stream, perspective) pair whose bodies the [coverage gate](#reap-gates) would otherwise hold back. A rewind restores
+from the latest snapshot placed before its late event, so where that snapshot sits decides which late events still
+find a floor once the bodies below it are gone.
+
+**The snapshot is taken through the reap boundary.** The pass names the reap boundary, the last body (by stream
+version) it is about to reap; a body still inside its grace window is not about to be reaped. The runner folds the
+model as of that boundary, from the snapshot below it (or the stream's start) over the bodies still stored, in replay
+order and with the live apply's own fold, and snapshots it at the boundary event. The row itself is not written. A late
+event placed below the cursor but above the boundary then rewinds from that snapshot, where a snapshot at the cursor
+served only a late event placed after the cursor and the perspective dropped the rest.
+
+- **One snapshot slot per stream**, as before (`EphemeralMaxSnapshotsPerStream`).
+- **The coverage gate is unchanged.** A body is reaped once a snapshot at or after it covers it.
+- **A boundary that is the cursor** is snapshotted from the row, as before.
+- **A boundary that cannot be folded from what is stored** writes nothing and reports
+  [`SnapshotBootstrapOutcome.Refused`](../perspectives/snapshots#bootstrap): the snapshot below it cannot be read, the
+  stream's archived history was deleted, or the boundary event cannot be placed. Its bodies wait for a later bootstrap.
+- **A hand-written runner** that does not implement `IPerspectiveRunner.TryBootstrapSnapshotThroughAsync` bootstraps at
+  the cursor, as before.
+
+**Open limits** (tracked in [whizbang-lib/whizbang#2456](https://github.com/whizbang-lib/whizbang/issues/2456)):
+
+- **A perspective whose rows have collectives is still snapshotted at the cursor.** Folding such a row to the boundary
+  would also mean folding the collectives committed before it, and that fold is not built. A late event placed below
+  that snapshot finds no floor once the bodies below are reaped.
+- **A live snapshot at the tip can replace the boundary snapshot.** The stream keeps one slot, and a snapshot the run
+  takes at the tip during normal processing still satisfies the coverage gate. A late event below it then has no floor
+  again.
+
+See also [where a bootstrap snapshot sits](../perspectives/snapshots#bootstrap-floor).
 
 ### Audit {#audit}
 
