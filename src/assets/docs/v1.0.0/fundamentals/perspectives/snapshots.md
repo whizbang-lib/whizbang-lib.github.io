@@ -48,6 +48,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRebuildSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchivedStreamRebuildTests.cs
   - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/SnapshotBootstrapOutcomeTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/ReapBoundarySnapshotRunnerTests.cs
   - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/EphemeralRewindFloorRunnerTests.cs
   - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerReapDrivenSnapshotTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PurgedRowEphemeralHistorySqlTests.cs
@@ -442,18 +443,26 @@ A bootstrap says what it did. `IPerspectiveRunner.TryBootstrapSnapshotAsync` ret
 | `Deferred` | The row's collectives moved while it was read (see [a deferred snapshot](#collectives-deferred)). Nothing is written; a later bootstrap takes it. |
 | `SnapshotsOff` | The runner takes no snapshots: snapshots are disabled, there is no snapshot store, or the perspective [keeps no rewind floor](#ephemeral-perspectives). |
 | `NotReported` | A hand-written runner implemented only `BootstrapSnapshotAsync`, which says nothing about what it did. |
+| `Refused` | A bootstrap [through the reap boundary](../events/ephemeral-events#the-reap-boundary-snapshot) could not fold the model as of the boundary from what is stored: the snapshot below the boundary cannot be read, the stream's archived history was deleted, or the boundary event cannot be placed (it is not read with its stream version after the snapshot below it). Nothing is written, the runner logs a warning naming the stream and the reason, and the bodies wait until a later bootstrap covers them. |
 
-{verified: SnapshotBootstrapOutcomeTests.Bootstrap_OfALiveRow_WritesTheSnapshot_AndReportsWrittenAsync, SnapshotBootstrapOutcomeTests.Bootstrap_OfAMissingRow_WritesNothing_ReportsRowMissing_AndLogsItAsync, SnapshotBootstrapOutcomeTests.Bootstrap_WithSnapshotsDisabled_WritesNothing_AndReportsSnapshotsOffAsync, SnapshotBootstrapOutcomeTests.TryBootstrap_OnARunnerThatImplementsOnlyBootstrap_RunsIt_AndReportsNotReportedAsync}
+{verified: SnapshotBootstrapOutcomeTests.Bootstrap_OfALiveRow_WritesTheSnapshot_AndReportsWrittenAsync, SnapshotBootstrapOutcomeTests.Bootstrap_OfAMissingRow_WritesNothing_ReportsRowMissing_AndLogsItAsync, SnapshotBootstrapOutcomeTests.Bootstrap_WithSnapshotsDisabled_WritesNothing_AndReportsSnapshotsOffAsync, SnapshotBootstrapOutcomeTests.TryBootstrap_OnARunnerThatImplementsOnlyBootstrap_RunsIt_AndReportsNotReportedAsync, ReapBoundarySnapshotRunnerTests.ABootstrap_WhoseSnapshotBelowCannotBeRead_IsRefused_AndWritesNothingAsync}
+
+The maintenance cycle calls `TryBootstrapSnapshotThroughAsync`, which takes the snapshot as of the reap boundary rather
+than at the cursor (see [the reap-boundary snapshot](../events/ephemeral-events#the-reap-boundary-snapshot)). It reports
+the same outcomes, and `Refused` only there; a runner that does not implement it bootstraps at the cursor through
+`TryBootstrapSnapshotAsync`.
+{verified: SnapshotBootstrapOutcomeTests.TryBootstrapThrough_OnARunnerThatCannotFoldToABoundary_BootstrapsAtTheCursorAsync}
 
 **Why the outcome exists.** A bootstrap that found no row used to return exactly as one that wrote a snapshot. The maintenance cycle then logged a snapshot for a stream that had none, and selected the same stream again on every cycle, while the ephemeral bodies the snapshot was meant to cover were held indefinitely. The cycle now logs a written snapshot only when one was written, and a missing row as a missing row.
 {verified: MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_ASnapshotWritten_IsLoggedAsWrittenAsync, MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_AStreamWithNoRow_IsNotLoggedAsASnapshot_ButAsAMissingRowAsync, MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_ABootstrapThatWroteNothing_IsNotLoggedAsASnapshotAsync}
 
 ### Where a bootstrap snapshot sits, and which late events it serves {#bootstrap-floor}
 
-A bootstrap snapshots the row as it is now, at the cursor's last event. A rewind restores from the latest snapshot placed *before* its late event in the stream (by stream version), so a snapshot at the cursor's last event is a floor only for a late event placed after it. A late event placed before it finds no floor in it. For an ephemeral perspective, whose earlier bodies are reaped once that snapshot covers them, such a late event is dropped and logged rather than replayed (see [runtime guards](../events/ephemeral-events#runtime-guards)).
+A rewind restores from the latest snapshot placed *before* its late event in the stream (by stream version), so a snapshot is a floor only for a late event placed after it. A bootstrap the `PerspectiveWorker` takes snapshots the row as it is now, at the cursor's last event, and serves only a late event placed after the cursor. For an ephemeral perspective, whose earlier bodies are reaped once a snapshot covers them, a late event placed before every snapshot is dropped and logged rather than replayed (see [runtime guards](../events/ephemeral-events#runtime-guards)).
 {verified: SnapshotSelectionFollowsStreamOrderTests.AReapDrivenSnapshotAtTheTip_IsAFloorOnlyForALateEventAfterItAsync}
 
-**Why it is taken at the tip.** A snapshot is a copy of the row, and the row exists only as it is now. A snapshot at an earlier position (the boundary of the bodies about to be reaped) would give more late events a floor, but the model as of that position exists only by replaying the stream up to it. That is not done today.
+The bootstrap the maintenance cycle takes before a reap sits lower: at the reap boundary, the last body it is about to reap. The model as of that position is folded from the snapshot below it over the bodies still stored, so a late event placed below the cursor but above the boundary still finds a floor. A perspective whose rows have collectives is still snapshotted at the cursor, and a live snapshot at the tip can replace the boundary snapshot in the stream's one slot; both are open limits. See [the reap-boundary snapshot](../events/ephemeral-events#the-reap-boundary-snapshot).
+{verified: ReapBoundarySnapshotRunnerTests.ALateEventBelowTheCursorAndAboveTheBoundary_RewindsFromTheBoundarySnapshot_AfterTheBodiesBelowAreReapedAsync}
 
 ### Ephemeral perspectives {#ephemeral-perspectives}
 

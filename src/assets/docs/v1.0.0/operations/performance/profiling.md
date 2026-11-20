@@ -11,11 +11,16 @@ description: >-
   How to profile a service that runs Whizbang: the triage order from dotnet-counters to dotnet-trace
   to Linux perf, the Whizbang meters and traces to start from for a slow outbox drain, an inbox
   backlog or perspective lag, when to go to the database instead, lock contention and allocation
-  traces, and the runtime settings a host can try and measure.
+  traces, what runtime async on the .NET 11 build changes in stack traces and measured cost, and the
+  runtime settings a host can try and measure.
 tags: >-
   profiling, performance, dotnet-counters, dotnet-trace, perf, contention, allocations, thread pool,
-  server gc, DATAS, sockets, runtime settings
+  server gc, DATAS, sockets, runtime settings, runtime async, net11.0, stack traces
 codeReferences:
+  - Directory.Build.targets
+  - src/Directory.Build.props
+  - src/Whizbang.Core/Observability/MessageHop.cs
+  - src/Whizbang.Core/IDispatcher.cs
   - src/Whizbang.Core/Observability/TransportMetrics.cs
   - src/Whizbang.Core/Observability/PerspectiveMetrics.cs
   - src/Whizbang.Core/Observability/WorkCoordinatorMetrics.cs
@@ -367,6 +372,70 @@ on the receive path often come from message bodies; compare with
 [body offload](../observability/metrics.md#transport) counters. Before changing code to allocate
 less, try the GC settings below and measure; they are cheaper to try and to undo.
 
+## Runtime async on .NET 11 {#runtime-async}
+
+Every Whizbang package carries a `net10.0` and a `net11.0` build. From 0.4521.0 the `net11.0` build is
+compiled with .NET 11's runtime async: the runtime suspends and resumes Whizbang's async methods itself,
+instead of running a state machine the compiler generates for each method. The `net10.0` build is
+unchanged, because .NET 10 has no runtime support for it, and the source generators and analyzers
+(`netstandard2.0`) run inside the compiler and are unaffected. NuGet picks the build that matches the
+application's target framework, so an application on .NET 11 runs the runtime-async build and an
+application on .NET 10 does not.
+
+What a service on .NET 11 sees:
+
+| Where you look | What changes |
+|---|---|
+| A live stack: a profiler's sampled stacks, a debugger's call stack, `new StackTrace()` | It shows Whizbang's real call chain, the awaiting method and the methods that called it, instead of compiler-generated `MoveNext` frames. Group and read sampled stacks by method name as before. |
+| An exception's stack trace (`Exception.StackTrace`, `ToString()`, logs, the `exception` event on a span) | Nothing. It looks the same as before. |
+| Caller information on message hops | Nothing. It is captured at compile time through `[CallerMemberName]`, `[CallerFilePath]` and `[CallerLineNumber]`, not by walking the stack; Whizbang reads no stack trace at run time. |
+| Time and allocations | No measurable difference (below). |
+
+The change was measured before it shipped: BenchmarkDotNet, in process, short job, on the same server
+and commit, with runtime async off and on. The dispatcher, executor, multi-stream executor, batch
+flusher, void receptor and throughput benchmarks showed no measurable difference in time or
+allocations: means moved within their error bars, and allocations on the dispatcher, executor and
+receptor paths were identical. A selection:
+
+| Benchmark | Off | On |
+|---|---:|---:|
+| `Send_Lightweight_NoTracingAsync` | 4.43 μs, 2.82 KB | 4.20 μs, 2.82 KB |
+| `LocalInvoke_Lightweight_NoTracingAsync` | 7.28 μs, 3.93 KB | 7.05 μs, 3.93 KB |
+| `RealisticScenario_EventSourcing_LocalInvokeAsync` | 20.8 μs, 4.97 KB | 19.0 μs, 5.10 KB |
+| `ParallelExecutor_100MessagesAsync` | 13.9 μs, 14,336 B | 15.0 μs, 14,336 B |
+| `Throughput_InProcessTransport_100K_SmallMessagesAsync` | 339 ms | 334 ms |
+| `BatchedPublish_100K_FireAndForgetAsync` | 204 ms | 177 ms |
+
+A short job on a shared machine cannot resolve small differences, so no gain is claimed. Measure your
+own service with the tools above if it matters to you.
+
+### Your own code {#runtime-async-your-code}
+
+Whizbang's choice covers only the Whizbang assemblies, which are compiled before you receive them.
+Your projects are compiled with your own settings, and runtime-async methods and state-machine methods
+await each other freely, so a .NET 11 application calls Whizbang without changing anything. There is
+no switch that changes how the Whizbang `net11.0` assemblies were compiled; an application that must
+run Whizbang on state machines targets `net10.0`.
+
+On .NET 11 runtime async is opt-in for your code (it is planned to be on by default in .NET 12), and
+it needs no `EnablePreviewFeatures` on `net11.0`. Whizbang turns it on in its own build the way below,
+for `net11.0` and later only, with `UseRuntimeAsync=false` as the per-project way out. A solution can
+do the same in its `Directory.Build.targets`:
+
+```xml{title="Runtime async for net11.0 projects, with a per-project opt-out" description="Turns runtime async on for every project that targets net11.0 or later, unless the project sets UseRuntimeAsync to false. A net10.0 or netstandard2.0 build is left alone." category="Performance" difficulty="INTERMEDIATE" tags=["runtime async", "net11.0", "msbuild", "Directory.Build.targets"] unverified="build configuration; mirrors the library's own Directory.Build.targets"}
+<Project>
+  <PropertyGroup Condition="'$(TargetFramework)' != '' and '$(UseRuntimeAsync)' != 'false' and $([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net11.0'))">
+    <Features>$(Features);runtime-async=on</Features>
+  </PropertyGroup>
+</Project>
+```
+
+Set `<UseRuntimeAsync>false</UseRuntimeAsync>` in a project file to keep that project's own code on
+state machines. It changes nothing in the Whizbang packages.
+
+The [.NET 10 to .NET 11 move](../../upgrading/dotnet-10-to-11.md) lists what else changes, and what
+does not, when an application changes its target framework.
+
 ## Runtime settings to measure {#runtime-settings}
 
 These are settings of the .NET runtime, not of Whizbang. Whizbang sets none of them and does not
@@ -443,3 +512,4 @@ deployment.
 - [Troubleshooting guide](../deployment/troubleshooting.md)
 - [Work coordinator performance tuning](../../fundamentals/work-coordinator/performance-tuning.md)
 - [Build cost](build-cost.md), for what the analyzers and generators add to a build
+- [Moving from .NET 10 to .NET 11](../../upgrading/dotnet-10-to-11.md)

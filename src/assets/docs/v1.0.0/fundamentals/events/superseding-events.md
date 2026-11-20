@@ -40,6 +40,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/PerspectiveRowStart.cs
   - src/Whizbang.Data.Postgres/StreamStartSql.cs
   - src/Whizbang.Data.Postgres/Migrations/455_StaleCopiesAboveTheNewestAreRewalked.sql
+  - src/Whizbang.Data.Postgres/Migrations/532_ACursorOnASupersededCopyIsHandedOn.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SupersedingCountsTheKeySqlTests.cs
   - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/RedeliveredSupersedingChildTests.cs
@@ -232,7 +233,7 @@ sequenceDiagram
 |---|---|---|
 | A newer event of the same stream, type and key is stored, checked again under the stream's lock. | The newest event of each key is never deleted, whatever the queue says. | {verified: SupersedingEventReaperSqlTests.Reap_TheNewestOfItsKey_IsKept_EvenWhenQueuedAsync, SupersedingEventReaperSqlTests.Reap_ADifferentTypeOrKeyInTheSameStream_IsUntouchedAsync} |
 | No perspective work for the event is unprocessed. | Every perspective that consumes it has applied it. | {verified: SupersedingEventReaperSqlTests.Reap_UnprocessedPerspectiveWork_KeepsIt_UntilItIsProcessedAsync} |
-| No perspective cursor rests on the event. | A cursor reads from its event onward, and the EF Core schema's foreign key from the cursor to the event is `RESTRICT`. | {verified: SupersedingEventReaperSqlTests.Reap_ACursorOnIt_KeepsIt_UntilTheCursorMovesOnAsync} |
+| No perspective cursor rests on the event, after the reaper has [handed on](#cursor-hand-on) any cursor whose perspective already applied the newer copy. | A cursor reads from its event onward, and the EF Core schema's foreign key from the cursor to the event is `RESTRICT`. | {verified: SupersedingEventReaperSqlTests.Reap_ACursorOnIt_KeepsIt_UntilTheCursorMovesOnAsync, SupersedingEventReaperSqlTests.Reap_ACursorOnTheOlderCopy_WhoseNewerCopyItsPerspectiveApplied_MovesOnToIt_AndTheOlderIsReapedAsync} |
 | No perspective snapshot rests on the event. | A rewind restores a snapshot and moves the cursor onto its event, which must still exist. The event goes once snapshot retention replaces that snapshot. | {verified: SupersedingEventReaperSqlTests.Reap_ASnapshotOnIt_KeepsIt_UntilTheSnapshotIsGoneAsync} |
 | No destruction hold on the event is active; a lapsed one is removed with it. | A PreDestruction hook's Cancel or Defer is honored here as by every other path that removes an event. | {verified: SupersedingEventReaperSqlTests.Reap_AnActiveDestructionHold_KeepsIt_ALapsedOneDoesNotAsync} |
 | The commit-sequence stamper has reached the event. | The stamped order is what epoch digests and ordered reads walk; an event leaves only after it has its place in it. | {verified: SupersedingEventReaperSqlTests.Reap_AnEventTheStamperHasNotReached_IsKeptAsync} |
@@ -247,6 +248,31 @@ sequenceDiagram
 | A queued event that something else already removed (a prefix truncate, an archive, a purge) is dropped from the queue. | The queue stays bounded by the events actually waiting. | {verified: SupersedingEventReaperSqlTests.Reap_AQueuedEventAlreadyGone_IsForgottenAsync} |
 | The reaper takes the event store's per-stream locks for the streams it judges, in stream id order. | Nothing is appended to, truncated from or archived out of those streams while their events are judged and removed. | {verified: SupersedingEventReaperSqlTests.Reap_SupersededAndConsumed_IsDeletedWithItsBodyAndItsDigestContribution_TheNewestIsKeptAsync} |
 | The task runs last in the maintenance pass and leaves the processed perspective work rows of what it deletes to the next pass's purge. | The maintenance pass visits the work tables once each in one canonical order; touching one again at the end would break that order. | {verified: SupersedingEventReaperSqlTests.Reap_SupersededAndConsumed_IsDeletedWithItsBodyAndItsDigestContribution_TheNewestIsKeptAsync} |
+
+### A cursor on an older copy is handed on {#cursor-hand-on}
+{verified: SupersedingEventReaperSqlTests.Reap_ACursorOnTheOlderCopy_WhoseNewerCopyItsPerspectiveApplied_MovesOnToIt_AndTheOlderIsReapedAsync, SupersedingEventReaperSqlTests.Reap_ACursorOnTheOlderCopy_WhoseNewerCopyIsStillPending_StaysAndKeepsItAsync, SupersedingEventReaperSqlTests.Reap_ACursorFlaggedForARewind_IsLeftToTheRewindAsync, SupersedingEventReaperSqlTests.Reap_ACursorOnAnOlderCopyStoredAboveTheNewest_MovesBackToTheNewest_AndTheOlderIsReapedAsync}
+
+A cursor that lags behind its perspective can still name a queued older copy after the perspective has applied the
+newer one (for example a cursor flushed before its own run's work, see
+[perspective cursors](../work-coordinator/batched-flushers#cursor-before-its-own-rows)). The cursor gate would then keep
+that older copy for good. So, just as the key's [digest slot](#the-digest-counts-the-key) is handed on to the copy left
+behind, the reaper hands such a cursor on before it judges the gates. It moves the cursor to the stream's last event at
+or before the later of the two copies, never to another copy being reaped:
+
+- **The newest copy**, when it is stored after the older one (the usual case).
+- **The event before the older copy**, when a [restored older copy is stored above the newest](#stale-copies-already-stored).
+
+The cursor moves only when all of these hold:
+
+| Condition | Reason |
+|---|---|
+| The cursor's perspective consumes the newest copy's type. | Only then has applying the newer copy replaced what the older one gave that perspective. |
+| The perspective has no work pending for the stream at or before the position the cursor moves to. | Pending work there means the newer copy (or an event before it) is not applied yet; the cursor stays, and so does the older copy. |
+| The cursor is not flagged for a rewind (`RewindRequired`). | A rewind places the cursor itself; the reaper leaves it to the rewind. |
+
+A cursor that fails a condition keeps the older copy queued, and the pass judges it again next time. Cursors already
+parked this way on a database that ran an earlier release are released by the next maintenance pass after
+migration 532; nothing needs to be run by hand.
 
 ## Integrity digests {#integrity-digests}
 
