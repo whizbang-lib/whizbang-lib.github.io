@@ -1,8 +1,8 @@
 ---
 title: GenerateStreamId Attribute
 pageType: reference
-verifiedAgainstCommit: '0a29f1a5'
-verifiedDate: 2026-11-20
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Attributes
 order: 3

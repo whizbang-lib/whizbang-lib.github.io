@@ -54,6 +54,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/OptionalExtensionBlocks.cs
     src/Whizbang.Data.EFCore.Postgres/QueryTranslation/WhizbangDbContextOptionsBuilderExtensions.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/StreamIdPrimaryKeySqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamIdPrimaryKeyIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PhysicalJsonbContainmentSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PhysicalJsonbContainmentRewriterTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PhysicalJsonbColumnBindingTests.cs
@@ -101,7 +103,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/InitOnlyPhysicalFieldHydrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/SplitHydratorHookedWriteTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/SplitClassSnapshotRewindTests.cs
-lastMaintainedCommit: '01f07906'
+lastMaintainedCommit: '0a29f1a5'
 ---
 
 # Physical Fields
@@ -532,6 +534,45 @@ The document test is kept, so a filter never finds a row by its id that it would
 {verified: StreamIdPrimaryKeySqlTests.ProjectedForm_StreamIdEquality_KeepsTheDocumentPredicateAsync}. A comparison
 with null, a stream-id test under `OR`, and an inequality are left to the document
 {verified: StreamIdPrimaryKeySqlTests.NullableStreamId_EqualsNull_IsLeftAloneAsync, StreamIdPrimaryKeySqlTests.StreamIdUnderOr_IsLeftAloneAsync, StreamIdPrimaryKeySqlTests.StreamIdInequality_IsLeftAloneAsync}.
+
+### Reads of the stream id {#stream-id-reads}
+
+Where the stream id is read rather than tested, the query reads the row's `id` column instead of the document. That
+covers a `Select`, a sort (`OrderBy`, `ThenBy` and their descending forms), a `GroupBy` key or element selector, and a
+`Min` or `Max`, in the row form (`r.Data.OrderId`) and after `Select(r => r.Data)`
+{verified: StreamIdPrimaryKeySqlTests.RowFormSelect_StreamId_ReadsTheRowIdAsync, StreamIdPrimaryKeySqlTests.ProjectedSelect_StreamId_ReadsTheRowIdAsync, StreamIdPrimaryKeySqlTests.ProjectedSelect_AnonymousTypeWithStreamId_ReadsTheRowIdAsync, StreamIdPrimaryKeySqlTests.ProjectedOrderBy_StreamId_OrdersByTheRowIdAsync, StreamIdPrimaryKeySqlTests.ProjectedGroupBy_StreamId_GroupsByTheRowIdAsync, StreamIdPrimaryKeySqlTests.ProjectedMax_StreamId_ReadsTheRowIdAsync, StreamIdPrimaryKeySqlTests.NullableStreamId_Select_ReadsTheRowIdAsync}.
+A query whose other columns are `[PhysicalField]` columns then reads no document at all, so a wide or TOASTed document
+is never fetched just for its id, and a sort on the stream id is served by the primary key
+{verified: StreamIdPrimaryKeyIntegrationTests.ProjectedStreamIdOnly_PlanReadsNoDocumentAsync}.
+
+```csharp{title="Reading the stream id from the row" description="The stream id is selected, sorted and grouped by the row's id column; the other columns come from promoted physical fields." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "stream-id", "primary-key", "linq"] tests=["StreamIdPrimaryKeySqlTests.RowFormSelect_StreamId_ReadsTheRowIdAsync", "StreamIdPrimaryKeySqlTests.ProjectedOrderBy_StreamId_OrdersByTheRowIdAsync", "StreamIdPrimaryKeySqlTests.ProjectedGroupBy_StreamId_GroupsByTheRowIdAsync"]}
+rows.Where(r => r.Data.Title == "a").Select(r => new { r.Data.OrderId, r.Data.Price });
+// SELECT w.id AS "OrderId", w.price AS "Price" ...
+
+rows.Select(r => r.Data).OrderBy(x => x.Title).ThenByDescending(x => x.OrderId);
+// ... ORDER BY ..., w.id DESC
+
+rows.Select(r => r.Data).GroupBy(x => x.OrderId).Select(g => new { g.Key, Count = g.Count() });
+// ... GROUP BY w.id
+```
+
+Filters are unchanged: a `Where` keeps its document test beside the primary key, as described above, also when it
+sits inside a read, such as a `Count(x => ...)` or a subquery over a group's members
+{verified: StreamIdPrimaryKeySqlTests.FilterOnStreamId_StillKeepsTheDocumentTestAsync, StreamIdPrimaryKeySqlTests.GroupedMembers_CountWhereStreamId_KeepsTheDocumentTestAsync, StreamIdPrimaryKeySqlTests.SubqueryInsideAProjection_KeepsItsFilterAndReadsItsIdAsync}.
+A model with no registered `Guid` stream id, and any other `Guid` property, are still read from the document
+{verified: StreamIdPrimaryKeySqlTests.UnregisteredModel_Select_KeepsTheDocumentAsync, StreamIdPrimaryKeySqlTests.ProjectedSelect_AnotherGuidMember_KeepsTheDocumentAsync}.
+
+The perspective runner writes a row at its stream id and seeds the model's `[StreamId]` from it, so for a model that
+keeps that contract the value read is the same. A second physical column that duplicates the primary key, added only
+so the id could be read without the document, is no longer needed.
+
+:::updated
+**Upgrade note.** A row whose document was written with a stream id other than its row id now reads back its **row id**
+from a query that selects, sorts, groups or aggregates the stream id
+{verified: StreamIdPrimaryKeyIntegrationTests.ProjectedStreamIdRead_ReadsTheRowIdAsync}. A filter on the stream id
+still requires both to match. Nothing changes for a model that keeps the contract; a model that sets its `[StreamId]`
+to something else should stop, since the row id is the value the runner keys it by.
+:::
 
 ## UseWhizbangPhysicalFields {#UseWhizbangPhysicalFields}
 
