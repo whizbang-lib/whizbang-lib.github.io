@@ -8,6 +8,8 @@ category: Perspectives
 codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/169_Fold.sql
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/SearchContainsRewriter.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/StreamIdPrimaryKeyRewriter.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/StreamIdRegistry.cs
   - src/Whizbang.Data.EFCore.Postgres/Functions/FoldedContainsTranslator.cs
   - src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangSearchDbFunctions.cs
   - src/Whizbang.Generators.Shared/Models/PhysicalColumnSql.cs
@@ -518,6 +520,18 @@ public class PhysicalFieldQueryInterceptor : IQueryExpressionInterceptor {
 ```csharp{title="PhysicalFieldExpressionVisitor (2)" description="After transformation:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "PhysicalFieldExpressionVisitor"] unverified="illustrative post-rewrite LINQ fragment, not an isolated API call; the visitor is covered only by PhysicalFieldIntegrationTests, which is map-absent"}
 .Where(r => EF.Property<decimal>(r, "price") >= 50.00m)
 ```
+
+## Filters on the stream id {#stream-id-filters}
+
+A row's `id` column is its stream id, and the model's `[StreamId]` property starts out as the same value. A filter on a
+`Guid` `[StreamId]` property is answered by the primary key as well as the document: for each top-level `AND` part
+that compares the stream id with a value, or tests it against a set, the same test on the row's `id` is added beside
+the document test, in the row form and after `Select(r => r.Data)`
+{verified: StreamIdPrimaryKeySqlTests.RowForm_StreamIdEquality_AddsPrimaryKeyAsync, StreamIdPrimaryKeySqlTests.ProjectedForm_AfterOrderBy_AddsPrimaryKeyAsync, StreamIdPrimaryKeySqlTests.ProjectedForm_StreamIdContains_AddsPrimaryKeyAsync}.
+The document test is kept, so a filter never finds a row by its id that it would not find by its document
+{verified: StreamIdPrimaryKeySqlTests.ProjectedForm_StreamIdEquality_KeepsTheDocumentPredicateAsync}. A comparison
+with null, a stream-id test under `OR`, and an inequality are left to the document
+{verified: StreamIdPrimaryKeySqlTests.NullableStreamId_EqualsNull_IsLeftAloneAsync, StreamIdPrimaryKeySqlTests.StreamIdUnderOr_IsLeftAloneAsync, StreamIdPrimaryKeySqlTests.StreamIdInequality_IsLeftAloneAsync}.
 
 ## UseWhizbangPhysicalFields {#UseWhizbangPhysicalFields}
 
