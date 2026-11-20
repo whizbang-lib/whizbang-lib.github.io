@@ -29,17 +29,21 @@ Before installing Whizbang, ensure you have:
 
 ### Required
 
-- **.NET 10.0 SDK** (10.0.100 or later — the repository pins `10.0.100` in `global.json`)
-  ```bash
-  dotnet --version
-  # Should show 10.0.100 or later
-  ```
+- **An application on a supported .NET version**: .NET 10 (`net10.0`) or .NET 11 (`net11.0`).
+  Every Whizbang package carries a build for each, and NuGet picks the one that matches your
+  application's target framework. [Supported Frameworks](supported-frameworks.md) lists the current
+  targets and the support policy.
 
-- **Latest C# language version** (the repository builds with `<LangVersion>latest</LangVersion>`, included with the .NET 10 SDK)
+- **The SDK for your application's target framework**: the .NET 10 SDK or later for `net10.0`, the
+  .NET 11 SDK for `net11.0`.
+  ```bash{title="Check the installed .NET SDKs" description="Lists the installed SDKs; one must match the application's target framework (10.0 or 11.0)." category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "SDK", "Target", "Framework"]}
+  dotnet --list-sdks
+  # Should list a 10.0.x SDK or later for net10.0, or an 11.0.x SDK for net11.0
+  ```
 
 ### Recommended
 
-- **Visual Studio** (with .NET 10 SDK support) or **Visual Studio Code** with C# Dev Kit
+- **Visual Studio** (with support for your .NET SDK) or **Visual Studio Code** with C# Dev Kit
 - **Docker Desktop** (for PostgreSQL and Azure Service Bus Emulator)
 - **.NET Aspire Workload** (for orchestration):
   ```bash
@@ -194,7 +198,7 @@ dotnet add package SoftwareExtravaganza.Whizbang.Data.Dapper.Postgres
 
 ### 2. Configure Target Framework
 
-Ensure your project targets .NET 10:
+Target a [supported framework](supported-frameworks.md), `net10.0` or `net11.0`. The example uses `net10.0`:
 
 ```xml{title="Configure Target Framework" description="Ensure your project targets ." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "Xml", "Configure", "Target", "Framework"]}
 <!-- MyWhizbangApp.API.csproj -->
@@ -312,7 +316,7 @@ builder.Build().Run();
 
 ### Visual Studio
 
-1. **Install .NET 10 SDK** (bundled with recent Visual Studio releases)
+1. **Install the .NET SDK for your target framework** (.NET 10 or .NET 11, bundled with recent Visual Studio releases)
 2. **Enable Source Generators**:
    - Tools → Options → Text Editor → C# → Advanced
    - Check "Enable source generators"
@@ -420,7 +424,7 @@ dotnet test
    dotnet restore
    dotnet list package
    ```
-2. Check target framework is net10.0
+2. Check the target framework is a [supported one](supported-frameworks.md) (`net10.0` or `net11.0`); NuGet cannot add the packages to an older framework
 3. Add using directive:
    ```csharp
    using Whizbang.Core;
@@ -462,7 +466,8 @@ dotnet test
 
 1. **[Quick Start Tutorial](quick-start.md)** - Build your first Whizbang app
 2. **[Project Structure Guide](project-structure.md)** - Organize your application
-3. **[Core Concepts: Receptors](../fundamentals/receptors/receptors.md)** - Understand message handling
+3. **[Supported Frameworks](supported-frameworks.md)** - The .NET versions Whizbang supports, and for how long
+4. **[Core Concepts: Receptors](../fundamentals/receptors/receptors.md)** - Understand message handling
 
 ## Additional Resources
 

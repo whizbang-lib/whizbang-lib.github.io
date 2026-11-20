@@ -5,7 +5,7 @@ verifiedAgainstCommit: 1b31f58d
 verifiedDate: 2026-07-16
 version: 1.0.0
 category: Getting Started
-order: 4
+order: 5
 description: >-
   Organize your Whizbang application with recommended project structures,
   separation of concerns, and multi-service architectures
