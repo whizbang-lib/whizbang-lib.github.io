@@ -5,7 +5,7 @@ verifiedAgainstCommit: 1b31f58d
 verifiedDate: 2026-07-16
 version: 1.0.0
 category: Getting Started
-order: 3
+order: 4
 description: >-
   Build your first Whizbang application in 10 minutes - create messages,
   receptors, and dispatch commands with complete working examples

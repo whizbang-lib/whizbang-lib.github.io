@@ -110,4 +110,5 @@ schema it left.
 - [Runtime async on .NET 11](../operations/performance/profiling.md#runtime-async)
 - [Upgrade guide](upgrade-guide.md): behavior changes between Whizbang releases
 - [Installation](../getting-started/installation.md)
+- [Supported frameworks](../getting-started/supported-frameworks.md): the support policy and how a target framework is added or dropped
 - [Rolling upgrades](../operations/startup/rolling-upgrades.md)
