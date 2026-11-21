@@ -5,7 +5,7 @@ verifiedAgainstCommit: 0bc6065b
 verifiedDate: 2026-08-05
 version: 1.0.0
 category: Getting Started
-order: 5
+order: 6
 description: >-
   Definitions of key terms and concepts used throughout Whizbang documentation -
   CQRS, event sourcing, perspectives, receptors, and framework-specific terminology
