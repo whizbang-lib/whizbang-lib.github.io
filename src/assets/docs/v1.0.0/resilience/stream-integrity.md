@@ -1479,8 +1479,11 @@ a lost or surplus event. Every integrity message therefore carries its sender's 
 
 A type's rules are the fields that decide whether an event of it should exist: its ephemeral mode (destruction and
 storage), whether it is superseding, with its group and key property, whether it is terminal, the end-of-life action of
-the streams it opens, and whether it is exempt from digests. They come from the generated message-type catalog and the
-stream lifecycle settings, never from reflection.
+the streams it opens, whether it is exempt from digests, and whether it is
+[retired](../fundamentals/events/retired-event-types) (#2329). They come from the generated message-type catalog, the
+stream lifecycle settings and the retired types setting, never from reflection. A retired type's class is deleted, so
+its rule comes from `Whizbang:EventStore:RetiredTypes` alone, and a service that has retired it and one that has not
+hold different hashes for it.
 
 | Carrier | Covers the types |
 | --- | --- |
@@ -1524,6 +1527,7 @@ The rule-semantics versions so far:
 | --- | --- | --- |
 | 1 | 1.0.0 | A cut subtracted what it removed, and every copy of a superseding type counted |
 | 2 | 2.0.0 | A cut [carries the digest](#cuts-carry-their-digest) of what it removes, and a superseding type counts its key once |
+| 3 | 3.0.0 | A [retired type](#retired-event-types) is counted by no digest, on either side of a pair; `retired` joins every type's rule hash |
 
 Version 2 ships with the cuts that carry their digest and the superseding key slot, in the same release as the pair
 guard, so a service on version 1 and a service on version 2 halt their pair instead of reading a cut as a loss
@@ -1869,6 +1873,7 @@ eligible to count, plus what cuts carried.
 |---|---|
 | Ephemeral body reap, pointer prune, at-most-once occurrences, audit records | never counted, so never seen |
 | Superseded reap | the key is counted once, whichever copies each side still holds |
+| Retired type | a rule change, like a reclassification: one side alone halts the pair; once both retire it the type is compared by neither, so a stream one side's purge must wait for (a destruction hold) is never reported or sent back, in either direction |
 | Reclassify to ephemeral, rewind bookkeeping | a rule change: while only one side has made it, the [pair guard](#the-pair-guard) halts the pair and nothing is compared, not even the control loss; once both sides run the same rule the pair resumes on its own and the case converges like a both-sides cleanup |
 | Prefix truncate, close the books, prefix archive, whole archive, purge | carried: every answer and seal is what it was before the cut |
 | Archive then restore | nothing changes |
@@ -1876,6 +1881,23 @@ eligible to count, plus what cuts carried.
 The pairs that cannot meet are left out, with the reason: a never-counted kind has no sealed epoch to check, and the
 rewind bookkeeping records live on the local lane and never travel, so only the origin's own heal and epoch re-check
 apply to them.
+
+### Retired event types {#retired-event-types}
+
+{verified: CleanupIntegrityMatrixTests.CleanupAndIntegrity_Converge_AndAGenuineLossBesideTheCleanupIsStillRepairedAsync, ReceiveConsumerGateTests.ARetiredType_IsUnconsumed_EvenWhenARegistryStillNamesAConsumerAsync, CatalogRuleFingerprintSourceTests.For_CoversEachRetiredName_AsRetired_ThoughTheCatalogNoLongerDeclaresItAsync}
+
+A [retired event type](../fundamentals/events/retired-event-types) is neither rule-shaped cleanup in the usual sense nor a
+cut: it is a **rule change**. Retiring a type changes what should be counted, so the purge unfolds the type from the
+digests, refolds the sealed epochs it sat in and bumps the origin generation once, as a reclassification does; a cut,
+which is timing, carries instead.
+
+Integrity never reports as missing, or restores, history that was retired on purpose:
+
+| How | Reason | Verified |
+|---|---|---|
+| `retired` is part of the type's rule hash. | Until both sides of a pair have retired the type, the pair guard halts the pair for it, so a rollout in progress compares nothing instead of repairing a deliberate difference. | {verified: TypeRulesTests.Hash_ChangesWithEveryRuleFieldAsync, CatalogRuleFingerprintSourceTests.For_CoversEachRetiredName_AsRetired_ThoughTheCatalogNoLongerDeclaresItAsync} |
+| The receive boundary turns a retired type away, ahead of every registry. | Integrity compares only what the boundary keeps, and a redelivery bundle's children pass the same decision, so the type is never compared, asked for or stored again. | {verified: ReceiveConsumerGateTests.ARetiredType_IsUnconsumed_EvenWhenARegistryStillNamesAConsumerAsync, MessageDiscardPolicyTests.EvaluateReceive_ARetiredType_IsDiscardedAsRetired_EvenWhenConsumedOrAbsorbedAsync} |
+| Each side purges on its own timing. | A held stream waits on one side while the other has purged it; since neither compares the type, the difference is invisible, as the matrix's held row proves in both directions. | {verified: CleanupIntegrityMatrixTests.CleanupAndIntegrity_Converge_AndAGenuineLossBesideTheCleanupIsStillRepairedAsync} |
 
 ## Scheduling, startup, and the repair policy ladder
 

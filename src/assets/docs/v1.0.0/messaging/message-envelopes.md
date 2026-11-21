@@ -26,6 +26,7 @@ testReferences:
   - tests/Whizbang.Observability.Tests/MessageTracingTests.cs
   - tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportPublishPathTests.cs
   - tests/Whizbang.Core.Tests/Observability/EnvelopeMetadataSlimFormTests.cs
+  - tests/Whizbang.Core.Tests/Observability/EnvelopeMetadataRowValuesTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -424,8 +425,12 @@ delivery either way.
 Everything else is dropped: the dispatch context, receptor invocations, causation hops, and each hop's service
 instance, topic, partition, sequence, execution strategy, duration, trail, caller information and metadata
 dictionary. The single hop's service instance is `ServiceInstanceInfo.Unknown`, which the hop writer
-leaves out; a hop read without `si` comes back as `Unknown`. A document without a message id still fails to
-read.
+leaves out; a hop read without `si` comes back as `Unknown`.
+
+A stored row then leaves out what its own columns already hold: the message id when it is the row's event id, and the
+hop's scope when it is the row's scope column alone. So a stored document reads without a message id, and a reader
+takes the message id from the row (`EnvelopeMetadata.MessageIdOf(metadata, eventId)`) and the scope from the scope
+column. The [event store page](../data/event-store#row-values) has the rule and what it saves.
 
 ```csharp{title="The slim stored form reads back the same scope and correlation" description="Slim a stored event's metadata and read scope, correlation and causation from it." framework="NET10" category="Messaging" difficulty="ADVANCED" tags=["envelopes", "metadata", "storage"] tests=["EnvelopeMetadataSlimFormTests.ToSlim_KeepsWhatReadersTakeFromAStoredEventAsync", "EnvelopeMetadataSlimFormTests.SlimDocument_RoundTripsThroughTheGeneratedContextAsync"]}
 var slim = metadata.ToSlim();
@@ -439,7 +444,7 @@ in SQL (`_wh_slim_event_metadata`), add the event's route id (`rid`), and stage 
 A shared corpus pins the SQL form to `ToSlim()`. The write forms, the types kept full, and what the slim row keeps for
 each store are on the [event store page](../data/event-store#stored-metadata).
 
-{verified: StoredMetadataRouteCorpusTests.SlimForm_InSql_ReadsLikeToSlim_ForEveryCorpusEntryAsync, EnvelopeMetadataSlimFormTests.ToSlim_KeepsWhatReadersTakeFromAStoredEventAsync, EnvelopeMetadataSlimFormTests.ToSlim_DropsEverythingElseAsync, EnvelopeMetadataSlimFormTests.SlimDocument_RoundTripsThroughTheGeneratedContextAsync, EnvelopeMetadataSlimFormTests.ADocumentWithoutAMessageId_StillFailsAsync, MessageHopCoverageTests.Read_MissingServiceInstance_ReadsAsUnknownAsync}
+{verified: StoredMetadataRouteCorpusTests.SlimForm_InSql_ReadsLikeToSlim_ForEveryCorpusEntryAsync, EnvelopeMetadataSlimFormTests.ToSlim_KeepsWhatReadersTakeFromAStoredEventAsync, EnvelopeMetadataSlimFormTests.ToSlim_DropsEverythingElseAsync, EnvelopeMetadataSlimFormTests.SlimDocument_RoundTripsThroughTheGeneratedContextAsync, EnvelopeMetadataRowValuesTests.Read_MetadataWithoutAMessageId_ReadsTheRest_AndTheMessageIdIsTheRowsEventIdAsync, MessageHopCoverageTests.Read_MissingServiceInstance_ReadsAsUnknownAsync}
 
 ---
 

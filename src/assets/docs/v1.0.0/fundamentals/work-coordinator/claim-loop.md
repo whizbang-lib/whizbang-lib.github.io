@@ -62,6 +62,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkPlanShapeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HeldBackEventsDoNotCrowdTheReOfferTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimReofferPlanShapeTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimReofferWalkCostSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimFixedCostSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveWorkQueueBacklogCostSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkStaleStatisticsTests.cs
@@ -386,6 +387,18 @@ a poll examines no longer depend on the holdings at all. The test asserts both c
 once at a full budget of holdings and again at double it: blocks catch the heap fetches, and tuples
 catch an index-only pass over the whole holdings, which is cheap in blocks and still grows with the
 backlog.
+
+**Both walks test the lease as a filter, never as an index condition.**
+{verified: ClaimReofferWalkCostSqlTests.PerspectiveReOffer_OnStatisticsThatSayEveryLeaseLapsed_ReadsWhatItHolds_OncePerStreamAsync, ClaimReofferWalkCostSqlTests.InboxReOffer_OnStatisticsThatSayEveryLeaseLapsed_ReadsWhatItHolds_OncePerStreamAsync}
+
+Each step of the inbox and perspective walks checks that the held lease is still live. Written as a
+plain `lease_expiry > now`, the planner was free to use that check as an index condition, and with
+statistics taken while every lease had lapsed it did: each step read the lease-expiry index from the
+start, so every step read every live lease. At 1,000 held streams one perspective re-offer read
+1,001,001 index entries (273 ms) instead of about 2,000 (7.5 ms). Since migration 545 the check is
+written `(lease_expiry > now) IS TRUE`, which no index can serve, so it stays a filter on the
+held-lanes entry the walk already reads, and that entry carries the lease. Results, order and lock
+order are unchanged.
 
 ### The re-offer hands on only what the drain can fetch {#the-re-offer-hands-on-only-what-the-drain-can-fetch}
 {verified: HeldBackEventsDoNotCrowdTheReOfferTests.OneStreamReOffer_PassesOverAHeldBackEvent_ToAFetchableCheckpointAsync, HeldBackEventsDoNotCrowdTheReOfferTests.HeldBackStream_OnceItsPredecessorIsHeldToo_IsStoredAndReOfferedAsync}
