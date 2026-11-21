@@ -69,7 +69,7 @@ The **RabbitMQ transport** provides reliable, distributed messaging using Rabbit
 
 ### Topic Exchange Pattern
 
-```mermaid{caption="Topic-exchange routing — a topic exchange fans messages out to service queues by wildcard binding (product.*, product.created, #), with a dead-letter exchange draining failures to a DLQ."}
+```mermaid{caption="Topic-exchange routing: a topic exchange fans messages out to service queues by wildcard binding (product.*, product.created, #), and each queue dead-letters through one direct dead-letter exchange into its own DLQ only."}
 flowchart TD
     subgraph Broker["RabbitMQ Broker"]
         subgraph Exchange["Exchange: #quot;products#quot; (topic)"]
@@ -78,8 +78,8 @@ flowchart TD
             Q3["Queue: #quot;notifications-queue#quot;<br/>Binding: #quot;#35;#quot; (all messages)"]
         end
 
-        subgraph DLX["Dead Letter Exchange: #quot;products.dlx#quot; (fanout)"]
-            DLQ["Dead Letter Queue: #quot;inventory-queue.dlq#quot;"]
+        subgraph DLX["Dead Letter Exchange: #quot;products.dlx.direct#quot; (direct)"]
+            DLQ["Dead Letter Queue: #quot;inventory-products-queue.dlq#quot;<br/>Binding: #quot;inventory-products-queue.dlq#quot;"]
         end
     end
 
@@ -90,6 +90,7 @@ flowchart TD
     Q1 --> Svc1
     Q2 --> Svc2
     Q3 --> Svc3
+    Q1 -.->|"dead-letter, key #quot;inventory-products-queue.dlq#quot;"| DLQ
 
     class Q1,Q2,Q3,DLQ layer-command
     class Svc1,Svc2,Svc3 layer-core
@@ -891,30 +892,94 @@ is no longer consulted on receive.
 
 ---
 
-## Dead Letter Queues
+## Dead Letter Queues {#dead-lettering}
 
 ### Automatic DLX/DLQ Setup
 
+{verified: RabbitMQDeadLetterIsolationIntegrationTests.PoisonFromOneSubscriber_LandsOnlyInItsOwnDeadLetterQueueAndStoreAsync, RabbitMQTransportFailurePathTests.SubscribeAsync_DeadLetterEnabled_DeclaresDlxDlqAndBindingAsync, RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_QueueArguments_MatchTransportConventionAsync}
+
 When `AutoDeclareDeadLetterExchange = true` (default), the transport automatically creates:
 
-1. **Dead Letter Exchange** (`{exchange}.dlx`): Fanout exchange for failed messages
-2. **Dead Letter Queue** (`{queue}.dlq`): Queue storing permanently failed messages
-3. **DLX Binding**: Main queue declares `x-dead-letter-exchange` argument
+1. **Dead Letter Exchange** (`{exchange}.dlx.direct`): one direct exchange per exchange, shared by every
+   subscriber's queue on it
+2. **Dead Letter Queue** (`{queue}.dlq`): the queue's own store for permanently failed messages
+3. **Queue arguments**: the main queue sets `x-dead-letter-exchange` to `{exchange}.dlx.direct` and
+   `x-dead-letter-routing-key` to its own DLQ name, `{queue}.dlq`
+4. **DLQ binding**: each DLQ is bound to the dead-letter exchange only on its own name
+
+So a message dead-lettered from one service's queue reaches that service's DLQ and no other, and only that
+service's [transport dead-letter drain](../../operations/dead-letter-queue/transport-recovery) takes custody
+of it.
+
+:::updated
+Before this release the dead-letter exchange was a fanout, `{exchange}.dlx`, that every subscriber's DLQ on
+the exchange was bound to. A poison message from one service's queue was copied into every other service's
+DLQ and recorded in every other service's dead-letter store. Queues and exchanges an earlier version declared
+are upgraded at startup; see [Upgrading from the fanout dead-letter exchange](#upgrading-dead-letter-exchange).
+:::
 
 ### Message Retry Flow
 
-```mermaid{caption="Dead-letter flow — a message nacked up to MaxDeliveryAttempts is routed through the queue's x-dead-letter-exchange to the fanout DLX and parked in the DLQ for later inspection."}
+```mermaid{caption="Dead-letter flow: a message nacked up to MaxDeliveryAttempts is published to the direct dead-letter exchange with the queue's own DLQ name as its routing key, so it is parked only in that queue's DLQ."}
 flowchart TD
-    Main["Main Queue #quot;orders-queue#quot;<br/><br/>Delivery attempt 1 → Nack<br/>Delivery attempt 2 → Nack<br/>...<br/>Attempt 10 (max) → Nack<br/><br/>x-dead-letter-exchange set"]
-    DLX["Dead Letter Exchange<br/>#quot;orders.dlx#quot;"]
+    Main["Main Queue #quot;orders-queue#quot;<br/><br/>Delivery attempt 1 → Nack<br/>Delivery attempt 2 → Nack<br/>...<br/>Attempt 10 (max) → Nack<br/><br/>x-dead-letter-exchange: #quot;orders.dlx.direct#quot;<br/>x-dead-letter-routing-key: #quot;orders-queue.dlq#quot;"]
+    DLX["Dead Letter Exchange<br/>#quot;orders.dlx.direct#quot; (direct)"]
     DLQ["Dead Letter Queue #quot;orders-queue.dlq#quot;<br/><br/>Permanently failed messages stored"]
+    Other["Another service's DLQ<br/>#quot;billing-queue.dlq#quot;"]
 
     Main -->|"Message moved to DLX"| DLX
-    DLX -->|"Fanout routing"| DLQ
+    DLX -->|"Key #quot;orders-queue.dlq#quot;"| DLQ
+    DLX -.-x|"Bound only on #quot;billing-queue.dlq#quot;"| Other
 
     class Main layer-command
-    class DLX,DLQ layer-event
+    class DLX,DLQ,Other layer-event
 ```
+
+### Upgrading from the fanout dead-letter exchange {#upgrading-dead-letter-exchange}
+
+{verified: RabbitMQDeadLetterUpgradeIntegrationTests.EmptyQueueFromEarlierVersion_IsRedeclaredWithItsOwnDeadLetterRouteAsync, RabbitMQDeadLetterUpgradeIntegrationTests.QueueFromEarlierVersionHoldingMessages_IsRefusedByNameAndKeepsThemAsync, RabbitMQDeadLetterUpgradeIntegrationTests.QueueFromEarlierVersionWithAConsumer_IsRefusedByNameAsync, RabbitMQDeadLetterUpgradeIntegrationTests.EarlierFanout_StaysWhileAnotherServicesDeadLetterQueueIsStillBoundAsync, RabbitMQDeadLetterUpgradeIntegrationTests.EmptyQueueWithOtherArgumentsAndNoEarlierFanout_IsRedeclaredAsync}
+
+RabbitMQ cannot change a queue's arguments in place: declaring a queue an earlier version created with the
+old dead-letter arguments fails with `PRECONDITION_FAILED`. The transport (and boot-time provisioning) handles
+this at startup, one queue at a time:
+
+- **An empty queue with no consumers is deleted and declared again** with the new arguments, logged at
+  Warning. The delete itself repeats both conditions, so a message or consumer that arrives after the check
+  refuses the upgrade instead of being lost.
+  {verified: RabbitMQDeadLetterUpgradeTests.Upgrade_EmptyUnconsumedQueue_IsDeclaredAgainAndTheWorkContinuesOnAFreshChannelAsync, RabbitMQDeadLetterUpgradeTests.Upgrade_MessageArrivesBetweenTheCheckAndTheDelete_IsRefusedAsync}
+- **A queue that holds messages, or that still has a consumer, is not touched.** Startup fails with an
+  `InvalidOperationException` that names the queue, its message and consumer counts, and what to do. A deploy
+  never drops a message silently.
+  {verified: RabbitMQDeadLetterUpgradeTests.Upgrade_QueueHoldingMessages_IsRefusedByNameAndNotDeletedAsync, RabbitMQDeadLetterUpgradeTests.Upgrade_QueueWithAConsumer_IsRefusedByNameAsync}
+- **The DLQ then leaves the earlier fanout `{exchange}.dlx`,** and that exchange is deleted once no DLQ is
+  bound to it any more.
+  {verified: RabbitMQDeadLetterUpgradeTests.Upgrade_AnotherDeadLetterQueueStillOnTheFanout_KeepsItAsync, RabbitMQDeadLetterUpgradeTests.Upgrade_NoEarlierFanoutOnTheBroker_IsNotAnErrorAsync}
+
+Two choices here are deliberate:
+
+1. **The new exchange has a new name, `{exchange}.dlx.direct`, rather than replacing `{exchange}.dlx`.**
+   An exchange's type cannot change in place either, and during a rolling upgrade some services on the
+   exchange are still on the earlier version. Their queues keep dead-lettering into the fanout with no
+   routing key, and on restart they declare it as a fanout again. Replacing it under the same name would make
+   those services fail to start, and a direct exchange would drop their dead letters because no DLQ is bound
+   on their keys. Under the new name the fanout keeps serving them until the last one upgrades, and is then
+   deleted automatically.
+2. **A queue that still has a consumer is refused, even when it is empty.** A consumer may hold delivered,
+   unacknowledged messages that RabbitMQ does not count as ready, and deleting the queue would lose them. So
+   an instance of the earlier version that is still consuming blocks the upgrade of its queue: **deploy each
+   service stop-then-start, not rolling**, for this release. A rolling deploy stalls with the new instance
+   failing at startup and naming the queue, while the earlier instances keep running.
+
+To upgrade a queue that was refused:
+
+1. Stop every instance that still consumes from it (the earlier version).
+2. Move or drain its messages, for example with a shovel to a temporary queue, or by letting the earlier
+   version finish them before stopping it.
+3. Delete the queue.
+4. Start the new version, which declares the queue again with its own dead-letter route.
+
+Services with `AutoDeclareDeadLetterExchange = false` get the same queue handling but declare no dead-letter
+exchange, so there is no fanout for them to leave.
 
 ### Inspecting Failed Messages
 
@@ -1279,6 +1344,30 @@ rabbitmqadmin list bindings source destination
 
 # Inspect queue
 rabbitmqadmin list queues name messages
+```
+
+### Startup Fails: Queue Declared by an Earlier Version
+
+**Symptom**: startup or subscribe fails with `InvalidOperationException: RabbitMQ queue '<queue>' was
+declared by an earlier version with other arguments (the dead-letter route changed in #2421) ... but it holds
+N ready message(s) and has M consumer(s)`.
+
+**Cause**: the queue was created with the earlier fanout dead-letter arguments and cannot be upgraded in place
+safely, because it still holds messages or an instance of the earlier version is still consuming from it.
+Typically a rolling deploy where earlier instances are still running.
+
+**Solution**: stop every instance consuming from the queue, move or drain its messages, delete the queue, and
+start the new version. See [Upgrading from the fanout dead-letter exchange](#upgrading-dead-letter-exchange).
+
+```bash{title="Queue Declared by an Earlier Version" description="Inspect the refused queue before upgrading it" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Dead", "Letter"]}
+# Ready messages and consumers on the refused queue
+rabbitmqadmin list queues name messages consumers
+
+# Its current dead-letter arguments (the earlier version has no x-dead-letter-routing-key)
+rabbitmqadmin list queues name arguments
+
+# Once it is empty and nothing consumes from it
+rabbitmqadmin delete queue name=<queue>
 ```
 
 ### Dead Letter Loop
