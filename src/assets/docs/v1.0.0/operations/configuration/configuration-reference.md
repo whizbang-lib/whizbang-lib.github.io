@@ -816,6 +816,21 @@ What an event row stores as its metadata, and what happens to the full form. **C
 | `StagingDays` | `int?` | unset (database: `2`) | `Whizbang__EventStore__Metadata__StagingDays` | Days a staged full form is kept when maintenance has not distilled it; it only has to outlast maintenance catching up. Negative is rejected at startup. Publishes `metadata_staging_days` when set {verified: EventStoreMetadataSettingsTests.StagingDays_WhenSet_IsPublishedAsAnIntegerAsync, EventStoreMetadataSettingsTests.Validate_ANegativeStagingWindow_IsRejectedByNameAsync} |
 | `ConvertHistory` | `bool` | `true` | `Whizbang__EventStore__Metadata__ConvertHistory` | Maintenance converts rows written with full metadata before slim stored metadata to the slim form plus their route id, once, in bounded batches; nothing under `Full` or debug mode, never a type kept full. Publishes `metadata_convert_history`, both directions. See [History conversion](../../data/event-store#history-conversion) {verified: EventStoreMetadataSettingsTests.ConvertHistory_IsPublishedEveryTime_InBothDirectionsAsync, ProcessWideOptionsBindingTests.EventStoreMetadata_BindsFromItsSectionAsync} |
 
+### RetiredEventTypesOptions {#retired-event-types-options}
+
+The event types the application deleted and retired (#2329): their stored events are purged from every stream, no
+integrity digest counts them on either side of a service pair, and the receive boundary turns them away. **Configure:**
+bound automatically from `Whizbang:EventStore:RetiredTypes`, with no registration call needed, and validated when the
+host starts: a blank name or a batch limit below one stops the host. A name this service still declares as an event
+type is not retired here; the purge skips it and warns every maintenance cycle. **Details:**
+[Retired event types](../../fundamentals/events/retired-event-types).
+
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|--------------------|---------|
+| `Names` | `List<string>` | empty | `Whizbang__EventStore__RetiredTypes__Names__0` | The retired event types, by name, with or without the assembly. Declare a retirement in every service that stores the type: it is part of the type's rule hash {verified: ProcessWideOptionsBindingTests.RetiredEventTypes_BindFromTheirSection_AndValidateAtStartupAsync, RetiredEventTypePurgeStepTests.Purge_SkipsANameThisServiceStillDeclares_CountsIt_AndWarnsEveryCycleAsync} |
+| `BatchStreams` | `int` | `500` | `Whizbang__EventStore__RetiredTypes__BatchStreams` | The most streams one purge batch takes, each batch one transaction. At least 1 {verified: RetiredEventTypesOptionsTests.Defaults_RetireNothing_InBatchesOfFiveHundredStreams_TenBatchesACycleAsync, RetiredEventTypePurgeStepTests.Purge_RunsBatchesWithinTheCycleBudget_AndTheNextCycleTakesTheRestAsync} |
+| `MaxBatchesPerCycle` | `int` | `10` | `Whizbang__EventStore__RetiredTypes__MaxBatchesPerCycle` | The most purge batches one maintenance cycle runs. At least 1 {verified: RetiredEventTypesOptionsTests.Validate_ABlankName_OrABatchLimitBelowOne_FailsAsync, RetiredEventTypePurgeStepTests.Purge_RunsBatchesWithinTheCycleBudget_AndTheNextCycleTakesTheRestAsync} |
+
 ### EphemeralOptions
 
 Startup reconciliation of ephemeral-event settings drift. **Configure:** bound automatically from `Whizbang:Ephemeral` — no registration call needed. `services.Configure<EphemeralOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** no dedicated page yet.
