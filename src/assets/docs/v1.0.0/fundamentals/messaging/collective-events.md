@@ -22,7 +22,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/ICollectiveQuery.cs
   - src/Whizbang.Core/Perspectives/ICollectiveReplayApplier.cs
   - src/Whizbang.Core/Perspectives/CollectiveReplayStart.cs
-  - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs
   - src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs
   - src/Whizbang.Core/Perspectives/CollectiveApplyForAttribute.cs

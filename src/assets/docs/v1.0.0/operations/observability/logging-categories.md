@@ -23,7 +23,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs
   - src/Whizbang.Core/Workers/TransportBatchGuard.cs
   - src/Whizbang.Core/Messaging/OrderedStreamProcessor.cs
-  - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs
   - src/Whizbang.Transports.RabbitMQ/RabbitMQTransport.cs
   - src/Whizbang.Core/Workers/BatchFlusher.cs

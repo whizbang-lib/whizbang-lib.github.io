@@ -65,7 +65,7 @@ codeReferences:
   - src/Whizbang.Core/Archival/ArchivedStreamRowsConfigurator.cs
   - src/Whizbang.Core/Attributes/ArchivedStreamRowsAttribute.cs
   - src/Whizbang.Generators/PerspectiveRunnerGenerator.cs
-  - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamSealingSqlTests.cs
   - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/ArchiveBatchTests.cs

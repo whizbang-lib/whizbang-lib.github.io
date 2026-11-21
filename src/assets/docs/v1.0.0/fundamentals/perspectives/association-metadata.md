@@ -14,11 +14,15 @@ codeReferences:
   - src/Whizbang.Generators/PerspectiveInfo.cs
   - src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs
   - src/Whizbang.Generators/PerspectiveRunnerRegistryGenerator.cs
+  - src/Whizbang.Generators/PerspectiveRunnerGenerator.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRunnerClassTemplate.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveRunnerRegistry.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCorePerspectiveAssociationGenerator.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/PerspectiveDiscoveryGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveRunnerRegistryGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratedSizeTests.cs
   - tests/Whizbang.Generators.Tests/EFCorePerspectiveAssociationGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
@@ -143,20 +147,34 @@ For each discovered perspective, the generators create:
 
 ### 1. Perspective Runner
 
-`PerspectiveRunnerGenerator` emits an `IPerspectiveRunner` implementation per perspective. `RunAsync` returns a `PerspectiveCursorCompletion`:
+`PerspectiveRunnerGenerator` emits a runner class per perspective. Each runner derives from the generated `PerspectiveRunnerBase<TPerspective, TModel>`, which implements `IPerspectiveRunner`; its `RunAsync` returns a `PerspectiveCursorCompletion`:
 
-```csharp{title="Perspective Runner" description="Perspective Runner" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Perspective", "Runner"] unverified="illustrative generated runner skeleton with placeholder body"}
-internal sealed class OrderSummaryPerspectiveRunner : IPerspectiveRunner {
-  // Implements event replay logic
-  public async Task<PerspectiveCursorCompletion> RunAsync(
-      Guid streamId,
-      string perspectiveName,
-      Guid? lastProcessedEventId,
-      CancellationToken ct) {
-    // Load model, apply events, save cursor
+```csharp{title="Perspective Runner" description="Perspective Runner" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Perspective", "Runner"] unverified="illustrative generated runner skeleton with placeholder bodies"}
+internal sealed class OrderSummaryPerspectiveRunner
+    : PerspectiveRunnerBase<OrderSummaryPerspective, OrderSummaryDto> {
+  // The event types, and the traits that differ from their defaults
+  private static readonly RunnerTraits _traits = new() { /* ... */ };
+
+  // The DI constructor passes the traits and services to the base
+  public OrderSummaryPerspectiveRunner(/* services */) : base(_traits /* , services */) { }
+
+  protected override OrderSummaryDto CreateEmptyModel(Guid streamId) {
+    // The model's empty value
+  }
+
+  protected override (OrderSummaryDto?, ModelAction) ApplyEventCore(
+      OrderSummaryPerspective perspective,
+      OrderSummaryDto? currentModel,
+      IEvent @event) {
+    // One case per event type, calling Apply through the interface that lists it
   }
 }
 ```
+
+:::note
+The runner logic every perspective shares (loading the model, applying events, saving the row and cursor, rewinds, rebuilds and snapshots) is generated once per assembly, as the internal `PerspectiveRunnerBase<TPerspective, TModel>` in `PerspectiveRunnerBase.g.cs`. Each runner holds only its varying parts: its event list, its traits, its `Apply` dispatch, its empty model, any overrides it needs and its registrations. A simple runner is about 4 KB of generated source. See [Build Cost](../../operations/performance/build-cost#perspective-runners) for what this saves.
+:::
+{verified: PerspectiveRunnerGeneratedSizeTests.ARunner_EmitsOnlyWhatItsPerspectiveVaries_NotTheSharedRunnerLogicAsync, PerspectiveRunnerGeneratedSizeTests.ASecondPerspective_AddsOnlyItsOwnRunner_TheSharedBaseIsEmittedOnceAsync}
 
 ### 2. Registry Entry
 
@@ -220,25 +238,34 @@ new PerspectiveInfo(
 ### Step 3: Generator Creates Runner
 
 ```csharp{title="Step 3: Generator Creates Runner" description="Step 3: Generator Creates Runner" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Step", "Generator"] unverified="simplified illustrative generated runner"}
-// Auto-generated runner (simplified)
-internal sealed class ProductCatalogPerspectiveRunner : IPerspectiveRunner {
-  public async Task<PerspectiveCursorCompletion> RunAsync(...) {
-    var perspective = _serviceProvider.GetRequiredService<ProductCatalogPerspective>();
-    var model = await _perspectiveStore.GetByStreamIdAsync(streamId, ct)
-        ?? CreateEmptyModel(streamId);
+// Auto-generated runner (simplified): only what this perspective varies
+internal sealed class ProductCatalogPerspectiveRunner
+    : PerspectiveRunnerBase<ProductCatalogPerspective, ProductDto> {
+  private static readonly RunnerTraits _traits = new() {
+    EventTypes = new global::System.Type[] { typeof(ProductCreated), typeof(ProductUpdated) }
+  };
 
-    await foreach (var envelope in _eventStore.ReadPolymorphicAsync(streamId, lastProcessedEventId, eventTypes, ct)) {
-      model = envelope.Payload switch {
-        ProductCreated created => perspective.Apply(model, created),
-        ProductUpdated updated => perspective.Apply(model, updated),
-        _ => model
-      };
+  protected override ProductDto CreateEmptyModel(Guid streamId) {
+    return new ProductDto();
+  }
+
+  protected override (ProductDto?, ModelAction) ApplyEventCore(
+      ProductCatalogPerspective perspective,
+      ProductDto? currentModel,
+      IEvent @event) {
+    switch (@event) {
+      case ProductCreated created:
+        return (((IPerspectiveFor<ProductDto, ProductCreated>)perspective).Apply(currentModel!, created), ModelAction.None);
+      case ProductUpdated updated:
+        return (((IPerspectiveFor<ProductDto, ProductUpdated>)perspective).Apply(currentModel!, updated), ModelAction.None);
+      default:
+        throw new InvalidOperationException($"Unhandled event type {@event.GetType().Name}");
     }
-
-    await _perspectiveStore.UpsertAsync(streamId, model, ct);
-    return new PerspectiveCursorCompletion { ... };
   }
 }
+
+// RunAsync, the event read, the model upsert and the cursor save are inherited from
+// PerspectiveRunnerBase<ProductCatalogPerspective, ProductDto>, generated once per assembly.
 ```
 
 ## Benefits

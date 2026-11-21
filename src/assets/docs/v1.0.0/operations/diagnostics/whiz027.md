@@ -37,6 +37,10 @@ and whose model type declares a `[StreamId]` property. For each runner it adds, 
 The runner is named after the perspective with `Runner` appended. For a nested perspective the containing type's
 name is included and the dot is removed: `OrderStatus.Projection` gets `OrderStatusProjectionRunner`.
 
+Each runner holds only what its perspective varies and derives from `PerspectiveRunnerBase<TPerspective, TModel>`,
+which the generator emits once per assembly that has a perspective, in `PerspectiveRunnerBase.g.cs` (see
+[Perspective runners](../performance/build-cost#perspective-runners)).
+
 WHIZ027 is a confirmation, not a problem. It is useful when you want to check that a perspective was picked up. A
 perspective that is missing from the list was skipped: an abstract class, a class with no event types, or a model
 with no `[StreamId]` property (which is reported as [WHIZ033](whiz033)).
