@@ -13,7 +13,8 @@ description: >-
   keeps the queue tables' planner statistics
   true, how a claim ranks only the peers that are alive and eligible for work,
   why a caller that is not eligible claims nothing, how an owner renews the
-  inbox leases it let run out,
+  inbox leases it let run out, why the perspective drain's calls are priced
+  by their batch rather than the backlog or the applied history,
   and why a claim no longer announces the caller's lifecycle phase.
 tags: 'work-coordinator, claim-loop, claim-work, acquisition, backpressure, work-stealing, command-lane'
 codeReferences:
@@ -38,6 +39,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/367_TheClaimRunsOnlyWhatCanFindWork.sql
   - src/Whizbang.Data.Postgres/Migrations/390_TheClaimLeasesNoInboxAFullWorkingSetWouldHandBack.sql
   - src/Whizbang.Data.Postgres/Migrations/462_HeldLeasesAreRenewedByTheirOwner.sql
+  - src/Whizbang.Data.Postgres/Migrations/536_PerspectiveWorkQueueCallsArePricedByTheBatch.sql
   - src/Whizbang.Data.Postgres/ConcurrentIndexBuild.cs
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/Signals/BasePollSignalSource.cs
@@ -61,6 +63,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HeldBackEventsDoNotCrowdTheReOfferTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimReofferPlanShapeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimFixedCostSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveWorkQueueBacklogCostSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkStaleStatisticsTests.cs
   - tests/Whizbang.Core.Component.Tests/Signals/PollSignalSourceIdleBackoffTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OutboxStreamRunSqlTests.cs
@@ -481,6 +484,49 @@ It replaces `idx_inbox_state_expired`, whose leading priority key made every rea
 acquisition's two expired lanes, and the claim's expired guard) walk every held row of the band; keyed on the expiry,
 each reads only the leases that ran out, in the order it takes them. The table keeps its index count. The renewal
 locks its rows `SKIP LOCKED`, so it never waits on a drain completing a row or a peer acquiring one.
+
+## The perspective drain's calls are priced by their batch {#perspective-calls-priced-by-the-batch}
+{verified: PerspectiveWorkQueueBacklogCostSqlTests.AcquireOrphanedPerspectiveWork_ReadsWhatItLeases_NotTheBacklogAsync, PerspectiveWorkQueueBacklogCostSqlTests.LeaseClaimedStreams_ReadsWhatItsBatchHolds_NotTheLedgerAsync, PerspectiveWorkQueueBacklogCostSqlTests.GetStreamEvents_ReadsWhatItsBatchHolds_NotTheBacklogAsync, PerspectiveWorkQueueBacklogCostSqlTests.CompletePerspective_ReadsWhatItsBatchHolds_NotTheBacklogAsync, PerspectiveWorkQueueBacklogCostSqlTests.CleanupCompletedStreams_ReadsWhatItsBatchHolds_NotTheBacklogAsync, PerspectiveWorkQueueBacklogCostSqlTests.CleanupCompletedStreams_EvictsOnlyStreamsWithNoPendingWorkAsync}
+
+A perspective stream passes through five calls on its way through the drain: the claim acquires it (re-acquiring it
+when its lease has lapsed) and writes it to the stream ledger, the drain fetches its events, the completion flush
+retires its work and settles its cursor, and the eviction removes its ledger row once nothing is pending. Two things
+grow while a fan-out drains: the backlog still pending, and the history already applied (a cursor and an
+applied-ledger row per stream). A fan-out that outlasts the lease its rows were stored under also leaves most of
+them orphaned, so the claim acquires them again.
+
+Each of these calls is given a batch of keys, and each once reached other tables through a join, an anti join, an
+`EXISTS` or an `UPDATE ... FROM` that the planner was free to plan. For a batch that is a few percent of a table, a
+full scan and a hash look as cheap as one probe per key, so the planner chose them, and every call read in proportion
+to the backlog or the history rather than its batch. A fan-out to 100,000 new streams applied about five times
+slower per stream than one to 10,000.
+
+Migration 536 redefines the six functions behind those calls (`claim_orphaned_perspective_events`,
+`wh_lease_claimed_streams`, `get_stream_events`, `notify_instance_owners_with_payload`, `_wh_settle_rewind_flags` and
+`cleanup_completed_streams`) so that each reaches every other table one key at a time, through constructions the
+planner cannot turn into a scan (see
+[Batch statements reach other tables by key](/contributors/data-engines/writing-migrations#batch-statements-reach-other-tables-by-key)).
+Results and lock order are unchanged.
+
+Rows read for a batch of 1,000 streams with lapsed leases, over 10,000 and then 40,000 pending and applied streams:
+
+| Call | Before, 10k | Before, 40k | After, 10k | After, 40k |
+|---|---|---|---|---|
+| Acquisition (`claim_orphaned_perspective_events`) | 61,011 | 212,011 | 21,001 | 22,001 |
+| The claim's ledger write (`wh_lease_claimed_streams`) | 20,005 | 41,005 | 1,000 | 1,000 |
+| Fetch (`get_stream_events`) | 26,022 | 87,022 | 8,000 | 8,000 |
+| Completion (`complete_perspective`) | 65,016 | 89,017 | 47,012 | 10,013 |
+| Eviction (`cleanup_completed_streams`) | 10,004 | 39,004 | 2,001 | 2,001 |
+
+The acquisition's 21 rows per stream are by design: it chooses streams from a window of eight rows per stream. The
+completion reads more at the smaller depth than at the larger one because two statements it runs and 536 leaves as
+they were (`process_perspective_event_completions` and `update_perspective_cursors`) are given their batch as a JSON
+array the planner estimates at 100 rows: on a table of 10,000 rows a scan is the cheaper plan, and from somewhere under
+40,000 rows the key is. Neither grows past that crossover.
+
+The test measures each call at both depths, on a database it alone uses, with the plan made for the call's arguments
+and with the generic plan a long-lived connection may settle on, and fails when the deeper call reads more than the
+shallower one plus one row per stream, or more than a fixed number of rows per stream of its batch.
 
 ## The claim runs only what can find work {#the-claim-runs-only-what-can-find-work}
 {verified: ClaimFixedCostSqlTests.InboxReOffer_AnInstanceHoldingOneLane_WalksOnlyThatLane_AndOffersItsStreamAsync, ClaimFixedCostSqlTests.InboxReOffer_ALaneHoldingOnlyUnfetchableRows_IsStillWalked_AndOffersNothingAsync, ClaimFixedCostSqlTests.Claim_AnInstanceHoldingNothing_RunsNoReOfferWalkAsync, ClaimFixedCostSqlTests.PerspectiveReOffer_AnInstanceHoldingOneBucket_WalksOnlyThatBucket_AndOffersItsStreamAsync, ClaimFixedCostSqlTests.PerspectiveReOffer_TheIdleBucketWhileWithheld_IsNotOffered_AndNotWalkedAsync, ClaimFixedCostSqlTests.StorePass_ARowWhoseEventIsAlreadyStored_IsStamped_WithoutRunningTheCopyAsync, ClaimFixedCostSqlTests.StorePass_AfterAPassWithNoCandidate_AReadyRowIsStoredByTheNextClaimAsync, ClaimFixedCostSqlTests.StorePass_AnOrdinaryEvent_RunsNoCollectiveRoutingAsync, ClaimFixedCostSqlTests.StorePass_ACollectiveEvent_IsStillRoutedToTheCollectiveSinkAsync}
