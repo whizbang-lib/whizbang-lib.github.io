@@ -191342,6 +191342,11 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Configuration/StartupSettingsReportTests.cs",
+        "testMethod": "TheLibraryDefaults_IncludeNestedOptions_AndTheEarlierKeysThatStillBindThemAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Configuration/StartupSettingsReportTests.cs",
         "testMethod": "DefaultsText_IsOneKeyEqualsValuePerLine_ValuesMayHoldEqualsSignsAsync",
         "linkSource": "XmlTag"
       },
@@ -192737,6 +192742,11 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Configuration/StartupSettingsReportTests.cs",
+        "testMethod": "TheLibraryDefaults_IncludeNestedOptions_AndTheEarlierKeysThatStillBindThemAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Configuration/StartupSettingsReportTests.cs",
         "testMethod": "DefaultsText_IsOneKeyEqualsValuePerLine_ValuesMayHoldEqualsSignsAsync",
         "linkSource": "XmlTag"
       },
@@ -192810,6 +192820,11 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Configuration/StartupSettingsReportTests.cs",
         "testMethod": "TheLibraryDefaults_AreTheCodeDefaultsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Configuration/StartupSettingsReportTests.cs",
+        "testMethod": "TheLibraryDefaults_IncludeNestedOptions_AndTheEarlierKeysThatStillBindThemAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -192891,6 +192906,11 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Configuration/StartupSettingsReportTests.cs",
+        "testMethod": "TheLibraryDefaults_IncludeNestedOptions_AndTheEarlierKeysThatStillBindThemAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Configuration/StartupSettingsReportTests.cs",
         "testMethod": "DefaultsText_IsOneKeyEqualsValuePerLine_ValuesMayHoldEqualsSignsAsync",
         "linkSource": "XmlTag"
       },
@@ -192968,6 +192988,11 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Configuration/StartupSettingsReportTests.cs",
+        "testMethod": "TheLibraryDefaults_IncludeNestedOptions_AndTheEarlierKeysThatStillBindThemAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Configuration/StartupSettingsReportTests.cs",
         "testMethod": "DefaultsText_IsOneKeyEqualsValuePerLine_ValuesMayHoldEqualsSignsAsync",
         "linkSource": "XmlTag"
       },
@@ -193041,6 +193066,11 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Configuration/StartupSettingsReportTests.cs",
         "testMethod": "TheLibraryDefaults_AreTheCodeDefaultsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Configuration/StartupSettingsReportTests.cs",
+        "testMethod": "TheLibraryDefaults_IncludeNestedOptions_AndTheEarlierKeysThatStillBindThemAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -275094,7 +275124,7 @@
     "ServiceAssemblyFactsGeneratorTests.ALibrary_RecordsItsName_NotARoot_AndTheGeneratedAssembliesItReferencesAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/ServiceAssemblyFactsGenerator.cs",
-        "sourceLine": 36,
+        "sourceLine": 35,
         "sourceSymbol": "ServiceAssemblyFactsGenerator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -275103,7 +275133,7 @@
     "ServiceAssemblyFactsGeneratorTests.AnExecutable_IsAServiceRootAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/ServiceAssemblyFactsGenerator.cs",
-        "sourceLine": 36,
+        "sourceLine": 35,
         "sourceSymbol": "ServiceAssemblyFactsGenerator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -275112,7 +275142,7 @@
     "ServiceAssemblyFactsGeneratorTests.AnAssemblyThatDeclaresAWhizbangDbContext_IsAServiceRootAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/ServiceAssemblyFactsGenerator.cs",
-        "sourceLine": 36,
+        "sourceLine": 35,
         "sourceSymbol": "ServiceAssemblyFactsGenerator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -275121,7 +275151,7 @@
     "ServiceAssemblyFactsGeneratorTests.OnlyReferencesThatCarryTheMarker_AreRecordedAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/ServiceAssemblyFactsGenerator.cs",
-        "sourceLine": 36,
+        "sourceLine": 35,
         "sourceSymbol": "ServiceAssemblyFactsGenerator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -275130,7 +275160,7 @@
     "ServiceAssemblyFactsGeneratorTests.AReferencedTurnkeyPackage_IsRegistered_FromTheModuleInitializerAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/ServiceAssemblyFactsGenerator.cs",
-        "sourceLine": 36,
+        "sourceLine": 35,
         "sourceSymbol": "ServiceAssemblyFactsGenerator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -275146,7 +275176,7 @@
     "ServiceAssemblyFactsGeneratorTests.ACompilationThatDoesNotReferenceWhizbangCore_RecordsNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/ServiceAssemblyFactsGenerator.cs",
-        "sourceLine": 36,
+        "sourceLine": 35,
         "sourceSymbol": "ServiceAssemblyFactsGenerator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -275155,7 +275185,7 @@
     "ServiceAssemblyFactsGeneratorTests.ACompilationWithoutAName_RecordsNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/ServiceAssemblyFactsGenerator.cs",
-        "sourceLine": 36,
+        "sourceLine": 35,
         "sourceSymbol": "ServiceAssemblyFactsGenerator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -275164,7 +275194,7 @@
     "ServiceAssemblyFactsGeneratorTests.TheEmittedFacts_Compile_AgainstWhizbangCoreAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/ServiceAssemblyFactsGenerator.cs",
-        "sourceLine": 36,
+        "sourceLine": 35,
         "sourceSymbol": "ServiceAssemblyFactsGenerator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -275173,7 +275203,7 @@
     "ServiceAssemblyFactsGeneratorTests.Literal_EscapesQuotesAndBackslashesAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/ServiceAssemblyFactsGenerator.cs",
-        "sourceLine": 36,
+        "sourceLine": 35,
         "sourceSymbol": "ServiceAssemblyFactsGenerator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -516684,6 +516714,50 @@
         "linkSource": "XmlTag"
       }
     ],
+    "StartupSettingsReportTests.TheLibraryDefaults_IncludeNestedOptions_AndTheEarlierKeysThatStillBindThemAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Configuration/ConfigurationKeyDefaults.cs",
+        "sourceLine": 20,
+        "sourceSymbol": "ConfigurationKeyDefaults",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Configuration/StartupSettingsReport.cs",
+        "sourceLine": 10,
+        "sourceSymbol": "SettingSource",
+        "sourceType": "Enum",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Configuration/StartupSettingsReport.cs",
+        "sourceLine": 30,
+        "sourceSymbol": "SettingEntry",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Configuration/StartupSettingsReport.cs",
+        "sourceLine": 54,
+        "sourceSymbol": "SettingsSection",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Configuration/StartupSettingsReport.cs",
+        "sourceLine": 66,
+        "sourceSymbol": "IDerivedSettingSource",
+        "sourceType": "Interface",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Configuration/StartupSettingsReport.cs",
+        "sourceLine": 88,
+        "sourceSymbol": "StartupSettingsReport",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
     "StartupSettingsReportTests.DefaultsText_IsOneKeyEqualsValuePerLine_ValuesMayHoldEqualsSignsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Configuration/ConfigurationKeyDefaults.cs",
@@ -567267,12 +567341,12 @@
     }
   ],
   "metadata": {
-    "generated": "2026-11-21T19:47:53.671Z",
-    "sourceFiles": 2441,
+    "generated": "2026-11-21T20:40:01.423Z",
+    "sourceFiles": 2443,
     "testFiles": 4409,
-    "totalLinks": 26802,
+    "totalLinks": 26803,
     "codeSymbols": 3771,
-    "testMethods": 23031,
+    "testMethods": 23032,
     "linkHealthFindings": 113
   }
 }

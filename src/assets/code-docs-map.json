@@ -2353,7 +2353,7 @@
   },
   "ServiceAssemblyFactsGenerator": {
     "file": "src/Whizbang.Generators/ServiceAssemblyFactsGenerator.cs",
-    "line": 35,
+    "line": 34,
     "symbol": "ServiceAssemblyFactsGenerator",
     "docs": "extending/extensibility/replaceable-services#service-scope"
   },
