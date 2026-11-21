@@ -81,6 +81,16 @@ The Warning carries all five forensic fields from `StuckRow`:
 | `Attempts` | Frame urgency — 11 vs 992 |
 | `ClaimedSince` | Compare against deploy boundaries to identify regression windows |
 
+### Rows waiting for their stream head are not stuck
+
+An inbox row held back behind an earlier event of its stream that is not yet stored is not charged an attempt for
+waiting, so it never crosses `MaxInboxAttempts` and the sentinel never reports it, nor does the exhausted-row
+conclusion below dead-letter or drop it. Such a row shows its own state instead: `failure_reason = 30`
+(`AwaitingStreamHead`) and an error naming the stream and when the wait began. List them with the query in
+[A row waiting for its stream head](../../fundamentals/work-coordinator/claim-loop.md#a-row-waiting-for-its-stream-head);
+a long wait points at the stream's head, not at the waiting rows.
+{verified: AwaitingStreamHeadSqlTests.Claim_AWaitingRowWhoseLeaseLapsed_IsReclaimedStillAwaitingTheHead_NotAsALeaseExpiryAsync, HeldBackStreamsClaimSqlTests.Claim_ARowHeldBackBehindAPredecessorAPeerHolds_IsNotChargedAnAttemptAsync}
+
 ## Configuration
 
 The sentinel ships enabled by default with sensible knobs. All three properties live on `MaintenanceWorkerOptions`:
