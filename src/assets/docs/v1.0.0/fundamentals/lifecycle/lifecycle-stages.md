@@ -332,6 +332,17 @@ var view = await dispatcher.LocalInvokeAsync<GetTenant, TenantView>(new GetTenan
 
 The five Distribute stages fire on every work-coordinator flush, around the flush's store calls: `PreDistributeDetached` and `PreDistributeInline` before the outbox and inbox rows are stored, `DistributeDetached` alongside the store, and `PostDistributeDetached` and `PostDistributeInline` after it. They fire for both the outbox (publishing) and inbox (consuming) messages in the flush; use `MessageSource` to tell them apart. A flush that skips lifecycle (the framework's own internal flushes) fires none of them.
 
+#### One payload per flush {#one-payload-per-flush}
+{verified: DistributeFlushParseOnceTests.OneFlush_FiveDistributeStages_ParseEachPayloadOnceAsync, DistributeFlushParseOnceTests.OneFlush_EveryStageGetsTheSamePayload_InItsOwnEnvelopeAsync, DistributeFlushParseOnceTests.TwoFlushes_OfTheSameMessage_EachParseItAsync, DistributeFlushParseOnceTests.OneFlush_TwoEnvelopesWithTheSameMessageId_AreEachParsedAsync, DistributeFlushParseOnceTests.OneFlush_APayloadThatFailedToParse_IsReadAgainByTheNextStageAsync}
+
+The five stages of one flush read each message's payload once and share it. Each stage used to parse the stored payload again: five parses of the same bytes for every message in every flush, whether or not a receptor was registered for the stage. Each stage still receives an envelope of its own, so the hops and stamps one stage adds are never seen by another.
+
+- A payload is shared per envelope, not per message id: two envelopes carrying the same id are each parsed.
+- Nothing is kept after the flush; the next flush of the same message parses it again.
+- A payload that fails to parse is not kept, so the next stage tries again.
+
+**Treat payloads as immutable.** The stages of a flush receive the same payload object, so a Distribute-stage receptor that changes the payload in place changes what the later stages of that flush see. Use records or init-only properties, and make a copy when a receptor needs a changed one.
+
 #### `PreDistributeDetached`
 
 **Timing**: Before the flush's store calls (fire-and-forget, own scope).
