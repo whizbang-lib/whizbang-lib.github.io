@@ -150,6 +150,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/409_RepairedEventsRunOnlyReceptorsThatNeverRan.sql
   - src/Whizbang.Data.Postgres/Migrations/375_LedgerRowsWithoutAWindowAreRechecked.sql
   - src/Whizbang.Data.EFCore.Postgres/UnsequencedDigestCompactionStep.cs
+  - src/Whizbang.Data.Postgres/Migrations/535_PairHaltsSurviveARestart.sql
 testReferences:
   - tests/Whizbang.Observability.Tests/IntegrityTracingTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TwoServiceIntegrityTraceTests.cs
@@ -320,6 +321,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedDigestCompactionSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedDigestCompactionStepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/UnsequencedHeldFoldWriteCostSqlTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/RepairCloseRatioOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/IntegrityPairGuardDurabilityTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityPairHaltSqlTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -1469,6 +1473,46 @@ A halt is logged once at Error, naming the peer, this service's side, the reason
 whose rules differ. It is logged again only when the reason or the types change. A pair still halted after
 `Whizbang:StreamIntegrity:PairGuard:HaltedAlertAfter` (default 2 hours) is logged once at Critical. The first message
 whose rules match resumes the pair, with an information line; nothing has to be reset.
+
+#### A halt survives a restart {#pair-halts-survive-a-restart}
+
+{verified: IntegrityPairGuardDurabilityTests.ARestartDuringAHalt_KeepsTheHaltedAt_AndTheAlertFiresOnScheduleAsync, IntegrityPairGuardDurabilityTests.AnAlertedHalt_IsNotAlertedAgainAfterARestartAsync, IntegrityPairGuardDurabilityTests.Resuming_RecordsTheResumedAt_AndClosesTheHaltAsync, IntegrityPairGuardDurabilityTests.TheHalt_IsWrittenWithBothSidesRulesAndTheDifferingTypesAsync, IntegrityPairGuardDurabilityTests.AHaltForAnotherReason_IsWrittenAgain_KeepingTheHaltedAtAsync, IntegrityPairGuardDurabilityTests.AnEarlierHaltAnotherInstanceKept_IsTheOneTheClockRunsFromAsync, IntegrityPairGuardDurabilityTests.AnAlertAnotherInstanceAlreadyRaised_IsTakenUp_AndNotRaisedAgainAsync, IntegrityPairGuardDurabilityTests.TheOpenHalts_AreLoadedOnce_AndWhatThisProcessAlreadyKnowsWinsAsync, IntegrityPairGuardDurabilityTests.ConcurrentFirstVerdicts_ShareOneLoadAsync, IntegrityPairGuardDurabilityTests.ALoadThatFails_IsLogged_TheVerdictStands_AndTheNextCallLoadsAgainAsync, IntegrityPairGuardDurabilityTests.AWriteThatFails_IsLogged_AndTheVerdictStandsAsync, IntegrityPairGuardDurabilityTests.WithoutAStore_TheGuardKeepsItsStateInMemoryAsync, IntegrityPairGuardDurabilityTests.AStoreThatKeepsNothing_LeavesTheGuardAsItWasAsync, IntegrityPairHaltSqlTests.AHalt_IsKeptWithEverythingItSays_AndLoadedAsAnOpenHaltAsync, IntegrityPairHaltSqlTests.TheSamePairHaltedAgain_UpdatesItsOneOpenHalt_KeepingTheEarliestHaltedAtAsync, IntegrityPairHaltSqlTests.EachPeerAndSide_HasAHaltOfItsOwnAsync, IntegrityPairHaltSqlTests.TheAlert_IsStampedOnce_OnTheOpenHaltAsync, IntegrityPairHaltSqlTests.Resuming_ClosesTheHalt_AndTheNextHaltOpensANewOneAsync, TwoServicePairGuardTests.ARestartDuringAHalt_KeepsTheHaltedAt_TheAlertFiresOnSchedule_AndTheResumptionIsKeptAsync, WorkCoordinatorDefaultsTests.IntegrityPairHalts_WithoutProviderSupport_KeepNothingAsync}
+
+Until #2377 a halt and the time it began lived in the process's memory. A restart reset the halted-at time, so the
+alert came that much later, and a service that restarted more often than `HaltedAlertAfter` never alerted at all; the
+record of halts and resumptions went with the process. Each halt is now kept in `wh_integrity_pair_halts`
+(migration 535):
+
+| Kept | Meaning |
+| --- | --- |
+| `peer`, `side` | The other service, and which end this service is (0 origin, 1 consumer) |
+| `reason`, `differing_types` | Why the pair halted, and the shared types whose rules differ |
+| `local_*`, `peer_*` | Both sides' rule-semantics version, eligibility SQL version and fingerprint (the peer's are null when it sent none) |
+| `halted_at` | When the pair was first seen halted |
+| `alerted_at` | When the Critical alert was raised, or null |
+| `resumed_at` | When the pair resumed; null while the halt is open |
+
+- **One open halt per peer and side.** A partial unique index allows one row with no `resumed_at` per pair end.
+  Recording the halt again (another reason, other differing types) updates what that row says and keeps the earliest
+  `halted_at` and the first `alerted_at`.
+- **The alert clock carries over a restart.** A new process loads the open halts once, before its first verdict, so a
+  halt that began before the restart keeps its `halted_at` and alerts on schedule; one already alerted is not alerted
+  again. What the process learned itself before the load finished wins over the kept copy.
+- **Instances of one service share one halt per pair.** The halt comes back from the store as kept, so an instance
+  that halts the pair later takes up the earlier `halted_at` and an alert another instance already raised, and the
+  service alerts once.
+- **Resumptions are history.** Resuming stamps `resumed_at` and closes the row; the next halt of the pair opens a new
+  one. Resumed rows roll off under `Whizbang:OperationalRetention:PairHistory` (see
+  [operational retention](../operations/infrastructure/operational-retention#what-the-sweep-removes)); open halts stay.
+- **The store keeps history and never decides a verdict.** A write happens only when a pair's state changes (halt,
+  alert, resume), never per message, and the open halts are read once per process start. A load or write that fails is
+  logged at Warning and the guard carries on in memory; a failed load is tried again on the next verdict.
+- **EF Core driver.** The EF Core work coordinator keeps the halts. A store that does not implement them (the Dapper
+  driver today) answers nothing and the guard keeps its state in memory, as before.
+
+**Upgrade.** `IntegrityPairGuard.Admit(peer, side, fingerprint)` is replaced by
+`await AdmitAsync(coordinator, peer, side, fingerprint)`, which takes the service's `IWorkCoordinator` as the store.
+Pass null to keep the state in memory only. The framework's receptors already pass theirs.
 
 | Instrument (meter `Whizbang.StreamIntegrity`) | Kind | Attributes |
 | --- | --- | --- |
@@ -3714,9 +3758,11 @@ A refolded epoch also counts as `digest_drift_healed{kind="epoch-refolded"}`, as
 because nothing was healed, and it logs that the seal was left as sealed.
 
 #### Configuration aliases {#configuration-aliases}
-{verified: IntegrityCheckOptionsTests.TheOldKeys_StillReachTheNewSettingsAsync, IntegrityCheckOptionsTests.ANewKey_WinsOverItsAlias_WhenBothAreSetAsync, IntegrityCheckOptionsTests.TheAliases_ReadAndWriteTheSectionsInCodeAsync, DapperStreamIntegrityRefusalTests.TheOldSealingKey_StillTurnsSealingOn_AndIsRefusedUnderItsNewNameAsync}
+{verified: IntegrityCheckOptionsTests.TheOldKeys_StillReachTheNewSettingsAsync, IntegrityCheckOptionsTests.ANewKey_WinsOverItsAlias_WhenBothAreSetAsync, IntegrityCheckOptionsTests.TheAliases_ReadAndWriteTheSectionsInCodeAsync, DapperStreamIntegrityRefusalTests.TheOldSealingKey_StillTurnsSealingOn_AndIsRefusedUnderItsNewNameAsync, RepairCloseRatioOptionsTests.TheOldKeys_StillTurnTheGaugeOff_AndStillSetTheWindowAsync, RepairCloseRatioOptionsTests.ANewKey_WinsOverItsAlias_WhenBothAreSetAsync, RepairCloseRatioOptionsTests.TheAliases_ReadAndWriteTheNewSettingsInCodeAsync}
 
-The keys these sections replace keep working for one release. A section key wins when both are set.
+The keys these sections and the renamed completion settings replace keep working for one release. A new key wins
+when both are set. The C# properties of the two `RepairProgress*` aliases are `[Obsolete]` and read and write the new
+settings.
 
 | Old key | Now |
 |---|---|
@@ -3724,10 +3770,18 @@ The keys these sections replace keep working for one release. A section key wins
 | `MaxEpochClosuresPerMaintenanceCycle` | `Sealing:MaxClosuresPerCycle` |
 | `MaxEpochVerificationsPerSweep` | `SealRecheck:MaxEpochsPerRun` |
 | `FullSweepCron` | `FullHistoryCompare:Schedule` and `SealRecheck:Schedule` (the old cron scheduled both) |
+| `RepairProgressGaugeEnabled` | `RepairCloseRatioGaugeEnabled` (#2317) |
+| `RepairProgressWindowMinutes` | `CompletionWindowMinutes` (#2317) |
 
 **Upgrade.** Both re-checks are now **off by default**. Before #2353 the full sweep (the whole-store heal, the
 full-history ask and the seal backstop) ran nightly, or on every seventh audit. A service that wants them back sets
 `Whizbang:StreamIntegrity:SealRecheck:Enabled` and `Whizbang:StreamIntegrity:FullHistoryCompare:Enabled` to `true`.
+
+**Upgrade (#2317).** Point dashboards and alerts at `repair_close_ratio_percent` and read it as a direction signal, and
+rename `RepairProgressGaugeEnabled` and `RepairProgressWindowMinutes` in configuration. Code that called the renamed
+members changes too: `RepairProgressReading` is `RepairRatesReading` (its `ProgressPercent` is `CloseRatioPercent`),
+`StreamIntegrityMetrics.UpdateRepairProgress` is `UpdateRepairRates`, and `IntegrityCompletion.RepairProgressPercent`
+is `RepairCloseRatioPercent`. The old metric name and the two old keys are removed in the next release.
 
 ### Origin generation — seals survive legitimate mutation {#origin-generation}
 
@@ -5086,7 +5140,7 @@ that names the earlier columns reads them unchanged; it is reversible.
 
 ### Derived completion meters {#derived-completion-meters}
 
-{verified: IntegrityCompletionTests.VerifiedPercent_IsTheVerifiedSequencesOverTheOriginsLatestAsync, IntegrityCompletionTests.Verified_ReportsEachKnownOrigin_AndAllOriginsWeightedByWhatEachCommittedAsync, IntegrityCompletionTests.RepairProgressPercent_IsClosedOverOpenedAsync, IntegrityCompletionTests.BacklogEtaSeconds_IsTheOpenBacklogOverTheNetCloseRateAsync, IntegrityCompletionTests.BacklogEtaSeconds_WhenTheBacklogIsFlatOrGrowing_IsNoMeasurementAsync, IntegrityCompletionTests.RepairableOpenBuckets_SumsEveryStateButUnhealable_AndAnUnreportedBacklogHasNoneAsync, StreamIntegrityCompletionMetricsTests.TheDerivedGauges_AreCreatedWithTheirNamesAsync, StreamIntegrityCompletionMetricsTests.BeforeAnyReading_NoDerivedGaugeReportsASeriesAsync}
+{verified: IntegrityCompletionTests.VerifiedPercent_IsTheVerifiedSequencesOverTheOriginsLatestAsync, IntegrityCompletionTests.Verified_ReportsEachKnownOrigin_AndAllOriginsWeightedByWhatEachCommittedAsync, IntegrityCompletionTests.RepairCloseRatioPercent_IsClosedOverOpenedAsync, IntegrityCompletionTests.RepairCloseRatioPercent_WithNothingOpened_IsNoMeasurementAsync, IntegrityCompletionTests.BacklogEtaSeconds_IsTheOpenBacklogOverTheNetCloseRateAsync, IntegrityCompletionTests.BacklogEtaSeconds_WhenTheBacklogIsFlatOrGrowing_IsNoMeasurementAsync, IntegrityCompletionTests.RepairableOpenBuckets_SumsEveryStateButUnhealable_AndAnUnreportedBacklogHasNoneAsync, StreamIntegrityCompletionMetricsTests.TheDerivedGauges_AreCreatedWithTheirNamesAsync, StreamIntegrityCompletionMetricsTests.BeforeAnyReading_NoDerivedGaugeReportsASeriesAsync, StreamIntegrityCompletionMetricsTests.TheDeprecatedProgressName_ReportsExactlyTheCloseRatio_AndIsWithdrawnWithItAsync}
 
 Three gauges answer "how complete is it, and when will it be done" directly (#2261). Each is **derived** from the base
 meters above with the formula below (`IntegrityCompletion` in `Whizbang.Core.Observability` holds each one), so a team
@@ -5096,7 +5150,7 @@ that drops the derived gauges from its telemetry feed can compute the same numbe
 | --- | --- | --- |
 | `verified_percent` (tag `origin_service_id`) | `100 * min(max(sealed_through - 1, 0), latest) / latest` | The origin's latest commit sequence is not known yet. An origin that committed nothing reads 100 |
 | `verified_percent_all_origins` | `100 * sum(min(max(sealed_through - 1, 0), latest)) / sum(latest)` over the origins whose latest is known | No origin's latest is known |
-| `repair_progress_percent` | `100 * closed / opened` over the window | Nothing opened in the window |
+| `repair_close_ratio_percent` | `100 * closed / opened` over the window | Nothing opened in the window |
 | `backlog_eta_seconds` | `open / ((closed - opened) / window_seconds)`; 0 when nothing is open | The backlog is flat or growing (`closed - opened <= 0`), or the backlog was not read |
 
 - **`sealed_through` is exclusive**, so a seal of 51 verified sequences up to 50; a seal past the latest is complete.
@@ -5104,38 +5158,48 @@ that drops the derived gauges from its telemetry feed can compute the same numbe
   `wh_integrity_known_origins.last_commit_sequence` (migration 395), and NULL until a checkpoint announces one.
   `verified_percent` is read on every instance, as `sealed_through` is: read it as one value per service.
 - **`open` is the repairable backlog**: `ledger_open_buckets` summed over every state but `unhealable`, whose buckets
-  were closed when they were marked. Above 100, `repair_progress_percent` means the backlog shrank in the window.
+  were closed when they were marked.
 - **`opened` and `closed` are the window's `ledger_buckets_opened` and `ledger_buckets_closed`**, all `how` values
-  summed. The window is `RepairProgressWindowMinutes` (default 60).
+  summed. The window is `CompletionWindowMinutes` (default 60).
+- **The close ratio is a direction signal, not progress.** `repair_close_ratio_percent` is the ratio of two rates: above
+  100 the backlog shrank in the window, below 100 it grew, and 100 means it held. It says nothing about how much is
+  left: 87% is a backlog growing slowly, not a repair nearly done, and 560% is a backlog shrinking fast, not a bug. How
+  much is left is `ledger_open_buckets` (repairable states summed), and when it will be done is `backlog_eta_seconds`.
+- **`repair_progress_percent` is the old name, kept for one release (#2317).** It reports exactly the close ratio's
+  value and is withdrawn with it; it is deprecated and removed in the next release. Point dashboards and alerts at
+  `repair_close_ratio_percent`.
 - **No ETA is ever a sentinel.** While the backlog is flat or growing there is no finish time to report, so the gauge
   reports no measurement at all rather than an infinity, a negative or a zero that would read as done.
 
 **Per service, across restarts.** The opened and closed counters are per process and start over on a restart, and a
-service runs several instances. Progress and ETA are per service: every instance adds what its counters counted since
+service runs several instances. The close ratio and ETA are per service: every instance adds what its counters counted since
 its last write to one shared per-minute tally (`wh_integrity_ledger_tally`, through `wh_integrity_ledger_tally_add`,
 migration 395) on every maintenance tick, ahead of the maintainer check, and only when its counters moved. The
 instance that reports the backlog reads the window from it (`wh_integrity_ledger_tally_since`). A write that does not
 land is retried on the next tick with the counts it carried, so none are lost while the process lives; the counts of a
 process that stops between two ticks are. Each write also removes the minutes before twice the window, so the tally
-holds about 120 rows by default and needs no index beyond its primary key. Like the backlog gauges, progress and ETA
-are reported by the maintainer only: a sum across instances counts them once.
+holds about 120 rows by default and needs no index beyond its primary key. Like the backlog gauges, the close ratio and
+ETA are reported by the maintainer only: a sum across instances counts them once.
 {verified: MaintenanceWorkerIntegrityCompletionTests.EveryInstance_ReportsTheVerifiedPercent_FromTheSealsItReadsAsync, MaintenanceWorkerIntegrityCompletionTests.EachTick_WritesWhatTheCountersAddedSinceTheLast_OnceAsync, MaintenanceWorkerIntegrityCompletionTests.ATallyNotWritten_IsWrittenOnTheNextTickAsync, MaintenanceWorkerIntegrityCompletionTests.TheMaintainer_ReportsProgressAndEta_OverTheWindowAsync, MaintenanceWorkerIntegrityCompletionTests.AnInstanceThatIsNotTheMaintainer_NeitherReadsTheTallyNorReportsProgress_ButStillWritesItsOwnAsync, MaintenanceWorkerIntegrityCompletionTests.ATallyThatCannotBeRead_WithdrawsTheProgressAsync, IntegrityCompletionSqlTests.TheTally_AddsPerMinute_AndIsSummedOverTheWindowAsync, IntegrityCompletionSqlTests.TheTally_PrunesMinutesOlderThanItKeeps_InTheSameCallAsync, IntegrityCompletionSqlTests.TheSeals_CarryTheLatestCommitSequenceTheOriginsCheckpointsAnnouncedAsync}
 
 **Switching them off.** Each derived gauge has its own switch under `Whizbang:StreamIntegrity`, all on by default. With
-both progress and ETA off, no instance writes or reads the tally.
+both the close ratio and ETA off, no instance writes or reads the tally.
 
 | Option | Default | Switches off |
 | --- | --- | --- |
 | `VerifiedPercentGaugeEnabled` | `true` | `verified_percent` and `verified_percent_all_origins` |
-| `RepairProgressGaugeEnabled` | `true` | `repair_progress_percent` |
+| `RepairCloseRatioGaugeEnabled` | `true` | `repair_close_ratio_percent` (and its deprecated old name) |
 | `BacklogEtaGaugeEnabled` | `true` | `backlog_eta_seconds` |
-| `RepairProgressWindowMinutes` | `60` | (the window both are computed over; at least 1, checked at host start) |
+| `CompletionWindowMinutes` | `60` | (the window both are computed over; at least 1, checked at host start) |
 
-{verified: StreamIntegrityOptionsDefaultsTests.Defaults_TheDerivedCompletionGaugesAreOn_OverAnHourAsync, MaintenanceWorkerIntegrityCompletionTests.TheVerifiedPercent_SwitchedOff_IsNotReportedAsync, MaintenanceWorkerIntegrityCompletionTests.EachDerivedGauge_SwitchesOffOnItsOwnAsync, MaintenanceWorkerIntegrityCompletionTests.BothSwitchedOff_NeitherWritesNorReadsTheTallyAsync}
+The old keys `RepairProgressGaugeEnabled` and `RepairProgressWindowMinutes` still bind for one release; see
+[configuration aliases](#configuration-aliases).
+
+{verified: StreamIntegrityOptionsDefaultsTests.Defaults_TheDerivedCompletionGaugesAreOn_OverAnHourAsync, RepairCloseRatioOptionsTests.Defaults_TheCloseRatioIsOn_OverAnHourAsync, RepairCloseRatioOptionsTests.TheNewKeys_BindAsync, StreamIntegrityOptionsValidatorTests.Validate_ACompletionWindowBelowOneMinute_FailsNamingTheKeyAsync, RepairCloseRatioOptionsTests.Validate_AWindowBelowOneMinute_FailsNamingTheNewKeyAsync, MaintenanceWorkerIntegrityCompletionTests.TheVerifiedPercent_SwitchedOff_IsNotReportedAsync, MaintenanceWorkerIntegrityCompletionTests.EachDerivedGauge_SwitchesOffOnItsOwnAsync, MaintenanceWorkerIntegrityCompletionTests.BothSwitchedOff_NeitherWritesNorReadsTheTallyAsync}
 
 ```json{
 title: "Drop the derived completion gauges"
-description: "Switches off verified_percent, repair_progress_percent and backlog_eta_seconds for a team that computes them from the base meters itself; the base meters are unaffected."
+description: "Switches off verified_percent, repair_close_ratio_percent and backlog_eta_seconds for a team that computes them from the base meters itself; the base meters are unaffected."
 category: "Configuration"
 difficulty: "BEGINNER"
 tags: ["stream-integrity", "metrics", "derived-gauges", "appsettings"]
@@ -5145,7 +5209,7 @@ tests: ["MaintenanceWorkerIntegrityCompletionTests.EachDerivedGauge_SwitchesOffO
   "Whizbang": {
     "StreamIntegrity": {
       "VerifiedPercentGaugeEnabled": false,
-      "RepairProgressGaugeEnabled": false,
+      "RepairCloseRatioGaugeEnabled": false,
       "BacklogEtaGaugeEnabled": false
     }
   }
@@ -5158,8 +5222,8 @@ Prometheus exporter's default translation (dots become underscores, counters gai
 `ledger_open_buckets` is reported by one instance, so `sum` counts it once; the counters are summed across every
 instance, and `increase` absorbs a pod's restart.
 
-```promql{title="Repair progress and backlog ETA from the base meters" description="repair_progress_percent and backlog_eta_seconds computed over a one-hour window from ledger_buckets_opened, ledger_buckets_closed and ledger_open_buckets; the ETA query returns nothing while the backlog is flat or growing" category="Observability" difficulty="INTERMEDIATE" tags=["stream-integrity", "metrics", "promql", "eta"]}
-# Repair progress over the last hour, per service (above 100 means the backlog shrank)
+```promql{title="Repair close ratio and backlog ETA from the base meters" description="repair_close_ratio_percent and backlog_eta_seconds computed over a one-hour window from ledger_buckets_opened, ledger_buckets_closed and ledger_open_buckets; the ETA query returns nothing while the backlog is flat or growing" category="Observability" difficulty="INTERMEDIATE" tags=["stream-integrity", "metrics", "promql", "eta"]}
+# Repair close ratio over the last hour, per service: a direction signal (above 100 the backlog shrank, below it grew)
 100 * sum by (service_name) (increase(whizbang_stream_integrity_ledger_buckets_closed_total[1h]))
     / sum by (service_name) (increase(whizbang_stream_integrity_ledger_buckets_opened_total[1h]))
 
@@ -5178,7 +5242,7 @@ instance, and `increase` absorbs a pod's restart.
 The last query needs the origin's latest commit sequence, which no meter exports; read it from the database, where
 every number above is also available. Against the service's schema:
 
-```sql{title="The derived completion meters, read from the database" description="verified percent per origin from the seals and the kept watermark, and repair progress and ETA over the last hour from the shared tally and the backlog read" category="Observability" difficulty="INTERMEDIATE" tags=["stream-integrity", "sql", "verified-percent", "eta"]}
+```sql{title="The derived completion meters, read from the database" description="verified percent per origin from the seals and the kept watermark, and the repair close ratio and ETA over the last hour from the shared tally and the backlog read" category="Observability" difficulty="INTERMEDIATE" tags=["stream-integrity", "sql", "verified-percent", "eta"]}
 -- Verified percent per origin: the seal is exclusive, the latest inclusive
 SELECT s.origin_service_id,
        k.origin_service_name,
@@ -5190,7 +5254,7 @@ SELECT s.origin_service_id,
 FROM wh_integrity_seals s
 JOIN wh_integrity_known_origins k ON k.origin_service_id = s.origin_service_id;
 
--- Repair progress and ETA over the last 60 minutes (8 = MaxRepairAttemptsPerBucket)
+-- Repair close ratio and ETA over the last 60 minutes (8 = MaxRepairAttemptsPerBucket)
 WITH window_counts AS (
   SELECT opened, closed FROM wh_integrity_ledger_tally_since(now() - interval '60 minutes')
 ), backlog AS (
@@ -5198,7 +5262,7 @@ WITH window_counts AS (
   FROM wh_integrity_ledger_backlog(8)
   WHERE state <> 'unhealable'
 )
-SELECT CASE WHEN w.opened > 0 THEN 100.0 * w.closed / w.opened END AS repair_progress_percent,
+SELECT CASE WHEN w.opened > 0 THEN 100.0 * w.closed / w.opened END AS repair_close_ratio_percent,
        CASE WHEN b.open_buckets = 0 THEN 0.0
             WHEN w.closed - w.opened > 0 THEN b.open_buckets * 3600.0 / (w.closed - w.opened)
        END AS backlog_eta_seconds
@@ -5396,7 +5460,8 @@ A deficient service converging looks like: `repairs_requested` active → `redel
 climbing at the origin → `unhealed_buckets` and `unhealed_deficit_events` falling (heals deleting rows) with `bucket_heal_seconds`
 recording each one → `sealed_through` stepping upward as whole windows certify → everything quiet
 except the checkpoint heartbeat. The [completion meters](#derived-completion-meters) say the same in one number each:
-`repair_progress_percent` above 100 while the backlog shrinks, `backlog_eta_seconds` counting down, and
+`repair_close_ratio_percent` above 100 while the backlog shrinks, `ledger_open_buckets` falling and
+`backlog_eta_seconds` counting down, and
 `verified_percent` climbing to 100. A backlog that `unhealed_buckets_by_kind` shows as mostly `digest_mismatch` or
 `surplus` will not fall under repair: those buckets need their cause found, not more redelivery. After an upgrade from a schema older than 087, `origins_adopted` rises first while
 pre-087 history is redelivered once. While repair works, `repair_answer_pending_buckets` rises with each paced batch and
