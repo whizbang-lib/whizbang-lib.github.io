@@ -1039,7 +1039,7 @@
   },
   "AzureBlobStorageStartupNotices": {
     "file": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-    "line": 183,
+    "line": 186,
     "symbol": "AzureBlobStorageStartupNotices",
     "docs": "fundamentals/storage/azure-blob#migrating-from-the-earlier-packages"
   },

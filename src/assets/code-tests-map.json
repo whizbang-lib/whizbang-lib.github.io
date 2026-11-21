@@ -249751,7 +249751,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 184,
+        "sourceLine": 187,
         "sourceSymbol": "AzureBlobStorageStartupNotices",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -249781,7 +249781,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 184,
+        "sourceLine": 187,
         "sourceSymbol": "AzureBlobStorageStartupNotices",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -249811,7 +249811,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 184,
+        "sourceLine": 187,
         "sourceSymbol": "AzureBlobStorageStartupNotices",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -249841,7 +249841,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 184,
+        "sourceLine": 187,
         "sourceSymbol": "AzureBlobStorageStartupNotices",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -249871,7 +249871,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 184,
+        "sourceLine": 187,
         "sourceSymbol": "AzureBlobStorageStartupNotices",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -249901,7 +249901,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 184,
+        "sourceLine": 187,
         "sourceSymbol": "AzureBlobStorageStartupNotices",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -249931,7 +249931,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 184,
+        "sourceLine": 187,
         "sourceSymbol": "AzureBlobStorageStartupNotices",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -249961,7 +249961,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 184,
+        "sourceLine": 187,
         "sourceSymbol": "AzureBlobStorageStartupNotices",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -249998,7 +249998,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 184,
+        "sourceLine": 187,
         "sourceSymbol": "AzureBlobStorageStartupNotices",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -250028,7 +250028,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 184,
+        "sourceLine": 187,
         "sourceSymbol": "AzureBlobStorageStartupNotices",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -250058,7 +250058,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 184,
+        "sourceLine": 187,
         "sourceSymbol": "AzureBlobStorageStartupNotices",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -567267,7 +567267,7 @@
     }
   ],
   "metadata": {
-    "generated": "2026-11-21T18:50:34.067Z",
+    "generated": "2026-11-21T19:47:53.671Z",
     "sourceFiles": 2441,
     "testFiles": 4409,
     "totalLinks": 26802,
