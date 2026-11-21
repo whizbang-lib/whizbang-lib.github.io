@@ -13540,11 +13540,6 @@
       },
       {
         "testFile": "tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageConfigurationTests.cs",
-        "testMethod": "TheStartupNotices_AreLoggedOnce_EachAsAWarningAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageConfigurationTests.cs",
         "testMethod": "WithNoHostConfiguration_NothingIsActiveAsync",
         "linkSource": "XmlTag"
       }
@@ -13593,11 +13588,6 @@
       {
         "testFile": "tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageConfigurationTests.cs",
         "testMethod": "AGivenConfiguration_IsReadOverTheHostsOwnAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageConfigurationTests.cs",
-        "testMethod": "TheStartupNotices_AreLoggedOnce_EachAsAWarningAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -13654,11 +13644,6 @@
       },
       {
         "testFile": "tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageConfigurationTests.cs",
-        "testMethod": "TheStartupNotices_AreLoggedOnce_EachAsAWarningAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageConfigurationTests.cs",
         "testMethod": "WithNoHostConfiguration_NothingIsActiveAsync",
         "linkSource": "XmlTag"
       }
@@ -13709,58 +13694,8 @@
     ],
     "AzureBlobStorageStartupNotices": [
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageConfigurationTests.cs",
-        "testMethod": "TheNewKeys_NameOneAccount_AndEachFeatureTakesItAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageConfigurationTests.cs",
-        "testMethod": "AFeature_ItsOwnAccount_WinsOverTheShared_AndAServiceUriUsesTheRegisteredCredentialAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageConfigurationTests.cs",
-        "testMethod": "AConnectionName_NamesTheAccount_FromTheHostsConnectionStrings_AndIsTheArchivesLocationNameAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageConfigurationTests.cs",
-        "testMethod": "AConnectionName_WithNoConnectionStringsEntry_NamesNoAccount_AndTheFeatureStaysOff_WithAWarningAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageConfigurationTests.cs",
-        "testMethod": "AConnectionName_AlongsideAnAccount_OnlyNamesTheLocation_AndNeverReplacesTheArchivesOwnAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageConfigurationTests.cs",
-        "testMethod": "TheEarlierKeys_StillBind_WithAWarningNamingTheNewKey_AndTheNewKeyWinsAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageConfigurationTests.cs",
-        "testMethod": "AnEarlierNamedStore_WithoutAConnectionString_IsRefusedWhenResolved_NamingTheKeyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageConfigurationTests.cs",
-        "testMethod": "AValueThatCannotBeRead_FailsTheStart_NamingTheKey_NeverEchoingASecretAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageConfigurationTests.cs",
-        "testMethod": "AGivenConfiguration_IsReadOverTheHostsOwnAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageConfigurationTests.cs",
+        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobStorageStartupNoticesTests.cs",
         "testMethod": "TheStartupNotices_AreLoggedOnce_EachAsAWarningAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageConfigurationTests.cs",
-        "testMethod": "WithNoHostConfiguration_NothingIsActiveAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -21341,42 +21276,42 @@
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "AddWhizbang_RunsEveryLoadedStorageProvider_UnlessTheHostOptsOutAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "RegisterStorageProvider_TheSameNameTwice_KeepsOne_AndListsByNameAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "Reset_ForgetsTheStorageProvidersAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "Report_NamesTheArchiveObjectStore_OrTheDriversStore_AndTheOffloadStore_EachWithWhyAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "Report_WarnsWhenConfigurationNamesAnAccount_ForAPackageThatIsNotLoaded_NamingItAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "NamedAccount_IgnoresBlankValues_AndAHostWithoutConfigurationAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "AddWhizbang_RegistersTheReportOnce_HoweverOftenItIsCalledAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "AddWhizbangBodyOffload_Twice_RegistersTheOffloadHookOnceAsync",
         "linkSource": "XmlTag"
       },
@@ -84717,42 +84652,42 @@
     ],
     "RegisterStorageProvider": [
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "AddWhizbang_RunsEveryLoadedStorageProvider_UnlessTheHostOptsOutAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "RegisterStorageProvider_TheSameNameTwice_KeepsOne_AndListsByNameAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "Reset_ForgetsTheStorageProvidersAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "Report_NamesTheArchiveObjectStore_OrTheDriversStore_AndTheOffloadStore_EachWithWhyAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "Report_WarnsWhenConfigurationNamesAnAccount_ForAPackageThatIsNotLoaded_NamingItAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "NamedAccount_IgnoresBlankValues_AndAHostWithoutConfigurationAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "AddWhizbang_RegistersTheReportOnce_HoweverOftenItIsCalledAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "AddWhizbangBodyOffload_Twice_RegistersTheOffloadHookOnceAsync",
         "linkSource": "XmlTag"
       }
@@ -193293,84 +193228,84 @@
     ],
     "StorageFeatureActivation": [
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "AddWhizbang_RunsEveryLoadedStorageProvider_UnlessTheHostOptsOutAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "RegisterStorageProvider_TheSameNameTwice_KeepsOne_AndListsByNameAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "Reset_ForgetsTheStorageProvidersAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "Report_NamesTheArchiveObjectStore_OrTheDriversStore_AndTheOffloadStore_EachWithWhyAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "Report_WarnsWhenConfigurationNamesAnAccount_ForAPackageThatIsNotLoaded_NamingItAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "NamedAccount_IgnoresBlankValues_AndAHostWithoutConfigurationAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "AddWhizbang_RegistersTheReportOnce_HoweverOftenItIsCalledAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "AddWhizbangBodyOffload_Twice_RegistersTheOffloadHookOnceAsync",
         "linkSource": "XmlTag"
       }
     ],
     "StorageProviderStartupReport": [
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "AddWhizbang_RunsEveryLoadedStorageProvider_UnlessTheHostOptsOutAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "RegisterStorageProvider_TheSameNameTwice_KeepsOne_AndListsByNameAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "Reset_ForgetsTheStorageProvidersAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "Report_NamesTheArchiveObjectStore_OrTheDriversStore_AndTheOffloadStore_EachWithWhyAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "Report_WarnsWhenConfigurationNamesAnAccount_ForAPackageThatIsNotLoaded_NamingItAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "NamedAccount_IgnoresBlankValues_AndAHostWithoutConfigurationAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "AddWhizbang_RegistersTheReportOnce_HoweverOftenItIsCalledAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "AddWhizbangBodyOffload_Twice_RegistersTheOffloadHookOnceAsync",
         "linkSource": "XmlTag"
       }
@@ -193759,7 +193694,7 @@
     ],
     "AutoRegisterStorageProviders": [
       {
-        "testFile": "tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs",
+        "testFile": "tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs",
         "testMethod": "AddWhizbang_RunsEveryLoadedStorageProvider_UnlessTheHostOptsOutAsync",
         "linkSource": "XmlTag"
       }
@@ -249936,13 +249871,6 @@
         "sourceSymbol": "AzureBlobStorageOptions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 187,
-        "sourceSymbol": "AzureBlobStorageStartupNotices",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
       }
     ],
     "AzureBlobStorageConfigurationTests.AFeature_ItsOwnAccount_WinsOverTheShared_AndAServiceUriUsesTheRegisteredCredentialAsync": [
@@ -249964,13 +249892,6 @@
         "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageOptions.cs",
         "sourceLine": 29,
         "sourceSymbol": "AzureBlobStorageOptions",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 187,
-        "sourceSymbol": "AzureBlobStorageStartupNotices",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       }
@@ -249996,13 +249917,6 @@
         "sourceSymbol": "AzureBlobStorageOptions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 187,
-        "sourceSymbol": "AzureBlobStorageStartupNotices",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
       }
     ],
     "AzureBlobStorageConfigurationTests.AConnectionName_WithNoConnectionStringsEntry_NamesNoAccount_AndTheFeatureStaysOff_WithAWarningAsync": [
@@ -250024,13 +249938,6 @@
         "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageOptions.cs",
         "sourceLine": 29,
         "sourceSymbol": "AzureBlobStorageOptions",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 187,
-        "sourceSymbol": "AzureBlobStorageStartupNotices",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       }
@@ -250056,13 +249963,6 @@
         "sourceSymbol": "AzureBlobStorageOptions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 187,
-        "sourceSymbol": "AzureBlobStorageStartupNotices",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
       }
     ],
     "AzureBlobStorageConfigurationTests.TheEarlierKeys_StillBind_WithAWarningNamingTheNewKey_AndTheNewKeyWinsAsync": [
@@ -250084,13 +249984,6 @@
         "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageOptions.cs",
         "sourceLine": 29,
         "sourceSymbol": "AzureBlobStorageOptions",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 187,
-        "sourceSymbol": "AzureBlobStorageStartupNotices",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       }
@@ -250116,13 +250009,6 @@
         "sourceSymbol": "AzureBlobStorageOptions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 187,
-        "sourceSymbol": "AzureBlobStorageStartupNotices",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
       }
     ],
     "AzureBlobStorageConfigurationTests.AValueThatCannotBeRead_FailsTheStart_NamingTheKey_NeverEchoingASecretAsync": [
@@ -250144,13 +250030,6 @@
         "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageOptions.cs",
         "sourceLine": 29,
         "sourceSymbol": "AzureBlobStorageOptions",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 187,
-        "sourceSymbol": "AzureBlobStorageStartupNotices",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       }
@@ -250183,43 +250062,6 @@
         "sourceSymbol": "AddWhizbangAzureBlobStorage",
         "sourceType": "Method",
         "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 187,
-        "sourceSymbol": "AzureBlobStorageStartupNotices",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "AzureBlobStorageConfigurationTests.TheStartupNotices_AreLoggedOnce_EachAsAWarningAsync": [
-      {
-        "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobOffloadOptions.cs",
-        "sourceLine": 15,
-        "sourceSymbol": "AzureBlobOffloadOptions",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageConfiguration.cs",
-        "sourceLine": 19,
-        "sourceSymbol": "AzureBlobStorageConfiguration",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageOptions.cs",
-        "sourceLine": 29,
-        "sourceSymbol": "AzureBlobStorageOptions",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 187,
-        "sourceSymbol": "AzureBlobStorageStartupNotices",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
       }
     ],
     "AzureBlobStorageConfigurationTests.WithNoHostConfiguration_NothingIsActiveAsync": [
@@ -250241,13 +250083,6 @@
         "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageOptions.cs",
         "sourceLine": 29,
         "sourceSymbol": "AzureBlobStorageOptions",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
-        "sourceLine": 187,
-        "sourceSymbol": "AzureBlobStorageStartupNotices",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       }
@@ -250342,6 +250177,15 @@
         "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageTurnkey.cs",
         "sourceLine": 19,
         "sourceSymbol": "AzureBlobStorageTurnkey",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "AzureBlobStorageStartupNoticesTests.TheStartupNotices_AreLoggedOnce_EachAsAWarningAsync": [
+      {
+        "sourceFile": "src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs",
+        "sourceLine": 187,
+        "sourceSymbol": "AzureBlobStorageStartupNotices",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       }
@@ -567743,9 +567587,9 @@
     }
   ],
   "metadata": {
-    "generated": "2026-11-21T23:24:28.221Z",
+    "generated": "2026-11-21T23:48:03.987Z",
     "sourceFiles": 2445,
-    "testFiles": 4411,
+    "testFiles": 4412,
     "totalLinks": 26824,
     "codeSymbols": 3775,
     "testMethods": 23049,

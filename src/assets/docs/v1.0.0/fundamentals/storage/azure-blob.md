@@ -32,7 +32,7 @@ testReferences:
   - tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobArchiveRegistrationTests.cs
   - tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobOffloadFromConfigurationTests.cs
   - tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobOffloadDIRegistrationTests.cs
-  - tests/Whizbang.Core.Tests/StorageProviderTurnkeyTests.cs
+  - tests/Whizbang.Core.Component.Tests/Configuration/StorageProviderTurnkeyTests.cs
   - tests/Whizbang.Core.Tests/Offloads/BodyCipherFromConfigurationTests.cs
   - tests/Whizbang.Generators.Tests/ServiceAssemblyFactsGeneratorTests.cs
 ---
@@ -215,7 +215,7 @@ builder.Services.AddWhizbang(options => options.AutoRegisterStorageProviders = f
 
 ## Startup report {#startup-report}
 
-{verified: StorageProviderTurnkeyTests.Report_NamesTheArchiveObjectStore_OrTheDriversStore_AndTheOffloadStore_EachWithWhyAsync, StorageProviderTurnkeyTests.Report_WarnsWhenConfigurationNamesAnAccount_ForAPackageThatIsNotLoaded_NamingItAsync, AzureBlobStorageConfigurationTests.TheStartupNotices_AreLoggedOnce_EachAsAWarningAsync}
+{verified: StorageProviderTurnkeyTests.Report_NamesTheArchiveObjectStore_OrTheDriversStore_AndTheOffloadStore_EachWithWhyAsync, StorageProviderTurnkeyTests.Report_WarnsWhenConfigurationNamesAnAccount_ForAPackageThatIsNotLoaded_NamingItAsync, AzureBlobStorageStartupNoticesTests.TheStartupNotices_AreLoggedOnce_EachAsAWarningAsync}
 
 At start the host logs which provider each storage feature uses, and why:
 
