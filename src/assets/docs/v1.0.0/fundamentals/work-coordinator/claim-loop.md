@@ -460,6 +460,49 @@ claim charged it an attempt until it was dead-lettered. Migration 411 changes tw
 A row held back behind an event another live instance holds is still acquired and waits, since the claim cannot take a
 row under a live lease; it is no longer charged for waiting.
 
+### A row waiting for its stream head {#a-row-waiting-for-its-stream-head}
+{verified: AwaitingStreamHeadSqlTests.Claim_ARowHeldBackBehindAnUnstoredHead_ShowsItAwaitsTheStreamHeadAsync, AwaitingStreamHeadSqlTests.Claim_AWaitingRowWhoseLeaseLapsed_IsReclaimedStillAwaitingTheHead_NotAsALeaseExpiryAsync, AwaitingStreamHeadSqlTests.Claim_OnceTheHeadIsHeld_TheWaitingRowIsStored_AndNoLongerShowsItWaitsAsync, AwaitingStreamHeadSqlTests.Claim_AHeldBackRowCarryingAnEarlierLeaseExpiry_ShowsItAwaitsTheHeadInsteadAsync, AwaitingStreamHeadSqlTests.Claim_AHeldBackRowCarryingAnotherRecordedFailure_KeepsItAsync, MessageFailureReasonTests.MessageFailureReason_HasExpectedValuesAsync}
+
+A received event waits while an earlier event of its stream (the stream's head) is not yet in the event store and this
+instance does not hold it: a peer holds it, its lease ran out, or it is not leased at all. The store pass holds the
+later event back, unstored and undispatched, so the stream is stored in the producer's order. Once the head is stored,
+the next claim stores the waiting rows after it, in order, and they are dispatched as usual.
+
+Since migration 551 (#1630) a waiting row says so, in the columns operators already read on `wh_inbox_state`:
+
+- **`failure_reason` is 30, `MessageFailureReason.AwaitingStreamHead`.** It is a waiting state, not a failure.
+- **`error` names the stream and when the wait began**: `Waiting for the stream head since <time>: an earlier event of
+  stream <stream id> is not yet stored and is not held by this instance, ...`. A row that is already waiting keeps its
+  text, so the time is when the wait began, however many claims lease the row again.
+- **The wait is not charged an attempt.** The claim refunds the attempt it counted for a row it held back (411), and an
+  owner renews its own lapsed leases without one (462), so a waiting row never runs out of attempts for waiting.
+- **A lapse while waiting is not a lease expiry.** Before 551, a waiting row whose lease ran out was recorded by the
+  next claim as `LeaseExpired` ("ended without a reported outcome ... process terminated mid-dispatch"), although
+  nothing was dispatched. The waiting state's error is not null, so the claim's lapsed-lease record leaves it as it is.
+  A row that carried that record from an earlier release shows the wait instead.
+- **Any other recorded failure is kept.** The wait replaces only the lapsed-lease record; a failure someone recorded is
+  the better diagnostic.
+- **The state clears when the row is stored.** The stamp that marks a stored row resets `failure_reason` to 99 and
+  `error` to null, so the row reads as any other until its dispatch records something.
+
+The state costs nothing extra: it is written by the statement that already refunds the attempt, and cleared by the
+statement that already stamps the stored row. Neither column is in an index.
+
+To list the rows waiting now, and the streams they wait on:
+
+```sql{title="Rows waiting for their stream head" description="Lists inbox rows held back behind an unstored stream head" category="Operations" difficulty="INTERMEDIATE" tags=["Inbox", "SQL", "Operations"]}
+SELECT stream_id, count(*) AS waiting, min(received_at) AS oldest, min(error) AS since
+FROM wh_inbox_state
+WHERE failure_reason = 30 AND processed_at IS NULL
+GROUP BY stream_id
+ORDER BY oldest;
+```
+
+A row that waits a long time points at its stream's head: find the stream's earliest pending row
+(`SELECT message_id, instance_id, lease_expiry, attempts, error FROM wh_inbox_state WHERE stream_id = @stream AND
+processed_at IS NULL ORDER BY message_id LIMIT 1`). A head leased to a live peer is being worked there; a head that
+keeps failing has its own `error`, and the rows behind it wait until it is stored or concluded.
+
 ### An owner renews the leases it let run out {#an-owner-renews-the-leases-it-let-run-out}
 {verified: OwnerLeaseRenewalSqlTests.Claim_AHeldRowWhoseLeaseRanOut_OnAStreamItsRankOwns_IsRenewedAndOffered_WithoutAnAttemptAsync, OwnerLeaseRenewalSqlTests.Claim_ARenewedStream_IsLeasedInTheLedgerToTheRenewingInstanceAsync, OwnerLeaseRenewalSqlTests.Claim_EveryExpiredRowOfARenewedStream_IsRenewedAsync, OwnerLeaseRenewalSqlTests.Claim_AHeldRowWhoseLeaseIsLive_KeepsItsLeaseAsync, OwnerLeaseRenewalSqlTests.Claim_PastTheAcquisitionBound_TheRestOfItsExpiredRowsAreRenewed_NotChargedAsync, OwnerLeaseRenewalSqlTests.Claim_RenewsAtMostTheClaimWindow_OldestLeaseFirstAsync, OwnerLeaseRenewalSqlTests.Claim_WhenTheInstanceCountChanged_AndThePartitionFallsToALivePeer_LeavesTheRowToAcquisitionAsync, OwnerLeaseRenewalSqlTests.Claim_WhenThePartitionFallsToAPeer_ButTheHoldersLedgerLeaseIsLive_RenewsTheRowAsync, OwnerLeaseRenewalSqlTests.Claim_WhenALivePeerHoldsTheStream_LeavesTheRowAsync, OwnerLeaseRenewalSqlTests.Claim_WithStealingAllowed_TheRenewalStillDoesNotSteal_AcquisitionDoesAsBeforeAsync, ClaimWorkPlanShapeTests.ClaimWork_HeldRowsWhoseLeaseRanOut_AreRenewed_AndTheNextPollDoesNotPassOverThemAsync, ClaimWorkPlanShapeTests.ClaimWork_RenewingExpiredLeases_ReadsThemThroughTheLeaseOrderIndexAsync}
 
