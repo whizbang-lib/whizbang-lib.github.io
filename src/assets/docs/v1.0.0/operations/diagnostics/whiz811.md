@@ -129,5 +129,5 @@ Suppressing is always safe: the notice reports nothing wrong, only a query optim
 
 - [Polymorphic Types in Perspectives](../../fundamentals/perspectives/polymorphic-types)
 - [Polymorphic Discriminator](../../fundamentals/perspectives/polymorphic-discriminator)
-- [WHIZ810: Perspective Model Contains Dictionary Property](whiz810)
+- [WHIZ810: Perspective Model Contained a Dictionary Property (retired)](whiz810)
 - [WHIZ812: Perspective Model Declares a JSON Converter That Is Never Consulted](whiz812)

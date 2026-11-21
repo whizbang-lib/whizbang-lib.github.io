@@ -76,6 +76,11 @@ cost more than it buys: the stamper could not find its next batch through an ind
 import's open transactions would stall it (see [A held-back stamp reads nothing it cannot
 stamp](#held-back)).
 
+The stamp is also the position another service sees: a locally written event, once published, carries its `commit_sequence` as its
+`SourceCommitSequence`, and receivers replay and account for a producer's events in that order. A child fanned out of
+a coalesced composite carries its own single's stamp rather than the composite's, which has none (see
+[Coalesced children carry their own origin sequence](../messaging/composite-events.md#coalesced-child-origin-sequence)).
+
 ## How stamping runs
 
 Every service instance hosts the stamper worker, and the leader is whichever instance holds the

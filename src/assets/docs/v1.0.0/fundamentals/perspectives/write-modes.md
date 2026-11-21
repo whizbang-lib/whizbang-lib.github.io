@@ -12,7 +12,7 @@ tags: >-
   perspectives, write-modes, set-based, batching, round-trips, fan-out, perspective-runner,
   perspective-worker, conformance-suite
 codeReferences:
-  - src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Workers/BatchedCompletionStrategy.cs
   - src/Whizbang.Core/Workers/PerspectiveCompletionFlushWorker.cs
@@ -344,13 +344,12 @@ tracker fire after the flush, and a sync wait forces an early flush of that stre
 
 ### Staging-table rebuilds {#staging-table-rebuilds}
 
-[#2248](https://github.com/whizbang-lib/whizbang/issues/2248), selected automatically during a full
-[rebuild](rebuild) and never switched on by hand (a service can only switch it off). Every model starts empty, rows
-are loaded into a staging table with `COPY`, indexes are built after the load, and the table is swapped in by a rename
-in one transaction under a short lock. Live events that arrive during the rebuild are caught up from the recorded tail
-position in the perspective's live write mode. Every feature that holds the table by name (physical fields,
-snapshots, mirrors, indexes and grants) keeps working after the swap, and free disk is checked first because the table
-briefly exists twice.
+[#2248](https://github.com/whizbang-lib/whizbang/issues/2248). The first pass of every
+[blue-green rebuild](rebuild#blue-green) writes its empty shadow table through a [staging load](rebuild#staging-load):
+there is no state to read, rows are copied in with `COPY` per chunk, the shadow's plain indexes are built after the
+load, and the catch-up and the swap then run the per-row write. It is selected automatically and a service can only
+switch it off. A chunk `COPY` cannot take falls back to this page's set-based statements, so a refused row is isolated
+the same way here as in a live batch.
 
 ## The conformance suite {#conformance-suite}
 

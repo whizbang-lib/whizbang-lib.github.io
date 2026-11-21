@@ -89,7 +89,7 @@ codeReferences:
   - src/Whizbang.Generators/EphemeralAnalyzer.cs
   - src/Whizbang.Generators.Shared/Utilities/EphemeralResolver.cs
   - src/Whizbang.Generators/PerspectiveRunnerGenerator.cs
-  - src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs
   - src/Whizbang.Data.Postgres/EphemeralSnapshotFloorSql.cs
   - src/Whizbang.Data.Postgres/CoordinatorCatalogSql.cs
   - src/Whizbang.Data.Postgres/Migrations/534_ATipSnapshotIsNoFloorUntilItsEventAgesOut.sql

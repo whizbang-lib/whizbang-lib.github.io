@@ -94,9 +94,17 @@ public enum MessageFailureReason {
     StreamSealed = 25,                         // Event refused: its stream is sealed (finalized or ended)
     StreamArchived = 26,                       // Event refused: its stream is archived and its type refuses appends
     AwaitingRestore = 27,                      // Event refused: its stream is archived; held until its restore
+    ReceptorDenied = 28,                       // A receptor interceptor denied a receptor (dead-lettered)
+    ReceptorQuarantined = 29,                  // A receptor interceptor quarantined the message for review
+    AwaitingStreamHead = 30,                   // Not a failure: an inbox row waiting for its stream's head
     Unknown = 99                               // Default (not classified)
 }
 ```
+
+`AwaitingStreamHead` (30) is a waiting state, not a failure. An inbox row shows it while it is held back behind an
+earlier event of its stream that is not yet stored; it costs no attempt, never dead-letters the row, and clears when
+the row is stored. See [A row waiting for its stream head](../fundamentals/work-coordinator/claim-loop.md#a-row-waiting-for-its-stream-head).
+{verified: AwaitingStreamHeadSqlTests.Claim_ARowHeldBackBehindAnUnstoredHead_ShowsItAwaitsTheStreamHeadAsync, AwaitingStreamHeadSqlTests.Claim_OnceTheHeadIsHeld_TheWaitingRowIsStored_AndNoLongerShowsItWaitsAsync}
 
 **Purpose**:
 - Enable typed filtering (e.g., "retry only TransportUnavailable failures")

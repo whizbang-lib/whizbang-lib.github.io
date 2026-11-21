@@ -549,11 +549,36 @@ event:
 
 | Field | Behavior |
 |---|---|
-| `Version`, `DispatchContext`, `SourceServiceId`, `SourceCommitSequence`, `CausedByServiceId`, `CausedByCommitSequence`, `StateOnly` | Copied from the composite envelope (re-delivery bundles may override the source service id / commit sequence with the original origin identity). |
+| `Version`, `DispatchContext`, `SourceServiceId`, `SourceCommitSequence`, `CausedByServiceId`, `CausedByCommitSequence`, `StateOnly` | Copied from the composite envelope, except that a bundle carrying per-child commit sequences gives each child its own (see [Coalesced children carry their own origin sequence](#coalesced-child-origin-sequence)), and re-delivery bundles may override the source service id and commit sequence with the original origin identity. |
 | `Hops` | A composite-lineage chain: a fresh creation hop whose `CausationId` is the composite's `MessageId` and `CausationType` is the composite type name, followed by the composite's own hops. Built once and shared by reference across the whole batch, so "these events came from composite X" is queryable. |
 | `MessageId` | Derived from the composite's id, the child's ordinal in the composite, and the child's version-free type name (`CompositeChildIdentity.ForChild`), UUIDv7-shaped with the composite's time prefix, so a repeated expansion of the same composite produces the same rows and the inbox primary key absorbs it. Identity-preserving re-delivery composites keep each child's original id so consumer convergence rides the event-id conflict skip. |
 | `StreamId` | The stream the child's producer stored it on: the one the bundle recorded for it (`InnerStreamIds`), else the one its payload's `[StreamId]` names, else the composite's own (its first hop's stream, then its own `[StreamId]`), and only then the composite envelope's id ([Stream identity](stream-identity.md)). |
 | `Flags` | Stamped `EventFlags.NoRebroadcast` on both the persisted inbox row and the in-memory envelope. |
+
+### Coalesced children carry their own origin sequence {#coalesced-child-origin-sequence}
+
+A composite is never stored as an event, so it drains from its producer's outbox with a `SourceCommitSequence` of
+zero. A child that copied it carried no usable origin position: [origin-order replay](../perspectives/rewind.md#replay-ordering)
+uses origin order only when every event of a stream has one, so any stream holding such a child fell back to its
+stored order, and integrity accounting, which counts by origin service and origin commit sequence, never counted it.
+
+A bundle that carries per-child commit sequences (`IIdentityPreservingComposite.InnerCommitSequences`, parallel to
+its inner events) gives each child its own:
+
+- **Coalesced composites.** The coalesce fold reads each single's position in the producer's commit lane, the same
+  sequence a direct delivery of that single carries, and `CoalescedEventsComposite` carries it per child (#1628).
+  Each child keeps the producer's service id and its single's sequence, so it lands in the producer's lane exactly
+  where its direct delivery would have.
+- **Re-delivery bundles.** Each child carries its original origin sequence, under the origin the bundle names.
+
+A child whose entry is null carries the composite's sequence, as before: a single that was not stored as an event,
+one the commit stamper had not reached when the fold ran, or one forwarded from another service (its direct delivery
+carries that service's identity, which one composite cannot carry per child). So does every child of a bundle that
+carries no list at all, such as a composite from a producer that predates the field or an audit-record composite
+(audit records are not stored as events on the producer). The list is additive on the wire: a receiver that predates
+it skips the member and expands the bundle as before.
+
+{verified: CoalescedChildOriginSequenceTests.TryExpand_CoalescedComposite_EachChildCarriesItsOwnSinglesSequenceAsync, CoalescedChildOriginSequenceTests.OlderProducersComposite_ReadsWithNoSequences_AndChildrenCarryTheCompositesAsync, CoalescedChildOriginSequenceTests.OlderReceiver_SkipsAMemberItsCompositeTypeDoesNotHaveAsync, CoalescedChildOriginSequenceTests.AuditComposite_CarriesNoSequencesAsync}
 
 ### Deterministic child ids {#deterministic-child-ids}
 

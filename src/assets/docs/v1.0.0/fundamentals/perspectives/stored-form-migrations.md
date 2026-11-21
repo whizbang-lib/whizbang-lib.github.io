@@ -30,6 +30,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Perspectives/DeclaredKeyShape.cs
   - src/Whizbang.Data.Postgres/Perspectives/DeclaredKeyTable.cs
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/DeclaredKeyShapes.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/DictionaryPairsRewrite.cs
   - src/Whizbang.Core/Perspectives/PerspectiveDocumentModels.cs
   - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
   - src/Whizbang.Generators/MessageJsonContextGenerator.cs
@@ -49,6 +50,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/DeclaredKeySpellingPassTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/DeclaredKeySpellingDocumentTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/DeclaredKeyShapesTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/DictionaryPairsRewriteIntegrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/DapperDeclaredNameSpellingTests.cs
   - tests/Whizbang.Core.Tests/Serialization/DeclaredNameReadTests.cs
 ---
@@ -438,7 +440,7 @@ The journal is written in the same transaction and savepoint as the conversion, 
 |---|---|
 | `name` | The migration's name. A generated name describes the declaration, for example `wh_per_order.Status:Int32->String` or `wh_per_customer.DisplayName:renamed-from:Name`. |
 | `table_name` | The perspective table. |
-| `kind` | `generated` or `custom`. |
+| `kind` | `generated` or `custom` for a declared migration; `dictionary-pairs` for the framework's own [dictionary rewrite](#journal-dictionary-pairs). |
 | `declared_at` | When a release first declared it. |
 | `first_applied_at`, `last_applied_at` | The first and the latest pass that ran it. |
 | `rows_converted` | The total number of row updates across its passes. |
@@ -459,6 +461,18 @@ first pass that finds **nothing left to convert**. A pass that converts rows lea
 next start makes one more pass. That pass catches any row an instance of the previous release wrote in
 the old form during a rolling deploy, then settles. So the table is scanned at most twice, and a
 database created by this release settles on its first pass.
+
+### The dictionary rewrite's entries {#journal-dictionary-pairs}
+
+The framework journals one migration of its own here: the rewrite that converts a dictionary an earlier
+release stored as a JSON object to the array of key/value objects every reader and writer now uses (see
+[Dictionary Members](dictionary-members.md#stored-form-rewrite)). It has one row per perspective table that
+stores a dictionary, with kind `dictionary-pairs` and the name `dictionary-pairs:<table>:<hash>`; the hash
+covers the table's dictionary paths, so a model that gains a dictionary gets a new row and its table is
+scanned again. It runs after the declared migrations of the same pass and settles like a generated one, on
+the first pass that converts nothing. A table this release has not created yet is settled at once.
+
+{verified: DictionaryPairsRewriteIntegrationTests.AnObjectFormDictionary_IsRewrittenToPairs_AndTheTableSettlesAsync, DictionaryPairsRewriteIntegrationTests.ATableNotCreatedYet_IsSettledAtOnceAsync, DictionaryPairsRewriteTests.TheJournalName_ChangesWithThePathsAsync}
 
 ## Blocking startup {#blocking}
 

@@ -117,7 +117,7 @@ With this section set, the body store it configures is the one bodies are offloa
 | `Whizbang:Storage:AzureBlob:Archive:AccessTier` | `AccessTier?` | the account default | `Hot`, `Cool` or `Cold` ([access tier](../events/archive-store#access-tier)); `Archive` is refused. |
 | `Whizbang:Storage:AzureBlob:Archive:CompressionLevel` | `int` | `4` | The Brotli quality, 0 to 11. |
 | `Whizbang:Storage:AzureBlob:Archive:MaxEventsPerChunk` | `int` | `10000` | The most events one object holds. |
-| `Whizbang:Storage:AzureBlob:Archive:VerifyLocation` | `bool` | `true` | Whether every record's location is checked ([the check](../events/archive-store#verify-location)). |
+| `Whizbang:Storage:AzureBlob:Archive:LocationMismatch` | `ArchiveLocationMismatchHandling` | `Error` | What a record whose location is not the configured one does ([location mismatch handling](../events/archive-store#location-mismatch)). |
 | `Whizbang:Storage:AzureBlob:Archive:DeleteAfter` | `TimeSpan?` | `null` | The deletion delay for storage without soft delete ([a deletion delay](../../operations/deployment/restoring-an-environment-with-an-archive#a-deletion-delay)). |
 
 | Choice | Reason | Verified |

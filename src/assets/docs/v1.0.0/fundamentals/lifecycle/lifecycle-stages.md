@@ -24,7 +24,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/WorkCoordinatorFlushHelper.cs
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
   - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
-  - src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Core/Lifecycle/DestructionStageReceptors.cs
@@ -332,6 +332,17 @@ var view = await dispatcher.LocalInvokeAsync<GetTenant, TenantView>(new GetTenan
 
 The five Distribute stages fire on every work-coordinator flush, around the flush's store calls: `PreDistributeDetached` and `PreDistributeInline` before the outbox and inbox rows are stored, `DistributeDetached` alongside the store, and `PostDistributeDetached` and `PostDistributeInline` after it. They fire for both the outbox (publishing) and inbox (consuming) messages in the flush; use `MessageSource` to tell them apart. A flush that skips lifecycle (the framework's own internal flushes) fires none of them.
 
+#### One payload per flush {#one-payload-per-flush}
+{verified: DistributeFlushParseOnceTests.OneFlush_FiveDistributeStages_ParseEachPayloadOnceAsync, DistributeFlushParseOnceTests.OneFlush_EveryStageGetsTheSamePayload_InItsOwnEnvelopeAsync, DistributeFlushParseOnceTests.TwoFlushes_OfTheSameMessage_EachParseItAsync, DistributeFlushParseOnceTests.OneFlush_TwoEnvelopesWithTheSameMessageId_AreEachParsedAsync, DistributeFlushParseOnceTests.OneFlush_APayloadThatFailedToParse_IsReadAgainByTheNextStageAsync}
+
+The five stages of one flush read each message's payload once and share it. Each stage used to parse the stored payload again: five parses of the same bytes for every message in every flush, whether or not a receptor was registered for the stage. Each stage still receives an envelope of its own, so the hops and stamps one stage adds are never seen by another.
+
+- A payload is shared per envelope, not per message id: two envelopes carrying the same id are each parsed.
+- Nothing is kept after the flush; the next flush of the same message parses it again.
+- A payload that fails to parse is not kept, so the next stage tries again.
+
+**Treat payloads as immutable.** The stages of a flush receive the same payload object, so a Distribute-stage receptor that changes the payload in place changes what the later stages of that flush see. Use records or init-only properties, and make a copy when a receptor needs a changed one.
+
 #### `PreDistributeDetached`
 
 **Timing**: Before the flush's store calls (fire-and-forget, own scope).
@@ -614,7 +625,7 @@ Perspective lifecycle stages are new in v1.0.0 and enable deterministic test syn
 - Fires once per batch, not per event
 - Perspective may complete before this stage finishes
 
-**Hook Location**: Shared perspective runner logic (`PerspectiveRunnerBase`, from `PerspectiveRunnerBaseTemplate.cs`) before event processing loop begins
+**Hook Location**: Shared perspective runner logic (`PerspectiveRunnerBase` in Whizbang.Core) before event processing loop begins
 
 #### `PrePerspectiveInline`
 
@@ -630,7 +641,7 @@ Perspective lifecycle stages are new in v1.0.0 and enable deterministic test syn
 - Fires once per batch, not per event
 - No events processed yet
 
-**Hook Location**: Shared perspective runner logic (`PerspectiveRunnerBase`, from `PerspectiveRunnerBaseTemplate.cs`) before event processing loop begins
+**Hook Location**: Shared perspective runner logic (`PerspectiveRunnerBase` in Whizbang.Core) before event processing loop begins
 
 #### `PostPerspectiveDetached`
 
@@ -646,7 +657,7 @@ Perspective lifecycle stages are new in v1.0.0 and enable deterministic test syn
 - Perspective data writes are flushed
 - Checkpoint not yet committed
 
-**Hook Location**: Shared perspective runner logic (`PerspectiveRunnerBase`, from `PerspectiveRunnerBaseTemplate.cs`) after perspective data is flushed, before checkpoint save
+**Hook Location**: Shared perspective runner logic (`PerspectiveRunnerBase` in Whizbang.Core) after perspective data is flushed, before checkpoint save
 
 **Example**:
 ```csharp{title="`PostPerspectiveDetached`" description="PostPerspectiveDetached" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "PostPerspectiveDetached"] tests=["ReceptorDiscoveryGeneratorTests.Generator_ReceptorWithFireAt_RegisteredOnlyAtSpecifiedStageAsync", "LifecycleCoordinatorTests.AdvanceTo_SetsCorrectContextProperties_OnReceptorInvocationAsync", "LifecycleStageTests.LifecycleStage_PostPerspectiveDetached_IsDefinedAsync"]}
@@ -1202,8 +1213,8 @@ See [Lifecycle Receptors](../receptors/lifecycle-receptors.md) for API details.
 | `PreDistribute*` / `DistributeDetached` / `PostDistribute*` | `WorkCoordinatorFlushHelper.cs` | Around the flush's outbox and inbox store calls |
 | `PreOutbox*` / `PostOutbox*` | `OutboxPublishWorker.cs` | Around transport publish |
 | `PreInbox*` / `PostInbox*` | `InboxDispatchWorker.cs` | Around receptor dispatch (`PostInbox` fires after event storage) |
-| `PrePerspective*` | `PerspectiveRunnerBaseTemplate.cs` | Before event processing loop (once per batch) |
-| `PostPerspectiveDetached` | `PerspectiveRunnerBaseTemplate.cs` | After perspective data flush, before checkpoint save |
+| `PrePerspective*` | `PerspectiveRunnerBase.cs` (Whizbang.Core) | Before event processing loop (once per batch) |
+| `PostPerspectiveDetached` | `PerspectiveRunnerBase.cs` (Whizbang.Core) | After perspective data flush, before checkpoint save |
 | `PostPerspectiveInline` | `PerspectiveWorker.cs` | After checkpoint commit (data + checkpoint durable) |
 | `PostAllPerspectives*` | `PerspectiveWorker.cs` | After ALL perspectives complete (WhenAll) — managed by [Lifecycle Coordinator](lifecycle-coordinator.md) |
 | `PostLifecycle*` | `PerspectiveWorker.cs`, `TransportConsumerWorker.cs`, `Dispatcher.cs` | After all processing completes — managed by [Lifecycle Coordinator](lifecycle-coordinator.md) |

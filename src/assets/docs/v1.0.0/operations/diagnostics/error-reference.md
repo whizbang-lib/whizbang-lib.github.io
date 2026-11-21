@@ -175,14 +175,16 @@ Each location reads `{provider}, endpoint {endpoint}, connection '{name}', conta
 
 **Source**: `ArchiveLocationMismatchException` (namespace `Whizbang.Core.Archival`), thrown by the archive coordinator (`PostgresObjectArchiveStore`) from `ReadAsync`, `RestoreAsync`, `DeleteAsync` and `WriteAsync`. Its properties carry `StreamId`, `Operation`, `RecordedLocationId`, `Recorded` and `Configured`.
 
-**Trigger**: A record of the stream names an [archive location](../../fundamentals/events/archive-store.md#archive-locations) other than the one the store is configured for (another account endpoint, logical connection name or container), or no location at all. The usual cause is a database that moved without its configuration: a copy to another environment, a restore from a backup, or disaster recovery to another storage account; or a configuration pointed at another account or container. `Operation` is `read`, `restore`, `delete` or `write`; a `write` is refused when the stream's earlier objects are recorded elsewhere, so a stream never spans two locations.
+**Trigger**: Under the default `Whizbang:Storage:AzureBlob:Archive:LocationMismatch = Error`, a record of the stream names an [archive location](../../fundamentals/events/archive-store.md#archive-locations) other than the one the store is configured for (another account endpoint, logical connection name or container), or no location at all. The usual cause is a database that moved without its configuration: a copy to another environment, a restore from a backup, or disaster recovery to another storage account; or a configuration pointed at another account or container. `Operation` is `read`, `restore`, `delete` or `write`; a `write` is refused when the stream's earlier objects are recorded elsewhere, so a stream never spans two locations.
 
 **What happens next**: Nothing. The store throws before any request reaches storage: no object is read, written or deleted, the manifest is unchanged and the stream stays as it was. The deletion queue likewise leaves rows of other locations queued, untouched.
 
 **Fix**:
 - If the objects are (or should be) in the configured location, copy them there first if needed, then repoint the location: update its row in `wh_archive_locations`, or call `RepointLocationAsync(ex.RecordedLocationId)` on the coordinator (`IArchiveStore` resolved as `IArchiveObjectCoordinator`). See [Repointing an environment](../../fundamentals/events/archive-store.md#repointing-an-environment).
 - If the configuration is wrong, correct `Whizbang:Storage:AzureBlob` (`ServiceUri` or `ConnectionString`, `ConnectionName`) or its `Archive` section (`ContainerName`, `ConnectionName`); the earlier `Whizbang:Archive:AzureBlob` is still read, and the new keys win.
-- Or turn the check off with `Whizbang:Storage:AzureBlob:Archive:VerifyLocation = false`, accepting what that gives up. See [Turning the location check off](../../fundamentals/events/archive-store.md#verify-location).
+- Or, where infrastructure alone decides where the objects are, set `Whizbang:Storage:AzureBlob:Archive:LocationMismatch` to `Warning` or `Info` (go ahead in the configured location and log the mismatch) or `Ignore`, accepting what that gives up. See [Location mismatch handling](../../fundamentals/events/archive-store.md#location-mismatch).
+
+A location written only in another case, with surrounding whitespace, a trailing slash or the scheme's default port is the same location and is never refused ([normalized locations](../../fundamentals/events/archive-store.md#normalized-locations)).
 
 ## Dispatch & Receptors
 
@@ -548,7 +550,7 @@ Whizbang:OperationalRetention:MaxBatchesPerCycle must be at least 1 (was 0); a c
 
 ## Build-time diagnostics (WHIZ###)
 
-Compile-time errors, warnings and notices from Whizbang's source generators and analyzers use `WHIZ###` IDs and surface in build output and the IDE, not at runtime. Every ID has its own page; each ID means one thing. WHIZ060 to WHIZ063 are also covered together on the [Serializable Property Analyzer](serializable-property-analyzer.md) page. Eleven IDs are **retired** and never reused. Ten (WHIZ003, WHIZ005, WHIZ020, WHIZ023, WHIZ042, WHIZ050, WHIZ051, WHIZ052, WHIZ057 and WHIZ803) were declared but never reported and are no longer in the generator package. WHIZ017 was reported until #1905 made the case it warned about impossible, and is no longer reported. Their pages explain what each described; delete any suppression of them.
+Compile-time errors, warnings and notices from Whizbang's source generators and analyzers use `WHIZ###` IDs and surface in build output and the IDE, not at runtime. Every ID has its own page; each ID means one thing. WHIZ060 to WHIZ063 are also covered together on the [Serializable Property Analyzer](serializable-property-analyzer.md) page. Twelve IDs are **retired** and never reused. Ten (WHIZ003, WHIZ005, WHIZ020, WHIZ023, WHIZ042, WHIZ050, WHIZ051, WHIZ052, WHIZ057 and WHIZ803) were declared but never reported and are no longer in the generator package. WHIZ017 was reported until #1905 made the case it warned about impossible, and is no longer reported. WHIZ810 was reported until dictionary members became supported ([Dictionary Members](../../fundamentals/perspectives/dictionary-members.md)), and its analyzer is removed. Their pages explain what each described; delete any suppression of them.
 
 WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests and never ship in a package; they have pages like every other ID and are listed together in [Repository Checks and Diagnostic IDs](../../../contributors/repository-checks.md), with the registry every new ID is taken from.
 
@@ -692,7 +694,7 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ805 | Warning | [Split Mode No Physical Fields](whiz805.md) |
 | WHIZ807 | Info | [Physical Fields Discovered](whiz807.md) |
 | WHIZ808 | Error | [Split Class Model Cannot Be Copied](whiz808.md) |
-| WHIZ810 | Warning | [Perspective Model Contains Dictionary Property](whiz810.md) |
+| WHIZ810 | Retired | [Perspective Model Contained a Dictionary Property](whiz810.md) (retired: dictionaries are stored as key/value arrays, ID never reused) |
 | WHIZ811 | Info | [Perspective Model Contains Polymorphic Type](whiz811.md) |
 | WHIZ812 | Warning | [Perspective Model Declares a JSON Converter That Is Never Consulted](whiz812.md) |
 | WHIZ820 | Error | [Table Name Exceeds Database Limit](whiz820.md) |

@@ -38,7 +38,7 @@ The runner is named after the perspective with `Runner` appended. For a nested p
 name is included and the dot is removed: `OrderStatus.Projection` gets `OrderStatusProjectionRunner`.
 
 Each runner holds only what its perspective varies and derives from `PerspectiveRunnerBase<TPerspective, TModel>`,
-which the generator emits once per assembly that has a perspective, in `PerspectiveRunnerBase.g.cs` (see
+which lives in Whizbang.Core and is not generated (see
 [Perspective runners](../performance/build-cost#perspective-runners)).
 
 WHIZ027 is a confirmation, not a problem. It is useful when you want to check that a perspective was picked up. A

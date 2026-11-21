@@ -512,8 +512,9 @@ release cycle. See [dates, times and durations](../../fundamentals/perspectives/
 |-------------|------|-------------|
 | `whizbang.perspective.temporal_form_fallbacks` | Counter\<long\> | A date, time or duration read from its rendering rather than the canonical number. Tag: `kind` |
 | `whizbang.perspective.identifier_form_fallbacks` | Counter\<long\> | A tracked identifier read from its scalar form rather than the object form. Tag: `type` |
+| `whizbang.perspective.dictionary_form_fallbacks` | Counter\<long\> | A dictionary read as a JSON object, the form an earlier release wrote, rather than an array of key/value pairs. Tag: `type`. See [rows written by an earlier release](../../fundamentals/perspectives/dictionary-members.md#stored-form-rewrite) |
 
-{verified: CanonicalTemporalReaderToleranceTests.ReadingARenderingIsCountedByKindAsync, CanonicalTemporalReaderToleranceTests.TheFirstRenderingOfEachKindIsAnnouncedOnceAsync, CanonicalTemporalReaderToleranceTests.ReadingAScalarIdentifierIsCountedAndAnnouncedAsync, PerspectiveReadFailureMetricsTests.ReadFailures_RecordsWithPerspectiveAndReasonAsync}
+{verified: CanonicalTemporalReaderToleranceTests.ReadingARenderingIsCountedByKindAsync, CanonicalTemporalReaderToleranceTests.TheFirstRenderingOfEachKindIsAnnouncedOnceAsync, CanonicalTemporalReaderToleranceTests.ReadingAScalarIdentifierIsCountedAndAnnouncedAsync, DictionaryMemberFormTests.AnObjectFormReadIsCountedAndAnnouncedAsync, PerspectiveReadFailureMetricsTests.ReadFailures_RecordsWithPerspectiveAndReasonAsync}
 
 ### Backlog & Rewind
 
