@@ -798,8 +798,7 @@ public class OrderGridModel {
 ```
 
 Before this, such a field with no `ColumnType` became a `TEXT` column holding the type's name, with no
-diagnostic, and a dictionary was refused outright by a model whose document is mapped as JSON
-(WHIZ810). Now:
+diagnostic. Now:
 
 - **Both schema generators create the column as `jsonb`**, and the runner registers it as one. A
   declared `ColumnType` still wins, so `[PhysicalField(ColumnType = "text")]` keeps a text column.
@@ -812,13 +811,18 @@ diagnostic, and a dictionary was refused outright by a model whose document is m
   strings is no longer sent as a native `text[]` and a `Dictionary<string, string>` is no longer sent as
   an `hstore`.
 - **It is kept out of the mapped document.** The generated configuration ignores the property inside
-  `ComplexProperty(e => e.Data).ToJson()`, so a dictionary is allowed and WHIZ810 no longer fires for
-  it. The column is where the value is read from: the hydrators copy it into the model, and the store
+  `ComplexProperty(e => e.Data).ToJson()`. The column is where the value is read from: the hydrators copy it into the model, and the store
   reads it back from the column for the model the next event is applied to, on an Extracted model as
   well as a Split one, with either driver. On an Extracted model the document keeps its copy of the
   value on both write paths: the atomic upsert serializes it with the model, and a write that falls
   back to the change tracker restores it from the column in the same transaction, so both leave the
   same row. A null value is absent from the document, as the persistence profile omits a null member.
+- **A dictionary column holds an array of key/value objects**, `[{"Key": "region", "Value": ["north"]}]`,
+  in the dictionary's order: the same stored form a dictionary has inside the document (see
+  [Dictionary Members](dictionary-members.md)). Every writer of the column writes that form, and a
+  column an earlier release wrote as a JSON object is rewritten once at startup by the
+  [stored-form rewrite](dictionary-members.md#stored-form-rewrite).
+  {verified: DictionaryMemberConventionTests.APromotedDictionaryColumn_IsWrittenInItsMappingsStoredFormAsync, DictionaryPairsRewriteTests.AStoredAsOneValueDocumentAndAPromotedColumn_AreWalkedThroughTheSerializerAsync}
 - **A column added to an existing Extracted table is backfilled** from the document's member,
   `data -> 'GridFilter'`, which holds the same JSON.
 - **Your data source needs no dynamic JSON.** Because the Entity Framework model binds the column
@@ -872,7 +876,8 @@ var rows = await lens.DefaultScope.Query
 ```
 
 ```sql{title="What it compiles to" description="Two containment tests, each answered by its column's GIN index." category="Perspectives" difficulty="INTERMEDIATE" tags=["jsonb", "gin", "query-translation"]}
-WHERE w.grid_filter @> jsonb_build_object('region', jsonb_build_array(to_jsonb(@region)))
+WHERE w.grid_filter @> jsonb_build_array(jsonb_build_object('Key', to_jsonb('region'::text))
+                                          || jsonb_build_object('Value', jsonb_build_array(to_jsonb(@region))))
   AND w.labels @> jsonb_build_array(jsonb_build_object('Key', to_jsonb('team'::text))
                                      || jsonb_build_object('Value', to_jsonb(@team)))
 ```
@@ -882,9 +887,9 @@ These are the shapes that are compiled, exactly. `col` is the promoted property,
 
 | LINQ, inside a filter | Column type | Compiles to |
 |-----------------------|-------------|-------------|
-| `col[key].Contains(v)` | dictionary of collections | `col @> {key: [v]}` |
-| `col[key].Any(e => e == v)` | dictionary of collections | `col @> {key: [v]}` |
-| `col[key] == v` | dictionary of scalars | `col @> {key: v}` |
+| `col[key].Contains(v)` | dictionary of collections | `col @> [{"Key": key, "Value": [v]}]` |
+| `col[key].Any(e => e == v)` | dictionary of collections | `col @> [{"Key": key, "Value": [v]}]` |
+| `col[key] == v` | dictionary of scalars | `col @> [{"Key": key, "Value": v}]` |
 | `col.Contains(v)`, `Enumerable.Contains(col, v)` | list or array of scalars | `col @> [v]` |
 | `col.Any(e => e == v)` | list or array of scalars | `col @> [v]` |
 | `col.Any(e => e.A == v && e.B.C == w)` | list or array of objects | `col @> [{A: v, B: {C: w}}]`, one element matching every condition |
@@ -908,12 +913,17 @@ These are the shapes that are compiled, exactly. `col` is the promoted property,
   compiled, and matches only a stored JSON `null`. The persistence profile omits null members, so on
   an object it matches nothing; inside a list (`col.Contains(null)`) it matches a stored null element,
   which is what the in-memory filter does.
+- **A dictionary is matched as its stored pairs.** A dictionary column holds an array of
+  `{"Key", "Value"}` objects, so a key's condition is containment of one pair. Inside `Any` over a list
+  of dictionaries, conditions on different keys merge into one element holding each pair. A dictionary
+  type no perspective model holds has no stored form registered, and its column keeps the object
+  form, `col @> {key: v}`.
 - **A missing dictionary key** does not match, where `dictionary[key]` in memory would throw.
 - **A row whose column is SQL NULL** matches neither a filter nor its negation.
 - **Anything else** (ranges, `ContainsKey`, `Count()`, ordering, a value read from the row) is left
   exactly as written, which Entity Framework cannot translate over a jsonb column.
 
-{verified: PhysicalJsonbContainmentSqlTests.DictionaryKeyEquals_ScalarValue_CompilesToContainmentOfTheKeyAsync, PhysicalJsonbContainmentSqlTests.ScalarListContains_CompilesToContainmentOfAnArrayAsync, PhysicalJsonbContainmentSqlTests.ObjectListAny_ConjunctionOfMembers_CompilesToOneElementAsync, PhysicalJsonbContainmentSqlTests.ObjectMemberEquals_Nested_CompilesToNestedContainmentAsync, PhysicalJsonbContainmentSqlTests.Negated_IsTheNegatedContainmentTestAsync, PhysicalJsonbContainmentRewriterTests.UnsupportedShapes_AreLeftAsWrittenAsync, PhysicalJsonbContainmentRewriterTests.TheShapeAGraphQLListFilterBuilds_IsClaimedAsync}
+{verified: PhysicalJsonbContainmentSqlTests.DictionaryKeyEquals_ScalarValue_CompilesToContainmentOfTheKeyAsync, PhysicalJsonbContainmentSqlTests.DictionaryKeyContains_Constant_CompilesToContainmentAsync, PhysicalJsonbContainmentSqlTests.DictionaryKeyEquals_OnAnUnregisteredDictionary_CompilesToContainmentOfTheObjectAsync, PhysicalJsonbContainmentSqlTests.ScalarListContains_CompilesToContainmentOfAnArrayAsync, PhysicalJsonbContainmentSqlTests.ObjectListAny_ConjunctionOfMembers_CompilesToOneElementAsync, PhysicalJsonbContainmentSqlTests.ObjectMemberEquals_Nested_CompilesToNestedContainmentAsync, PhysicalJsonbContainmentSqlTests.Negated_IsTheNegatedContainmentTestAsync, PhysicalJsonbContainmentRewriterTests.UnsupportedShapes_AreLeftAsWrittenAsync, PhysicalJsonbContainmentRewriterTests.TheShapeAGraphQLListFilterBuilds_IsClaimedAsync}
 
 This compilation is not affected by the [containment switch](jsonb-containment.md#turning-it-off).
 That switch chooses between two ways of compiling a filter on the document, which already has a working

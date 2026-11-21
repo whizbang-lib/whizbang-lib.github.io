@@ -1,11 +1,11 @@
 ---
-title: 'WHIZ810: Perspective Model Contains Dictionary Property'
+title: 'WHIZ810: Perspective Model Contained a Dictionary Property (retired)'
 pageType: troubleshooting
-verifiedAgainstCommit: 9a416b5b
-verifiedDate: 2026-10-17
+verifiedAgainstCommit: d5bc1d709
+verifiedDate: 2026-11-20
 description: >-
-  Warning when a perspective model, or an object it holds, has a dictionary property that the mapped
-  JSON document cannot store. Replace it with a list of key/value objects or promote it to a jsonb column.
+  Retired. WHIZ810 warned that a perspective model held a dictionary the mapped JSON document could not store.
+  Dictionaries are now stored as arrays of key/value objects, so nothing reports it; the ID is never reused.
 version: 1.0.0
 category: Diagnostics
 severity: Warning
@@ -15,146 +15,77 @@ tags:
   - dictionary
   - ef-core
   - analyzer
+  - retired
 codeReferences:
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs
-  - src/Whizbang.Data.EFCore.Postgres.Generators/PerspectiveModelDictionaryAnalyzer.cs
+  - src/Whizbang.Core/Perspectives/DictionaryMemberForms.cs
 testReferences:
-  - tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveModelDictionaryAnalyzerTests.cs
-  - tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveModelDictionaryAnalyzerCoverageTests.cs
-  - tests/Whizbang.Generators.Tests/Analyzers/PerspectiveModelDictionaryAnalyzerBranchTests.cs
-  - tests/Whizbang.Generators.Tests/Analyzers/SystemTypeWalkTests.cs
-lastMaintainedCommit: '9a416b5b'
+  - tests/Whizbang.Generators.Tests/DiagnosticDescriptorsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/DictionaryMemberStorageTests.cs
+lastMaintainedCommit: 'd5bc1d709'
 ---
 
-# WHIZ810: Perspective Model Contains Dictionary Property
+# WHIZ810: Perspective Model Contained a Dictionary Property (retired)
 
-**Severity**: Warning
-**Category**: Perspective Model Mapping
+**Status**: Retired in [#1911](https://github.com/whizbang-lib/whizbang/issues/1911). No longer reported.
+**Former severity**: Warning
 
-## Description
+## Retired
 
-A perspective's model is stored as a JSON document that Entity Framework Core maps with
-`ComplexProperty().ToJson()`. That mapping does not support dictionary types: the descriptor records that
-EF Core 10 throws a `NullReferenceException` for them. This warning points at a dictionary property before
-the model reaches the database.
+WHIZ810 is **retired**. Its analyzer and descriptor have been removed from the Entity Framework generator
+package, because the model it warned about now works: a dictionary on a perspective model is stored as an
+array of key/value objects, read back and queried with no attribute and no rewrite. See
+[Dictionary Members](../../fundamentals/perspectives/dictionary-members.md).
 
-The `PerspectiveModelDictionaryAnalyzer` reports it when a non-abstract class implements
-`IPerspectiveFor<TModel, TEvent...>` (or `IPerspectiveWithActionsFor` / `IPerspectiveBase` with a model and at
-least one event) and `TModel` has a property whose type is `Dictionary<TKey, TValue>`,
-`IDictionary<TKey, TValue>` or `IReadOnlyDictionary<TKey, TValue>`. The walk also covers:
+The ID is **never reused**: it will not be given a new meaning, so a search or a suppression for it can never
+match a different diagnostic. A test keeps every retired ID from being declared again
+(`DiagnosticDescriptorsTests.RetiredDiagnosticIds_AreNeverDeclaredAgainAsync`).
+{verified: DiagnosticDescriptorsTests.RetiredDiagnosticIds_AreNeverDeclaredAgainAsync, DictionaryMemberStorageTests.WhatEntityFrameworkWrote_ReadsBackAsync}
 
-- properties of nested classes and structs the model holds (`Nested.Metadata`),
-- generic arguments, so `List<Dictionary<string, string>>` and `List<Nested>` where `Nested` holds a
-  dictionary are both found.
+## What It Described
 
-It deliberately does **not** report:
+WHIZ810 was a warning on a property of a perspective model, or of an object or collection element the model
+held, whose type was `Dictionary<TKey, TValue>`, `IDictionary<TKey, TValue>` or
+`IReadOnlyDictionary<TKey, TValue>`. Entity Framework's `ComplexProperty().ToJson()` mapping took such a
+property for a navigation and refused the model. A top-level `[PhysicalField]` stored in its own jsonb column
+was not reported, since it was kept out of the mapped document.
 
-- a static, indexer or write-only property,
-- a property marked `[NotMapped]`, System.Text.Json `[JsonIgnore]` or Newtonsoft `[JsonIgnore]`,
-- a top-level `[PhysicalField]` whose column is `jsonb` (the default for a dictionary, or
-  `ColumnType = "jsonb"`), because that value is stored in its own column and kept out of the mapped
-  document. A physical field declared with another column type, such as `ColumnType = "hstore"`, is still
-  reported.
-- members of non-collection `System` types, and a `KeyValuePair<TKey, TValue>` (it is not a dictionary),
-- a class that is not a perspective's model.
+The message it showed:
 
-A perspective that implements several interfaces over the same model reports each property once.
-
-## Diagnostic Message
-
-```
+```text
 Property '{PropertyName}' on perspective model '{DeclaringType}' uses Dictionary<{KeyType}, {ValueType}> which is not supported by EF Core's ComplexProperty().ToJson(). Use a List of a class with Key ({KeyType}) and Value ({ValueType}) properties instead.
 ```
 
-`{DeclaringType}` is the type that declares the property, which is the nested type (not the model) when
-the dictionary sits inside a nested object. The suggested replacement is a list of your own class with `Key` and
-`Value` properties, as shown under How to Fix. The text says `Dictionary` for `IDictionary` and
-`IReadOnlyDictionary` properties too.
+## Why There Is No Rule
 
-## Common Causes
+The warning asked the author to work around a mapping limit: replace the dictionary with a list of a
+key/value class, or promote it to a jsonb column. The framework now does that itself, for every dictionary at
+any depth, with one stored form shared by Entity Framework and the atomic upsert, and translates `ContainsKey`
+and the indexer to SQL. There is nothing left to warn about.
 
-1. **A free-form bag of attributes** modeled as `Dictionary<string, string>` on the read model.
-2. **A dictionary inside a nested object** or inside a list element, which the analyzer reaches through the
-   model.
-3. **An interface-typed property** (`IDictionary<string, object>`, `IReadOnlyDictionary<string, int>`).
+Other dictionary types are still not handled: `SortedDictionary`, `ImmutableDictionary`,
+`ConcurrentDictionary` and custom dictionary types. Entity Framework refuses them in a mapped document in its
+own words when the model is built, naming the member; see
+[what is not supported](../../fundamentals/perspectives/dictionary-members.md#not-supported).
 
-## How to Fix
+## If You Worked Around It
 
-{verified: PerspectiveModelDictionaryAnalyzerTests.PerspectiveModel_WithDictionary_ReportsDiagnosticAsync, PerspectiveModelDictionaryAnalyzerTests.PerspectiveModel_WithList_NoDiagnosticAsync, PerspectiveModelDictionaryAnalyzerTests.PerspectiveModel_DictionaryPromotedToAJsonbColumn_NoDiagnosticAsync}
-
-Pick one:
-
-- **Use a list of key/value objects.** Declare a small class with `Key` and `Value` properties and hold a
-  `List<>` of it. This is the shape the analyzer accepts in its tests.
-- **Promote the dictionary to a jsonb column** with `[PhysicalField]`. A dictionary's default column type
-  is `jsonb`, and a jsonb physical field is kept out of the mapped document. See
-  [jsonb columns](../../fundamentals/perspectives/physical-fields#jsonb-columns).
-- **If the value is not meant to be stored**, mark it `[NotMapped]` or `[JsonIgnore]`.
-
-### Before
-
-```csharp{title="A dictionary on a perspective model" description="The Attributes dictionary is reported as WHIZ810." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "perspectives", "dictionary", "whiz810"] testFile="PerspectiveModelDictionaryAnalyzerTests.cs" testMethod="PerspectiveModel_WithDictionary_ReportsDiagnosticAsync" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveModelDictionaryAnalyzerTests.cs" tests=["PerspectiveModelDictionaryAnalyzerTests.PerspectiveModel_WithDictionary_ReportsDiagnosticAsync"]}
-public class TestModel {
-  public Guid Id { get; set; }
-  public Dictionary<string, string> Attributes { get; set; } = new();  // WHIZ810
-}
-
-public record TestEvent(Guid Id);
-
-public class TestPerspective : IPerspectiveFor<TestModel, TestEvent> {
-  public TestModel Apply(TestModel? model, TestEvent evt) => model ?? new();
-}
-```
-
-### After
-
-```csharp{title="A list of key/value objects" description="The same data held as a list of a Key/Value class is not reported." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "perspectives", "dictionary", "whiz810"] testFile="PerspectiveModelDictionaryAnalyzerTests.cs" testMethod="PerspectiveModel_WithList_NoDiagnosticAsync" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveModelDictionaryAnalyzerTests.cs" tests=["PerspectiveModelDictionaryAnalyzerTests.PerspectiveModel_WithList_NoDiagnosticAsync"]}
-public class ScopeExtension {
-  public string Key { get; set; } = string.Empty;
-  public string Value { get; set; } = string.Empty;
-}
-
-public class TestModel {
-  public Guid Id { get; set; }
-  public List<ScopeExtension> Extensions { get; set; } = new();
-}
-```
-
-Or keep the dictionary and promote it to its own jsonb column:
-
-```csharp{title="A dictionary promoted to a jsonb column" description="A [PhysicalField] dictionary defaults to a jsonb column and is not reported." framework="NET10" category="Diagnostics" difficulty="INTERMEDIATE" tags=["diagnostics", "perspectives", "physical-fields", "jsonb"] testFile="PerspectiveModelDictionaryAnalyzerTests.cs" testMethod="PerspectiveModel_DictionaryPromotedToAJsonbColumn_NoDiagnosticAsync" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveModelDictionaryAnalyzerTests.cs" tests=["PerspectiveModelDictionaryAnalyzerTests.PerspectiveModel_DictionaryPromotedToAJsonbColumn_NoDiagnosticAsync"]}
-public class TestModel {
-  public Guid Id { get; set; }
-
-  [PhysicalField]  // or [PhysicalField(ColumnType = "jsonb")]
-  public Dictionary<string, string[]> Fields { get; set; } = new();
-}
-```
-
-## Suppressing
-
-The warning is reported on the property, so a pragma around it works:
-
-```csharp{title="Suppress WHIZ810 for one property" description="A pragma around the reported property." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "suppression", "whiz810"] unverified="suppression syntax, not exercised by a test"}
-#pragma warning disable WHIZ810
-  public Dictionary<string, string> Attributes { get; set; } = new();
-#pragma warning restore WHIZ810
-```
-
-Or in `.editorconfig`:
-
-```ini{title="Suppress WHIZ810 in .editorconfig" description="Turns the warning off for the matched files."}
-[*.cs]
-dotnet_diagnostic.WHIZ810.severity = none
-```
-
-Suppress it only when the property is kept out of the mapping in a way the analyzer cannot see, such as a
-Fluent API `Ignore()` in `OnModelCreating` (the analyzer reads attributes only). Otherwise the warning is
-describing a model that will fail when Entity Framework maps it.
+- **Remove the suppression.** Delete any `#pragma warning disable WHIZ810` / `#pragma warning restore WHIZ810`
+  lines, any `dotnet_diagnostic.WHIZ810.severity` entry in `.editorconfig` or a `.globalconfig`, and WHIZ810 from
+  any `<NoWarn>` list.
+- **A model rewritten to satisfy it can go back to a plain dictionary.** A list of key/value objects, or a
+  dictionary split out with `[PerspectiveStorage(FieldStorageMode.Split)]` and `[PhysicalField]` only to get
+  past the warning, can be declared as a dictionary again. That is a model change of its own; if the member's
+  stored name changes, declare it with `[StoredForm(PreviousName = ...)]`. See
+  [upgrading](../../fundamentals/perspectives/dictionary-members.md#upgrading).
+- **SQL you own over a dictionary** (a query, a view, an index) must read the new stored form, an array of
+  pairs, after the first start of this release. See
+  [upgrading](../../fundamentals/perspectives/dictionary-members.md#upgrading).
 
 ## Related
 
+- [Dictionary Members](../../fundamentals/perspectives/dictionary-members.md)
 - [Physical Fields: jsonb columns](../../fundamentals/perspectives/physical-fields#jsonb-columns)
-- [Perspectives](../../fundamentals/perspectives/perspectives)
 - [WHIZ811: Perspective Model Contains Polymorphic Type](whiz811)
 - [WHIZ812: Perspective Model Declares a JSON Converter That Is Never Consulted](whiz812)
