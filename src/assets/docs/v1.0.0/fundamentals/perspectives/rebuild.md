@@ -21,6 +21,10 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveTableSwapper.cs
   - src/Whizbang.Core/Perspectives/PerspectiveTableRedirect.cs
   - src/Whizbang.Data.Postgres/Perspectives/PostgresPerspectiveTableSwapper.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveStagingLoad.cs
+  - src/Whizbang.Data.Postgres/Perspectives/PostgresPerspectiveCopyLoader.cs
+  - src/Whizbang.Data.EFCore.Postgres/EFCorePostgresPerspectiveWriteSink.cs
+  - src/Whizbang.Data.EFCore.Postgres/EFCorePostgresPerspectiveStore.cs
   - src/Whizbang.Core/Perspectives/System/PerspectiveStatusModel.cs
   - src/Whizbang.Core/Workers/PerspectiveMigrationWorker.cs
   - src/Whizbang.Core/Commands/System/SystemCommands.cs
@@ -51,6 +55,12 @@ testReferences:
   - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRebuilderBlueGreenTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/BlueGreenRebuildIntegrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/PostgresPerspectiveTableSwapperTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/PostgresPerspectiveTableSwapperTests.Staging.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveStagingLoadTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRebuilderBlueGreenTests.Staging.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/BlueGreenRebuildIntegrationTests.Staging.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/BlueGreenRebuildIntegrationTests.Measure.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/SetBasedPerspectiveWriteSinkTests.Load.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRebuilderIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Commands/System/SystemCommandsTests.cs
   - tests/Whizbang.Core.Tests/Commands/System/RebuildPerspectiveCommandSplitTests.cs
@@ -115,7 +125,9 @@ How it runs:
    [storage settings](#blue-green-storage-settings) before anything is written to it.
 2. **Replay.** Every stream is replayed into the shadow table. The perspective store of the rebuild's own flow
    is redirected there (`PerspectiveTableRedirect`); every other flow, including the live perspective worker,
-   keeps reading and writing the live table.
+   keeps reading and writing the live table. By default this first pass goes through a
+   [staging load](#staging-load): its rows are copied in with `COPY`, and the shadow's plain indexes are built
+   after the load.
 3. **Catch-up.** Writers keep writing the live table meanwhile, so the rebuild replays again the streams whose
    events were committed after it read them, judged by commit sequence: up to `MaxCatchUpPasses` times with the
    live table open. A collective event committed meanwhile can change any row, so it makes every stream count as
@@ -134,6 +146,8 @@ services.Configure<BlueGreenRebuildOptions>(o => {
   o.KeepPreviousTable = true;                       // default: keep wh_per_order_bg_old as the way back
   o.MaxCatchUpPasses = 3;                           // default
   o.SwapLockTimeout = TimeSpan.FromSeconds(10);     // default
+  o.StagingLoad = true;                             // default: see Staging load; can only be switched off
+  o.StagingChunkRows = 1_000;                       // default: rows held before each COPY
 });
 ```
 
@@ -173,6 +187,95 @@ with none keeps none.
 
 Both PostgreSQL drivers use the same swapper, so both keep the settings. After the swap the installed table is
 analyzed, outside the swap's transaction, so the planner reads its real size rather than that of a table never analyzed.
+
+#### The rebuilt table keeps the live table's owner and grants {#blue-green-owner-and-grants}
+
+{verified: PostgresPerspectiveTableSwapperTests.Swap_GivesTheInstalledTableTheLiveTablesOwnerAndGrants_AndNoneItDidNotHaveAsync}
+
+`LIKE … INCLUDING ALL` copies neither a table's owner nor its grants, so before #2248 the installed table belonged to
+the role that ran the rebuild and every `GRANT` on the live table was gone after the swap: a reporting role granted
+`SELECT` on a perspective table lost it at the next rebuild. The swap now carries both, inside its own transaction and
+under its locks, so a grant made while the rebuild ran is carried too:
+
+- **Owner.** When the shadow's owner differs from the live table's, the shadow is given the live table's owner. The
+  role that runs a swap must already own the live table (or be a member of its owning role) to rename it, so this
+  never asks for more than the swap already needs.
+- **Exactly the live grants.** Every grant the shadow holds is revoked, including any a default privilege added when
+  it was created, and every grant the live table holds is made again, with `WITH GRANT OPTION` where the live grant
+  had it and `PUBLIC` where it was granted to `PUBLIC`. The statements are built by PostgreSQL from the catalog with
+  `format('%I')` and `regclass`, so no role or table name is spliced into SQL text by the library.
+
+#### What the swap does not carry {#blue-green-not-carried}
+
+The swap installs a different table under the live name. Anything PostgreSQL attaches to the table itself, rather
+than to its name, stays with the old table or is lost. The framework creates none of these on a perspective table,
+but a service that added one by hand should know:
+
+| Attached to the live table | After the swap |
+|---|---|
+| Row-level security (`ENABLE ROW LEVEL SECURITY`, policies) | not on the installed table |
+| Triggers | not on the installed table |
+| Foreign keys from the table to another | not on the installed table |
+| Foreign keys from another table to this one | still reference the previous table |
+| Views and materialized views that select from it | follow the previous table when it is kept; with `KeepPreviousTable = false` the drop fails and the swap rolls back |
+| Publication membership (logical replication) | stays with the previous table |
+| Index comments and per-column statistics targets | not carried |
+
+Carried: columns, defaults, `CHECK` and `NOT NULL` constraints, the primary key, every index (under its live name),
+[storage settings](#blue-green-storage-settings), and the owner and grants above.
+
+#### Plan disk space {#blue-green-disk-space}
+
+While a blue-green rebuild runs, the table exists twice: the live one and the shadow, which grows to the rebuilt
+size before the swap. With `KeepPreviousTable` (the default) both copies remain after it, until the previous table
+is dropped or the next rebuild replaces it. Before a rebuild, make sure the database has free space for at least one
+more copy of the table and its indexes; `pg_total_relation_size('wh_per_order')` is the size to plan for. The
+framework does not check free space itself: PostgreSQL does not report it from SQL, and managed servers do not expose
+it.
+
+#### Staging load {#staging-load}
+
+{verified: PerspectiveRebuilderBlueGreenTests.Staging_ByDefault_LoadsTheFirstPass_WithItsIndexesDeferred_AndBuildsThemBeforeTheCatchUpAsync, PerspectiveRebuilderBlueGreenTests.Staging_LoadsTheHeldRowsInChunks_EachBeforeItsCursorsAreCompletedAsync, PerspectiveRebuilderBlueGreenTests.Staging_ARowTheTableRefuses_FailsItsStreamOnly_AndItsCursorIsNeverCompletedAsync, PerspectiveRebuilderBlueGreenTests.Staging_SwitchedOff_WritesRowByRow_AndDefersNoIndexesAsync, BlueGreenRebuildIntegrationTests.Staging_CopiesTheFirstPassIntoTheShadow_WithItsPlainIndexesBuiltAfter_AndInstallsEveryIndexAsync, BlueGreenRebuildIntegrationTests.Staging_AShadowLeftByACrashMidLoad_IsReplaced_AndTheRebuildInstallsEveryIndexAsync, BlueGreenRebuildIntegrationTests.Staging_AnAbandonedRebuild_DropsTheShadow_AndLeavesTheLiveTableAsItWasAsync, BlueGreenRebuildIntegrationTests.Staging_ARowTheTableRefuses_FailsOnlyItsStream_AndTheOthersAreInstalledAsync, SetBasedPerspectiveWriteSinkTests.Load_CopiesNewRows_WithTheValuesTheInsertWrites_AndIssuesNoInsertAsync, PostgresPerspectiveTableSwapperTests.DeferIndexes_DropsOnlyThePlainIndexes_AndTheBuildRestoresThem_UnderTheLiveNamesAfterTheSwapAsync}
+
+The first pass of a blue-green rebuild writes a table that starts empty and that only the rebuild writes. A row-by-row
+upsert pays for things that cannot happen there: a read of a row that cannot exist yet, an ordering guard with nothing
+to guard against, and every index kept up to date one row at a time. So by default the first pass goes through a
+**staging load** ([#2248](https://github.com/whizbang-lib/whizbang/issues/2248)):
+
+1. **Plain indexes are dropped.** Before the replay, the shadow's indexes that nothing but lookups depends on are
+   dropped: not the primary key, not a unique index, not one that backs a constraint. Those stay, so the load refuses
+   exactly the rows the per-row write would refuse.
+2. **New rows are held, not written.** The perspective store holds each row the replay writes. A row the load has not
+   written is read as absent without a query, because the table holds nothing else. A row the store reads, or writes a
+   second time, while it is held is written first, so that read and that write see it as the per-row path always does.
+3. **Chunks are copied in.** Every `StagingChunkRows` rows (1,000 by default), the held rows are written with
+   `COPY … FROM STDIN (FORMAT BINARY)`, into exactly the columns and with exactly the values the insert writes (one
+   writer rule). A chunk `COPY` cannot take is written instead by the [set-based statements](write-modes#failure-isolation),
+   which isolate the row the database refuses. Held rows are always written before the cursors that name them.
+4. **Indexes are built after the load.** Once every row is in, the dropped indexes are built, each with its original
+   definition, so the swap matches it to the live index and gives it the live name.
+5. **Catch-up and swap are unchanged.** They rewrite rows the load already wrote, so they take the per-row write and
+   its ordering guard, with every index in place.
+
+| What happens | Result |
+|---|---|
+| A row the table refuses (a `CHECK`, a value its column cannot take) | only that row's stream fails: it is reported in `RebuildResult.Error` like any [failed stream](#failed-streams), its cursor is not written, and the other rows are installed. A row re-keyed onto another stream fails the stream the rebuild read it from |
+| The process dies mid-load | the half-loaded shadow, missing its plain indexes, is dropped by the next rebuild, which builds a new one |
+| The rebuild is canceled or fails mid-load | the held rows are discarded with the shadow table, which is dropped; the live table is untouched |
+| An index build fails | the shadow is dropped and nothing is swapped |
+| A write is committed to the live table during the load | caught up as before, after the indexes are built |
+
+**Automatic, not a choice.** Every blue-green rebuild uses it; a service can only switch it off, with
+`BlueGreenRebuildOptions.StagingLoad = false`, which writes the first pass row by row as before. Rebuilds of
+[selected streams](#selected-streams) and in-place rebuilds write the live table, which is not empty, so they never use
+it.
+
+**Drivers.** The EF Core driver stages and copies. The Dapper driver keeps writing row by row; its shadow's plain
+indexes are still built after the load.
+
+**Measured.** 20,000 single-event streams with one plain index: 45.3 s with the staging load against 53.4 s without
+(441 against 374 rows per second), and 38 statements against the shadow table against 40,010. The writes are no longer
+what a rebuild waits on: what remains is reading each stream's events, one stream at a time.
 
 #### One blue-green rebuild per table {#one-blue-green-rebuild-per-table}
 
@@ -216,7 +319,7 @@ removed. See [What a rebuild keeps](../events/superseding-events#what-a-rebuild-
 
 {verified: RebuildCreatedAtIntegrationTests.RebuildInPlace_AnExistingRow_KeepsItsCreatedAtAsync, RebuildCreatedAtIntegrationTests.RebuildBlueGreen_AFullHistoryStream_DatesTheRowAtItsFirstEvent_AndUpdatedAtAtItsLastAsync}
 
-### Selected Streams
+### Selected Streams {#selected-streams}
 
 Replay events for specific streams only. Useful for fixing individual corrupted or stale projections without rebuilding everything.
 
