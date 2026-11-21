@@ -49,6 +49,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/SchemaPassLedger.cs
   - src/Whizbang.Data.EFCore.Postgres/SchemaInitializationLog.cs
   - src/Whizbang.Data.Postgres/Migrations/153_PerspectiveForms.sql
+  - src/Whizbang.Data.Postgres/Migrations/544_DictionaryMembersStoredAsPairs.sql
   - src/Whizbang.Data.Postgres/Migrations/154_PerspectiveFailureElementNames.sql
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/CanonicalTemporalRewrite.cs
   - src/Whizbang.Data.Postgres/CanonicalTemporalRewritePhase.cs
@@ -1395,6 +1396,12 @@ table brings forward the retries of the streams parked on it, and an index that 
 retyped key to its old type is dropped before the conversion and built again, concurrently, once the
 phase has committed.
 
+Between the two, the phase rewrites any dictionary an earlier release stored as a JSON object to the array of
+key/value objects every reader now uses, one statement per table, journaled in `wh_stored_form_migrations`
+with kind `dictionary-pairs`. It runs before the temporal rewrite so a date held in a dictionary's value is at
+the path the temporal rewrite reads. See
+[rows written by an earlier release](../../fundamentals/perspectives/dictionary-members.md#stored-form-rewrite).
+
 Before either, the phase moves stored keys that differ from a declared JSON name only in case to the declared
 spelling, so the migrations and the rewrite find every value under the name they address. See
 [keys stored in another case](../../fundamentals/perspectives/stored-form-migrations.md#declared-names).
@@ -1492,7 +1499,9 @@ Other releases are alive in the fleet for schema {Schema} while the stored-form 
 
 Deploy a unit-changing release without a mixed fleet: scale the older release to zero first, or
 accept that rows it writes after the rewrite are read as renderings, counted on
-`whizbang.perspective.temporal_form_fallbacks`, until the next startup converts them.
+`whizbang.perspective.temporal_form_fallbacks`, until the next startup converts them. The same holds for
+dictionaries: a row an older instance writes with a dictionary as a JSON object is counted on
+`whizbang.perspective.dictionary_form_fallbacks` until the next startup's pass converts it.
 
 {verified: CanonicalTemporalRewriteWiringTests.TheRewriteRunsAfterTheElectionOnTheMigratorAsync, CanonicalTemporalRewriteWiringTests.TheMigratorWarnsAboutOtherReleasesBeforeRewritingAsync, FleetVersionsTests.AnOlderReleaseStillAliveIsReportedAsync, FleetVersionsTests.TheSameReleaseIsNotReportedAsync, FleetVersionsTests.AStaleInstanceIsNotReportedAsync, FleetVersionsTests.AnOlderReleaseLiveOnlyByItsAliveLock_IsReportedAsync}
 
@@ -1928,6 +1937,7 @@ connection has. The rules for authors are in [Writing SQL migrations](../../../c
 | `443_TheLifecycleLedgerLetsGoOfEphemeralStreams.sql` | Adds `_wh_stream_lifecycle_settle`, the one-time release `wh_stream_lifecycle_release_ephemeral_batch` and its two settings, and settles the streams `wh_ephemeral_history_apply` reclassifies ([ephemeral streams leave the ledger](../../fundamentals/events/stream-end-of-life#ephemeral-streams)) | no |
 | `444_HistoricalAuditRecordsBecomePointers.sql` | Adds `wh_audit_body_apply` and the `convert_audit_record_bodies` pending task ([records written before the pointer default](../../fundamentals/events/system-events#audit-body-conversion)); lossy to reverse, since removed bodies are not restored | no |
 | `445_RowCapsPartitionByAModelProperty.sql` | Adds `_wh_row_cap_partition` and routes the row-cap target collection and sweep through it ([per-property caps](../../fundamentals/perspectives/row-retention#per-property-caps)) | no |
+| `544_DictionaryMembersStoredAsPairs.sql` | Adds `_wh_dictionary_pairs` and `wh_dictionary_pairs_at`, which the stored-form phase calls to rewrite a dictionary stored as a JSON object to an array of key/value objects ([rows written by an earlier release](../../fundamentals/perspectives/dictionary-members.md#stored-form-rewrite)). Reversible: the functions are dropped, and rows already converted stay converted | yes |
 
 ## Upgrade notes {#upgrade-notes}
 
@@ -1966,6 +1976,11 @@ Notes for upgrading a running deployment to this release. Each links to the page
   an instance on an earlier release that receives a stream-spanning answer requested by an upgraded instance files its
   children under the answer's session key. See
   [only a requester that asks gets the new shape](../../resilience/stream-integrity#accepts-stream-spanning-bundles).
+- **Dictionaries in perspective documents are stored as arrays of key/value objects** (migration 544). The first
+  start rewrites each dictionary an earlier release stored as a JSON object, in an opaque document or a promoted
+  jsonb column. SQL, views or indexes of your own that read a dictionary with an object path
+  (`data->'Tags'->>'x'`) must read the pairs instead (`data->'Tags' @> '[{"Key":"x"}]'`). WHIZ810 is retired. See
+  [upgrading](../../fundamentals/perspectives/dictionary-members.md#upgrading).
 - **An app signal published inside a transaction is delivered on commit.** A custom `ISignalTopicTransport`
   implements the new `PublishTopicAsync` overload. See [transactional publish](../../fundamentals/work-coordinator/app-signals#transactional-publish).
 

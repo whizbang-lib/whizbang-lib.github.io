@@ -194,7 +194,9 @@ public class PerspectiveMetadata {
 
 ### Use List, Not Dictionary
 
-EF Core does NOT support `Dictionary<TKey, TValue>` with `ToJson()` ([GitHub #29825](https://github.com/dotnet/efcore/issues/29825)). Use `List<T>` with a key-value wrapper:
+A dictionary on a **perspective model** needs none of this: the framework stores it as an array of key/value objects and maps it for you. See [Dictionary Members](../fundamentals/perspectives/dictionary-members.md).
+
+EF Core does NOT support `Dictionary<TKey, TValue>` with `ToJson()` ([GitHub #29825](https://github.com/dotnet/efcore/issues/29825)). In a type you map yourself, use `List<T>` with a key-value wrapper, as the framework's own scope does:
 
 ```csharp{title="ScopeExtension Key-Value Pattern" description="List of key-value objects instead of Dictionary for ToJson() compatibility" category="Architecture" difficulty="INTERMEDIATE" tags=["Data", "EF Core", "ComplexProperty", "Collections"] unverified="design guidance (List vs Dictionary for ToJson()); the commented WRONG Dictionary is a counter-example"}
 // CORRECT: List<ScopeExtension> works with ToJson()

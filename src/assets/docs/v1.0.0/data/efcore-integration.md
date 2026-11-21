@@ -78,8 +78,8 @@ public class Product {
 public class ProductMetadata {
     public string Category { get; set; } = default!;
     public string[] Tags { get; set; } = Array.Empty<string>();
-    // Note: Dictionary<K,V> is NOT supported by ComplexProperty().ToJson().
-    // Use List<T> with Key/Value properties instead:
+    // Note: in an entity you map yourself, Dictionary<K,V> is NOT supported by ComplexProperty().ToJson().
+    // Use List<T> with Key/Value properties instead (a perspective model's dictionary is mapped for you):
     public List<AttributeEntry> Attributes { get; set; } = [];
 }
 

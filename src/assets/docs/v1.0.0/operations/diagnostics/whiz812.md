@@ -138,4 +138,4 @@ reader of the type and know the stored document ignores it.
 - [Stored-Form Migrations](../../fundamentals/perspectives/stored-form-migrations)
 - [A JSON converter is not a migration](../../fundamentals/perspectives/stored-form-migrations#json-converter)
 - [WHIZ830: Stored-Form Migration Cannot Be Generated](whiz830)
-- [WHIZ810: Perspective Model Contains Dictionary Property](whiz810)
+- [WHIZ810: Perspective Model Contained a Dictionary Property (retired)](whiz810)
