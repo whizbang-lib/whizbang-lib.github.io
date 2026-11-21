@@ -59,6 +59,29 @@ lists which helper gives which form and the banned-symbol backstop.
 
 {verified: TypeNameSourceAnalyzerTests.Descriptors_AreTheRepositoryRulesReportedAsErrorsAsync, TypeNameSourceAnalyzerTests.Runtime_ANameReadOffATypeOrAssembly_IsReportedAsync, TypeNameSourceAnalyzerTests.Suppression_WithoutAJustification_IsReportedAsync}
 
+## Docs tags point at published pages {#docs-tag-targets}
+
+Every `<docs>` tag in the code names a page on this site, and CI checks that the page and its anchor exist. The `Test · Pipeline scripts` job runs `.github/scripts/Test-DocsTagTarget.ps1`, which makes a shallow clone of this site's `develop` branch and resolves each tag the way the site does:
+
+- **Pages** resolve as the router resolves them: `<path>.md`, then `<path>/_folder.md`, then `<path>/<leaf>.md`, in each version folder (newest first) and then at the root. Matching is case-sensitive. A page under `drafts/` does not count, because the site does not serve it at that address.
+- **Anchors** follow the site's heading rule: the slug of the heading text, numbered duplicates (`-1`, `-2`), an explicit `{#id}`, or an HTML `id` or `name` attribute. Fenced code blocks are skipped.
+- **What is scanned:** `.cs` and `.sql` files under `src`, `tests`, `samples` and `tools`. A tag counts only when a `//` or `--` comment marker comes before it on the same line, which covers comments and generator-emitted `/// <docs>` strings.
+
+The script exits 0 when every target resolves, 1 on a finding, and 2 when the clone fails or holds no pages, so a fetch problem fails the job instead of passing it unchecked.
+
+**The baseline only shrinks.** Targets that already dangled when the check landed are listed in `.github/scripts/docs-tag-target-baseline.txt`. A new dangling target fails the check. So does a baselined target that now resolves or that no tag uses any more: delete its line in the same pull request.
+
+Two consequences of checking against another repository:
+
+- **Land the docs page first.** A tag pointing at a page that exists only in an open docs pull request fails until that pull request merges.
+- **A docs change can turn the check red.** Adding a page or heading that fixes a baselined target makes its baseline line stale, and removing a page breaks every tag that names it.
+
+Run it locally against a docs checkout next to the repository:
+
+```bash
+pwsh .github/scripts/Test-DocsTagTarget.ps1 -DocsRoot ../whizbang-lib.github.io
+```
+
 ## Giving a new diagnostic its ID
 
 `diagnostic-ids.txt` at the repository root lists every ID: its status, the project that defines it, and its meaning. A new diagnostic takes the lowest free number in its block there, and its row is added in the same change. A repository check takes the next number in the WHIZ600 block; anything that ships takes a number outside it.
