@@ -16,7 +16,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/PerspectiveRewindOptions.cs
   - src/Whizbang.Core/Perspectives/PerspectiveSnapshotOptions.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
-  - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs
   - src/Whizbang.Core/Events/System/SystemEvents.cs
   - src/Whizbang.Core/Observability/PerspectiveMetrics.cs
   - src/Whizbang.Data.Postgres/Migrations/022_StorePerspectiveEvents.sql

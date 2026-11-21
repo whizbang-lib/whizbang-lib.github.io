@@ -17,12 +17,26 @@ codeReferences:
   - .github/workflows/ci.yml
   - .github/scripts/Invoke-BuildWithinMemory.ps1
   - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/MigrationScriptsTemplate.cs
+  - src/Whizbang.Generators/PerspectiveRunnerGenerator.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRunnerClassTemplate.cs
+  - src/Whizbang.Generators/ConcreteSubtypeIndex.cs
+  - src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs
+  - benchmarks/Whizbang.BuildCost.Benchmarks/BuildCostRunner.cs
+  - benchmarks/Whizbang.BuildCost.Benchmarks/BuildCostEvaluator.cs
+  - benchmarks/Whizbang.BuildCost.Benchmarks/BuildCostOptions.cs
+  - benchmarks/Whizbang.BuildCost.Benchmarks/BuildCostThresholds.cs
+  - benchmarks/Whizbang.BuildCost.Benchmarks/ConsumerCorpus.cs
+  - benchmarks/Whizbang.BuildCost.Benchmarks/build-cost-thresholds.json
+  - .github/workflows/build-cost-timing.yml
 testReferences:
   - tests/Whizbang.Generators.Tests/BuildCost/GeneratorCachingTests.cs
-  - tests/Whizbang.Generators.Tests/BuildCost/ConsumerCorpus.cs
+  - tests/Whizbang.Generators.Tests/BuildCost/BuildCostBenchmarkTests.cs
   - .github/scripts/tests/Test-NoOpRebuild.Tests.ps1
   - .github/scripts/tests/Invoke-BuildWithinMemory.Tests.ps1
   - tests/Whizbang.Generators.Tests/MigrationScriptsEmittedOnceGenerationTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratedSizeTests.cs
+  - tests/Whizbang.Generators.Tests/ConcreteSubtypeIndexTests.cs
 ---
 
 # Build Cost
@@ -115,6 +129,28 @@ into an internal `WhizbangMigrationScripts` class that every context reads, and 
 peaks at 7.9 GB. The migration texts are unchanged, so no recorded migration hash moves.
 {verified: MigrationScriptsEmittedOnceGenerationTests.TheMigrationSetIsEmittedOnceForEveryContextAsync}
 
+### Perspective runners
+
+Each perspective gets a generated runner that loads its model, applies events and saves the row and
+cursor. Before [whizbang#2481](https://github.com/whizbang-lib/whizbang/pull/2481), every runner
+carried its own copy of the full runner logic, about 200 KB of generated source per perspective, nearly
+all of it the same for every perspective. The logic every perspective shares is now generated once per
+assembly that has a perspective, as an internal generic base class,
+`PerspectiveRunnerBase<TPerspective, TModel>` in `PerspectiveRunnerBase.g.cs`. Each runner derives from
+it and holds only what its perspective varies: its event list, its traits, its `Apply` dispatch, its
+empty model, any overrides it needs and its registrations. A simple runner is about 4 KB. Runner
+behavior, AOT safety and the runners' DI constructors are unchanged.
+
+| Perspectives in the assembly | Generated source after | Before (one full runner each) |
+|------------------------------|------------------------|-------------------------------|
+| 1 | 212 KB | about 208 KB |
+| 2 | 216 KB | about 416 KB |
+| 1,000 | 4.55 MB | about 208 MB |
+
+A single-perspective assembly is about 4 KB larger than before, because it carries the base and a
+small runner; the saving starts with the second perspective.
+{verified: PerspectiveRunnerGeneratedSizeTests.ARunner_EmitsOnlyWhatItsPerspectiveVaries_NotTheSharedRunnerLogicAsync, PerspectiveRunnerGeneratedSizeTests.ASecondPerspective_AddsOnlyItsOwnRunner_TheSharedBaseIsEmittedOnceAsync, PerspectiveRunnerGeneratedSizeTests.AnAssemblyWithNoPerspective_GetsNoRunnerBaseAsync, PerspectiveRunnerGeneratedSizeTests.TwoRunnersAndTheirSharedBase_CompileAsync}
+
 The assembly's size does not show this kind of growth: the compiler stores identical text literals
 once, so the 13 copies cost memory while compiling but almost nothing in the built file. To see what
 the generators emit into your project, turn on `EmitCompilerGeneratedFiles` (see below) and compare
@@ -130,6 +166,7 @@ the size of the generated files with your own source.
 | Syntax predicate guard | A generator's syntax predicate that is not a public `Is...Candidate` method, or one that admits ordinary code | Every test run of the generators component tests |
 | Generated JSON files check | The pinned-type ledger or opt-in message registry not written, not updated after a change, or rewritten on a build that did not recompile, with generated files off | CI job "Build · No-op rebuild does no work" |
 | Generated migration set test | A generated project carrying more than one copy of the migration set, or a context that does not read the shared one | Every test run of the generators project |
+| Generated runner size test | A perspective runner carrying the shared runner logic, or more than one runner base in an assembly | Every test run of the generators project |
 | Build memory guard | A full-solution build that succeeds but peaks above 13 GB, counting the build's processes and the shared compiler server | CI jobs "Build · Compile", "Build · Analyzers" and the net10.0 build |
 | Generator and analyzer timing | A generator or analyzer, or the total of either, slower than its threshold over a large generated consumer | CI job "Build · Generator and analyzer timing" (advisory) |
 
@@ -165,11 +202,91 @@ request that caused it, not as a runner that runs out of memory and hangs. The C
 `DOTNET_GCConserveMemory=7`, which makes the shared compiler server return memory between projects
 instead of holding what the largest one used.
 
-The timing job builds a large generated consumer (1,000 features and 3,000 files of ordinary code),
-times each generator and analyzer as the median of five runs, and compares the times with
-`benchmarks/Whizbang.BuildCost.Benchmarks/build-cost-thresholds.json`. The report is the job summary
-and an artifact. Timing varies from run to run, so the job is advisory: it does not block a merge
-until its numbers are stable, and the thresholds are tightened from its results.
+The timing job is described in [The build-cost benchmark](#the-build-cost-benchmark) below.
+
+## The build-cost benchmark
+
+The library repository's `benchmarks/Whizbang.BuildCost.Benchmarks` tool measures how long each of
+Whizbang's generators and analyzers takes over a large generated consumer.
+
+**What it measures.** The tool generates a consumer project of 1,000 features (each a set of messages,
+receptors and perspectives) and 3,000 files of ordinary code, then runs every generator and analyzer in
+the five generator packages over it, as a build does. Each generator runs with a fresh generator driver
+per run and reports its own time; each analyzer assembly is timed over the compilation the generators
+produced. One warm-up run is discarded, and each number is the median of five timed runs. The report
+has one row per generator, one per analyzer assembly, and a total for each, with its threshold and
+whether it passed.
+
+**The thresholds.** `benchmarks/Whizbang.BuildCost.Benchmarks/build-cost-thresholds.json` holds a
+threshold in milliseconds for each generator, for each analyzer assembly, and for the generators and
+analyzers in total. A row slower than its threshold is marked over, and the tool exits with a failure.
+The initial values were set at about six times a local measurement (a CI runner assumed twice as slow,
+then a margin of three) with a 500 ms floor, and are tightened from the job's results. After their fixes
+in [whizbang#2481](https://github.com/whizbang-lib/whizbang/pull/2481), the perspective runner and
+receptor generators were tightened to about 2.5 times a build-server measurement:
+
+| Threshold | Before | After |
+|-----------|--------|-------|
+| `PerspectiveRunnerGenerator` | 25,900 ms | 2,300 ms |
+| `ReceptorDiscoveryGenerator` | 24,300 ms | 5,300 ms |
+| All generators (`generatorsTotalMs`) | 94,800 ms | 52,200 ms |
+
+**Where it runs.** The "Build Cost Timing" workflow (job "Build · Generator and analyzer timing") runs
+the tool on a GitHub-hosted runner when a pull request or a push to `develop` changes the generator
+projects, the repository's analyzers or the benchmark, every Monday, and on demand. Its report is the
+job summary and an artifact. Timing varies from run to run, so the check is advisory: no ruleset
+requires it.
+
+**Running it yourself.** From the library repository, build the benchmark (which builds the generator
+packages), then run it:
+
+```bash{
+title: "Run the build-cost benchmark"
+description: "Builds the generator packages and the benchmark, then times every generator and analyzer over the generated consumer against the thresholds file."
+category: "Performance"
+difficulty: "INTERMEDIATE"
+tags: ["build", "benchmark", "source-generators", "analyzers"]
+}
+dotnet build benchmarks/Whizbang.BuildCost.Benchmarks -c Release
+dotnet run -c Release --no-build --framework net11.0 --project benchmarks/Whizbang.BuildCost.Benchmarks -- --output timing.md
+```
+
+| Option | Default | Meaning |
+|--------|---------|---------|
+| `--runs` | 5 | Timed runs after the warm-up |
+| `--features` | 1000 | Features of messages, receptors and perspectives in the consumer |
+| `--ordinary-files` | 3000 | Files of ordinary code in the consumer |
+| `--thresholds` | the copy beside the tool | The thresholds file to compare against |
+| `--output` | none | Also write the report to this file |
+{verified: BuildCostBenchmarkTests.Options_Defaults_AreFiveRunsOverAThousandFeaturesAndThreeThousandFilesAsync, BuildCostBenchmarkTests.Options_Parse_ReadsEveryOptionAsync, BuildCostBenchmarkTests.Evaluate_ComparesEachKindWithItsOwnThresholdAsync, BuildCostBenchmarkTests.Thresholds_Parse_ReadsEveryMapAndTotalAsync}
+
+Smaller `--features` values are useful for seeing how a generator's time grows with the size of the
+consumer.
+
+### Generator time by consumer size
+
+[whizbang#2481](https://github.com/whizbang-lib/whizbang/pull/2481) fixed the two generators whose time
+grew fastest with the consumer:
+
+- **Perspective runner generator.** It copied and edited the full runner template, about 190 KB of
+  text, for every perspective. The shared logic is now emitted once per assembly (see
+  [Perspective runners](#perspective-runners)), and the per-runner template is read once per run.
+- **Receptor discovery generator.** A receptor declared on an interface or base type is widened to the
+  concrete messages that implement it, and every non-sealed message class counts as polymorphic, so a
+  large consumer asks for hundreds of them. Each was found by its own walk of every type in the
+  compilation and its references. One walk now answers them all, with the same subtypes in the same
+  order.
+{verified: ConcreteSubtypeIndexTests.Build_ExaminesEachTypeOnce_WhateverTheNumberOfBaseTypesAsync, ConcreteSubtypeIndexTests.SubtypesOf_ABaseClass_AreTheConcreteClassesThatInheritItInDiscoveryOrderAsync, ConcreteSubtypeIndexTests.SubtypesOf_TwoNamesOfOneType_AreTheSameSubtypes_EachListedOnceAsync}
+
+Measured on a build server, median of three runs, with 3,000 files of ordinary code:
+
+| Features | Perspective runner generator | Receptor discovery generator | All generators |
+|----------|------------------------------|------------------------------|----------------|
+| 250 | 7,796 ms, now 383 ms | 3,431 ms, now 970 ms | 28.2 s, now 19.3 s |
+| 500 | 15,111 ms, now 597 ms | 6,289 ms, now 1,320 ms | 40.8 s, now 21.5 s |
+| 1,000 | 32,089 ms, now 911 ms | 13,453 ms, now 2,102 ms | 69.2 s, now 26.8 s |
+
+Nothing changes in your project: a large consumer builds faster.
 
 ## Keeping your own build fast
 

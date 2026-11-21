@@ -17,7 +17,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/UpcastingEventStoreDecorator.cs
   - src/Whizbang.Core/ServiceCollectionExtensions.cs
   - src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs
-  - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs
   - src/Whizbang.Core/Perspectives/PerspectiveSnapshotOptions.cs
 testReferences:
   - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EventUpcasterPipelineTests.cs

@@ -12,7 +12,7 @@ tags: >-
   perspectives, write-modes, set-based, batching, round-trips, fan-out, perspective-runner,
   perspective-worker, conformance-suite
 codeReferences:
-  - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Workers/BatchedCompletionStrategy.cs
   - src/Whizbang.Core/Workers/PerspectiveCompletionFlushWorker.cs

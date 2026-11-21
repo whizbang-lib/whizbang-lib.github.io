@@ -19,7 +19,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/ProcessedEventCache.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveRunner.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveReplayReader.cs
-  - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs
 testReferences:
   - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveIdempotencyFilterTests.cs
   - tests/Whizbang.Core.Integration.Tests/Perspectives/PerspectiveApplyExactlyOnceTests.cs
