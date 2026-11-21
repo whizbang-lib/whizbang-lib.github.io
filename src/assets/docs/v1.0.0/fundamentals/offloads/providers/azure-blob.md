@@ -7,75 +7,62 @@ version: 1.0.0
 category: Fundamentals
 order: 2
 description: >-
-  Production body-store provider backed by Azure Blob Storage. Works
-  identically against the Azurite emulator and live Azure Blob via
-  standard connection-string conventions. Wire it in one config-driven
-  call or register providers by hand.
+  Production body-store provider backed by Azure Blob Storage, shipped in
+  Whizbang.Storage.AzureBlob. Works identically against the Azurite emulator
+  and live Azure Blob. Active with no registration call when
+  Whizbang:Storage:AzureBlob names an account and its Offloads section is set.
 tags: 'offload, providers, azure-blob, azurite, production, configuration'
 codeReferences:
-  - src/Whizbang.Offloads.AzureBlob/AzureBlobMessageBodyStore.cs
-  - src/Whizbang.Offloads.AzureBlob/AzureBlobOffloadOptions.cs
+  - src/Whizbang.Storage.AzureBlob/AzureBlobStorageServiceCollectionExtensions.cs
+  - src/Whizbang.Storage.AzureBlob/AzureBlobStorageConfiguration.cs
+  - src/Whizbang.Storage.AzureBlob/AzureBlobMessageBodyStore.cs
+  - src/Whizbang.Storage.AzureBlob/AzureBlobOffloadOptions.cs
   - src/Whizbang.Offloads.AzureBlob/AzureBlobOffloadServiceCollectionExtensions.cs
   - src/Whizbang.Core/Offloads/MessageBodyOffloadOptions.cs
   - src/Whizbang.Core/Offloads/OffloadServiceCollectionExtensions.cs
   - src/Whizbang.Core/Offloads/BodyClaimRehydrator.cs
 testReferences:
-  - tests/Whizbang.Offloads.AzureBlob.Tests/AzureBlobOffloadFromConfigurationTests.cs
-  - tests/Whizbang.Offloads.AzureBlob.Tests/AzureBlobOffloadDIRegistrationTests.cs
-  - tests/Whizbang.Offloads.AzureBlob.Tests/AzureBlobMessageBodyStoreValidationTests.cs
-  - tests/Whizbang.Offloads.AzureBlob.Tests/AzureBlobMessageBodyStoreUploadGuardTests.cs
-  - tests/Whizbang.Offloads.AzureBlob.Integration.Tests/AzureBlobStoreRoundTripTests.cs
-  - tests/Whizbang.Offloads.AzureBlob.Integration.Tests/AzureBlobStoreUploadTests.cs
-  - tests/Whizbang.Offloads.AzureBlob.Integration.Tests/AzureBlobStoreDownloadDeleteTests.cs
+  - tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageConfigurationTests.cs
+  - tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageTurnkeyTests.cs
+  - tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobOffloadFromConfigurationTests.cs
+  - tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobOffloadDIRegistrationTests.cs
+  - tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobMessageBodyStoreValidationTests.cs
+  - tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobMessageBodyStoreUploadGuardTests.cs
+  - tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobStoreRoundTripTests.cs
+  - tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobStoreUploadTests.cs
+  - tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobStoreDownloadDeleteTests.cs
 ---
 
 # Azure Blob Body Store
 
-`Whizbang.Offloads.AzureBlob` is the production body-store provider for [body offload](/v1.0.0/fundamentals/offloads/message-body-store). Wraps `Azure.Storage.Blobs`. Behaves identically against the Azurite emulator and live Azure Blob — the connection string distinguishes them via standard Azure SDK conventions.
+`AzureBlobMessageBodyStore`, in the package `Whizbang.Storage.AzureBlob`, is the production body-store provider for
+[body offload](/v1.0.0/fundamentals/offloads/message-body-store). It wraps `Azure.Storage.Blobs` and behaves identically
+against the Azurite emulator and live Azure Blob. The same package holds the event archive's object store; see
+[Azure Blob Storage](../../storage/azure-blob) for the account, turnkey activation and migration.
 
-There are two ways to wire it: the **config-driven** one-call convention (recommended — the same code ships to every environment and a deployment turns offload on by supplying config), and **manual** DI for a single provider or non-config scenarios.
+## Activation from configuration (recommended)
 
-## Config-driven registration (recommended)
+{verified: AzureBlobStorageTurnkeyTests.Turnkey_APackageThatIsReferencedAndConfigured_ArchivesAndOffloadsThroughBlob_WithoutACallAsync, AzureBlobStorageConfigurationTests.TheNewKeys_NameOneAccount_AndEachFeatureTakesItAsync}
 
-One call wires everything from configuration. Put it next to your other Whizbang registrations — it is a plain `IServiceCollection` extension, independent of the `AddWhizbang(...)` chain:
-
-```csharp{
-title: "One-call config-driven body-offload wire-up"
-description: "Scans every configured Azure Blob provider, enables the send-side claim-check hook, and binds the offload selector from configuration — a no-op until the environment supplies keys."
-framework: "NET10"
-category: "Offloads"
-difficulty: "BEGINNER"
-tags: ["body-offload", "azure-blob", "configuration", "claim-check", "dependency-injection"]
-unverified: "verified by AzureBlobOffloadFromConfigurationTests, which is outside the current coverage map"
-}
-using Whizbang.Offloads.AzureBlob;
-
-services.AddWhizbangAzureBlobOffloadsFromConfiguration(configuration);
-```
-
-`AddWhizbangAzureBlobOffloadsFromConfiguration` scans every provider subsection under `Whizbang:Offloads:AzureBlob:<name>`, registers a blob store for each, enables the send-side hook (`AddWhizbangBodyOffload()`), and binds the selector (`MessageBodyOffloadOptions`) from `Whizbang:BodyOffload`. The provider whose name matches `Whizbang:BodyOffload:ProviderName` becomes the active offload target.
-
-With **no providers configured it is a no-op** — no store, no hook chain, publish stays inline. So the same code is safe in every environment, and a deployment turns offload on simply by providing the config keys. Offload is opt-in by config presence, with nothing to wire per-service.
-
-> The provider name (e.g. `app-offload`) is arbitrary; it just ties the provider registration to the selector. `Whizbang:BodyOffload:ProviderName` is what actually **turns offload on** on the send side — without it the hook is registered but selects no target (inline publish), while the receive side can still rehydrate claims because the store is registered.
-
-### Configuration
-
-`appsettings.json` form:
+Reference `Whizbang.Storage.AzureBlob`, name an account under `Whizbang:Storage:AzureBlob`, and set the `Offloads`
+section. `AddWhizbang()` registers the store under its provider name (`azure-blob` unless `ProviderName` says otherwise),
+enables the send-side hook, and makes that store the offload target. Nothing else to call.
 
 ```json{
-title: "Config-driven Azure Blob offload appsettings"
-description: "The appsettings.json shape the convention reads — one provider subsection under Whizbang:Offloads:AzureBlob plus the Whizbang:BodyOffload selector that turns offload on."
+title: "Azure Blob body offload from configuration"
+description: "The account and the Offloads section; with the package referenced, this turns body offload on with no registration call."
 category: "Offloads"
 difficulty: "BEGINNER"
-tags: ["body-offload", "azure-blob", "configuration", "appsettings", "claim-check"]
+tags: ["body-offload", "azure-blob", "configuration", "appsettings", "turnkey"]
+tests: ["AzureBlobStorageConfigurationTests.TheNewKeys_NameOneAccount_AndEachFeatureTakesItAsync"]
 }
 {
   "Whizbang": {
-    "Offloads": {
+    "Storage": {
       "AzureBlob": {
-        "app-offload": {
-          "ConnectionString": "DefaultEndpointsProtocol=https;AccountName=…;AccountKey=…;EndpointSuffix=core.windows.net",
+        "ConnectionString": "DefaultEndpointsProtocol=https;AccountName=…;AccountKey=…;EndpointSuffix=core.windows.net",
+        "Offloads": {
+          "ProviderName": "azure-blob",
           "ContainerName": "whizbang-offload-bodies",
           "DefaultAccessTier": "Cool",
           "MaxDownloadBytes": 104857600
@@ -83,7 +70,6 @@ tags: ["body-offload", "azure-blob", "configuration", "appsettings", "claim-chec
       }
     },
     "BodyOffload": {
-      "ProviderName": "app-offload",
       "SizeThresholdBytes": 65536,
       "ActiveCleanup": false
     }
@@ -91,56 +77,71 @@ tags: ["body-offload", "azure-blob", "configuration", "appsettings", "claim-chec
 }
 ```
 
-Env-var form (what you paste into Helm / Kubernetes — `:` becomes `__`):
+Env-var form (what you paste into Helm / Kubernetes, `:` becomes `__`):
 
 ```bash{
-title: "Config-driven Azure Blob offload as environment variables"
-description: "The same offload configuration expressed as double-underscore environment variables for Helm / Kubernetes, where ':' becomes '__'."
+title: "Azure Blob body offload as environment variables"
+description: "The same configuration as double-underscore environment variables for Helm / Kubernetes."
 category: "Offloads"
 difficulty: "BEGINNER"
 tags: ["body-offload", "azure-blob", "configuration", "environment-variables", "kubernetes"]
 }
-Whizbang__Offloads__AzureBlob__app-offload__ConnectionString="…"
-Whizbang__Offloads__AzureBlob__app-offload__ContainerName="whizbang-offload-bodies"
-Whizbang__Offloads__AzureBlob__app-offload__DefaultAccessTier="Cool"
-Whizbang__Offloads__AzureBlob__app-offload__MaxDownloadBytes="104857600"
-Whizbang__BodyOffload__ProviderName="app-offload"      # MUST match a provider name above
+Whizbang__Storage__AzureBlob__ConnectionString="…"
+Whizbang__Storage__AzureBlob__Offloads__ContainerName="whizbang-offload-bodies"
+Whizbang__Storage__AzureBlob__Offloads__DefaultAccessTier="Cool"
+Whizbang__Storage__AzureBlob__Offloads__MaxDownloadBytes="104857600"
 Whizbang__BodyOffload__SizeThresholdBytes="65536"
 Whizbang__BodyOffload__ActiveCleanup="false"
 ```
 
-The convention binds each option explicitly (not `configuration.Bind`) so the Azure SDK extensible-enum `DefaultAccessTier` can be constructed from its string form (e.g. `"Cool"`) — a conversion `ConfigurationBinder` cannot do. Blank strings and unparseable numeric/boolean values are ignored rather than bound, so a half-configured environment keeps the compiled option defaults and fails at the required-`ConnectionString` check rather than silently applying garbage.
+`ServiceUri` in place of `ConnectionString` authenticates with the `Azure.Core.TokenCredential` the host registers, so no
+secret is in configuration. The size threshold, cleanup, sealing and the cipher stay under Core's `Whizbang:BodyOffload`,
+whatever the provider ([why](../../storage/azure-blob#why-bodyoffload-stays)); a cipher named there is registered from
+configuration, with no call.
 
-Multiple providers coexist: name more than one subsection under `Whizbang:Offloads:AzureBlob` (e.g. `azure-blob-prod` + `azure-blob-archive`) and every one is registered; `Whizbang:BodyOffload:ProviderName` picks the active send-side target. A malformed sibling key (e.g. whitespace-only) is skipped without disabling the well-formed providers alongside it.
+> Keep `ProviderName` stable. Every claim records it, and a receiver finds the store by the name the sender recorded.
+> When moving from the earlier package's keys, set it to the name the earlier store used.
 
-## Manual registration
+The binder reads each option explicitly (no reflection binder), so the Azure SDK extensible enum `DefaultAccessTier` is
+built from its string form (e.g. `"Cool"`). Blank values keep the defaults.
 
-For a single provider or non-config scenarios, the building blocks the convention method composes are public:
+## Registering in code
 
 ```csharp{
-title: "Register the Azure Blob body-offload provider by hand"
-description: "Wires the Azure Blob store as a named body-offload provider and points MessageBodyOffloadOptions at it so envelopes over the size threshold auto-offload."
+title: "Register the Azure Blob body store in code"
+description: "Turns body offload on in code; configuration is read first, so a value set here wins."
 framework: "NET10"
 category: "Offloads"
 difficulty: "BEGINNER"
-tags: ["body-offload", "azure-blob", "claim-check", "dependency-injection", "configuration"]
-unverified: "verified by AzureBlobOffloadDIRegistrationTests, which is outside the current coverage map"
+tags: ["body-offload", "azure-blob", "claim-check", "dependency-injection"]
+tests: ["AzureBlobStorageTurnkeyTests.ExplicitRegistration_WinsOverConfiguration_BeforeOrAfterAddWhizbangAsync"]
 }
-services.AddWhizbangAzureBlobOffload("azure-blob-prod", opts => {
-  opts.ConnectionString = builder.Configuration.GetConnectionString("Storage");
-  opts.ContainerName    = "whizbang-offload-bodies";
-  // Optional: opts.DefaultAccessTier = AccessTier.Cool;
-  // Optional: opts.MaxDownloadBytes  = 100 * 1024 * 1024;  // refuse claims > 100 MB
-});
-
-services.AddWhizbangBodyOffload();   // registers the claim-check post-serialize hook
-services.Configure<MessageBodyOffloadOptions>(opts => {
-  opts.ProviderName       = "azure-blob-prod";
-  opts.SizeThresholdBytes = 64 * 1024;   // 25% of ASB Standard 256 KB
+services.AddWhizbangAzureBlobStorage(storage => {
+  storage.ConnectionString = builder.Configuration.GetConnectionString("Storage");
+  storage.Offloads = new AzureBlobOffloadOptions {
+    ProviderName = "azure-blob",
+    ContainerName = "whizbang-offload-bodies",
+    MaxDownloadBytes = 100 * 1024 * 1024,   // refuse claims > 100 MB
+  };
 });
 ```
 
-`AddWhizbangAzureBlobOffload(name, opts)` registers the store, `AddWhizbangBodyOffload()` registers the claim-check post-serialize hook, and the selector points the hook at the named provider. Multiple Azure Blob providers can coexist (e.g., `"azure-blob-prod"` + `"azure-blob-archive"`) with different connection strings, containers, or access tiers.
+## The earlier package's calls
+
+{verified: AzureBlobOffloadFromConfigurationTests.FromConfiguration_RegistersProvider_BindsOptions_AndSelectorAsync, AzureBlobOffloadDIRegistrationTests.AddWhizbangAzureBlobOffload_RegistersStoreUnderProviderNameAsync}
+
+`Whizbang.Offloads.AzureBlob` ships this release as a shim over `Whizbang.Storage.AzureBlob`. Its calls compile and work,
+marked `[Obsolete]`:
+
+- `AddWhizbangAzureBlobOffloadsFromConfiguration(configuration)` registers a store for every
+  `Whizbang:Offloads:AzureBlob:<name>` subsection under its name, binds the selector from `Whizbang:BodyOffload`, and
+  registers the cipher it names, as before.
+- `AddWhizbangAzureBlobOffload(name, opts => ...)` registers one store under `name`, configured in code.
+
+Without either call, the turnkey package still reads `Whizbang:Offloads:AzureBlob:<name>`: each store keeps its name,
+so claims already sent resolve, and a startup warning names the new keys. `Whizbang:BodyOffload:ProviderName` still
+chooses among those stores; with the new `Offloads` section set, that section's store wins. See
+[migrating from the earlier packages](../../storage/azure-blob#migrating-from-the-earlier-packages).
 
 ## Emulator (Azurite) vs live
 
@@ -162,15 +163,17 @@ opts.ConnectionString = "UseDevelopmentStorage=true";
 opts.ConnectionString = "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...";
 ```
 
-Behavior is identical against either backend — same upload/download/delete semantics, same hash verification, same metadata. The integration test suite (`Whizbang.Offloads.AzureBlob.Integration.Tests`) runs against a real Azurite container via Testcontainers; the same code path runs against live Azure in production.
+Behavior is identical against either backend — same upload/download/delete semantics, same hash verification, same metadata. The integration test suite (`Whizbang.Storage.AzureBlob.Integration.Tests`) runs against a real Azurite container via Testcontainers; the same code path runs against live Azure in production.
 
 ## Options
 
-**Provider — `AzureBlobOffloadOptions`** (`Whizbang:Offloads:AzureBlob:<name>`):
+**Provider: `AzureBlobOffloadOptions`** (`Whizbang:Storage:AzureBlob:Offloads`; the earlier `Whizbang:Offloads:AzureBlob:<name>` is still read):
 
 | Option | Default | Notes |
 |---|---|---|
-| `ConnectionString` | `null` (required) | Azure Storage connection string. Account key / SAS / `UseDevelopmentStorage=true` (Azurite). The store throws `InvalidOperationException` on first resolution if unset. |
+| `ProviderName` | `"azure-blob"` | The name the store registers under and claims record. Read from the new section only. |
+| `ServiceUri` | the shared account | The Blob service endpoint, authenticated with the registered `TokenCredential`. Read from the new section only. |
+| `ConnectionString` | the shared account | Azure Storage connection string. Account key / SAS / `UseDevelopmentStorage=true` (Azurite). With no account at all, the offload stays off and a startup warning says so; an earlier named store without one throws on first resolution, naming the key. |
 | `ContainerName` | `"whizbang-offload-bodies"` | Lazily created on first upload via `CreateIfNotExistsAsync`. Give each slot its own container when slots share an account. |
 | `DefaultAccessTier` | `null` (account default) | `Hot` / `Cool` / `Cold` / `Archive`. Archive bodies are NOT downloadable without an out-of-band rehydration — only set for cold-storage use cases that don't need receive-time rehydrate. |
 | `MaxDownloadBytes` | `null` (no cap) | Defensive cap. When non-null and a claim reports a larger body, the provider refuses to download. Protects receivers from tampered claim tickets that would otherwise pull a multi-GB blob. |
@@ -202,46 +205,47 @@ Two cleanup paths, both supported:
 
 ## Production deployment recipe
 
-```csharp{
-title: "Production Azure Blob body-offload deployment recipe"
-description: "A hardened production wire-up with a required connection string, a defensive MaxDownloadBytes cap, and TTL-based cleanup instead of active deletion."
-framework: "NET10"
+```json{
+title: "Production Azure Blob body-offload configuration"
+description: "A managed identity for the account, a defensive MaxDownloadBytes cap, and TTL-based cleanup instead of active deletion."
 category: "Offloads"
 difficulty: "INTERMEDIATE"
-tags: ["body-offload", "azure-blob", "production", "claim-check", "cleanup", "max-download-bytes"]
-unverified: "production deployment wiring — the provider registration surface is verified by AzureBlobOffloadDIRegistrationTests, which is outside the current coverage map"
+tags: ["body-offload", "azure-blob", "production", "cleanup", "max-download-bytes"]
 }
-services.AddWhizbangAzureBlobOffload("azure-blob-prod", opts => {
-  opts.ConnectionString = builder.Configuration.GetConnectionString("Storage")
-      ?? throw new InvalidOperationException("Storage connection string is required");
-  opts.ContainerName     = "whizbang-offload-bodies";
-  opts.MaxDownloadBytes  = 100 * 1024 * 1024;   // defensive cap
-});
-
-services.AddWhizbangBodyOffload();
-services.Configure<MessageBodyOffloadOptions>(opts => {
-  opts.ProviderName       = "azure-blob-prod";
-  opts.SizeThresholdBytes = 64 * 1024;
-  opts.ActiveCleanup      = false;   // rely on blob lifecycle rule
-});
+{
+  "Whizbang": {
+    "Storage": {
+      "AzureBlob": {
+        "ServiceUri": "https://account.blob.core.windows.net",
+        "Offloads": { "ContainerName": "whizbang-offload-bodies", "MaxDownloadBytes": 104857600 }
+      }
+    },
+    "BodyOffload": { "SizeThresholdBytes": 65536, "ActiveCleanup": false }
+  }
+}
 ```
+
+Register the identity (`builder.Services.AddSingleton<TokenCredential>(new ManagedIdentityCredential())`) and call
+`AddWhizbang()`.
 
 Configure a blob lifecycle policy in Azure Storage for the `whizbang-offload-bodies` container — typical: delete blobs older than 7 days. That's the production cleanup path.
 
-> The receive side must register the **same provider name** so the rehydrator can find the store. The config-driven call on every service satisfies this uniformly — every deployment slot supplies the same `Whizbang:Offloads:AzureBlob:<name>` keys and binds through it with zero per-service code.
+> The receive side must register the **same provider name** so the rehydrator can find the store. Configuration satisfies this uniformly: every service supplies the same `Whizbang:Storage:AzureBlob:Offloads:ProviderName` (or keeps the default) with zero per-service code.
 
 ## Verifying it took
 
 - **Metrics** — the send-side counters `whizbang.transport.body_offload.count` / `whizbang.transport.body_offload.bytes` appear once a body offloads; the receive-side `whizbang.transport.body_claim.rehydrated.count` / `whizbang.transport.body_claim.rehydrated.bytes` appear once a claim rehydrates. Both are tagged by `message.type` + `message.namespace`.
-- **Missing connection string** — resolving the store with no `ConnectionString` throws `InvalidOperationException: AzureBlobOffloadOptions.ConnectionString is required for provider '<name>'` on first resolution (i.e. on the first offload), followed by a `services.Configure<AzureBlobOffloadOptions>(...)` remediation hint.
+- **Startup log** — `Body offload store: provider 'azure-blob', AzureBlobMessageBodyStore (…)` names the store and the key that named its account ([startup report](../../storage/azure-blob#startup-report)).
+- **Missing account** — an `Offloads` section with no account leaves offload off and logs a warning at start naming the keys to set.
 - **Receiver missing the provider** — a claim whose `whizbang.body-store` provider isn't registered on the receiver dead-letters with `MessageFailureReason.BodyClaimProviderUnknown` and a message pointing at `AddWhizbang*Offload(name)`.
 
 See [Body Offload (Claim-Check Pattern)](/v1.0.0/fundamentals/offloads/message-body-store) for the full send/receive pipeline, wire headers, and failure semantics that apply to every provider.
 
 ## Integration tests
 
-The provider's integration test suite (`tests/Whizbang.Offloads.AzureBlob.Integration.Tests/`) uses `Testcontainers.Azurite` to spin up a real Azurite container per test class. Round-trip tests cover the upload/download/delete contract, hash verification, MaxBytes cap behavior, and idempotent delete semantics. The config-driven wiring is locked by `AzureBlobOffloadFromConfigurationTests` (provider discovery, `AccessTier`-from-string binding, no-op-when-empty, multi-provider, malformed-key skipping, and default fallbacks). The same code paths run against live Azure in production deployments.
+The provider's integration test suite (`tests/Whizbang.Storage.AzureBlob.Integration.Tests/`) uses `Testcontainers.Azurite` to spin up a real Azurite container per test class. Round-trip tests cover the upload/download/delete contract, hash verification, MaxBytes cap behavior, and idempotent delete semantics. Activation from configuration is locked by `AzureBlobStorageConfigurationTests` and `AzureBlobStorageTurnkeyTests`, and the earlier package's calls by `AzureBlobOffloadFromConfigurationTests` and `AzureBlobOffloadDIRegistrationTests`. The same code paths run against live Azure in production deployments.
 
 ## Related
 
-- [Archive Store: the Azure Blob store](../../events/archive-store#the-azure-blob-store): archived event streams in the same kind of storage account, with their own container (`whizbang-archive`) and settings (`Whizbang:Archive:AzureBlob`).
+- [Archive Store: the Azure Blob store](../../events/archive-store#the-azure-blob-store): archived event streams in the same kind of storage account, with their own container (`whizbang-archive`) and settings (`Whizbang:Storage:AzureBlob:Archive`), from the same package and account.
+- [Azure Blob Storage](../../storage/azure-blob): the package, the account, turnkey activation and migration.

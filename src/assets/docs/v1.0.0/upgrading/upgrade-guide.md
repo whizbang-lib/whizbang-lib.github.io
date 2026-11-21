@@ -746,3 +746,21 @@ These matter to services that run [stream integrity](../resilience/stream-integr
 - **Who is affected:** anyone who reads live stacks of Whizbang frames in a profiler or debugger on
   .NET 11.
 - **What to do:** nothing. See [runtime async on .NET 11](../operations/performance/profiling.md#runtime-async).
+
+## Unreleased
+
+### One Azure Blob package; the driver owns the archive transaction {#storage-azure-blob}
+
+*[#2502](https://github.com/whizbang-lib/whizbang/issues/2502), [#2503](https://github.com/whizbang-lib/whizbang/issues/2503)*
+
+- **What changed:** `Whizbang.Storage.AzureBlob` replaces `Whizbang.Offloads.AzureBlob` and
+  `Whizbang.Archive.AzureBlob`, which ship this release as shims over it. It activates from
+  `Whizbang:Storage:AzureBlob` with no registration call. The archive's database transaction moved
+  into the Postgres driver (`PostgresObjectArchiveStore`); nothing stored changed, so a rolling deploy
+  beside the previous release works.
+- **Who is affected:** hosts that archive or offload to Azure Blob Storage; code that resolved
+  `AzureBlobArchiveStore`, caught `Whizbang.Archive.AzureBlob.ArchiveObjectCorruptedException`, or names
+  the options types; hosts on SQLite whose lifecycle policies archive (the start now fails).
+- **What to do:** nothing is required this release: the earlier calls (now `[Obsolete]`) and keys
+  (now with a startup warning) keep working. To move, follow
+  [migrating from the earlier packages](../fundamentals/storage/azure-blob.md#migrating-from-the-earlier-packages).

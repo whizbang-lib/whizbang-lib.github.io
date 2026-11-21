@@ -10,20 +10,20 @@ description: >-
   and the deletion delay for storage without soft delete.
 tags: 'archive, azure-blob, owner-marker, one-database-per-container, point-in-time-restore, pitr, soft-delete, disaster-recovery, restore, deletion-delay, delete-after, orphan-sweep, repoint'
 codeReferences:
-  - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveStore.cs
-  - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveOptions.cs
+  - src/Whizbang.Data.Postgres/PostgresObjectArchiveStore.cs
+  - src/Whizbang.Storage.AzureBlob/AzureBlobArchiveOptions.cs
   - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveServiceCollectionExtensions.cs
-  - src/Whizbang.Archive.AzureBlob/ArchiveObjectDeletionStep.cs
-  - src/Whizbang.Archive.AzureBlob/ArchiveSweepMetrics.cs
+  - src/Whizbang.Core/Archival/ArchiveObjectDeletionStep.cs
+  - src/Whizbang.Data.Postgres/ArchiveSweepMetrics.cs
   - src/Whizbang.Data.Postgres/Migrations/465_ArchiveDatabaseIdentity.sql
   - src/Whizbang.Data.Postgres/Migrations/269_ArchiveObjectDeletionQueue.sql
   - src/Whizbang.Data.Postgres/Migrations/353_ArchiveLocations.sql
 testReferences:
-  - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreImmutabilityTests.cs
-  - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs
-  - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs
-  - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs
-  - tests/Whizbang.Archive.AzureBlob.Tests/AzureBlobArchiveRegistrationTests.cs
+  - tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreImmutabilityTests.cs
+  - tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs
+  - tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs
+  - tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs
+  - tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobArchiveRegistrationTests.cs
 ---
 
 # Restoring an Environment with an Archive
@@ -123,9 +123,11 @@ tests: ["AzureBlobArchiveRegistrationTests.Configuration_DeleteAfter_IsOffByDefa
 }
 {
   "Whizbang": {
-    "Archive": {
+    "Storage": {
       "AzureBlob": {
-        "DeleteAfter": "35.00:00:00"
+        "Archive": {
+          "DeleteAfter": "35.00:00:00"
+        }
       }
     }
   }
@@ -137,7 +139,7 @@ tests: ["AzureBlobArchiveRegistrationTests.Configuration_DeleteAfter_IsOffByDefa
 | Off by default: a queued deletion runs at once, as before the option existed. | Azure Blob Storage with soft delete already keeps a deleted object for its retention period, which is the better place for that window; the delay is for storage that has none. | {verified: AzureBlobArchiveRegistrationTests.Configuration_DeleteAfter_IsOffByDefault_AndBindsATimeSpanAsync, AzureBlobArchiveStoreTests.DeleteAfter_ADatabaseRestoredToAnEarlierCopy_ReadsEveryStream_OnlyWithTheDelayOnAsync} |
 | A deletion is due `DeleteAfter` after the database queued it (`queued_at`), and the store checks that when it drains the queue, not when it queues. | The queue is filled by a trigger inside the transaction that stopped naming the object, which knows nothing of a service's settings. Checking at the drain also means turning the delay on covers deletions already queued, and turning it off lets them all run at once. | {verified: AzureBlobArchiveStoreTests.DeleteAfter_ARestoreAndADelete_LeaveTheirObjects_UntilTheDelayHasPassedAsync} |
 | A value of zero or less, or one that is not a time span, is refused when it is bound, when the host starts and when the store is built. | A zero delay would look like protection and give none. | {verified: AzureBlobArchiveRegistrationTests.Configuration_AValueThatCannotBeRead_IsRefused_NamingTheKeyAsync, AzureBlobArchiveRegistrationTests.Startup_ADeleteAfterOfZeroSetInCode_FailsTheHostAtStartAsync, AzureBlobArchiveRegistrationTests.Store_RefusesADeleteAfterThatIsNotAboveZeroAsync} |
-| Ages are measured on the service's `TimeProvider`, against the time the database queued the deletion and the time storage created the object. | The delay is days long, so any skew between the service's, the database's and the storage's clocks is immaterial, and one injectable clock makes every age testable without waiting. | {verified: AzureBlobArchiveRegistrationTests.Registration_TheStoreMeasuresAgesOnTheRegisteredTimeProviderAsync} |
+| Ages are measured on the service's `TimeProvider`, against the time the database queued the deletion and the time storage created the object. | The delay is days long, so any skew between the service's, the database's and the storage's clocks is immaterial, and one injectable clock makes every age testable without waiting. | {verified: PostgresArchiveStoresTests.Create_WithAnObjectStore_IsTheCoordinator_OnTheRegisteredClock_WithMetricsOnlyWhenTheHostHasThemAsync} |
 
 Data a [purge](../../fundamentals/events/archive-store#purging-a-stream-archived-to-blob) removed stays in storage
 for the delay, just as it stays in the database's own backups for their retention. Crypto-shredding is the immediate
@@ -150,7 +152,7 @@ erasure: an object whose key is destroyed is unreadable wherever a copy of it re
 With a delay set, objects can be left that nothing will delete: those written after the point a database was restored
 to (the restored database never queued their deletion), and an upload whose transaction never committed. Once a day,
 the maintenance step sweeps the container and deletes every object that no manifest row and no queued deletion names
-and that storage created at least `DeleteAfter` ago. Operators can also run a sweep with `SweepOrphanedObjectsAsync`.
+and that storage created at least `DeleteAfter` ago. Operators can also run a sweep with `IArchiveObjectCoordinator.SweepOrphanedObjectsAsync` (resolve `IArchiveStore` as `IArchiveObjectCoordinator`).
 
 | Choice | Reason | Verified |
 |---|---|---|
@@ -185,7 +187,7 @@ container the same way, or reads the marker that is there and compares it with i
 | A database restored to its own container. | The restored database carries the same id, so the marker still names it and the sweep runs. | {verified: AzureBlobArchiveStoreTests.Sweep_ADatabaseRestoredToItsOwnContainer_StillMatchesItsMarkerAsync} |
 | A copy [repointed](#restoring-into-another-environment) to a new container. | Its first write or sweep claims the new container. | {verified: AzureBlobArchiveStoreTests.Sweep_ARepointedCopy_ClaimsItsNewContainer_AndSweepsItAsync} |
 
-Every refusal is counted by `whizbang.archive.orphan_sweep.refused` (meter `Whizbang.Archive.AzureBlob`), tagged
+Every refusal is counted by `whizbang.archive.orphan_sweep.refused` (meter `Whizbang.Archive.AzureBlob`, a name kept when the coordinator moved to the Postgres driver), tagged
 `reason`: `foreign_marker`, `marker_unclaimable` or `unknown_location`.
 
 | Choice | Reason | Verified |
@@ -201,4 +203,5 @@ there. Repoint every copy to its own container before giving it a deletion delay
 ## Related
 
 - [Archive Store](../../fundamentals/events/archive-store): the Azure Blob store, its manifest, locations and repointing
-- [Configuration reference](../configuration/configuration-reference): `Whizbang:Archive:AzureBlob`
+- [Configuration reference](../configuration/configuration-reference): `Whizbang:Storage:AzureBlob:Archive` (the earlier `Whizbang:Archive:AzureBlob` is still read)
+- [Azure Blob Storage](../../fundamentals/storage/azure-blob): the package, the account and turnkey activation

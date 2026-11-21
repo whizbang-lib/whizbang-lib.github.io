@@ -29,7 +29,7 @@ codeReferences:
   - src/Whizbang.Core/Offloads/BodyClaimDownloadException.cs
   - src/Whizbang.Core/Offloads/OffloadServiceCollectionExtensions.cs
   - src/Whizbang.Offloads.InMemory/InMemoryMessageBodyStore.cs
-  - src/Whizbang.Offloads.AzureBlob/AzureBlobMessageBodyStore.cs
+  - src/Whizbang.Storage.AzureBlob/AzureBlobMessageBodyStore.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Offloads/BodyOffloadPostSerializeHookTests.cs
   - tests/Whizbang.Core.Tests/Offloads/PostSerializeHookChainTests.cs
@@ -42,7 +42,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Offloads/AesGcmEnvelopeCipherTests.cs
   - tests/Whizbang.Core.Tests/Offloads/BodyCipherFromConfigurationTests.cs
   - tests/Whizbang.Core.Tests/Offloads/RotatingAesKeyWrapperTests.cs
-  - tests/Whizbang.Offloads.AzureBlob.Tests/AzureBlobOffloadFromConfigurationTests.cs
+  - tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobOffloadFromConfigurationTests.cs
 ---
 
 # Body Offload (Claim-Check Pattern)
@@ -68,15 +68,17 @@ unverified: "end-to-end DI wire-up — composes transport, Azure Blob offload, a
 }
 services.AddWhizbangRabbitMQ(opts => { /* … */ });   // or AddWhizbangAzureServiceBus
 
-services.AddWhizbangAzureBlobOffload("azure-blob-prod", opts => {
-  opts.ConnectionString = builder.Configuration.GetConnectionString("Storage");
-  opts.ContainerName    = "whizbang-offload-bodies";
+// Whizbang.Storage.AzureBlob registers the store, the hook and the selector (#2502); with it referenced,
+// Whizbang:Storage:AzureBlob and its Offloads section in configuration do the same with no call.
+services.AddWhizbangAzureBlobStorage(storage => {
+  storage.ConnectionString = builder.Configuration.GetConnectionString("Storage");
+  storage.Offloads = new AzureBlobOffloadOptions {
+    ProviderName  = "azure-blob-prod",
+    ContainerName = "whizbang-offload-bodies",
+  };
 });
 
-services.AddWhizbangBodyOffload();   // registers the body-offload post-serialize hook
-
 services.Configure<MessageBodyOffloadOptions>(opts => {
-  opts.ProviderName       = "azure-blob-prod";
   opts.SizeThresholdBytes = 64 * 1024;   // 25% of ASB Standard 256 KB
   opts.ActiveCleanup      = false;       // default — rely on the provider's TTL rule
 });
@@ -193,17 +195,15 @@ var keyEncryptionKey = Convert.FromBase64String(
     ?? throw new InvalidOperationException("Offload:BodyKeyEncryptionKey is not configured"));
 
 // Sender: seal every offloaded body before it is uploaded.
-services.AddWhizbangAzureBlobOffload("azure-blob-prod", opts => { /* … */ });
+services.AddWhizbangAzureBlobStorage(storage => storage.Offloads = new AzureBlobOffloadOptions { ProviderName = "azure-blob-prod" /* … */ });
 services.AddWhizbangAesGcmBodyCipher("body-aes-v1", keyId: "kek-v1", keyEncryptionKey);
-services.AddWhizbangBodyOffload();
 
 services.Configure<MessageBodyOffloadOptions>(opts => {
-  opts.ProviderName = "azure-blob-prod";
   opts.CipherName   = "body-aes-v1";   // null (the default) stores bodies as serialized
 });
 
 // Receiver: the same provider name and the same cipher name, over the same key.
-services.AddWhizbangAzureBlobOffload("azure-blob-prod", opts => { /* … */ });
+services.AddWhizbangAzureBlobStorage(storage => storage.Offloads = new AzureBlobOffloadOptions { ProviderName = "azure-blob-prod" /* … */ });
 services.AddWhizbangAesGcmBodyCipher("body-aes-v1", keyId: "kek-v1", keyEncryptionKey);
 ```
 
@@ -251,7 +251,7 @@ services.AddWhizbangAesGcmBodyCipher("body-aes-v1",
 ### Configuring the cipher from settings {#cipher-from-settings}
 {verified: BodyCipherFromConfigurationTests.WithANameAndAKey_RegistersTheAesGcmCipherByName_AndNamesItOnTheOptionsAsync, BodyCipherFromConfigurationTests.WithoutACipherName_RegistersNoCipher_AndLeavesTheOptionsAloneAsync, AzureBlobOffloadFromConfigurationTests.FromConfiguration_WithACipherInSettings_BindsTheCipherName_AndRegistersTheCipherAsync}
 
-Hosts that register offloads from configuration (`AddWhizbangAzureBlobOffloadsFromConfiguration`) get the built-in cipher from the same settings, with no consumer code. `AddWhizbangBodyCipherFromConfiguration` reads the `Whizbang:BodyOffload` section, registers `AesGcmEnvelopeCipher` under the configured name, and names it on `MessageBodyOffloadOptions` so the send side seals. Without a cipher name, nothing is registered and bodies are stored as serialized, exactly as before.
+Hosts that offload from configuration (with `Whizbang.Storage.AzureBlob` referenced, or the earlier `AddWhizbangAzureBlobOffloadsFromConfiguration`) get the built-in cipher from the same settings, with no consumer code; a registration that runs before configuration can be read uses `AddWhizbangBodyCipherFromConfiguration()` with no argument, which reads it when the container is built. `AddWhizbangBodyCipherFromConfiguration` reads the `Whizbang:BodyOffload` section, registers `AesGcmEnvelopeCipher` under the configured name, and names it on `MessageBodyOffloadOptions` so the send side seals. Without a cipher name, nothing is registered and bodies are stored as serialized, exactly as before.
 
 | Setting | Environment variable form | Value |
 |---|---|---|
@@ -334,7 +334,7 @@ When `ActiveCleanup = true`, the consumer worker fires `IMessageBodyStore.Delete
 ## Built-in providers
 
 - **`Whizbang.Offloads.InMemory`** — dev/test/fixture provider. Bodies live in a process-local `ConcurrentDictionary`. Not suitable for production: bodies don't cross processes, no durability. Mirrors the in-process transport (`InProcessTransport`) in role: a process-local stand-in for dev/test.
-- **`Whizbang.Offloads.AzureBlob`** — production provider. Wraps `Azure.Storage.Blobs`. Works identically against the Azurite emulator and live Azure Blob; the connection string distinguishes them via standard Azure SDK conventions. Supports optional Hot/Cool/Cold/Archive access tiers and a defensive `MaxDownloadBytes` cap.
+- **`Whizbang.Storage.AzureBlob`** — production provider (the earlier `Whizbang.Offloads.AzureBlob` is a shim over it this release), active from `Whizbang:Storage:AzureBlob` with no call. Wraps `Azure.Storage.Blobs`. Works identically against the Azurite emulator and live Azure Blob; the connection string distinguishes them via standard Azure SDK conventions. Supports optional Hot/Cool/Cold/Archive access tiers and a defensive `MaxDownloadBytes` cap.
 
 Custom providers implement `IMessageBodyStore` and register via `AddWhizbangMessageBodyStore<TStore>(name)`. The interface is three storage methods (`UploadAsync`, `DownloadAsync`, `DeleteAsync`), each accepting an optional per-call options record so providers can expose features like custom metadata, container overrides, or per-blob TTL without bloating the core contract, plus a default-implemented `CheckConnectivityAsync` reachability probe (returns `true` unless a remote provider overrides it) used by the managed-resource health model.
 
