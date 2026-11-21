@@ -94,10 +94,13 @@ A fixture tears down in exactly one place (#1954). TUnit runs a fixture's `[Afte
 instance when it is `IAsyncDisposable` or `IDisposable`, so a fixture that is both runs its teardown twice. Idempotent
 teardown hides that; a teardown that is not (a second drop of a database name another test already reuses, a second
 dispose of a shared data source) fails only when the suites run together. Keep the teardown in the `[After(Test)]`
-hook, which runs whether the test passed or failed, and do not make the fixture disposable. A guard test reads every
-fixture in the test assembly, base classes included, and fails one that is both.
+hook, which runs whether the test passed or failed, and do not make the fixture disposable. The build enforces this in
+every test project: the repository check [WHIZ609](../../v1.0.0/operations/diagnostics/whiz609.md) reports a class
+that is both as a build error, counting hooks and interfaces on base classes, so a new engine's fixtures are held to
+the rule from their first build. The guard test that reads every fixture in the EF Core test assembly still runs as a
+second line of defense.
 
-{verified: SingleTeardownGuardTests.NoFixtureWithATestTeardownHook_IsAlsoDisposableAsync}
+{verified: SingleTeardownGuardTests.NoFixtureWithATestTeardownHook_IsAlsoDisposableAsync, SingleTeardownAnalyzerTests.AsyncDisposableFixture_WithATestTeardownHook_ReportsWhiz609Async, SingleTeardownAnalyzerTests.AHookInTheBaseClass_AndTheInterfaceInTheDerived_ReportsTheDerivedAsync}
 
 Because every test process on a machine shares that one container, a test that terminates or cancels backends must end only its own database's: name the database (`datname`, `current_database()`, or an advisory lock's `database`) or end one backend whose pid it was handed, never every backend in the cluster. A cluster-wide termination ends other test processes' sessions, and they fail only when the suites run together. A guard test fails any termination that does neither.
 

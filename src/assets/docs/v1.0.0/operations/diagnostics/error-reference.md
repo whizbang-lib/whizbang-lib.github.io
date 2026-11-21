@@ -679,6 +679,7 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ606 | Error | [Credential-Named Settings Property Is a Plain String](whiz606.md) (repository check) |
 | WHIZ607 | Error | [Type Name Read Outside the Shared Naming Code](whiz607.md) (repository check) |
 | WHIZ608 | Error | [Type-Naming Exception Without a Reason](whiz608.md) (repository check) |
+| WHIZ609 | Error | [Test Fixture Tears Down Twice](whiz609.md) (repository check) |
 | WHIZ701 | Info | [EF Core Perspective Discovery](whiz701.md) |
 | WHIZ702 | Info | [EF Core Migration Files Discovery](whiz702.md) |
 | WHIZ703 | Info | [No DbContext Found](whiz703.md) |
