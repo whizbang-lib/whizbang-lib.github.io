@@ -96,8 +96,8 @@ An override with no inherited `[StreamId]` to replace is reported by [WHIZ016](w
 The generated code honors the derived choice whatever the namespace order: its type checks run most-derived first, so
 a base type's `[StreamId]` never matches a derived instance ahead of the derived type's own
 {verified: StreamIdDerivedFirstGeneratorTests.ADerivedCommandInANamespaceBeforeTheBase_ResolvesAndSetsByItsOwnStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ADerivedCommandInANamespaceAfterTheBase_ResolvesAndSetsByItsOwnStreamIdAsync}.
-Earlier releases could match the base first when the base was discovered first; see the upgrade note in
-[StreamId Attribute](../../extending/attributes/streamid#derived-first-dispatch).
+Every message resolves by its exact type, also when its base is compiled in another assembly; see
+[How a message type finds its stream ID](../../extending/attributes/streamid#how-a-message-type-finds-its-stream-id).
 
 ### Same-name redeclarations
 

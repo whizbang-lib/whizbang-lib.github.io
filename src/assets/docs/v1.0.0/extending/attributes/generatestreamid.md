@@ -14,12 +14,14 @@ codeReferences:
   - src/Whizbang.Core/GenerateStreamIdAttribute.cs
   - src/Whizbang.Generators/StreamIdGenerator.cs
   - src/Whizbang.Core/Validation/StreamIdGuard.cs
+  - src/Whizbang.Core/Registry/StreamIdTypeRegistry.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/GenerateStreamIdGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/StreamIdDerivedFirstGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/StreamIdTypeTableGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/StreamIdGeneratorTests.cs
   - tests/Whizbang.Core.Tests/Validation/StreamIdGuardTests.cs
-lastMaintainedCommit: '01f07906'
+lastMaintainedCommit: '0a29f1a5'
 ---
 
 # GenerateStreamId Attribute
@@ -154,28 +156,25 @@ The guard distinguishes between:
 
 `[GenerateStreamId]` requires `[StreamId]` to be present (either on the same property or inherited from a base class).
 
-The policy lookup dispatches most-derived first, like every generated stream ID lookup, so a derived type's own
+A message's policy is the one recorded for its exact type
+([How a message type finds its stream ID](streamid#how-a-message-type-finds-its-stream-id)), so a derived type's own
 `[GenerateStreamId]` is used ahead of its base's
 {verified: StreamIdDerivedFirstGeneratorTests.ADerivedTypesOwnGenerationPolicy_IsNotShadowedByTheBaseAsync}. A derived
 type that declares its own `[StreamId]` (plain or `Override = true`) but no `[GenerateStreamId]` does not inherit the
 base's policy and is not auto-generated; declare `[GenerateStreamId]` on it to auto-generate. A derived type with no
 `[StreamId]` of its own inherits the base's stream ID and policy
-{verified: StreamIdDerivedFirstGeneratorTests.ADerivedTypeWithItsOwnStreamIdAndNoGenerateStreamId_DoesNotInheritTheBasesGenerateStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ADerivedTypeWithNoStreamIdOfItsOwn_InheritsTheBasesGenerateStreamIdAsync}. See
-[A derived type's own stream ID is never shadowed by its base](streamid#derived-first-dispatch).
+{verified: StreamIdDerivedFirstGeneratorTests.ADerivedTypeWithItsOwnStreamIdAndNoGenerateStreamId_DoesNotInheritTheBasesGenerateStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ADerivedTypeWithNoStreamIdOfItsOwn_InheritsTheBasesGenerateStreamIdAsync}.
 
-The opt-out holds only when the base type is compiled in the same assembly as the derived type. A base in another
-assembly that declares `[GenerateStreamId]` still applies its policy to the derived type, and
-[WHIZ017](../../operations/diagnostics/whiz017) warns about it: declare `[GenerateStreamId]` on the derived type, or
-move the base into the same assembly
-{verified: StreamIdCrossAssemblyGenerationAnalyzerTests.OwnStreamId_UnderAGeneratingBaseInAnotherAssembly_ReportsWhiz017Async, StreamIdCrossAssemblyGenerationAnalyzerTests.OwnStreamId_UnderAGeneratingBaseInTheSameAssembly_IsNotReportedAsync}.
-Exact cross-assembly resolution is planned in [whizbang-lib/whizbang#1905](https://github.com/whizbang-lib/whizbang/issues/1905).
+Both hold wherever the base type is compiled: a derived type in another assembly uses its own policy, including the
+opt-out, and one with no `[StreamId]` of its own inherits its base's
+{verified: StreamIdTypeTableGeneratorTests.ADerivedTypeInAnotherAssemblyWithItsOwnStreamId_UsesItsOwnPropertyAndPolicyAsync, StreamIdTypeTableGeneratorTests.ADerivedTypeInAnotherAssemblyWithNoStreamIdOfItsOwn_InheritsTheBasesAsync}.
 
 ## Zero Reflection / AOT
 
 The `[GenerateStreamId]` attribute is fully AOT-compatible:
 
 - Discovery happens at compile time via the source generator
-- The `GetGenerationPolicy` method uses type-based pattern matching (no reflection)
+- The policy is read from the generated per-type entry for the message's type (no reflection)
 - Generation uses `TrackedGuid.New()` (UUIDv7) for time-ordered, database-friendly IDs
 
 ## See Also
