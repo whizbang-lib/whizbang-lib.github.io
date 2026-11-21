@@ -657,7 +657,7 @@ Calling the helper reads `Whizbang:Archive:AzureBlob` and makes the Azure Blob s
 place of the Postgres-table store the drivers register; without the call the section is inert. A `ServiceUri`
 authenticates with the `TokenCredential` the host registers, so no secret is in configuration. **Details:**
 [Archive Store](../../fundamentals/events/archive-store#the-azure-blob-store).
-{verified: AzureBlobArchiveRegistrationTests.Configuration_BindsEverySetting_AndKeepsTheDefaultsForWhatIsAbsentAsync, AzureBlobArchiveRegistrationTests.Configuration_AValueThatCannotBeRead_IsRefused_NamingTheKeyAsync, AzureBlobArchiveLocationTests.ConnectionName_ThatLooksLikeAConnectionString_IsRefused_WhenBoundAndWhenBuiltAsync, AzureBlobArchiveLocationTests.VerifyLocation_DefaultsToOn_AndIsBoundFromConfigurationAsync}
+{verified: AzureBlobArchiveRegistrationTests.Configuration_BindsEverySetting_AndKeepsTheDefaultsForWhatIsAbsentAsync, AzureBlobArchiveRegistrationTests.Configuration_AValueThatCannotBeRead_IsRefused_NamingTheKeyAsync, AzureBlobArchiveLocationTests.ConnectionName_ThatLooksLikeAConnectionString_IsRefused_WhenBoundAndWhenBuiltAsync, AzureBlobArchiveLocationTests.LocationMismatch_DefaultsToError_SoAMismatchStopsTheArchiveAsync, AzureBlobArchiveLocationTests.LocationMismatch_BindsEveryHandling_InAnyCaseAsync, AzureBlobArchiveLocationTests.VerifyLocation_IsRefused_NamingTheSettingThatReplacedItAsync}
 
 ```csharp{
 title: "Opt into the Azure Blob archive store from configuration"
@@ -673,13 +673,16 @@ builder.Services.AddWhizbangAzureBlobArchive(builder.Configuration);
 
 ### Whizbang:Archive:AzureBlob → AzureBlobArchiveOptions
 
+`VerifyLocation` was removed in favor of `LocationMismatch`: a configuration that still sets it is refused, naming its
+replacement ([upgrading](../../fundamentals/events/archive-store#upgrading-from-verify-location)).
+
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
 | `ServiceUri` | `Uri?` | `null` | `Whizbang__Archive__AzureBlob__ServiceUri` | Blob service endpoint; authenticates with the registered `TokenCredential`. Set this or `ConnectionString` |
 | `ConnectionString` | [`SensitiveString?`](sensitive-settings.md) | `null` | `Whizbang__Archive__AzureBlob__ConnectionString` | Storage connection string (Azurite, or an account key from the host's secret store) |
 | `ContainerName` | `string` | `whizbang-archive` | `Whizbang__Archive__AzureBlob__ContainerName` | Container the archive objects are written to; created on the first write |
-| `ConnectionName` | `string` | `default` | `Whizbang__Archive__AzureBlob__ConnectionName` | Logical name of the storage connection, recorded in the [archive location](../../fundamentals/events/archive-store#archive-locations); refused if it looks like a connection string (contains `;` or `=`) |
-| `VerifyLocation` | `bool` | `true` | `Whizbang__Archive__AzureBlob__VerifyLocation` | Compare every archive record's location with the configured one before a read, restore, delete or write, and refuse a mismatch ([what turning it off gives up](../../fundamentals/events/archive-store#verify-location)) |
+| `ConnectionName` | `string` | `default` | `Whizbang__Archive__AzureBlob__ConnectionName` | Logical name of the storage connection, recorded in the [archive location](../../fundamentals/events/archive-store#archive-locations) and compared without case or surrounding whitespace; refused if it looks like a connection string (contains `;` or `=`) or is only whitespace |
+| `LocationMismatch` | `ArchiveLocationMismatchHandling` | `Error` | `Whizbang__Archive__AzureBlob__LocationMismatch` | What an archive record whose location is not the configured one does: `Error` refuses the operation, `Warning` or `Info` go ahead in the configured location and log at that level, `Ignore` goes ahead without comparing; any case, anything else refused ([location mismatch handling](../../fundamentals/events/archive-store#location-mismatch)) |
 | `CompressionLevel` | `int` | `4` | `Whizbang__Archive__AzureBlob__CompressionLevel` | Brotli quality, 0 to 11 ([why 4](../../fundamentals/events/archive-store#azure-blob-configuration)) |
 | `MaxEventsPerChunk` | `int` | `10000` | `Whizbang__Archive__AzureBlob__MaxEventsPerChunk` | Most events one archive object holds; 1 or more |
 | `AccessTier` | `AccessTier?` | `null` (the account's default) | `Whizbang__Archive__AzureBlob__AccessTier` | Tier every archive object is written at: `Hot`, `Cool` or `Cold`; `Archive` is refused at startup ([why](../../fundamentals/events/archive-store#access-tier)) |

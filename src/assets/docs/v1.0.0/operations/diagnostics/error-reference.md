@@ -174,14 +174,16 @@ Each location reads `{provider}, endpoint {endpoint}, connection '{name}', conta
 
 **Source**: `ArchiveLocationMismatchException` (namespace `Whizbang.Core.Archival`), thrown by `AzureBlobArchiveStore` from `ReadAsync`, `RestoreAsync`, `DeleteAsync` and `WriteAsync`. Its properties carry `StreamId`, `Operation`, `RecordedLocationId`, `Recorded` and `Configured`.
 
-**Trigger**: A record of the stream names an [archive location](../../fundamentals/events/archive-store.md#archive-locations) other than the one the store is configured for (another account endpoint, logical connection name or container), or no location at all. The usual cause is a database that moved without its configuration: a copy to another environment, a restore from a backup, or disaster recovery to another storage account; or a configuration pointed at another account or container. `Operation` is `read`, `restore`, `delete` or `write`; a `write` is refused when the stream's earlier objects are recorded elsewhere, so a stream never spans two locations.
+**Trigger**: Under the default `Whizbang:Archive:AzureBlob:LocationMismatch = Error`, a record of the stream names an [archive location](../../fundamentals/events/archive-store.md#archive-locations) other than the one the store is configured for (another account endpoint, logical connection name or container), or no location at all. The usual cause is a database that moved without its configuration: a copy to another environment, a restore from a backup, or disaster recovery to another storage account; or a configuration pointed at another account or container. `Operation` is `read`, `restore`, `delete` or `write`; a `write` is refused when the stream's earlier objects are recorded elsewhere, so a stream never spans two locations.
 
 **What happens next**: Nothing. The store throws before any request reaches storage: no object is read, written or deleted, the manifest is unchanged and the stream stays as it was. The deletion queue likewise leaves rows of other locations queued, untouched.
 
 **Fix**:
 - If the objects are (or should be) in the configured location, copy them there first if needed, then repoint the location: update its row in `wh_archive_locations`, or call `AzureBlobArchiveStore.RepointLocationAsync(ex.RecordedLocationId)`. See [Repointing an environment](../../fundamentals/events/archive-store.md#repointing-an-environment).
 - If the configuration is wrong, correct `Whizbang:Archive:AzureBlob` (`ServiceUri` or `ConnectionString`, `ContainerName`, `ConnectionName`).
-- Or turn the check off with `Whizbang:Archive:AzureBlob:VerifyLocation = false`, accepting what that gives up. See [Turning the location check off](../../fundamentals/events/archive-store.md#verify-location).
+- Or, where infrastructure alone decides where the objects are, set `Whizbang:Archive:AzureBlob:LocationMismatch` to `Warning` or `Info` (go ahead in the configured location and log the mismatch) or `Ignore`, accepting what that gives up. See [Location mismatch handling](../../fundamentals/events/archive-store.md#location-mismatch).
+
+A location written only in another case, with surrounding whitespace, a trailing slash or the scheme's default port is the same location and is never refused ([normalized locations](../../fundamentals/events/archive-store.md#normalized-locations)).
 
 ## Dispatch & Receptors
 
