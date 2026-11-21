@@ -1186,6 +1186,45 @@ public record PaymentCompletedEvent(
 // 5. Audit entry captured
 ```
 
+## Coalescing {#coalescing}
+
+A tag can be bound to coalescing with `TagOptions.Coalesce("<tag>", c => ...)`. A message whose type carries a bound
+tag is held in the outbox as a pending single instead of shipping on its own, and the coalesce ship worker folds a
+group's pending singles into one composite when the group has gone quiet (`SlideSeconds`), when its oldest single is
+overdue (`MaxDelaySeconds`), or when it holds a full chunk (`MaxBatchCount`). The folded singles are completed in the
+same transaction that stores the composite, and a single whose deadline passes before any fold ships on its own. The
+binding's settings and their configuration keys are in the
+[configuration reference](../../operations/configuration/configuration-reference.md).
+
+### What a coalesced composite carries {#coalesced-composite-contents}
+
+The default composite, `CoalescedEventsComposite`, carries each folded single as it sits in the outbox, in parallel
+lists (same order, same count):
+
+| Member | Per single |
+|---|---|
+| `InnerPayloads`, `InnerTypeNames` | Its stored wire JSON and wire type name, carried verbatim. |
+| `InnerEventIds` | Its original message id, so a single that also shipped on its own is deduplicated at the receiver's inbox. |
+| `InnerStreamIds` | The stream it was stored on, so each child is restored to its own stream. |
+| `InnerCommitSequences` | Its position in the producer's commit lane: the `SourceCommitSequence` a direct delivery of it carries (#1628). |
+
+Each child the receiver fans out then carries the sequence its single would have carried on its own, so origin-order
+replay and integrity accounting see it in its place (see
+[Coalesced children carry their own origin sequence](../messaging/composite-events.md#coalesced-child-origin-sequence)).
+A single has no sequence, and its entry is null, when:
+
+- it is not stored as an event on the producer. Audit records never are, so the audit binding's `AuditEventsComposite`
+  carries no sequences at all;
+- the commit stamper had not reached it when the fold ran;
+- it was forwarded from another service. Its direct delivery carries that service's identity, which one composite
+  cannot carry per child.
+
+A child with no sequence carries the composite's, as before, and so does every child of a composite minted by a
+producer that predates the field. A binding with its own `CompositeFactory` fills `InnerCommitSequences` itself, from
+each single's `SourceCommitSequence` in the fold batch.
+
+{verified: CoalescedChildOriginSequenceTests.BuildDefaultComposite_CarriesEachSinglesCommitSequenceInFoldOrderAsync, CoalesceFoldCoordinatorSqlTests.FetchPendingCoalesce_ReadsEachSinglesPositionInThisServicesCommitLaneAsync, CoalescedChildOriginSequenceTests.AuditComposite_CarriesNoSequencesAsync, CoalescedChildOriginSequenceTests.OlderProducersComposite_ReadsWithNoSequences_AndChildrenCarryTheCompositesAsync}
+
 ## Troubleshooting {#troubleshooting}
 
 ### Tags not being processed?
