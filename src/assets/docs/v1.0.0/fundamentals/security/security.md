@@ -792,6 +792,9 @@ A receptor interceptor (`IReceptorInterceptor`) decides whether a receptor may h
 
 The interceptor receives the receptor type, the message envelope and the scope context the receptor would read through `IScopeContextAccessor`. Because the framework owns the call, a new receptor cannot forget the check.
 
+Once every interceptor allows, the same gate runs the framework's internal admission recorders, such as [command auditing](audit-logging.md#command-auditing), so a denied receptor is never recorded.
+{verified: CommandAuditDispatchTests.DeniedReceptor_IsNotAudited_WhateverTheRegistrationOrderAsync}
+
 ### Enforcing `[RequirePermission]`
 
 `DefaultRequirePermissionInterceptor` reads `[RequirePermission]` from the receptor class. Register it once:
