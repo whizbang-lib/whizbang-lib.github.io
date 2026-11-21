@@ -19,7 +19,8 @@ codeReferences:
   - src/Whizbang.Core/SystemEvents/SystemEventOptions.cs
   - src/Whizbang.Core/SystemEvents/ISystemEventEmitter.cs
   - src/Whizbang.Core/SystemEvents/AuditingEventStoreDecorator.cs
-  - src/Whizbang.Core/SystemEvents/CommandAuditPipelineBehavior.cs
+  - src/Whizbang.Core/SystemEvents/CommandAuditRecorder.cs
+  - src/Whizbang.Core/Security/IReceptorAdmissionRecorder.cs
   - src/Whizbang.Core/SystemEvents/Audit/AuditEventModel.cs
   - src/Whizbang.Core/Audit/AuditLogEntry.cs
   - src/Whizbang.Core/Audit/AuditLevel.cs
@@ -39,7 +40,7 @@ testReferences:
   - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/SystemEventOptionsTests.cs
   - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditEventAttributeExcludeTests.cs
   - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/AuditingEventStoreDecoratorTests.cs
-  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/CommandAuditPipelineBehaviorTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/CommandAuditDispatchTests.cs
   - tests/Whizbang.Core.Unit.Dispatcher.Tests/SystemEvents/SystemEventEmitterTests.cs
   - tests/Whizbang.Core.Unit.Dispatcher.Tests/Audit/AuditEventAttributeTests.cs
   - tests/Whizbang.Core.Unit.Dispatcher.Tests/Audit/AuditLevelTests.cs
@@ -476,9 +477,11 @@ In addition to event auditing, Whizbang supports **command auditing** to capture
 
 ### CommandAudited System Event
 
-When command auditing is enabled, Whizbang emits a `CommandAudited` system event for each command processed:
+When command auditing is enabled, Whizbang emits a `CommandAudited` system event each time a receptor is admitted to handle a command. A command is a message that implements `ICommand`; nothing else is audited as one. `ResponseType` is null, because the record is written before the receptor answers.
+{verified: CommandAuditDispatchTests.OnlyAnICommand_IsAuditedAsync, CommandAuditDispatchTests.Record_CarriesTheScopeTheReceptorSeesAndTheEnvelopesLineageAsync}
 
-```csharp{title="CommandAudited System Event" description="When command auditing is enabled, Whizbang emits a CommandAudited system event for each command processed:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "CommandAudited", "System"] tests=["CommandAuditTests.CommandAudited_HasRequiredProperties_Async", "CommandAuditTests.CommandAudited_ImplementsISystemEvent_Async"]}
+
+```csharp{title="CommandAudited System Event" description="When command auditing is enabled, Whizbang emits a CommandAudited system event each time a receptor is admitted to handle a command." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "CommandAudited", "System"] tests=["CommandAuditTests.CommandAudited_HasRequiredProperties_Async", "CommandAuditTests.CommandAudited_ImplementsISystemEvent_Async"]}
 public sealed record CommandAudited : ISystemEvent {
   // Identity
   public required Guid Id { get; init; }
@@ -501,7 +504,7 @@ public sealed record CommandAudited : ISystemEvent {
 
   // Processing info
   public string? ReceptorName { get; init; }
-  public string? ResponseType { get; init; }
+  public string? ResponseType { get; init; }  // null: recorded before the receptor answers
 
   // Full scope key/value pairs from the originating envelope
   public IReadOnlyDictionary<string, string?>? Scope { get; init; }
@@ -539,15 +542,38 @@ public sealed record NotifyCustomersCommand(Guid[] CustomerIds, string Template)
 
 ### Enabling Command Auditing
 
-```csharp{title="Enabling Command Auditing" description="Enabling Command Auditing" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Enabling", "Command"] tests=["CommandAuditTests.EnableEventAudit_OnlyEnablesEventAudit_Async", "CommandAuditTests.EnableCommandAudit_OnlyEnablesCommandAudit_Async", "CommandAuditTests.EnableAudit_EnablesBothEventAndCommandAudit_Async"]}
-// AddSystemEventAuditing also registers the CommandAuditPipelineBehavior
-// that emits CommandAudited for each command processed.
-services.AddSystemEventAuditing(options => {
+```csharp{title="Enabling Command Auditing" description="EnableCommandAudit on AddSystemEvents is all command auditing needs." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Enabling", "Command"] tests=["CommandAuditTests.EnableEventAudit_OnlyEnablesEventAudit_Async", "CommandAuditTests.EnableCommandAudit_OnlyEnablesCommandAudit_Async", "CommandAuditTests.EnableAudit_EnablesBothEventAndCommandAudit_Async", "SystemEventServiceCollectionExtensionsTests.AddSystemEvents_CommandAuditEnabled_RegistersOneCommandAuditRecorderAsync", "CommandAuditDispatchTests.LocalInvoke_CommandAuditEnabled_EmitsOneCommandAuditedAsync"]}
+// AddSystemEvents registers command auditing when it is enabled;
+// AddSystemEventAuditing adds nothing more for commands.
+services.AddSystemEvents(options => {
   options.EnableEventAudit();    // Events only
   options.EnableCommandAudit();  // Commands only
   options.EnableAudit();         // Both events and commands
 });
 ```
+
+Command audit runs at the receptor admission gate, the same gate the
+[receptor interceptors](security.md#receptor-permission-gate) run at, so a command is audited on every path a receptor
+handles it: local invoke, send, a cascade, inbox delivery and every other lifecycle stage. Each admitted receptor gets
+one record. The tenant and user come from the scope context the receptor sees, and the correlation and causation ids
+from the envelope. A synchronous receptor (`ISyncReceptor`) cannot wait for the store, so its record is emitted
+fire-and-forget, and a failure to store it is logged and counted; every other receptor waits for its record before it
+runs. [System Events](../events/system-events.md#command-auditing) lists the tests for each rule.
+{verified: CommandAuditDispatchTests.Send_CommandAuditEnabled_EmitsOneCommandAuditedAsync, CommandAuditDispatchTests.InboxDelivery_CommandAuditEnabled_EmitsOneCommandAuditedAsync, CommandAuditDispatchTests.LocalInvoke_SyncReceptor_EmitsOneCommandAuditedAsync}
+
+#### Design choices {#command-audit-design-choices}
+
+| Choice | Reason | Verified |
+|--------|--------|----------|
+| The record is written when the receptor is admitted, before it runs, so `ResponseType` is null. | A command audit records what was requested. A command whose receptor then fails must still be in the trail, and a record written afterwards would be lost with the failure. | {verified: CommandAuditDispatchTests.Record_CarriesTheScopeTheReceptorSeesAndTheEnvelopesLineageAsync, CommandAuditDispatchTests.LocalInvoke_CommandAuditEnabled_EmitsOneCommandAuditedAsync} |
+| A receptor an interceptor denies is not audited, whatever order the interceptors were registered in. | Recording runs only after every interceptor allowed, so the trail holds commands a receptor was let handle, not attempts the gate refused. | {verified: CommandAuditDispatchTests.DeniedReceptor_IsNotAudited_WhateverTheRegistrationOrderAsync, CommandAuditDispatchTests.PipelineAdmitAsync_RecordsAnAdmittedCommand_AndNotADeniedOneAsync} |
+| A host without command audit pays nothing per message. | The recorder is registered only when `EnableCommandAudit()` is set, and with no recorder and no interceptor the gate is skipped. Options resolved at run time still win over a recorder registered earlier. | {verified: CommandAuditDispatchTests.CommandAuditOff_NothingIsAudited_AndTheDispatcherHoldsNoPipelineAsync, SystemEventServiceCollectionExtensionsTests.AddSystemEvents_CommandAuditNotEnabled_RegistersNoRecorderAsync, CommandAuditDispatchTests.RecorderRegistered_ButTheOptionsInForceSayOff_NothingIsAuditedAsync} |
+| Only a message implementing `ICommand` is audited as a command. | `ICommand` is the framework's one definition of a command; guessing from names or receptor shape would audit events and queries. | {verified: CommandAuditDispatchTests.OnlyAnICommand_IsAuditedAsync} |
+
+:::updated
+`EnableCommandAudit()` used to register a pipeline behavior (`CommandAuditPipelineBehavior`) that the dispatcher never
+ran, so no `CommandAudited` was ever emitted. A command type that should be audited must implement `ICommand`.
+:::
 
 ### Command Audit Perspective
 

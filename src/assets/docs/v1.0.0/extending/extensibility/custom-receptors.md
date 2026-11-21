@@ -12,7 +12,7 @@ description: >-
 tags: 'receptors, custom-handlers, streaming, lifecycle, base-classes'
 codeReferences:
   - src/Whizbang.Core/IReceptor.cs
-  - src/Whizbang.Core/Pipeline/IPipelineBehavior.cs
+  - src/Whizbang.Core/Security/IReceptorInterceptor.cs
   - >-
     samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
 testReferences:
@@ -64,16 +64,16 @@ For basic receptor usage, see [Receptors Guide](../../fundamentals/receptors/rec
 
 ### Receptor Execution Pipeline
 
-```mermaid{caption="Receptor execution pipeline — Dispatcher.LocalInvokeAsync resolves the receptor from DI, runs pipeline behaviors, invokes HandleAsync (constructor → HandleAsync → dispose per invocation), and returns TResponse."}
+```mermaid{caption="Receptor execution pipeline: Dispatcher.LocalInvokeAsync resolves the receptor from DI, asks the receptor interceptors, invokes HandleAsync (constructor → HandleAsync → dispose per invocation), and returns TResponse."}
 flowchart TD
     Dispatcher["Dispatcher.LocalInvokeAsync&lt;TMessage, TResponse&gt;()"]
     Resolve["Resolve Receptor<br/>IReceptor&lt;T, R&gt;"]
-    Behaviors["Pipeline Behaviors<br/>(Logging, Validation)"]
+    Behaviors["Receptor Interceptors<br/>(allow or deny)"]
     Handle["receptor.HandleAsync(message)<br/><br/>Lifecycle:<br/>1. Constructor (DI)<br/>2. HandleAsync (business logic)<br/>3. Dispose (if IAsyncDisposable)"]
     Return["Return TResponse"]
 
     DI["DI Container"] -.-> Resolve
-    IPB["IPipelineBehavior&lt;T, R&gt;"] -.-> Behaviors
+    IPB["IReceptorInterceptor"] -.-> Behaviors
     Custom["Your Custom Receptor"] -.-> Handle
 
     Dispatcher --> Resolve
@@ -866,7 +866,7 @@ public class CallExternalApiReceptor : ResilientReceptor<CallExternalApi, ApiRes
 - ❌ Add instance state (except injected dependencies)
 - ❌ Use singleton lifetime for receptors with scoped dependencies
 - ❌ Create deep inheritance hierarchies (max 2 levels)
-- ❌ Mix business logic with framework concerns (use pipeline behaviors)
+- ❌ Mix business logic with framework concerns (use a receptor interceptor; see [Hooks and Middleware](hooks-and-middleware.md))
 - ❌ Block async operations with `.Result` or `.Wait()`
 - ❌ Forget to pass CancellationToken through call chain
 
@@ -974,7 +974,7 @@ public class StreamingReceptorTests {
 **Core Concepts**:
 - [Receptors Guide](../../fundamentals/receptors/receptors.md) - Basic receptor usage
 - [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - Invoking receptors
-- [Pipeline Behaviors](hooks-and-middleware.md) - Cross-cutting concerns
+- [Hooks and Middleware](hooks-and-middleware.md) - Cross-cutting concerns before a receptor runs
 
 **Extensibility**:
 - [Custom Perspectives](custom-perspectives.md) - Custom event listeners
