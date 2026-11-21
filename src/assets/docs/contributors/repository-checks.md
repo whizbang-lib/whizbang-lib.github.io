@@ -69,12 +69,12 @@ Every `<docs>` tag in the code names a page on this site, and CI checks that the
 
 The script exits 0 when every target resolves, 1 on a finding, and 2 when the clone fails or holds no pages, so a fetch problem fails the job instead of passing it unchecked.
 
-**The baseline only shrinks.** Targets that already dangled when the check landed are listed in `.github/scripts/docs-tag-target-baseline.txt`. A new dangling target fails the check. So does a baselined target that now resolves or that no tag uses any more: delete its line in the same pull request.
+**The baseline only shrinks.** Targets that already dangled when the check landed are listed in `.github/scripts/docs-tag-target-baseline.txt`. A new dangling target fails the check, and so does a baselined target that no tag uses any more: delete its line in the same pull request. A baselined target that now resolves, because a page or heading was added on this site, is reported as a warning only, since no pull request in the library caused it; delete its line when the warning appears.
 
 Two consequences of checking against another repository:
 
 - **Land the docs page first.** A tag pointing at a page that exists only in an open docs pull request fails until that pull request merges.
-- **A docs change can turn the check red.** Adding a page or heading that fixes a baselined target makes its baseline line stale, and removing a page breaks every tag that names it.
+- **Removing a docs page or heading turns the check red** for every tag that names it. Adding one that fixes a baselined target only raises a warning to delete that line.
 
 Run it locally against a docs checkout next to the repository:
 
