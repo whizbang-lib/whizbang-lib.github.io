@@ -15,6 +15,7 @@ tags: >-
 codeReferences:
   - src/Whizbang.Data.Postgres/OperationalTableRegistry.cs
   - src/Whizbang.Data.Postgres/Migrations/451_OperationalRecordsRollOff.sql
+  - src/Whizbang.Data.Postgres/Migrations/535_PairHaltsSurviveARestart.sql
   - src/Whizbang.Data.Postgres/CoordinatorRetentionSql.cs
   - src/Whizbang.Core/Workers/OperationalRetentionOptions.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
@@ -73,7 +74,7 @@ test compares the registry with what the migrations created, so the only way to 
 | `RewriteLog` | The origin rewrite log (`wh_integrity_origin_rewrites`) | `Whizbang:OperationalRetention:RewriteLog` |
 | `Deliveries` | Delivery, answer and handled records | `Whizbang:OperationalRetention:Deliveries` |
 | `Reports` | Drift, divergence and other reports | `Whizbang:OperationalRetention:Reports` |
-| `PairHistory` | Pair halt history and instance exit history | `Whizbang:OperationalRetention:PairHistory` |
+| `PairHistory` | Pair halt history (`wh_integrity_pair_halts`, #2377) and instance exit history | `Whizbang:OperationalRetention:PairHistory` |
 | `RecheckRuns` | Results of re-check runs | `Whizbang:OperationalRetention:RecheckRuns` |
 | `Queues` | Finished queue rows | `Whizbang:OperationalRetention:Queues` |
 | `MaintenanceRuns` | Per-run maintenance records and logs | `Whizbang:OperationalRetention:MaintenanceRuns` |
@@ -84,10 +85,10 @@ A category with no override rests for `Whizbang:OperationalRetention:Default`. S
 {verified: OperationalRetentionOptionsTests.ACategoryThisReleaseDoesNotDefine_RestsForTheDefault_NotAnotherCategorysOverrideAsync}
 
 ## What the sweep removes {#what-the-sweep-removes}
-{verified: OperationalRetentionSweepSqlTests.TheRewriteLog_LosesItsRowsPastTheRetention_AndItsStartMovesWithThemAsync, OperationalRetentionSweepSqlTests.TheRewriteLog_IsRemovedOldestGenerationFirst_InBoundedBatchesAsync, OperationalRetentionSweepSqlTests.ARestoredRequest_IsRemovedPastTheRetention_AndAnOpenOrFailedOneStaysAsync, OperationalRetentionSweepSqlTests.ACategoryWithNoRetentionGiven_RemovesNothing_ButIsStillReportedAsync, OperationalTableRegistryGuardTests.TheSweep_RemovesExactlyTheTablesTheRegistryMarksSweptHereAsync, OperationalRetentionSweepSqlTests.AnAdvisoryFinding_UntouchedPastTheRetention_GoesAsync, OperationalRetentionSweepSqlTests.ADeadLetterSummary_GoesOnlyOnceItsDeadLettersAreGoneAsync, OperationalRetentionSweepSqlTests.AFinishedProbeCampaign_GoesOnceItsCohortIsGone_ARunningOneNeverAsync, OperationalRetentionSweepSqlTests.AStack_GoesWithItsLinks_OnceNothingNamesIt_AndThenItsUnusedFramesAsync, DapperRequestResponseExpiryTests.AnExpiredRecord_IsRemovedByTheMaintenanceStep_AndALiveOneStaysAsync}
+{verified: OperationalRetentionSweepSqlTests.TheRewriteLog_LosesItsRowsPastTheRetention_AndItsStartMovesWithThemAsync, OperationalRetentionSweepSqlTests.TheRewriteLog_IsRemovedOldestGenerationFirst_InBoundedBatchesAsync, OperationalRetentionSweepSqlTests.ARestoredRequest_IsRemovedPastTheRetention_AndAnOpenOrFailedOneStaysAsync, OperationalRetentionSweepSqlTests.ACategoryWithNoRetentionGiven_RemovesNothing_ButIsStillReportedAsync, OperationalTableRegistryGuardTests.TheSweep_RemovesExactlyTheTablesTheRegistryMarksSweptHereAsync, OperationalRetentionSweepSqlTests.AnAdvisoryFinding_UntouchedPastTheRetention_GoesAsync, OperationalRetentionSweepSqlTests.ADeadLetterSummary_GoesOnlyOnceItsDeadLettersAreGoneAsync, OperationalRetentionSweepSqlTests.AFinishedProbeCampaign_GoesOnceItsCohortIsGone_ARunningOneNeverAsync, OperationalRetentionSweepSqlTests.AStack_GoesWithItsLinks_OnceNothingNamesIt_AndThenItsUnusedFramesAsync, DapperRequestResponseExpiryTests.AnExpiredRecord_IsRemovedByTheMaintenanceStep_AndALiveOneStaysAsync, OperationalRetentionSweepSqlTests.AResumedPairHalt_GoesPastThePairHistoryRetention_AnOpenOneNeverAsync}
 
 Most Rolling tables were already bounded by a setting of their own, and they keep it (see the
-[inventory](#inventory)). The sweep (`wh_sweep_operational_retention`, migrations 451 and 456) covers the Rolling tables that were
+[inventory](#inventory)). The sweep (`wh_sweep_operational_retention`, migrations 451, 456, 457 and 535) covers the Rolling tables that were
 bounded by nothing, or only by a row count:
 
 | Table | Category | Removed | Kept whatever its age |
@@ -99,6 +100,7 @@ bounded by nothing, or only by a row count:
 | `wh_dlq_probe_campaigns` | `Reports` | Finished campaigns past the resting period whose fingerprint has no dead letter left | Running campaigns (work), and finished ones while their cohort has dead letters (a failed campaign spends the cohort's generation budget, a passed one lets its rows be re-driven) |
 | `wh_stacks`, `wh_stack_links` | `Reports` | Stacks past the resting period that no dead letter and no daily history row names, with their links | Every stack something still names |
 | `wh_stack_frames` | `Reports` | Frames past the resting period that no link names | Every frame a stack still uses |
+| `wh_integrity_pair_halts` | `PairHistory` | Pair guard halts that resumed longer ago than the resting period (migration 535, #2377) | Every open halt (no `resumed_at`): it is the alert clock of a pair still halted, and what a restarted process takes up. See [a halt survives a restart](../../resilience/stream-integrity#pair-halts-survive-a-restart) |
 | `wh_signal_cursors` | `Deliveries` | Cursors whose instance is no longer registered and that have not moved for the resting period (migration 457, #2360) | Every live pod's cursor, however idle: the signal log is kept down to the lowest live cursor, so removing one would let its pod miss signals |
 
 **Why "nothing relies on it" and not age alone (#2359).** These tables were left unbounded because each row is also a
@@ -216,6 +218,7 @@ its explanation.
 | `wh_integrity_ledger` | RepairLedger | A bucket goes when it heals or is forgotten; open divergences capped at `integrity_ledger_max_entries` |
 | `wh_integrity_ledger_tally` | MaintenanceRuns | Two progress windows |
 | `wh_integrity_origin_rewrites` | RewriteLog | **Swept here** by age, and capped at `integrity_origin_rewrite_log_rows` |
+| `wh_integrity_pair_halts` | PairHistory | **Swept here** (#2377): resumed halts after the resting period; open halts stay |
 | `wh_lifecycle_completions` | Deliveries | `LifecycleCompletionRetentionDays` (7), daily partitions |
 | `wh_log` | MaintenanceRuns | `log_retention_days` (14), weekly partitions |
 | `wh_message_deduplication` | Deliveries | `dedup_retention_days` (30), which is also how long a redelivery is recognized |
