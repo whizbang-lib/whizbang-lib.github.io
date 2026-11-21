@@ -15,7 +15,7 @@ codeReferences:
   - src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs
   - src/Whizbang.Generators/PerspectiveRunnerRegistryGenerator.cs
   - src/Whizbang.Generators/PerspectiveRunnerGenerator.cs
-  - src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerClassTemplate.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveRunnerRegistry.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCorePerspectiveAssociationGenerator.cs
@@ -172,9 +172,9 @@ internal sealed class OrderSummaryPerspectiveRunner
 ```
 
 :::note
-The runner logic every perspective shares (loading the model, applying events, saving the row and cursor, rewinds, rebuilds and snapshots) is generated once per assembly, as the internal `PerspectiveRunnerBase<TPerspective, TModel>` in `PerspectiveRunnerBase.g.cs`. Each runner holds only its varying parts: its event list, its traits, its `Apply` dispatch, its empty model, any overrides it needs and its registrations. A simple runner is about 4 KB of generated source. See [Build Cost](../../operations/performance/build-cost#perspective-runners) for what this saves.
+The runner logic every perspective shares (loading the model, applying events, saving the row and cursor, rewinds, rebuilds and snapshots) lives in Whizbang.Core, as `PerspectiveRunnerBase<TPerspective, TModel>`, and is not generated. Each runner holds only its varying parts: its event list, its traits, its `Apply` dispatch, its empty model, any overrides it needs and its registrations. A simple runner is about 4 KB of generated source. See [Build Cost](../../operations/performance/build-cost#perspective-runners) for what this saves.
 :::
-{verified: PerspectiveRunnerGeneratedSizeTests.ARunner_EmitsOnlyWhatItsPerspectiveVaries_NotTheSharedRunnerLogicAsync, PerspectiveRunnerGeneratedSizeTests.ASecondPerspective_AddsOnlyItsOwnRunner_TheSharedBaseIsEmittedOnceAsync}
+{verified: PerspectiveRunnerGeneratedSizeTests.ARunner_EmitsOnlyWhatItsPerspectiveVaries_NotTheSharedRunnerLogicAsync, PerspectiveRunnerGeneratedSizeTests.ASecondPerspective_AddsOnlyItsOwnRunner_NoRunnerBaseIsGeneratedAsync}
 
 ### 2. Registry Entry
 
