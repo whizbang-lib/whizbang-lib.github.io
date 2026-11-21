@@ -2547,7 +2547,7 @@
     "file": "src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs",
     "line": 2621,
     "symbol": "held",
-    "docs": "fundamentals/perspectives/rewind-invariants"
+    "docs": "fundamentals/perspectives/rewind#catch-up-loop"
   },
   "ReplayOutcome": {
     "file": "src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs",
@@ -2717,10 +2717,10 @@
     "symbol": "does",
     "docs": "operations/diagnostics/whiz115"
   },
-  "that": {
+  "whose": {
     "file": "src/Whizbang.Generators/Analyzers/PerspectiveContractAnalyzer.cs",
-    "line": 86,
-    "symbol": "that",
+    "line": 87,
+    "symbol": "whose",
     "docs": "operations/diagnostics/whiz117"
   },
   "PerspectiveFieldAnalyzer": {
@@ -5221,37 +5221,37 @@
   },
   "defaultSchema": {
     "file": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
-    "line": 333,
+    "line": 335,
     "symbol": "defaultSchema",
     "docs": "operations/infrastructure/purging-streams"
   },
   "traces": {
     "file": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
-    "line": 369,
+    "line": 371,
     "symbol": "traces",
     "docs": "fundamentals/events/archive-store#restore-requests"
   },
   "default": {
     "file": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
-    "line": 379,
+    "line": 381,
     "symbol": "default",
     "docs": "data/event-store#history-conversion"
   },
   "rule": {
     "file": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
-    "line": 387,
+    "line": 389,
     "symbol": "rule",
     "docs": "fundamentals/events/system-events#audit-body"
   },
   "types": {
     "file": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
-    "line": 392,
+    "line": 394,
     "symbol": "types",
     "docs": "fundamentals/events/superseding-events#history-stored-before-the-declaration"
   },
   "owner": {
     "file": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
-    "line": 402,
+    "line": 404,
     "symbol": "owner",
     "docs": "fundamentals/events/retired-event-types"
   },
@@ -5266,6 +5266,12 @@
     "line": 15,
     "symbol": "PrincipalFilterExtensions",
     "docs": "fundamentals/security/security#principal-filtering"
+  },
+  "RedeliveryBuildGate": {
+    "file": "src/Whizbang.Data.EFCore.Postgres/RedeliveryBuildGate.cs",
+    "line": 23,
+    "symbol": "RedeliveryBuildGate",
+    "docs": "resilience/stream-integrity#one-repair-build-at-a-time"
   },
   "RedeliveryRequestReceptor": {
     "file": "src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptor.cs",
@@ -8187,7 +8193,7 @@
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
     "line": 1891,
     "symbol": "_processDrainModeStreamsAsync",
-    "docs": "fundamentals/perspectives/drain-mode"
+    "docs": "operations/workers/perspective-worker#the-perspective-work-pipeline"
   },
   "_failUnreadableDrainRowsAsync": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
@@ -8265,7 +8271,7 @@
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
     "line": 6101,
     "symbol": "DrainBatcher",
-    "docs": "fundamentals/perspectives/drain-mode#sliding-window"
+    "docs": "operations/workers/perspective-worker#sliding-window-drain-batching"
   },
   "PgRepackClient": {
     "file": "src/Whizbang.Core/Workers/PgRepackClient.cs",
@@ -12591,7 +12597,7 @@
     "file": "src/Whizbang.Core/Perspectives/IPerspectiveRunnerRegistry.cs",
     "line": 40,
     "symbol": "PerspectiveRegistrationInfo",
-    "docs": "fundamentals/perspectives/drain-mode#lifecycle-skip"
+    "docs": "operations/workers/perspective-worker"
   },
   "AllowsMixedEphemeralAndSourced": {
     "file": "src/Whizbang.Core/Perspectives/IPerspectiveRunnerRegistry.cs",
@@ -15713,6 +15719,12 @@
     "symbol": "FlushCompletionsRequest",
     "docs": "fundamentals/work-coordinator/batched-flushers"
   },
+  "FlushPayloads": {
+    "file": "src/Whizbang.Core/Messaging/FlushPayloads.cs",
+    "line": 33,
+    "symbol": "FlushPayloads",
+    "docs": "fundamentals/lifecycle/lifecycle-stages"
+  },
   "ForwardingEventStoreDecorator": {
     "file": "src/Whizbang.Core/Messaging/ForwardingEventStoreDecorator.cs",
     "line": 32,
@@ -16077,7 +16089,7 @@
     "file": "src/Whizbang.Core/Messaging/IPerspectiveDrainChannel.cs",
     "line": 47,
     "symbol": "PerspectiveDrainChannel",
-    "docs": "fundamentals/perspectives/drain-mode"
+    "docs": "operations/workers/perspective-worker#the-perspective-work-pipeline"
   },
   "IRawReceptor": {
     "file": "src/Whizbang.Core/Messaging/IRawReceptor.cs",
@@ -16281,7 +16293,7 @@
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
     "line": 925,
     "symbol": "RecordLifecycleCompletionAsync",
-    "docs": "fundamentals/perspectives/drain-mode#batch-cursor-fetch"
+    "docs": "fundamentals/perspectives/write-modes#batch-formation"
   },
   "RecordDefinitionLineageAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
@@ -17617,13 +17629,13 @@
   },
   "InlineStageFailureHandling": {
     "file": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-    "line": 55,
+    "line": 62,
     "symbol": "InlineStageFailureHandling",
     "docs": "fundamentals/lifecycle/lifecycle-stages#distribute-failures"
   },
   "LifecycleInvocationHelper": {
     "file": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-    "line": 96,
+    "line": 103,
     "symbol": "LifecycleInvocationHelper",
     "docs": "fundamentals/lifecycle/lifecycle-stages#distribute-failures"
   },
@@ -19987,7 +19999,7 @@
   },
   "CapabilitiesStartupStep": {
     "file": "src/Whizbang.Core/Capabilities/CapabilitiesStartupStep.cs",
-    "line": 61,
+    "line": 69,
     "symbol": "CapabilitiesStartupStep",
     "docs": "operations/infrastructure/capabilities#verdict"
   },
@@ -20107,7 +20119,7 @@
   },
   "ConfigureCapabilityOptions": {
     "file": "src/Whizbang.Core/Capabilities/CapabilityServiceCollectionExtensions.cs",
-    "line": 81,
+    "line": 84,
     "symbol": "ConfigureCapabilityOptions",
     "docs": "operations/infrastructure/capabilities#configuration"
   },
@@ -20119,13 +20131,13 @@
   },
   "CapabilityVerdictEntry": {
     "file": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-    "line": 32,
+    "line": 38,
     "symbol": "CapabilityVerdictEntry",
     "docs": "operations/infrastructure/capabilities#verdict"
   },
   "CapabilityVerdict": {
     "file": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-    "line": 107,
+    "line": 115,
     "symbol": "CapabilityVerdict",
     "docs": "operations/infrastructure/capabilities#verdict"
   },

@@ -34173,6 +34173,23 @@
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveMarkerOnlyEventTests.cs",
+        "testMethod": "AnEventListedOnlyByACustomInterfaceThatDeclaresItsOwnApply_IsAnErrorAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/PerspectiveMarkerOnlyEventTests.cs",
+        "testMethod": "AnEventAMarkerAndADeclaringInterfaceBothList_IsNotReportedAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "IsRunnerDispatchedFamily": [
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/PerspectiveMarkerOnlyEventTests.cs",
+        "testMethod": "AnEventListedOnlyByACustomInterfaceThatDeclaresItsOwnApply_IsAnErrorAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/PerspectiveMarkerOnlyEventTests.cs",
         "testMethod": "AnEventAMarkerAndADeclaringInterfaceBothList_IsNotReportedAsync",
         "linkSource": "XmlTag"
       }
@@ -35454,6 +35471,11 @@
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveMarkerOnlyEventTests.cs",
         "testMethod": "AnEventListedByIPerspectiveBaseDirectly_IsAnErrorAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/PerspectiveMarkerOnlyEventTests.cs",
+        "testMethod": "AnEventListedOnlyByACustomInterfaceThatDeclaresItsOwnApply_IsAnErrorAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -70150,6 +70172,55 @@
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/PrincipalFilterExtensionsTests.cs",
         "testMethod": "FilterByPrincipals_LargePrincipalSet_MatchingGroupPrincipal_ReturnsRowAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "RedeliveryBuildGate": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBuildGateTests.cs",
+        "testMethod": "ARequestAtAFreeGate_Builds_WithoutQueueing_AndTheNextWaitsUntilItEndsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBuildGateTests.cs",
+        "testMethod": "WhenQueued_CompletesAtOnce_WhenThatManyAlreadyWait_AndNotForFewerAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBuildGateTests.cs",
+        "testMethod": "ACanceledWait_LeavesTheQueue_AndTheGateStaysWithItsBuildAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBuildGateTests.cs",
+        "testMethod": "Process_IsOneGate_SharedByEveryReceptorWhoseContainerRegistersNoneAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryRequestReceptorTests.cs",
+        "testMethod": "Receptor_ConcurrentRequests_BuildOneAtATimeAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "WhenQueuedAsync": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBuildGateTests.cs",
+        "testMethod": "ARequestAtAFreeGate_Builds_WithoutQueueing_AndTheNextWaitsUntilItEndsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBuildGateTests.cs",
+        "testMethod": "WhenQueued_CompletesAtOnce_WhenThatManyAlreadyWait_AndNotForFewerAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBuildGateTests.cs",
+        "testMethod": "ACanceledWait_LeavesTheQueue_AndTheGateStaysWithItsBuildAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryBuildGateTests.cs",
+        "testMethod": "Process_IsOneGate_SharedByEveryReceptorWhoseContainerRegistersNoneAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -129336,6 +129407,11 @@
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveMarkerOnlyEventTests.cs",
         "testMethod": "AnEventListedOnlyByAMarkerWithNoApply_IsAnErrorAtThePerspectiveAsync",
         "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/PerspectiveMarkerOnlyEventTests.cs",
+        "testMethod": "AnEventListedOnlyByACustomInterfaceThatDeclaresItsOwnApply_IsAnErrorAsync",
+        "linkSource": "XmlTag"
       }
     ],
     "IPerspectivePurgeMarkerStore": [
@@ -158011,6 +158087,38 @@
       {
         "testFile": "tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EventUpcasterRegistrationTests.cs",
         "testMethod": "AddEventUpcaster_RegistersAsSingletonAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "FlushPayloads": [
+      {
+        "testFile": "tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/DistributeFlushParseOnceTests.cs",
+        "testMethod": "OneFlush_FiveDistributeStages_ParseEachPayloadOnceAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/DistributeFlushParseOnceTests.cs",
+        "testMethod": "OneFlush_EveryStageGetsTheSamePayload_InItsOwnEnvelopeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/DistributeFlushParseOnceTests.cs",
+        "testMethod": "TwoFlushes_OfTheSameMessage_EachParseItAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/DistributeFlushParseOnceTests.cs",
+        "testMethod": "OneFlush_TwoEnvelopesWithTheSameMessageId_AreEachParsedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/DistributeFlushParseOnceTests.cs",
+        "testMethod": "OneFlush_APayloadThatFailedToParse_IsReadAgainByTheNextStageAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/DistributeFlushParseOnceTests.cs",
+        "testMethod": "FlushHelper_OneFlush_ParsesEachPayloadOnceAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -194159,6 +194267,26 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilitiesStartupStepTests.cs",
+        "testMethod": "ExplicitRequirement_StillUnknownAfterTheBoundedRetries_FailsStartAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilitiesStartupStepTests.cs",
+        "testMethod": "ExplicitRequirement_UnknownThenReadyOnARetry_ProceedsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilitiesStartupStepTests.cs",
+        "testMethod": "ImplicitRequirement_Unknown_IsNotProbedAgain_AndDegradesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilitiesStartupStepTests.cs",
+        "testMethod": "ExplicitRequirement_NoProviderDescribes_IsNotProbedAgain_AndWarnsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilitiesStartupStepTests.cs",
         "testMethod": "Arguments_AreValidatedAsync",
         "linkSource": "XmlTag"
       }
@@ -194429,7 +194557,7 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityHealthCheckTests.cs",
-        "testMethod": "AnExplicitRequirementUnknown_IsDegradedAsync",
+        "testMethod": "AnExplicitRequirementUnknown_WithTheProbeOff_IsDegradedAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -195356,7 +195484,17 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityVerdictTests.cs",
-        "testMethod": "Explicit_Unknown_WarnsAsync",
+        "testMethod": "Explicit_Unknown_WithTheProbeOff_WarnsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityVerdictTests.cs",
+        "testMethod": "Explicit_UnknownAfterTheProbe_FailsStartWithTheReasonAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityVerdictTests.cs",
+        "testMethod": "Implicit_UnknownAfterTheProbe_DegradesAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -195428,7 +195566,17 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityVerdictTests.cs",
-        "testMethod": "Explicit_Unknown_WarnsAsync",
+        "testMethod": "Explicit_Unknown_WithTheProbeOff_WarnsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityVerdictTests.cs",
+        "testMethod": "Explicit_UnknownAfterTheProbe_FailsStartWithTheReasonAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityVerdictTests.cs",
+        "testMethod": "Implicit_UnknownAfterTheProbe_DegradesAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -195500,7 +195648,17 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityVerdictTests.cs",
-        "testMethod": "Explicit_Unknown_WarnsAsync",
+        "testMethod": "Explicit_Unknown_WithTheProbeOff_WarnsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityVerdictTests.cs",
+        "testMethod": "Explicit_UnknownAfterTheProbe_FailsStartWithTheReasonAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Unit.Workers.Tests/Capabilities/CapabilityVerdictTests.cs",
+        "testMethod": "Implicit_UnknownAfterTheProbe_DegradesAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -278597,12 +278755,49 @@
         "linkSource": "XmlTag"
       }
     ],
+    "PerspectiveMarkerOnlyEventTests.AnEventListedOnlyByACustomInterfaceThatDeclaresItsOwnApply_IsAnErrorAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Utilities/PerspectiveContract.cs",
+        "sourceLine": 20,
+        "sourceSymbol": "PerspectiveContract",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Generators/Utilities/PerspectiveDiscoveryHelper.cs",
+        "sourceLine": 61,
+        "sourceSymbol": "IsRunnerDispatchedFamily",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveContractAnalyzer.cs",
+        "sourceLine": 24,
+        "sourceSymbol": "PerspectiveContractAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+        "sourceLine": 28,
+        "sourceSymbol": "IPerspectiveBase",
+        "sourceType": "Interface",
+        "linkSource": "XmlTag"
+      }
+    ],
     "PerspectiveMarkerOnlyEventTests.AnEventAMarkerAndADeclaringInterfaceBothList_IsNotReportedAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/Utilities/PerspectiveContract.cs",
         "sourceLine": 20,
         "sourceSymbol": "PerspectiveContract",
         "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Generators/Utilities/PerspectiveDiscoveryHelper.cs",
+        "sourceLine": 62,
+        "sourceSymbol": "IsRunnerDispatchedFamily",
+        "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
@@ -337425,6 +337620,100 @@
         "linkSource": "XmlTag"
       }
     ],
+    "RedeliveryBuildGateTests.ARequestAtAFreeGate_Builds_WithoutQueueing_AndTheNextWaitsUntilItEndsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryBuildGate.cs",
+        "sourceLine": 24,
+        "sourceSymbol": "RedeliveryBuildGate",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryBuildGate.cs",
+        "sourceLine": 60,
+        "sourceSymbol": "WhenQueuedAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "RedeliveryBuildGateTests.WhenQueued_CompletesAtOnce_WhenThatManyAlreadyWait_AndNotForFewerAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryBuildGate.cs",
+        "sourceLine": 24,
+        "sourceSymbol": "RedeliveryBuildGate",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryBuildGate.cs",
+        "sourceLine": 60,
+        "sourceSymbol": "WhenQueuedAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "RedeliveryBuildGateTests.ACanceledWait_LeavesTheQueue_AndTheGateStaysWithItsBuildAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryBuildGate.cs",
+        "sourceLine": 24,
+        "sourceSymbol": "RedeliveryBuildGate",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryBuildGate.cs",
+        "sourceLine": 60,
+        "sourceSymbol": "WhenQueuedAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "RedeliveryBuildGateTests.Process_IsOneGate_SharedByEveryReceptorWhoseContainerRegistersNoneAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryBuildGate.cs",
+        "sourceLine": 24,
+        "sourceSymbol": "RedeliveryBuildGate",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryBuildGate.cs",
+        "sourceLine": 60,
+        "sourceSymbol": "WhenQueuedAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "RedeliveryRequestReceptorTests.Receptor_ConcurrentRequests_BuildOneAtATimeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryBuildGate.cs",
+        "sourceLine": 25,
+        "sourceSymbol": "RedeliveryBuildGate",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptor.cs",
+        "sourceLine": 26,
+        "sourceSymbol": "RedeliveryRequestReceptor",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptorRegistrar.cs",
+        "sourceLine": 28,
+        "sourceSymbol": "RedeliveryRequestReceptorRegistrar",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/Redelivery.cs",
+        "sourceLine": 135,
+        "sourceSymbol": "RequestRedeliveryCommand",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      }
+    ],
     "RedeliveryRequestReceptorTests.Receptor_MapsSelectionAndPublishesTargetedCompositesAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptor.cs",
@@ -337472,29 +337761,6 @@
       }
     ],
     "RedeliveryRequestReceptorTests.Receptor_PagesWideSelections_KeysetAdvancesAndEverythingPublishesAsync": [
-      {
-        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptor.cs",
-        "sourceLine": 26,
-        "sourceSymbol": "RedeliveryRequestReceptor",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptorRegistrar.cs",
-        "sourceLine": 28,
-        "sourceSymbol": "RedeliveryRequestReceptorRegistrar",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/Redelivery.cs",
-        "sourceLine": 135,
-        "sourceSymbol": "RequestRedeliveryCommand",
-        "sourceType": "Record",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "RedeliveryRequestReceptorTests.Receptor_ConcurrentRequests_BuildOneAtATimeAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptor.cs",
         "sourceLine": 26,
@@ -477513,6 +477779,60 @@
         "linkSource": "XmlTag"
       }
     ],
+    "DistributeFlushParseOnceTests.OneFlush_FiveDistributeStages_ParseEachPayloadOnceAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/FlushPayloads.cs",
+        "sourceLine": 34,
+        "sourceSymbol": "FlushPayloads",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DistributeFlushParseOnceTests.OneFlush_EveryStageGetsTheSamePayload_InItsOwnEnvelopeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/FlushPayloads.cs",
+        "sourceLine": 34,
+        "sourceSymbol": "FlushPayloads",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DistributeFlushParseOnceTests.TwoFlushes_OfTheSameMessage_EachParseItAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/FlushPayloads.cs",
+        "sourceLine": 34,
+        "sourceSymbol": "FlushPayloads",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DistributeFlushParseOnceTests.OneFlush_TwoEnvelopesWithTheSameMessageId_AreEachParsedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/FlushPayloads.cs",
+        "sourceLine": 34,
+        "sourceSymbol": "FlushPayloads",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DistributeFlushParseOnceTests.OneFlush_APayloadThatFailedToParse_IsReadAgainByTheNextStageAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/FlushPayloads.cs",
+        "sourceLine": 34,
+        "sourceSymbol": "FlushPayloads",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DistributeFlushParseOnceTests.FlushHelper_OneFlush_ParsesEachPayloadOnceAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/FlushPayloads.cs",
+        "sourceLine": 34,
+        "sourceSymbol": "FlushPayloads",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
     "EventStoreDecoratorForwardingTests.Decorator_LeavesNoDefaultInterfaceMethod_UnforwardedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ForwardingEventStoreDecorator.cs",
@@ -492215,7 +492535,7 @@
     "LifecycleStageFailureIsolationTests.InlineStage_RunEveryReceptorAndLog_AFailingOutboxMessage_StillRunsTheRestOfTheBatchAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-        "sourceLine": 99,
+        "sourceLine": 106,
         "sourceSymbol": "LifecycleInvocationHelper",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -492224,7 +492544,7 @@
     "LifecycleStageFailureIsolationTests.InlineStage_RunEveryReceptorAndLog_AFailingInboxMessage_StillRunsTheRestOfTheBatchAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-        "sourceLine": 99,
+        "sourceLine": 106,
         "sourceSymbol": "LifecycleInvocationHelper",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -492233,7 +492553,7 @@
     "LifecycleStageFailureIsolationTests.InlineStage_RunEveryReceptorThenThrowFirst_RunsEveryMessageThenThrowsTheFirstFailureAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-        "sourceLine": 99,
+        "sourceLine": 106,
         "sourceSymbol": "LifecycleInvocationHelper",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -492242,7 +492562,7 @@
     "LifecycleStageFailureIsolationTests.InlineStage_Default_StopsAtTheFirstFailureAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-        "sourceLine": 99,
+        "sourceLine": 106,
         "sourceSymbol": "LifecycleInvocationHelper",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -492251,7 +492571,7 @@
     "LifecycleStageFailureIsolationTests.InlineStage_RunEveryReceptorAndLog_AMessageThatCannotBeRead_StillRunsTheRestAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-        "sourceLine": 99,
+        "sourceLine": 106,
         "sourceSymbol": "LifecycleInvocationHelper",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -492260,7 +492580,7 @@
     "LifecycleStageFailureIsolationTests.InlineStage_RunEveryReceptorAndLog_ACanceledFlush_IsThrownNotLoggedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-        "sourceLine": 99,
+        "sourceLine": 106,
         "sourceSymbol": "LifecycleInvocationHelper",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -492269,7 +492589,7 @@
     "LifecycleStageFailureIsolationTests.InlineStage_RunEveryReceptorAndLog_AReceptorsOwnCancellation_IsAFailureAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-        "sourceLine": 99,
+        "sourceLine": 106,
         "sourceSymbol": "LifecycleInvocationHelper",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -492278,7 +492598,7 @@
     "LifecycleStageFailureIsolationTests.DetachedStage_AFailingMessage_StillRunsTheRestOfTheBatchAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-        "sourceLine": 99,
+        "sourceLine": 106,
         "sourceSymbol": "LifecycleInvocationHelper",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -492287,7 +492607,7 @@
     "LifecycleStageFailureIsolationTests.DetachedStage_AFailingInboxMessage_StillRunsTheRestOfTheBatchAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-        "sourceLine": 99,
+        "sourceLine": 106,
         "sourceSymbol": "LifecycleInvocationHelper",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -492296,7 +492616,7 @@
     "LifecycleStageFailureIsolationTests.StrategyFlush_PostDistributeInlineFailure_RunsEveryMessageThenThrowsTheFirstAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-        "sourceLine": 99,
+        "sourceLine": 106,
         "sourceSymbol": "LifecycleInvocationHelper",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -492305,7 +492625,7 @@
     "LifecycleStageFailureIsolationTests.StrategyFlush_PreDistributeInlineFailure_StopsAndStoresNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-        "sourceLine": 99,
+        "sourceLine": 106,
         "sourceSymbol": "LifecycleInvocationHelper",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -492314,7 +492634,7 @@
     "LifecycleStageFailureIsolationTests.SharedFlush_PreDistributeInlineFailure_RefusesOnlyThatMessage_StoresTheRest_AndThrowsNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-        "sourceLine": 99,
+        "sourceLine": 106,
         "sourceSymbol": "LifecycleInvocationHelper",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -492323,7 +492643,7 @@
     "LifecycleStageFailureIsolationTests.SharedFlush_PreDistributeInlineFailure_WithoutALogger_StillStoresTheRestAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-        "sourceLine": 99,
+        "sourceLine": 106,
         "sourceSymbol": "LifecycleInvocationHelper",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -492332,7 +492652,7 @@
     "LifecycleStageFailureIsolationTests.IntervalStrategy_PreDistributeInlineFailure_StoresEveryOtherCallersMessage_AndThrowsToNoCallerAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-        "sourceLine": 99,
+        "sourceLine": 106,
         "sourceSymbol": "LifecycleInvocationHelper",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -492341,7 +492661,7 @@
     "LifecycleStageFailureIsolationTests.BatchStrategy_PreDistributeInlineFailure_StoresEveryOtherCallersMessage_AndThrowsToNoCallerAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-        "sourceLine": 99,
+        "sourceLine": 106,
         "sourceSymbol": "LifecycleInvocationHelper",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -492350,7 +492670,7 @@
     "LifecycleStageFailureIsolationTests.InlineStage_AReceptorTheInvokerIsolates_IsLoggedByNameAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-        "sourceLine": 99,
+        "sourceLine": 106,
         "sourceSymbol": "LifecycleInvocationHelper",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -492359,7 +492679,7 @@
     "LifecycleStageFailureIsolationTests.InlineStage_IsolatedFailures_WithMetrics_CountEachFailureAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-        "sourceLine": 99,
+        "sourceLine": 106,
         "sourceSymbol": "LifecycleInvocationHelper",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -492368,7 +492688,7 @@
     "LifecycleStageFailureIsolationTests.InlineStage_IsolatedFailures_WithoutALogger_StillRunEveryMessageAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-        "sourceLine": 99,
+        "sourceLine": 106,
         "sourceSymbol": "LifecycleInvocationHelper",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -492377,7 +492697,7 @@
     "LifecycleStageFailureIsolationTests.InlineStage_RunEveryReceptorThenThrowFirst_NoFailure_CompletesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
-        "sourceLine": 99,
+        "sourceLine": 106,
         "sourceSymbol": "LifecycleInvocationHelper",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -519345,7 +519665,7 @@
     "CapabilitiesStartupStepTests.Descriptor_RunsAfterMigrateOnEveryInstanceWithoutBlockingReadinessAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilitiesStartupStep.cs",
-        "sourceLine": 62,
+        "sourceLine": 70,
         "sourceSymbol": "CapabilitiesStartupStep",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -519354,7 +519674,7 @@
     "CapabilitiesStartupStepTests.ProbeTurnedOff_IsSkippedWithoutProbingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilitiesStartupStep.cs",
-        "sourceLine": 62,
+        "sourceLine": 70,
         "sourceSymbol": "CapabilitiesStartupStep",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -519363,7 +519683,7 @@
     "CapabilitiesStartupStepTests.ProbeOn_ProbesOnceAndReportsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilitiesStartupStep.cs",
-        "sourceLine": 62,
+        "sourceLine": 70,
         "sourceSymbol": "CapabilitiesStartupStep",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -519372,7 +519692,7 @@
     "CapabilitiesStartupStepTests.ExplicitRequirement_OnACapabilityNotReady_IsAnErrorLine_AndTheVerdictIsPublishedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilitiesStartupStep.cs",
-        "sourceLine": 62,
+        "sourceLine": 70,
         "sourceSymbol": "CapabilitiesStartupStep",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -519381,7 +519701,7 @@
     "CapabilitiesStartupStepTests.ImplicitRequirement_OnACapabilityNotReady_IsAWarningAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilitiesStartupStep.cs",
-        "sourceLine": 62,
+        "sourceLine": 70,
         "sourceSymbol": "CapabilitiesStartupStep",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -519390,7 +519710,7 @@
     "CapabilitiesStartupStepTests.RequirementOnAReadyCapability_IsAnInformationLineAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilitiesStartupStep.cs",
-        "sourceLine": 62,
+        "sourceLine": 70,
         "sourceSymbol": "CapabilitiesStartupStep",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -519399,7 +519719,43 @@
     "CapabilitiesStartupStepTests.ProbeTurnedOff_StillPublishesTheVerdict_WithEveryCapabilityUnknownAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilitiesStartupStep.cs",
-        "sourceLine": 62,
+        "sourceLine": 70,
+        "sourceSymbol": "CapabilitiesStartupStep",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CapabilitiesStartupStepTests.ExplicitRequirement_StillUnknownAfterTheBoundedRetries_FailsStartAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Capabilities/CapabilitiesStartupStep.cs",
+        "sourceLine": 70,
+        "sourceSymbol": "CapabilitiesStartupStep",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CapabilitiesStartupStepTests.ExplicitRequirement_UnknownThenReadyOnARetry_ProceedsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Capabilities/CapabilitiesStartupStep.cs",
+        "sourceLine": 70,
+        "sourceSymbol": "CapabilitiesStartupStep",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CapabilitiesStartupStepTests.ImplicitRequirement_Unknown_IsNotProbedAgain_AndDegradesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Capabilities/CapabilitiesStartupStep.cs",
+        "sourceLine": 70,
+        "sourceSymbol": "CapabilitiesStartupStep",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CapabilitiesStartupStepTests.ExplicitRequirement_NoProviderDescribes_IsNotProbedAgain_AndWarnsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Capabilities/CapabilitiesStartupStep.cs",
+        "sourceLine": 70,
         "sourceSymbol": "CapabilitiesStartupStep",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -519408,7 +519764,7 @@
     "CapabilitiesStartupStepTests.Arguments_AreValidatedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilitiesStartupStep.cs",
-        "sourceLine": 62,
+        "sourceLine": 70,
         "sourceSymbol": "CapabilitiesStartupStep",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -519877,7 +520233,7 @@
         "linkSource": "XmlTag"
       }
     ],
-    "CapabilityHealthCheckTests.AnExplicitRequirementUnknown_IsDegradedAsync": [
+    "CapabilityHealthCheckTests.AnExplicitRequirementUnknown_WithTheProbeOff_IsDegradedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityHealthCheck.cs",
         "sourceLine": 14,
@@ -521205,7 +521561,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityServiceCollectionExtensions.cs",
-        "sourceLine": 82,
+        "sourceLine": 85,
         "sourceSymbol": "ConfigureCapabilityOptions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521221,7 +521577,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityServiceCollectionExtensions.cs",
-        "sourceLine": 82,
+        "sourceLine": 85,
         "sourceSymbol": "ConfigureCapabilityOptions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521237,7 +521593,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityServiceCollectionExtensions.cs",
-        "sourceLine": 82,
+        "sourceLine": 85,
         "sourceSymbol": "ConfigureCapabilityOptions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521253,7 +521609,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityServiceCollectionExtensions.cs",
-        "sourceLine": 82,
+        "sourceLine": 85,
         "sourceSymbol": "ConfigureCapabilityOptions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521269,7 +521625,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityServiceCollectionExtensions.cs",
-        "sourceLine": 82,
+        "sourceLine": 85,
         "sourceSymbol": "ConfigureCapabilityOptions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521285,7 +521641,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityServiceCollectionExtensions.cs",
-        "sourceLine": 82,
+        "sourceLine": 85,
         "sourceSymbol": "ConfigureCapabilityOptions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521301,7 +521657,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityServiceCollectionExtensions.cs",
-        "sourceLine": 82,
+        "sourceLine": 85,
         "sourceSymbol": "ConfigureCapabilityOptions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521317,7 +521673,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityServiceCollectionExtensions.cs",
-        "sourceLine": 82,
+        "sourceLine": 85,
         "sourceSymbol": "ConfigureCapabilityOptions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521333,7 +521689,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityServiceCollectionExtensions.cs",
-        "sourceLine": 82,
+        "sourceLine": 85,
         "sourceSymbol": "ConfigureCapabilityOptions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521349,7 +521705,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityServiceCollectionExtensions.cs",
-        "sourceLine": 82,
+        "sourceLine": 85,
         "sourceSymbol": "ConfigureCapabilityOptions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521365,14 +521721,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 33,
+        "sourceLine": 39,
         "sourceSymbol": "CapabilityVerdictEntry",
         "sourceType": "Record",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 108,
+        "sourceLine": 116,
         "sourceSymbol": "CapabilityVerdict",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521388,14 +521744,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 33,
+        "sourceLine": 39,
         "sourceSymbol": "CapabilityVerdictEntry",
         "sourceType": "Record",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 108,
+        "sourceLine": 116,
         "sourceSymbol": "CapabilityVerdict",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521411,20 +521767,20 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 33,
+        "sourceLine": 39,
         "sourceSymbol": "CapabilityVerdictEntry",
         "sourceType": "Record",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 108,
+        "sourceLine": 116,
         "sourceSymbol": "CapabilityVerdict",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       }
     ],
-    "CapabilityVerdictTests.Explicit_Unknown_WarnsAsync": [
+    "CapabilityVerdictTests.Explicit_Unknown_WithTheProbeOff_WarnsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
         "sourceLine": 10,
@@ -521434,14 +521790,60 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 33,
+        "sourceLine": 39,
         "sourceSymbol": "CapabilityVerdictEntry",
         "sourceType": "Record",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 108,
+        "sourceLine": 116,
+        "sourceSymbol": "CapabilityVerdict",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CapabilityVerdictTests.Explicit_UnknownAfterTheProbe_FailsStartWithTheReasonAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
+        "sourceLine": 10,
+        "sourceSymbol": "CapabilityVerdictOutcome",
+        "sourceType": "Enum",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
+        "sourceLine": 39,
+        "sourceSymbol": "CapabilityVerdictEntry",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
+        "sourceLine": 116,
+        "sourceSymbol": "CapabilityVerdict",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CapabilityVerdictTests.Implicit_UnknownAfterTheProbe_DegradesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
+        "sourceLine": 10,
+        "sourceSymbol": "CapabilityVerdictOutcome",
+        "sourceType": "Enum",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
+        "sourceLine": 39,
+        "sourceSymbol": "CapabilityVerdictEntry",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
+        "sourceLine": 116,
         "sourceSymbol": "CapabilityVerdict",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521457,14 +521859,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 33,
+        "sourceLine": 39,
         "sourceSymbol": "CapabilityVerdictEntry",
         "sourceType": "Record",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 108,
+        "sourceLine": 116,
         "sourceSymbol": "CapabilityVerdict",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521480,14 +521882,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 33,
+        "sourceLine": 39,
         "sourceSymbol": "CapabilityVerdictEntry",
         "sourceType": "Record",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 108,
+        "sourceLine": 116,
         "sourceSymbol": "CapabilityVerdict",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521503,14 +521905,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 33,
+        "sourceLine": 39,
         "sourceSymbol": "CapabilityVerdictEntry",
         "sourceType": "Record",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 108,
+        "sourceLine": 116,
         "sourceSymbol": "CapabilityVerdict",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521526,14 +521928,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 33,
+        "sourceLine": 39,
         "sourceSymbol": "CapabilityVerdictEntry",
         "sourceType": "Record",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 108,
+        "sourceLine": 116,
         "sourceSymbol": "CapabilityVerdict",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521549,14 +521951,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 33,
+        "sourceLine": 39,
         "sourceSymbol": "CapabilityVerdictEntry",
         "sourceType": "Record",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 108,
+        "sourceLine": 116,
         "sourceSymbol": "CapabilityVerdict",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521572,14 +521974,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 33,
+        "sourceLine": 39,
         "sourceSymbol": "CapabilityVerdictEntry",
         "sourceType": "Record",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 108,
+        "sourceLine": 116,
         "sourceSymbol": "CapabilityVerdict",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521595,14 +521997,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 33,
+        "sourceLine": 39,
         "sourceSymbol": "CapabilityVerdictEntry",
         "sourceType": "Record",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 108,
+        "sourceLine": 116,
         "sourceSymbol": "CapabilityVerdict",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521618,14 +522020,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 33,
+        "sourceLine": 39,
         "sourceSymbol": "CapabilityVerdictEntry",
         "sourceType": "Record",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 108,
+        "sourceLine": 116,
         "sourceSymbol": "CapabilityVerdict",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521641,14 +522043,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 33,
+        "sourceLine": 39,
         "sourceSymbol": "CapabilityVerdictEntry",
         "sourceType": "Record",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 108,
+        "sourceLine": 116,
         "sourceSymbol": "CapabilityVerdict",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -521664,14 +522066,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 33,
+        "sourceLine": 39,
         "sourceSymbol": "CapabilityVerdictEntry",
         "sourceType": "Record",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Capabilities/CapabilityVerdict.cs",
-        "sourceLine": 108,
+        "sourceLine": 116,
         "sourceSymbol": "CapabilityVerdict",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -567341,12 +567743,12 @@
     }
   ],
   "metadata": {
-    "generated": "2026-11-21T20:40:01.423Z",
-    "sourceFiles": 2443,
-    "testFiles": 4409,
-    "totalLinks": 26803,
-    "codeSymbols": 3771,
-    "testMethods": 23032,
+    "generated": "2026-11-21T23:21:30.760Z",
+    "sourceFiles": 2445,
+    "testFiles": 4411,
+    "totalLinks": 26824,
+    "codeSymbols": 3775,
+    "testMethods": 23049,
     "linkHealthFindings": 113
   }
 }

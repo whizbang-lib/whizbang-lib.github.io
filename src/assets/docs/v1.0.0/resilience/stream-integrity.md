@@ -492,9 +492,21 @@ an unbounded answer path takes the origin down with it. Four knobs on `Redeliver
 
 Pages continue strictly after the previous page's last (stream, version) — no loss, no overlap,
 per-stream order preserved across page boundaries. Additionally, an origin runs **one repair
-build at a time per process**: concurrent request bursts (per-bucket auto-repair and
-subscription-expansion broadcasts land together after a deploy) queue instead of multiplying
-page-plus-serialization footprints.
+build at a time per service** (see [One repair build at a time](#one-repair-build-at-a-time)).
+
+#### One repair build at a time {#one-repair-build-at-a-time}
+
+Concurrent request bursts (per-bucket auto-repair and subscription-expansion broadcasts land together after a deploy)
+queue at `RedeliveryBuildGate` instead of multiplying page-plus-serialization footprints. The Postgres driver registers
+one gate per service container, so a service's builds share it; a receptor built where the container registers none
+uses `RedeliveryBuildGate.Process`, shared by every such receptor in the process.
+
+**Why a gate per service, and why it says what it is doing.** A gate shared by the whole process ties together services
+that run in one process (test hosts, multi-service hosts): one service's build would hold up another's. And a gate that
+says nothing can only be watched by timing. The gate reports `Building` (a build holds it), `Queued` (requests waiting
+for that build; a request passing a free gate never counts), and `WhenQueuedAsync(count)`, which completes the moment
+that many requests wait. Code that needs to know a request is queued waits on that signal, never on a delay.
+{verified: RedeliveryBuildGateTests.ARequestAtAFreeGate_Builds_WithoutQueueing_AndTheNextWaitsUntilItEndsAsync, RedeliveryRequestReceptorTests.Receptor_ConcurrentRequests_BuildOneAtATimeAsync}
 
 **Convergence needs no new consumer code** — it composes from delivery semantics that already exist:
 
