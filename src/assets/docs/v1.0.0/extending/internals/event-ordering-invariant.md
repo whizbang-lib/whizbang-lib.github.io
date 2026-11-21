@@ -21,7 +21,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Perspectives/PerspectiveSnapshotOptions.cs
-  - src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs
   - src/Whizbang.Data.EFCore.Postgres/BaseUpsertStrategy.cs
   - src/Whizbang.Data.Postgres/Migrations/029_ProcessWorkBatch.sql
   - src/Whizbang.Data.Postgres/Migrations/061_CollectiveEventRouting.sql
@@ -173,7 +173,7 @@ The existing rewind path (`PerspectiveRunner.RewindAndRunAsync`) wrote ONE snaps
 
 **Slice 24c fix.** During replay, the runner takes an intermediate snapshot every `RewindSnapshotIntervalEvents` events (default 10). A 50-event rewind ends up with ~5 snapshots at events 10, 20, 30, 40, 50; `MaxSnapshotsPerStream` (default 5) bounds storage. Future late events almost always find a qualifying snapshot at or below their `MessageId`. Intermediate snapshot failures are best-effort — logged at Debug, don't break the replay.
 
-Code: [`src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs`](https://github.com/whizbang-lib/whizbang/blob/develop/src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs)
+Code: [`src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs`](https://github.com/whizbang-lib/whizbang/blob/develop/src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs)
 
 Options: `PerspectiveSnapshotOptions.RewindSnapshotIntervalEvents` (set to 0 to disable and keep end-of-rewind-only legacy behavior).
 

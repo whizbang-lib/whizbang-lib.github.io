@@ -20,7 +20,7 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/DapperPerspectiveSnapshotStore.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCorePerspectiveSnapshotStore.cs
   - src/Whizbang.Data.Schema/Schemas/PerspectiveSnapshotsSchema.cs
-  - src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs
   - src/Whizbang.Core/Perspectives/ICollectiveSnapshotFence.cs
   - src/Whizbang.Core/Perspectives/CollectiveReplayStart.cs
   - src/Whizbang.Data.Postgres/PostgresCollectiveSnapshotFence.cs

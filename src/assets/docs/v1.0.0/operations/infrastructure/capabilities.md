@@ -169,7 +169,7 @@ public sealed class SearchFeature(ICapabilityRegistry capabilities) {
 ```
 
 ## Validation {#validation}
-{verified: CapabilityVerdictTests.Explicit_Ready_ProceedsAsync, CapabilityVerdictTests.Explicit_KnownAndNotReady_FailsStartWithTheFixAsync, CapabilityVerdictTests.Explicit_Unknown_WarnsAsync, CapabilityVerdictTests.Implicit_Ready_UsesItAsync, CapabilityVerdictTests.Implicit_NotReady_DegradesAsync, CapabilityVerdictEnforcerTests.AFailingVerdict_ExitsAsAStartupFailure_NamingTheLineAsync, CapabilityVerdictEnforcerTests.StoppedBeforeAnyVerdict_EndsWithoutExitingAsync}
+{verified: CapabilityVerdictTests.Explicit_Ready_ProceedsAsync, CapabilityVerdictTests.Explicit_KnownAndNotReady_FailsStartWithTheFixAsync, CapabilityVerdictTests.Explicit_UnknownAfterTheProbe_FailsStartWithTheReasonAsync, CapabilityVerdictTests.Explicit_Unknown_WithTheProbeOff_WarnsAsync, CapabilityVerdictTests.Implicit_UnknownAfterTheProbe_DegradesAsync, CapabilitiesStartupStepTests.ExplicitRequirement_StillUnknownAfterTheBoundedRetries_FailsStartAsync, CapabilitiesStartupStepTests.ExplicitRequirement_UnknownThenReadyOnARetry_ProceedsAsync, CapabilitiesStartupStepTests.ImplicitRequirement_Unknown_IsNotProbedAgain_AndDegradesAsync, CapabilitiesStartupStepTests.ExplicitRequirement_NoProviderDescribes_IsNotProbedAgain_AndWarnsAsync, CapabilityVerdictTests.Implicit_Ready_UsesItAsync, CapabilityVerdictTests.Implicit_NotReady_DegradesAsync, CapabilityVerdictEnforcerTests.AFailingVerdict_ExitsAsAStartupFailure_NamingTheLineAsync, CapabilityVerdictEnforcerTests.StoppedBeforeAnyVerdict_EndsWithoutExitingAsync}
 
 A capability satisfies a requirement only when it is `Ready`. `Provisionable` is not enough on its own, but the
 step [provisions](#provisioning) a required capability before it judges it, so one the library may create reads
@@ -179,7 +179,8 @@ step [provisions](#provisioning) a required capability before it judges it, so o
 |---|---|---|
 | explicit | `Ready` | proceed |
 | explicit | known, not `Ready` | **the host stops**, with the verdict line |
-| explicit | `Unknown` | warn; the feature fails loudly when it runs if the capability is missing |
+| explicit | `Unknown` after the probe ran | probe again up to 3 times (after 1, 2 and 4 seconds), then **the host stops** if it is still `Unknown` |
+| explicit | `Unknown`, nothing probed it | warn: the probe is off, or no provider describes the capability or probes that scope |
 | implicit | `Ready` | the feature uses it |
 | implicit | not `Ready` | the feature degrades, with a warning |
 
@@ -189,8 +190,20 @@ line, so an orchestrator sees a failed start rather than an orderly shutdown. Ea
 Critical and exited with code 1. It waits for the verdict in the background, so it never holds the host's own start: the probe runs
 after the schema is migrated. Fix the capability, or remove the setting that turns the feature on.
 
+**A probe that cannot tell is not a pass.** When the probe ran and an explicitly required capability still reads
+`Unknown` (an unreachable server, or a role that cannot read the setting the probe needs), the step warns before
+each retry:
+
+```text
+Explicitly required capabilities read Unknown (postgres/pg_squeeze); probing again in 1000 ms (retry 1 of 3).
+```
+
+If it is still `Unknown` after the third retry, its verdict line is a failure and the host stops as above, about
+seven seconds after the first probe. An implicit requirement is never retried; it degrades. The wait does not hold
+readiness.
+
 With `Whizbang:Capabilities:ProbeOnStartup` set to `false`, the verdict is still judged with every capability
-`Unknown`, so an explicit requirement warns rather than passing unseen.
+`Unknown`, and since nothing probed, an explicit requirement warns rather than passing unseen or stopping the host.
 
 ## Provisioning {#provisioning}
 {verified: CapabilityProvisioningTests.AnExplicitRequirementOnAProvisionableCapability_IsCreated_AndPassesTheVerdictAsync, CapabilityProvisioningTests.AnUpgrade_IsRecordedWithTheNewVersionAsync, CapabilityProvisioningTests.ProvisioningOff_AnOperatorCreatedCapabilityIsStillDetected_AndReadsAlreadyPresentAsync, CapabilityProvisioningTests.ACapabilityNothingRequires_IsNeverProvisionedAsync}
@@ -295,6 +308,7 @@ pg_squeeze is managed entirely by this pattern. `TableRewriteStrategy.PgSqueeze`
 | Not preloaded | start fails: add it to `shared_preload_libraries`, then restart |
 | Preloaded, `wal_level` not logical (below Postgres 19) | start fails: set `wal_level = logical`, then restart |
 | `AutoProvision` off for it and not created | start fails with the provisioning-off reason |
+| The role cannot read `shared_preload_libraries` (needs `pg_read_all_settings` or superuser) | `Unknown`: probed again up to 3 times, then start fails; grant the role, or set the strategy back to `Auto` |
 
 The operator's part is the server: the allowlist, the preload, the WAL level, and a restart. The library's part is the
 extension in the database, and the [online rewrite](storage-maintenance.md#online-rewrite) that uses it from the
@@ -340,8 +354,8 @@ services.TryAddEnumerable(ServiceDescriptor.Singleton<ICapabilityProvisioner, Br
 | Status | When |
 |---|---|
 | Healthy | no capability is required, or every required one is `Ready` |
-| Degraded | a required capability warns or degrades |
-| Unhealthy | an explicitly configured feature lacks its capability |
+| Degraded | a required capability warns or degrades (including an explicit one `Unknown` with the probe off) |
+| Unhealthy | an explicitly configured feature lacks its capability, or its capability is still `Unknown` after the probe and its retries |
 
 Its data holds, under `capabilities`, the verdict line of every required capability that is not satisfied.
 
@@ -426,6 +440,8 @@ gets the verdict, the gauge and the configuration with no further work.
    every start.
 3. **Let failures throw.** A probe that cannot reach its scope may throw; the registry reads it as
    Unknown with the exception's message and a warning. Only the host's cancellation propagates.
+   Return or throw into `Unknown` only when you truly cannot tell: an explicit requirement that stays `Unknown`
+   after the probe is retried three times and then stops the host.
 4. **Register** the provider as an `ICapabilityProvider` singleton and call `AddWhizbangCapabilities()`,
    which is safe to call from every package that registers a provider.
 

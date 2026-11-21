@@ -24,7 +24,7 @@ testReferences:
 lastMaintainedCommit: 'd13ea0d0'
 ---
 
-# WHIZ117: Event is listed only by an interface that declares no Apply for it
+# WHIZ117: Event is listed only by an interface whose Apply the runner never calls
 
 **Severity**: Error
 **Category**: Perspectives (`Whizbang.Perspectives`)
@@ -33,18 +33,19 @@ lastMaintainedCommit: 'd13ea0d0'
 
 `IPerspectiveBase<TModel, TEvent...>` is the marker the generators scan to discover a perspective's events.
 `IPerspectiveFor`, `IPerspectiveWithActionsFor` and `IGlobalPerspectiveFor` each declare an `Apply` for every event
-they list; the marker declares none. A custom interface that extends `IPerspectiveBase` without declaring an `Apply`
-is a marker too.
+they list, and the generated runner calls `Apply` only through those three. The marker declares none. A custom
+interface that extends `IPerspectiveBase` is a marker too, **even when it declares its own `Apply`**: the runner never
+calls that method, so its events would otherwise build clean and never be applied.
 
 An event a perspective lists **only** through such a marker is counted as routed: it is registered and associated with
-the perspective. Yet no interface-declared `Apply` exists for it, so nothing the compiler checks handles the event, and
+the perspective. Yet no `Apply` the runner calls exists for it, so nothing handles the event, and
 the [strongly-typed contract](../../fundamentals/perspectives/perspectives#strongly-typed-contract) has a hole.
 WHIZ117 reports each such event at the perspective's name.
 
 It is **not** reported for an event that a marker and a declaring interface both list: the declaring interface
 supplies the `Apply`.
 
-{verified: PerspectiveMarkerOnlyEventTests.AnEventListedOnlyByAMarkerWithNoApply_IsAnErrorAtThePerspectiveAsync, PerspectiveMarkerOnlyEventTests.AnEventListedByIPerspectiveBaseDirectly_IsAnErrorAsync, PerspectiveMarkerOnlyEventTests.AnEventAMarkerAndADeclaringInterfaceBothList_IsNotReportedAsync}
+{verified: PerspectiveMarkerOnlyEventTests.AnEventListedOnlyByAMarkerWithNoApply_IsAnErrorAtThePerspectiveAsync, PerspectiveMarkerOnlyEventTests.AnEventListedOnlyByACustomInterfaceThatDeclaresItsOwnApply_IsAnErrorAsync, PerspectiveMarkerOnlyEventTests.AnEventListedByIPerspectiveBaseDirectly_IsAnErrorAsync, PerspectiveMarkerOnlyEventTests.AnEventAMarkerAndADeclaringInterfaceBothList_IsNotReportedAsync}
 
 :::planned
 Custom marker interfaces, a custom perspective interface that declares its own strongly-typed `Apply` contract, may be
@@ -56,12 +57,14 @@ the three interfaces that declare its `Apply`.
 ## Diagnostic Message
 
 ```text
-Perspective '{PerspectiveName}' lists '{EventType}' for model '{ModelType}' only through a marker interface that declares no Apply for it, so nothing strongly typed handles the event. List '{EventType}' under IPerspectiveFor<{ModelType}, ...>, IPerspectiveWithActionsFor<{ModelType}, ...> or IGlobalPerspectiveFor<{ModelType}, TPartitionKey, ...>, which declare its Apply. Custom marker interfaces may be supported in a future release.
+Perspective '{PerspectiveName}' lists '{EventType}' for model '{ModelType}' only through IPerspectiveBase or a custom interface extending it, and the runner calls no Apply of theirs, so nothing handles the event. List '{EventType}' under IPerspectiveFor<{ModelType}, ...>, IPerspectiveWithActionsFor<{ModelType}, ...> or IGlobalPerspectiveFor<{ModelType}, TPartitionKey, ...>, which declare the Apply the runner calls. Custom perspective interfaces may be supported in a future release.
 ```
 
 ## Common Causes
 
-1. **A custom interface** that extends `IPerspectiveBase` to group a set of events under one name.
+1. **A custom interface** that extends `IPerspectiveBase` to group a set of events under one name, with or without
+   its own `Apply` declaration. If it declares one, keep the method: listing the event under `IPerspectiveFor` makes
+   the runner call it.
 2. **`IPerspectiveBase` implemented directly**, although it is hidden from IntelliSense and documented as not for
    direct use.
 

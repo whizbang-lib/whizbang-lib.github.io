@@ -17,6 +17,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/Configuration/PerspectiveQueryTranslationOptions.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldQueryInterceptor.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalJsonbContainmentRewriter.cs
+  - src/Whizbang.Data.EFCore.Postgres/Functions/DictionaryMemberTranslator.cs
   - src/Whizbang.Core/Perspectives/CanonicalTemporalFormat.cs
   - src/Whizbang.Core/Perspectives/CanonicalTemporalJsonConverters.cs
   - src/Whizbang.Core/Perspectives/CanonicalTemporalReaders.cs
@@ -52,6 +53,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PerspectiveSqlShapeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PerspectiveDateFormatLockTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/ContainmentTypeEligibilityProbeTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/DictionaryMemberStorageTests.cs
 ---
 
 # JSONB Containment Queries
@@ -121,6 +123,7 @@ query's results never change. Only its plan does.
 | `Equals` with a case-insensitive or culture-aware comparison | Extraction | Containment is ordinal and must not claim otherwise |
 | A promoted `[PhysicalField]` property | Its own column | The physical-field pass claims it first |
 | A filter on a promoted jsonb `[PhysicalField]` (an object, a list or a dictionary) | Containment on that column | Its own GIN index answers it; see [jsonb columns](physical-fields.md#jsonb-filters) |
+| `row.Data.Tags.ContainsKey(k)` on a dictionary member | Containment of a pair, `data @> {"Tags": [{"Key": k}]}` | A dictionary is stored as key/value pairs; see [dictionary keys](#dictionary-keys) |
 
 {verified: JsonbContainmentSqlMatrixTests.CompiledSql_SendsTheFilterWhereExpectedAsync, GinContainmentIntegrationTests.MissingKey_IsWhereContainmentAndExtractionDisagreeAsync}
 
@@ -134,6 +137,28 @@ comparison keeps the extraction form.
 An unexpected expression tree falls back to the comparison the query originally expressed. The worst
 case is a lost index, never a wrong answer.
 
+
+## Dictionary keys {#dictionary-keys}
+
+A dictionary in a perspective document is stored as an array of key/value objects,
+`[{"Key": "mike", "Value": 13}]` (see [Dictionary Members](dictionary-members.md)). `ContainsKey` on one
+compiles to containment of a pair holding only the key, asked of the document column when the dictionary
+sits at a fixed path, so the same GIN index answers it:
+
+```sql{title="ContainsKey compiled to containment" description="The key lookup is a containment test of one pair on the data column, which the document's GIN index can answer." category="Perspectives" difficulty="INTERMEDIATE" tags=["jsonb", "gin", "query-translation", "dictionary"] tests=["DictionaryMemberStorageTests.TheKeyLookupIsInThePlanAsync"]}
+-- r.Data.Counts.ContainsKey("mike")
+WHERE data @> '{"Counts": [{"Key": "mike"}]}'
+```
+
+Inside a collection element (`r.Data.Sections.Any(s => s.Totals.ContainsKey("tax"))`) it is asked of the
+element's member, `member @> [{"Key": k}]`. An indexer, `r.Data.Counts["mike"] == 13`, is a lookup over the
+pairs (`jsonb_path_query_first`) cast to the value's type, not containment. Any other dictionary method is
+refused by Entity Framework, never evaluated on the client. A row an earlier release wrote with the
+dictionary as a JSON object still reads, counted on `whizbang.perspective.dictionary_form_fallbacks`, but a
+key lookup does not match it until the [stored-form rewrite](dictionary-members.md#stored-form-rewrite)
+has converted it.
+
+{verified: DictionaryMemberStorageTests.AKeyLookup_IsTranslatedToSqlAsync, DictionaryMemberStorageTests.TheKeyLookupIsInThePlanAsync, DictionaryMemberTypeMappingTests.ALookupTheTranslatorCannotAnswer_IsRefused_NeverEvaluatedOnTheClientAsync}
 
 ## Only in a filter
 
