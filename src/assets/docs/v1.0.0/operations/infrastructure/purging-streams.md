@@ -177,8 +177,14 @@ public sealed class RefileEndpoint(IFanoutChildRefiler refiler, IDispatcher disp
 Run a dry run first, then the repair, then the rebuild. It is safe to repeat: a child already on its own stream is left
 alone. Migration 247 adds `wh_refile_events`, the function that moves the events.
 
+A receiver that stored a stream's events out of its producer's order (before the receive-order fix) is repaired by a
+different tool, which reorders events in place and rewinds the stream's perspectives itself: see
+[re-sequencing received streams](resequencing-received-streams.md).
+
 ## Related
 
+- [Re-sequencing received streams](resequencing-received-streams.md): the repair for received streams stored out of
+  their origin's order
 - [Perspectives with Actions: purge stays purged](../../fundamentals/perspectives/perspectives-with-actions.md#purge-stays-purged)
 - [Migrations](migrations.md): migration 180 adds the purge function, the markers and the audit
 - [Dead-letter recovery](../dead-letter-queue/recovery.md): the usual source of a replay worth cleaning up after

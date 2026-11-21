@@ -1183,6 +1183,14 @@ committed before a delete replays before it even when it arrived after it. See
 [replay ordering](rewind#replay-ordering). A rebuild of named streams whose fold equals the stored row counts it as
 rebuilt and verified; see [reading the result](rebuild#reading-the-result).
 
+The stored order can still differ from the replay order: a receiver that stored a stream before the receive-order fix
+holds it in arrival order, and everything that reads the stream by version sees that order. The
+[received-stream re-sequence](../../operations/infrastructure/resequencing-received-streams.md) stores the replay's order
+in place, after which the two agree, and rewinds the stream's perspectives from its start. A replay on the Dapper driver
+does not apply origin order yet, because its reads do not carry the event's origin (#2509); there the re-sequence is what
+puts a received stream's stored history in its origin's order.
+{verified: ReceivedStreamOrderTests.Resequence_OverEveryArrangement_StoresExactlyTheOrderAReplayFoldsAsync, DapperStreamPurgeTests.Resequence_OnADapperMigratedDatabase_StoresAReceivedStreamInItsOriginsOrderAsync}
+
 #### RebuildPerspectiveCommand
 
 Trigger rebuilds across distributed services via system commands.
