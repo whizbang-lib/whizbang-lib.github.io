@@ -1,8 +1,8 @@
 ---
 title: StreamId Attribute
 pageType: reference
-verifiedAgainstCommit: '45ab3188'
-verifiedDate: 2026-11-10
+verifiedAgainstCommit: '0a29f1a5'
+verifiedDate: 2026-11-20
 version: 1.0.0
 category: Attributes
 order: 2
@@ -19,6 +19,8 @@ codeReferences:
   - src/Whizbang.Generators/Utilities/StrongIdStreamIds.cs
   - src/Whizbang.Core/Dispatcher.cs
   - src/Whizbang.Core/Registry/StreamIdExtractorRegistry.cs
+  - src/Whizbang.Core/Registry/StreamIdTypeRegistry.cs
+  - src/Whizbang.Core/Registry/StreamIdTypeEntry.cs
   - src/Whizbang.Core/StreamIdResolver.cs
   - src/Whizbang.Core/StreamIdExtractor.cs
   - src/Whizbang.Core/IStreamIdExtractor.cs
@@ -35,7 +37,11 @@ testReferences:
   - tests/Whizbang.Core.Tests/StreamKeyAttributeTests.cs
   - tests/Whizbang.Core.Tests/StreamIdExtractorTests.cs
   - tests/Whizbang.Core.Tests/Registry/StreamIdExtractorRegistryTests.cs
-lastMaintainedCommit: '45ab3188'
+  - tests/Whizbang.Core.Tests/Registry/StreamIdExtractorRegistryTypeTableTests.cs
+  - tests/Whizbang.Core.Tests/Registry/StreamIdTypeRegistryTests.cs
+  - tests/Whizbang.Generators.Tests/StreamIdTypeTableGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/Analyzers/StreamIdAmbiguityAnalyzerTests.cs
+lastMaintainedCommit: '0a29f1a5'
 ---
 
 # StreamId Attribute
@@ -168,47 +174,101 @@ the types below it. The analyzer makes the same choice, so:
 
 A plain `[StreamId]` is unchanged: `Override` defaults to `false`.
 
-### A derived type's own stream ID is never shadowed by its base {#derived-first-dispatch}
+### How a message type finds its stream ID {#how-a-message-type-finds-its-stream-id}
 
-The generated extractors pick the type's code with a chain of `message is T` checks. A base type's check also matches
-every type derived from it, so the order of the chain decides which stream ID a derived message gets. The generator
-orders every chain most-derived first: by inheritance depth, deepest first, and then by type name, so the generated
-file does not depend on the order in which types are discovered (file or namespace order). This holds for commands,
-events and composites, and for every generated entry point: `Resolve`, `TryResolveAsGuid`, `ExtractStreamId`,
-`SetStreamId` and the `[GenerateStreamId]` policy lookup
-{verified: StreamIdDerivedFirstGeneratorTests.ADerivedCommandInANamespaceAfterTheBase_ResolvesAndSetsByItsOwnStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ADerivedCommandInANamespaceBeforeTheBase_ResolvesAndSetsByItsOwnStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ADerivedCommandOverrideInANamespaceAfterTheBase_ResolvesAndSetsByTheOverrideAsync, StreamIdDerivedFirstGeneratorTests.ADerivedEventInANamespaceAfterTheBase_ResolvesAndSetsByItsOwnStreamIdAsync, StreamIdDerivedFirstGeneratorTests.TypesAtTheSameDepth_AreDispatchedInNameOrderWhateverTheDeclarationOrderAsync}.
+Every message resolves its stream ID through one per-type table. Each assembly's generator registers, from a
+`[ModuleInitializer]`, one entry for every event, command and composite it compiles, including a type that only
+inherits its `[StreamId]`
+{verified: StreamIdTypeTableGeneratorTests.EveryMessageType_IncludingAnInheritingOne_GetsAnEntryAsync}. An entry
+describes exactly one type: the `[StreamId]` property that type exposes, generated code that reads and writes it with
+no reflection, the type of ID it holds (a strong ID, or `Guid`), and the `[GenerateStreamId]` policy that applies to
+that type. The generated table is sorted by type name, so it does not depend on the order in which types are declared
+{verified: StreamIdTypeTableGeneratorTests.TheTable_DoesNotDependOnDeclarationOrderAsync}.
 
-So a derived type that declares its own `[StreamId]`, plain or `Override = true`, is resolved by that property and has
-a generated ID written to that property, wherever its namespace sorts relative to its base's. With three or more
-levels, each type uses its nearest `[StreamId]`
-{verified: StreamIdDerivedFirstGeneratorTests.ThreeLevelsOfCommands_EachResolvesAndSetsByItsNearestStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ThreeLevelsOfEvents_EachResolvesByItsNearestStreamIdAsync}.
-A derived type with no `[StreamId]` of its own still resolves and sets by the base's
-{verified: StreamIdDerivedFirstGeneratorTests.ADerivedCommandWithoutItsOwnStreamId_StillResolvesAndSetsByTheBaseAsync}.
+**A message resolves by its exact runtime type.** The type's own entry is used, wherever its base types are compiled
+and whatever order the assemblies registered in. A type with no entry of its own (a runtime subclass, or one compiled
+without the generator) takes the entry of its nearest base type that has one
+{verified: StreamIdTypeRegistryTests.Resolve_ATypeWithAnEntry_TakesItsOwnOverItsBasesAsync, StreamIdTypeRegistryTests.Resolve_ADerivedEntryRegisteredBeforeItsBase_StillWinsAsync, StreamIdTypeRegistryTests.Resolve_ATypeWithNoEntry_TakesItsNearestRegisteredBaseAsync, StreamIdTypeRegistryTests.Resolve_AfterANearerEntryRegisters_TakesItAsync}.
+A lookup is one dictionary read, cached per type, whatever the number of message types.
 
-The `[GenerateStreamId]` policy is looked up the same way. A derived type that declares its own `[GenerateStreamId]`
-uses its own policy, not the base's
-{verified: StreamIdDerivedFirstGeneratorTests.ADerivedTypesOwnGenerationPolicy_IsNotShadowedByTheBaseAsync}.
-A derived type with its own `[StreamId]` but **no** `[GenerateStreamId]` does not inherit the base's policy: the
-generator gives it an explicit do-not-generate entry, so it is not auto-generated. Add `[GenerateStreamId]` to it to
-auto-generate its own stream ID. A type with no `[StreamId]` of its own inherits the policy of its nearest base that
-declares one
-{verified: StreamIdDerivedFirstGeneratorTests.ADerivedTypeWithItsOwnStreamIdAndNoGenerateStreamId_DoesNotInheritTheBasesGenerateStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ADerivedOverrideWithNoGenerateStreamId_DoesNotInheritTheBasesClassLevelGenerateStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ATypeWithItsOwnStreamId_DoesNotInheritAGenerateStreamIdFromAnyLevelAboveAsync, StreamIdDerivedFirstGeneratorTests.ADerivedTypeWithItsOwnStreamIdAndGenerateStreamId_UsesItsOwnGenerationPolicyAsync, StreamIdDerivedFirstGeneratorTests.ATypeWithNoStreamIdOfItsOwn_InheritsTheGenerationPolicyOfItsNearestBaseAsync}.
+So a derived type compiled in another assembly than its base is resolved and set by its own `[StreamId]`, and uses its
+own `[GenerateStreamId]` policy. A derived type with no `[StreamId]` of its own inherits the base's stream ID and policy,
+and in a chain across three assemblies each type uses its nearest level
+{verified: StreamIdTypeTableGeneratorTests.ADerivedTypeInAnotherAssemblyWithItsOwnStreamId_UsesItsOwnPropertyAndPolicyAsync, StreamIdTypeTableGeneratorTests.ADerivedTypeInAnotherAssemblyWithNoStreamIdOfItsOwn_InheritsTheBasesAsync, StreamIdTypeTableGeneratorTests.AChainSpanningThreeAssemblies_ResolvesTheNearestLevelAsync}.
 
-Within one assembly this is exact. When the base type is compiled in a different assembly from the derived type, the
-base assembly's lookup can still apply its policy to the derived instance; keep a base that declares
-`[GenerateStreamId]` in the same assembly as derived types that must not generate.
-[WHIZ017](../../operations/diagnostics/whiz017) warns when a derived type's opt-out cannot hold for this reason; exact
-cross-assembly resolution is planned in [whizbang-lib/whizbang#1905](https://github.com/whizbang-lib/whizbang/issues/1905).
+#### Which property is the stream ID
+
+For each type, the generator takes:
+
+1. **The type's own `[StreamId]`**, when it declares one: an `Override = true` first, then a plain `[StreamId]`
+   property. It is the stream ID alone, whatever the type inherits.
+2. Otherwise, **every source the type inherits**: the stream ID its base type resolves to, and a `[StreamId]` declared
+   on each interface the type implements (and its base type does not), read through the property that implements it.
+   Sources that name the same property are one source.
+   - With one source, that property is the stream ID
+     {verified: StreamIdTypeTableGeneratorTests.AStreamIdFromOneInterface_ResolvesAsync, StreamIdTypeTableGeneratorTests.TwoInterfacesNamingTheSameProperty_ResolveAsync}.
+   - With two or more naming different properties (two interfaces, or an interface and a base class), the type has no
+     stream ID and no entry, and [WHIZ036](../../operations/diagnostics/whiz036) is reported. Declare `[StreamId]` on
+     the type itself to settle it
+     {verified: StreamIdTypeTableGeneratorTests.TwoInterfacesNamingDifferentProperties_GetNoEntryAsync, StreamIdAmbiguityAnalyzerTests.TwoInterfacesNamingDifferentProperties_ReportWhiz036Async}.
+3. With no source at all, the type's own plain `[StreamId]` constructor parameter, when it has a matching property.
+
+An interface's `[StreamId]` that the type implements explicitly, or only through the interface's default body, has no
+property the generated code can read on the type, so it is not a source
+{verified: StreamIdAmbiguityAnalyzerTests.ExplicitAndDefaultImplementations_AreNotSourcesAsync}.
+
+```csharp{title="A stream ID declared on an interface" description="OrderNoted declares no [StreamId] of its own; the one on IOrderKeyed is read through the OrderId property that implements it." framework="NET10" category="Attributes" difficulty="INTERMEDIATE" tags=["StreamId", "Attributes", "Interfaces"] tests=["StreamIdTypeTableGeneratorTests.AStreamIdFromOneInterface_ResolvesAsync"]}
+public interface IOrderKeyed {
+  [StreamId] Guid OrderId { get; }
+}
+
+public class OrderNoted : IEvent, IOrderKeyed {
+  public Guid OrderId { get; set; }   // the stream ID
+}
+```
+
+#### Which `[GenerateStreamId]` policy applies
+
+The policy is that of the nearest level of the type's chain, the type itself first, that either declares
+`[GenerateStreamId]` or declares its own `[StreamId]`. A derived type with its own `[StreamId]`, plain or
+`Override = true`, and **no** `[GenerateStreamId]` does not inherit its base's policy and is not auto-generated; add
+`[GenerateStreamId]` to it to auto-generate its own stream ID. A type with no `[StreamId]` of its own inherits the
+policy of its nearest base that declares one. Every level is read at compile time, so this holds wherever the base is
+compiled
+{verified: StreamIdTypeTableGeneratorTests.ADerivedTypeInAnotherAssemblyWithItsOwnStreamId_UsesItsOwnPropertyAndPolicyAsync, StreamIdDerivedFirstGeneratorTests.ADerivedTypeWithItsOwnStreamIdAndNoGenerateStreamId_DoesNotInheritTheBasesGenerateStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ATypeWithNoStreamIdOfItsOwn_InheritsTheGenerationPolicyOfItsNearestBaseAsync, StreamIdDerivedFirstGeneratorTests.ADerivedTypeWithItsOwnStreamIdAndGenerateStreamId_UsesItsOwnGenerationPolicyAsync}.
+
+#### The lookup order
+
+`StreamIdExtractorRegistry` answers every stream ID question (`ExtractStreamId`, `GetGenerationPolicy`,
+`GetStreamIdType` and `SetStreamId`) in one order:
+
+1. Hand-written `IStreamIdExtractor` registrations **below priority 100**, in priority order. These win whatever a
+   type's entry says
+   {verified: StreamIdExtractorRegistryTypeTableTests.AnExtractorAheadOfTheGeneratedTier_AnswersBeforeTheTableAsync, StreamIdExtractorRegistryTypeTableTests.AnExtractorAheadOfTheTierThatDoesNotAnswer_LeavesTheTypeToTheTableAsync}.
+2. **The per-type table.** Its answer for a type it covers is final, even when the message has no value, so no later
+   extractor can answer a derived type with its base type's view
+   {verified: StreamIdExtractorRegistryTypeTableTests.ACoveredType_IsAnsweredByTheTableAheadOfTheGeneratedTierAsync, StreamIdExtractorRegistryTypeTableTests.ACoveredTypeWithNoValue_IsNotAnsweredByALaterExtractorAsync, StreamIdExtractorRegistryTypeTableTests.WithNoExtractorsAtAll_TheTableStillAnswersAsync}.
+3. The remaining extractors, **at or above priority 100**, for a type the table does not cover
+   {verified: StreamIdExtractorRegistryTypeTableTests.AnUncoveredType_ReachesTheExtractorsAfterTheTierAsync}.
+
+`StreamIdExtractorRegistry.Register(extractor, priority)` defaults to priority 1000, so a hand-written extractor is
+asked only for types no generated entry covers unless it is registered below 100.
+
+Within one assembly, the generated `StreamIdExtractors` methods (`Resolve`, `TryResolveAsGuid`, `SetStreamId` and the
+policy lookup) still check types most-derived first, then by type name, so they agree with the table for the types
+they know
+{verified: StreamIdDerivedFirstGeneratorTests.ADerivedCommandInANamespaceAfterTheBase_ResolvesAndSetsByItsOwnStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ThreeLevelsOfEvents_EachResolvesByItsNearestStreamIdAsync, StreamIdDerivedFirstGeneratorTests.TypesAtTheSameDepth_AreDispatchedInNameOrderWhateverTheDeclarationOrderAsync}.
 
 :::updated
-**Upgrade note.** Before this change the chain followed discovery order, so a base type discovered before a derived
-type with its own `[StreamId]` matched every derived instance first, and the derived property was never read or
-written. Whether a contract resolved correctly depended on how its namespace was spelled. Such a derived type now
-resolves and sets by its own `[StreamId]`, as [WHIZ006](../../operations/diagnostics/whiz006) already described. A
-caller that set only the inherited base property on that type now gets the derived property's value as the stream ID
-(often empty), so its messages can route to a different stream. Set the derived property, or remove the derived
-`[StreamId]` when the inherited one is the stream ID you mean. A derived type with its own `[StreamId]` also no longer
-inherits the base's `[GenerateStreamId]`; declare `[GenerateStreamId]` on it to keep auto-generation.
+**Upgrade note.** Stream ID resolution used to ask each assembly's generated extractor in turn, so a base type's
+extractor in another assembly could answer for a derived type first: the derived type's own `[StreamId]` was not read
+or written, and its `[GenerateStreamId]` opt-out did not hold (the case WHIZ017 warned about). A derived type in
+another assembly now resolves, sets and generates by its own declarations, and
+[WHIZ017](../../operations/diagnostics/whiz017) is retired. A `[StreamId]` declared on an interface used to be
+ignored, leaving the message with no stream ID; it is now the stream ID of a type that declares none of its own. A type
+that gets two different stream IDs that way is the new error [WHIZ036](../../operations/diagnostics/whiz036): declare
+`[StreamId]` on the property of that type that is its stream ID. Hand-written extractors keep working as described in
+the lookup order above. Rebuild to pick up the new registrations.
 :::
 
 ## How It Works
@@ -235,7 +295,7 @@ public static partial class StreamIdExtractors {
 }
 ```
 
-Each per-type extractor uses direct property access (`@event.OrderId`) - no reflection. A `[ModuleInitializer]` registers the assembly's extractor with `StreamIdExtractorRegistry` so extraction works across assemblies.
+Each per-type extractor uses direct property access (`@event.OrderId`) - no reflection. A `[ModuleInitializer]` registers one entry per message type with `StreamIdTypeRegistry`, so a message resolves by its exact type across assemblies (see [How a message type finds its stream ID](#how-a-message-type-finds-its-stream-id)).
 
 ### 2. Runtime Resolution
 
@@ -421,10 +481,10 @@ bool SetStreamId(object message, Guid streamId, Type? sourceStreamIdType) => Set
 
 The generated extractor implements both. Its `GetStreamIdType` reports the strong id of a message type's stream id,
 `Guid` for a stream id that is not a strong id, and null for a type it does not know
-{verified: StrongIdStreamInheritanceGeneratorTests.GetStreamIdType_ReportsTheStrongIdOfEachMessageTypeAsync}. Because
-it answers for every type it extracts, the registry, which takes the first extractor's answer, reads a message's
-stream-id type from the same extractor as its value: a message that names its own `Guid` stream id over a strong-id
-base in another assembly is a plain `Guid` source, not the base's strong id
+{verified: StrongIdStreamInheritanceGeneratorTests.GetStreamIdType_ReportsTheStrongIdOfEachMessageTypeAsync}. The
+registry reads a message's stream-id type from the same per-type entry as its value
+([the lookup order](#how-a-message-type-finds-its-stream-id)): a message that names its own `Guid` stream id over a
+strong-id base in another assembly is a plain `Guid` source, not the base's strong id
 {verified: StrongIdStreamInheritanceGeneratorTests.ADerivedGuidStreamIdInAnotherAssembly_IsNotReportedAsItsBasesStrongIdAsync}.
 A setter takes a source type of null or `Guid` as a plain `Guid` source. A custom extractor that implements neither
 member reports no stream-id types and keeps its own `SetStreamId(object, Guid)`, so it behaves as before.
@@ -485,6 +545,13 @@ public record ValidEvent : IEvent {
   on purpose.
 - **[WHIZ016](../../operations/diagnostics/whiz016) (Warning)**: `Override = true` where no base type declares a
   `[StreamId]`; there is nothing to override.
+
+### WHIZ036: Ambiguous Stream ID
+
+- **[WHIZ036](../../operations/diagnostics/whiz036) (Error)**: A type declares no `[StreamId]` of its own and gets one
+  from two or more sources naming different properties (two interfaces, or an interface and a base class). It has no
+  stream ID until it declares `[StreamId]` itself
+  {verified: StreamIdAmbiguityAnalyzerTests.TwoInterfacesNamingDifferentProperties_ReportWhiz036Async, StreamIdAmbiguityAnalyzerTests.AnInterfaceAndABaseClassNamingDifferentProperties_ReportWhiz036Async}.
 
 ### WHIZ018, WHIZ019, WHIZ034 and WHIZ035: Inheriting a Strong-ID Stream
 
