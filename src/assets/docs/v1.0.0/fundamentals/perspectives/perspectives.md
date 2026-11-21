@@ -26,7 +26,7 @@ codeReferences:
   - src/Whizbang.Generators/Analyzers/PerspectiveApplyNearMissAnalyzer.cs
   - src/Whizbang.Generators/Utilities/PerspectiveContract.cs
   - src/Whizbang.Generators/PerspectiveRunnerGenerator.cs
-  - src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerClassTemplate.cs
   - src/Whizbang.Generators/Utilities/PerspectiveDiscoveryHelper.cs
   - src/Whizbang.Generators.Shared/Models/MappedPathDiscovery.cs
@@ -412,12 +412,11 @@ flowchart TB
 Whizbang automatically generates `IPerspectiveRunner` implementations for each perspective via source generators.
 
 **What gets generated**:
-- One shared base per assembly, `PerspectiveRunnerBase<TPerspective, TModel>` (in `PerspectiveRunnerBase.g.cs`), holding the runner logic every perspective shares: unit-of-work event replay, checkpoint management, rewinds, rebuilds and snapshots
-- Runner class per perspective (e.g., `ProductCatalogPerspectiveRunner`), deriving from the base and holding only what that perspective varies: its event list, its traits, its `Apply` dispatch, its empty model, any overrides it needs and its registrations
+- Runner class per perspective (e.g., `ProductCatalogPerspectiveRunner`), deriving from `Whizbang.Core.Perspectives.PerspectiveRunnerBase<TPerspective, TModel>` and holding only what that perspective varies: its event list, its traits, its `Apply` dispatch, its empty model, any overrides it needs and its registrations
 - `ExtractStreamId` methods per event type (extracts stream ID from event's `[StreamId]` property)
 
-Because the shared logic is generated once, each additional perspective adds about 4 KB of generated source, not a full copy of the runner logic. See [Build Cost](../../operations/performance/build-cost#perspective-runners).
-{verified: PerspectiveRunnerGeneratedSizeTests.ARunner_EmitsOnlyWhatItsPerspectiveVaries_NotTheSharedRunnerLogicAsync, PerspectiveRunnerGeneratedSizeTests.ASecondPerspective_AddsOnlyItsOwnRunner_TheSharedBaseIsEmittedOnceAsync, PerspectiveRunnerGeneratedSizeTests.AnAssemblyWithNoPerspective_GetsNoRunnerBaseAsync}
+The logic every perspective shares (unit-of-work event replay, checkpoint management, rewinds, rebuilds and snapshots) is not generated at all: it lives in `PerspectiveRunnerBase<TPerspective, TModel>` in Whizbang.Core, one copy for the whole application, fully covered by Whizbang.Core's own tests. The class is public only so generated runners can derive from it; it is not an extension point for hand-written runners. Each perspective adds about 4 KB of generated source, not a copy of the runner logic. See [Build Cost](../../operations/performance/build-cost#perspective-runners).
+{verified: PerspectiveRunnerGeneratedSizeTests.ARunner_EmitsOnlyWhatItsPerspectiveVaries_NotTheSharedRunnerLogicAsync, PerspectiveRunnerGeneratedSizeTests.ASecondPerspective_AddsOnlyItsOwnRunner_NoRunnerBaseIsGeneratedAsync, PerspectiveRunnerGeneratedSizeTests.AnAssemblyWithNoPerspective_GetsNoRunnerBaseAsync}
 
 **How it works**:
 1. `PerspectiveWorker` polls `IWorkCoordinator` for streams with new events

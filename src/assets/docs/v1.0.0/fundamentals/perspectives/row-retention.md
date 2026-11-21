@@ -20,7 +20,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/PerspectiveTtlRegistry.cs
   - src/Whizbang.Core/Perspectives/PerspectiveRowCapRegistry.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
-  - src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs
   - src/Whizbang.Data.Postgres/Migrations/211_EvictionRemovesItsCompanions.sql
   - src/Whizbang.Data.Postgres/PerspectiveRowRetentionSql.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.RowRetention.cs

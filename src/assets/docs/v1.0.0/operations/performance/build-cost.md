@@ -18,7 +18,7 @@ codeReferences:
   - .github/scripts/Invoke-BuildWithinMemory.ps1
   - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/MigrationScriptsTemplate.cs
   - src/Whizbang.Generators/PerspectiveRunnerGenerator.cs
-  - src/Whizbang.Generators/Templates/PerspectiveRunnerBaseTemplate.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerClassTemplate.cs
   - src/Whizbang.Generators/ConcreteSubtypeIndex.cs
   - src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs
@@ -134,22 +134,22 @@ peaks at 7.9 GB. The migration texts are unchanged, so no recorded migration has
 Each perspective gets a generated runner that loads its model, applies events and saves the row and
 cursor. Before [whizbang#2481](https://github.com/whizbang-lib/whizbang/pull/2481), every runner
 carried its own copy of the full runner logic, about 200 KB of generated source per perspective, nearly
-all of it the same for every perspective. The logic every perspective shares is now generated once per
-assembly that has a perspective, as an internal generic base class,
-`PerspectiveRunnerBase<TPerspective, TModel>` in `PerspectiveRunnerBase.g.cs`. Each runner derives from
+all of it the same for every perspective. That PR generated the shared logic once per assembly as a base
+class; since [whizbang#2469](https://github.com/whizbang-lib/whizbang/issues/2469) it is not generated at
+all, but lives in Whizbang.Core as `PerspectiveRunnerBase<TPerspective, TModel>`, one copy for the whole
+application, covered by Whizbang.Core's own tests. Each runner derives from
 it and holds only what its perspective varies: its event list, its traits, its `Apply` dispatch, its
 empty model, any overrides it needs and its registrations. A simple runner is about 4 KB. Runner
 behavior, AOT safety and the runners' DI constructors are unchanged.
 
 | Perspectives in the assembly | Generated source after | Before (one full runner each) |
 |------------------------------|------------------------|-------------------------------|
-| 1 | 212 KB | about 208 KB |
-| 2 | 216 KB | about 416 KB |
-| 1,000 | 4.55 MB | about 208 MB |
+| 1 | about 4 KB | about 208 KB |
+| 2 | about 8 KB | about 416 KB |
+| 1,000 | about 4.35 MB | about 208 MB |
 
-A single-perspective assembly is about 4 KB larger than before, because it carries the base and a
-small runner; the saving starts with the second perspective.
-{verified: PerspectiveRunnerGeneratedSizeTests.ARunner_EmitsOnlyWhatItsPerspectiveVaries_NotTheSharedRunnerLogicAsync, PerspectiveRunnerGeneratedSizeTests.ASecondPerspective_AddsOnlyItsOwnRunner_TheSharedBaseIsEmittedOnceAsync, PerspectiveRunnerGeneratedSizeTests.AnAssemblyWithNoPerspective_GetsNoRunnerBaseAsync, PerspectiveRunnerGeneratedSizeTests.TwoRunnersAndTheirSharedBase_CompileAsync}
+With no generated base, the saving starts with the first perspective.
+{verified: PerspectiveRunnerGeneratedSizeTests.ARunner_EmitsOnlyWhatItsPerspectiveVaries_NotTheSharedRunnerLogicAsync, PerspectiveRunnerGeneratedSizeTests.ASecondPerspective_AddsOnlyItsOwnRunner_NoRunnerBaseIsGeneratedAsync, PerspectiveRunnerGeneratedSizeTests.AnAssemblyWithNoPerspective_GetsNoRunnerBaseAsync, PerspectiveRunnerGeneratedSizeTests.TwoRunnersAndTheirSharedBase_CompileAsync}
 
 The assembly's size does not show this kind of growth: the compiler stores identical text literals
 once, so the 13 copies cost memory while compiling but almost nothing in the built file. To see what
