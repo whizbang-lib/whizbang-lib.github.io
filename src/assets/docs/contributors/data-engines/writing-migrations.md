@@ -265,6 +265,75 @@ Migrations 385 and 386 declare `irreversible`: they ship with the release that f
 ever crosses them. Every migration through 384 predates the declaration and counts as irreversible; adding a reverse
 for one is optional follow-up work.
 
+## Batch statements reach other tables by key {#batch-statements-reach-other-tables-by-key}
+
+A run-time function given a batch of keys (an array of stream ids, a set of rows it just locked) must read in
+proportion to that batch, never to the tables it consults. A join, an anti join, an `EXISTS`, a `NOT EXISTS` or an
+`UPDATE ... FROM` written over a batch does not guarantee that: they are plan choices, and when the batch is a few
+percent of a table the planner judges a full scan and a hash as cheap as one probe per key. The cost then grows with
+the backlog or the history the table holds, and a cached generic plan may choose differently from the first one, so
+what runs depends on the connection's history. No statistics fix it. The perspective work-queue calls read their whole
+queue this way until migration 536 (see
+[the claim loop](../../v1.0.0/fundamentals/work-coordinator/claim-loop.md#perspective-calls-priced-by-the-batch)).
+
+A statement over a batch therefore reaches every other table through one of three constructions the planner cannot
+turn into a scan of that table:
+
+- **A `LATERAL` subquery with `LIMIT 1`.** The planner cannot flatten it into a join, so it runs as one index probe
+  per row of the batch.
+- **A scalar subquery with `LIMIT 1` in a `WHERE`.** It is never turned into a join and never hashed. Only `EXISTS`
+  and `IN` sublinks get a hashed alternative, and a `LIMIT 1` inside `EXISTS` is simply removed, so write
+  `(SELECT 1 FROM ... LIMIT 1) IS NULL`, not `NOT EXISTS (...)`.
+- **The batch as an index condition, `key = ANY(ARRAY(SELECT ... FROM <cte>))`,** for the rows an `UPDATE`, a
+  `DELETE` or a lock must reach. The planner estimates it at a handful of keys whatever the batch holds.
+
+```sql{
+title: "Reaching other tables one key at a time"
+description: "A batch of work rows reaches the event store by a LATERAL probe, the pending check is a scalar subquery, and the update reaches the locked rows as an index condition."
+category: "Configuration"
+difficulty: "ADVANCED"
+tags: ["migrations", "performance", "query-plans", "batch"]
+}
+WITH eligible AS (
+  SELECT pe.event_work_id
+  FROM __SCHEMA__.wh_perspective_events pe
+  CROSS JOIN LATERAL (
+    SELECT es.commit_sequence
+    FROM __SCHEMA__.wh_event_store es
+    WHERE es.event_id = pe.event_id
+    LIMIT 1
+  ) es
+  WHERE pe.stream_id = ANY(p_stream_ids)
+    AND (pe.instance_id IS NULL OR pe.lease_expiry < p_now) IS TRUE
+    AND (
+      SELECT 1 FROM __SCHEMA__.wh_outbox o
+      WHERE o.stream_id = pe.stream_id AND o.processed_at IS NULL
+      LIMIT 1
+    ) IS NULL
+  FOR UPDATE OF pe SKIP LOCKED
+)
+UPDATE __SCHEMA__.wh_perspective_events pe
+SET lease_expiry = p_lease_expiry
+WHERE pe.event_work_id = ANY(ARRAY(SELECT e.event_work_id FROM eligible e));
+```
+
+**A test that must not drive the plan is written `(...) IS TRUE`.** A lease test such as
+`pe.instance_id = p_instance_id AND pe.lease_expiry > p_now` is otherwise eligible as an index condition, and as a
+range over a lease index it reads every row the instance holds or every lapsed row, which during a fan-out is the whole
+backlog. Wrapped in `IS TRUE` it stays a filter on the rows the batch's own keys found, with the same result.
+
+**A cost test measures growth, at two depths, on a database the test owns.** One measurement proves nothing about
+growth, so the test measures the call over a backlog and a history of one size and again over four times both, with a
+batch the size the worker hands it, under the plan made for the call's arguments and under the generic plan. It fails
+when the deeper call reads more than the shallower one plus one row per key of the batch, and when either reads more
+than a stated number of rows per key. It counts rows read by its own backend, not shared buffers (see
+[Cost tests count rows, not buffers](testing-a-new-engine.md#cost-tests-count-rows-not-buffers)), and runs alone
+(`[NotInParallel]`) on its own database, so it measures the statement and nothing else.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A batch statement reaches other tables only by `LATERAL ... LIMIT 1`, a scalar subquery with `LIMIT 1`, or `= ANY(ARRAY(...))`. | Joins, anti joins, `EXISTS` and `UPDATE ... FROM` over a batch let the planner choose a scan and a hash whose cost grows with the table, not the batch. | {verified: PerspectiveWorkQueueBacklogCostSqlTests.AcquireOrphanedPerspectiveWork_ReadsWhatItLeases_NotTheBacklogAsync, PerspectiveWorkQueueBacklogCostSqlTests.LeaseClaimedStreams_ReadsWhatItsBatchHolds_NotTheLedgerAsync, PerspectiveWorkQueueBacklogCostSqlTests.GetStreamEvents_ReadsWhatItsBatchHolds_NotTheBacklogAsync, PerspectiveWorkQueueBacklogCostSqlTests.CompletePerspective_ReadsWhatItsBatchHolds_NotTheBacklogAsync, PerspectiveWorkQueueBacklogCostSqlTests.CleanupCompletedStreams_ReadsWhatItsBatchHolds_NotTheBacklogAsync} |
+
 ## Enforcement
 
 - `MigrationSchemaQualificationTests` fails the build if a new migration calls `current_schema()` in code,
@@ -296,3 +365,6 @@ for one is optional follow-up work.
   {verified: MigrationResultTypeReRunGuardTests.EveryDefinerWhoseResultDiffersFromTheLatest_DropsTheFunctionFirstAsync, MigrationResultTypeReRunGuardTests.TheGuard_FindsResultsThatChanged_AndEveryReviewedEntryIsStillOneAsync}
 - `MigrationSchemaQualifierTests` covers each case of the qualification: literals, escape strings, doubled quotes,
   quoted identifiers, comments, dollar quotes and positional parameters.
+- `PerspectiveWorkQueueBacklogCostSqlTests` measures each perspective work-queue call at a backlog and at four times
+  it, in custom and generic plans, and fails when a call reads more than its batch accounts for.
+  {verified: PerspectiveWorkQueueBacklogCostSqlTests.GetStreamEvents_ReadsWhatItsBatchHolds_NotTheBacklogAsync, PerspectiveWorkQueueBacklogCostSqlTests.CleanupCompletedStreams_ReadsWhatItsBatchHolds_NotTheBacklogAsync}

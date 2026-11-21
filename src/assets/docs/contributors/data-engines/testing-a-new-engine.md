@@ -119,6 +119,35 @@ The plan calls for an engine-agnostic conformance suite — a shared test projec
 
 For new engines, run the same benchmarks; results contextualize the engine's performance characteristics.
 
+## Cost tests count rows, not buffers {#cost-tests-count-rows-not-buffers}
+{verified: PartitionAssignmentClaimCostScenarioTests.TheClaimCost_IsNotMovedByAnotherSessionsWork_Async, PartitionAssignmentClaimCostScenarioTests.ClaimWithTheAssignment_CostsNoMoreThanRankingItself_ReportAsync}
+
+A test that puts a ceiling on what a statement reads, or compares two statements' costs, measures the rows the
+statement read, counted by the test's own backend. It does not measure shared buffers (`EXPLAIN (ANALYZE, BUFFERS)`,
+`shared_blks_hit` and the like). A buffer count moves with whatever else runs on the server:
+
+- a catalog cache that another session invalidated (an `ANALYZE`, a DDL statement, another test's migration) is
+  reloaded from the catalogs, and those reads land in the statement's buffer count;
+- a btree metapage is read again after a relation cache reset;
+- a page that happened to be cached or not changes hits into reads.
+
+The same claim read 351 buffers, and 514 after another session analyzed its tables, so a comparison over buffers
+failed under load and passed alone.
+
+The Postgres reference counts rows with `Performance/RowsRead` in `tests/Whizbang.Data.EFCore.Postgres.Tests/`. It
+reads `pg_stat_get_xact_tuples_returned` (index entries returned plus rows sequential scans returned) for every table
+and index of the test's own schema, before and after the statement, inside the statement's own transaction, and
+reports the difference per relation. The catalogs are not in the schema, so catalog reloads never count, and the
+count is the same on every machine and under any load. The counters are the backend's pending statistics, so only the
+difference across the statement means anything.
+
+What the count cannot exclude is the state of the tables: an index scan returns the entries of rows an earlier
+rolled-back statement left dead. A test that measures again after a rolled-back measurement vacuums the tables first.
+
+Rows count what the executor did, which is what a plan bound is about. A cost test that is about growth also measures
+at two depths, on a database it owns, as described in
+[Writing SQL migrations](writing-migrations.md#batch-statements-reach-other-tables-by-key).
+
 ## Test execution
 
 ```bash
@@ -150,3 +179,4 @@ Look for **new** failures (compare against a baseline run on `develop`). Pre-exi
 - [Overview](overview.md)
 - [SQL function contracts](sql-function-contracts.md)
 - [Implementing IWorkCoordinator](implementing-iworkcoordinator.md)
+- [Writing SQL migrations](writing-migrations.md): batch statements reach other tables by key.
