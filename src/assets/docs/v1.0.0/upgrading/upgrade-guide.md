@@ -131,7 +131,9 @@ what one database shared by two versions allows.
   satisfied. A dictionary that is not promoted still cannot live in a mapped document: promote it to
   a `[PhysicalField]` or replace it with a list of key/value records, as WHIZ810 says. See
   [jsonb columns](../fundamentals/perspectives/physical-fields.md#jsonb-columns) and
-  [WHIZ810](../operations/diagnostics/whiz810.md).
+  [WHIZ810](../operations/diagnostics/whiz810.md). A later release stores every dictionary, promoted
+  or not, as an array of key/value objects and retires WHIZ810; see
+  [Dictionary Members](../fundamentals/perspectives/dictionary-members.md#upgrading).
 
 {verified: PhysicalJsonbColumnGenerationTests.SchemaGenerator_NonScalarField_IsAJsonbColumnAsync, PhysicalJsonbColumnGenerationTests.EFCoreModel_JsonbField_IsLeftOutOfTheMappedDocumentAsync, PhysicalJsonbContainmentIntegrationTests.BothWritePaths_LeaveIdenticalRowsAsync}
 
