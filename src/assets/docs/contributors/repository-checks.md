@@ -4,7 +4,7 @@ pageType: reference
 audience: [contributor]
 status: current
 order: 5
-description: The build errors this repository raises on its own code and tests (WHIZ600 to WHIZ608), what each one protects, and how a new diagnostic gets its ID from the one registry of every WHIZ ID
+description: The build errors this repository raises on its own code and tests (WHIZ600 to WHIZ609), what each one protects, and how a new diagnostic gets its ID from the one registry of every WHIZ ID
 tags: contributing, analyzers, diagnostics, testing, sharding, ci
 ---
 
@@ -25,6 +25,7 @@ Every build diagnostic in this repository has one ID form, `WHIZ` and three digi
 | [WHIZ606](../v1.0.0/operations/diagnostics/whiz606.md) | `Whizbang.RepoAnalyzers` | A settings property whose name says it holds a credential is a plain `string`. |
 | [WHIZ607](../v1.0.0/operations/diagnostics/whiz607.md) | `Whizbang.RepoAnalyzers` | Library code reads a type, namespace or assembly name, or resolves a type from a string, outside the shared naming code. |
 | [WHIZ608](../v1.0.0/operations/diagnostics/whiz608.md) | `Whizbang.RepoAnalyzers` | A suppression of WHIZ607 that does not say why. |
+| [WHIZ609](../v1.0.0/operations/diagnostics/whiz609.md) | `Whizbang.TestAnalyzers` | A test class with an `[After(Test)]` hook that is also disposable, so TUnit tears it down twice. |
 
 WHIZ600 to WHIZ604 were `WHZ0001` to `WHZ0005` until they moved into the single ID form. A suppression or severity setting that names an old ID no longer applies.
 
