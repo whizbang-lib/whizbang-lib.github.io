@@ -91,6 +91,12 @@ Each choice below is an owner decision on [#2136](https://github.com/whizbang-li
 | A continued open series adds no new alpha count; its betas and rcs still roll up. | Its alphas were counted when the series was first cut, and counting develop's newer alphas again would add work that is not in the release. If GitVersion fails at the cut there is no alpha fact, so the fallback number is treated as an override. | `Resolve-CutVersion / keeps a pinned line's number when there is no prerelease number to add`; `Resolve-StableVersion / rolls up a pinned line from its own number` |
 | A rolled-up stable repacks the tested build at the stable number; the DLLs' informational version still names the branch number. | Rebuilding to stamp the new number would publish bytes no suite ran against. The repack is the same one a beta uses: the package version is the stable number, and the assemblies inside are the tested ones, so their `AssemblyInformationalVersion` reads the line (`0.3301.0`). The package version is authoritative. | `The release workflows use it / a rolled-up stable repacks the tested build at its own number, and publish takes either package set` |
 
+## Reproducible builds {#reproducible-builds}
+
+Two builds of the same commit produce byte-identical packages, whatever the checkout path or build machine. Package entries carry a fixed timestamp, generated code records source paths relative to the repository, CI merges assemblies without machine-specific symbol paths, and generators sort names by ordinal rather than by the machine's culture.
+
+The `Reproducible build` check builds a commit twice, on two runners and from checkouts at different paths, then compares every entry of every package. It runs on every push to a `release/v*` branch, so a beta, rc or stable is only published from a commit whose packages rebuilt identically, and weekly on `develop`. To rebuild a published release yourself and compare it, follow [Reproducible builds](https://github.com/whizbang-lib/whizbang/blob/develop/docs/RELEASING.md#reproducible-builds) in RELEASING.
+
 ## Related
 
 - [Repository checks](repository-checks.md): the other guards the `Test · Pipeline scripts` job runs.
