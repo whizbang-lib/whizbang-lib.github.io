@@ -116,7 +116,7 @@ sequenceDiagram
 3. **Drain & apply** — PerspectiveWorker consumer loops read the channels, fetch pending events per stream in event-id order, filter duplicates, and invoke runners
 4. **Complete** — completions flow through `PerspectiveCompletionFlushWorker`, which calls `IWorkCoordinator.CompletePerspectiveAsync`: processed `wh_perspective_events` rows are deleted (`complete_perspective_events`, migration 037 — or kept with a marker in [debug mode](#configuration)), cursors advance in `wh_perspective_cursors`, and fully-drained streams are evicted from `wh_active_streams`
 
-**Cursor tracking**: `wh_perspective_cursors` records `(stream_id, perspective_name) → last_event_id, status, error`. Status is a flags value of `PerspectiveProcessingStatus` (`None=0`, `Processing=1`, `Completed=2`, `Failed=4`, `CatchingUp=8`, `RewindRequired=32` — set by SQL when a late-arriving event is detected). `complete_perspective_cursor_work` (migration 005) marks **only explicitly-listed event ids** as processed, so concurrent late-arriving events are never swallowed by range-based cursor advancement.
+**Cursor tracking**: `wh_perspective_cursors` records `(stream_id, perspective_name) → last_event_id, status, error`. Status is a flags value of `PerspectiveProcessingStatus` (`None=0`, `Processing=1`, `Completed=2`, `Failed=4`, `CatchingUp=8`, `RewindRequired=32` — set by SQL when a late-arriving event is detected). `complete_perspective_cursor_work` (migration 005) marks **only explicitly-listed event ids** as processed, so concurrent late-arriving events are never swallowed by range-based cursor advancement. The cursor advances only across contiguously processed events: if an earlier event of the pair is still unprocessed, the cursor stays at the last event before that gap, however many later events are done, and a pair with nothing processed keeps its cursor (`PerspectiveCursorAdvanceTests`).
 
 ---
 
@@ -325,6 +325,10 @@ private static async ValueTask _establishSecurityContextAsync(
   Security.SecurityContextHelper.BuildAndEstablishMessageContext(envelope, scopeForMessageContext, scopedProvider);
 }
 ```
+
+### Scope on Replay {#scope-on-replay}
+
+An event replayed from the event store (a rebuild, a rewind, a catch-up) is rehydrated without the hops it carried when it was first delivered. Its stored scope is restored into the first hop, so the perspective applies it under the same tenant and user it was written with. An event stored with no scope stays unscoped (`ReplayScopeRehydrationTests`).
 
 ### When Security Context is Established
 
