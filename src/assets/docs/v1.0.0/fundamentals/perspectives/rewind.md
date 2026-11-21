@@ -293,6 +293,17 @@ a dead letter, say) replayed after the newer one it preceded.
 
 Cross-origin events on one stream have **no defined total order** (concurrent writers, per-origin sequence spaces: the numbers collide by design), so origin sequences are only ever compared *within* one origin, and the places between origins are never reordered. Before #2257 a mixed stream fell back to local order entirely, so a single origin's reordered events in a stream that also held local events replayed in arrival order. The purge marker stays the backstop for what replay cannot reorder: see [purge stays purged](perspectives-with-actions#purge-stays-purged).
 
+### A re-sequence rewinds from the start {#a-re-sequence-rewinds-from-the-start}
+
+The [received-stream re-sequence](../../operations/infrastructure/resequencing-received-streams.md) stores a stream that
+was stored out of its origin's order in the order a replay folds it. Afterwards every snapshot of the stream holds a fold
+in the old order, so it removes them all, and flags every cursor on the stream (the collective sink's excepted) with the
+stream's first event as the trigger, its replay frontier cleared and that trigger queued. The snapshot floor sits below
+the trigger, and nothing sits below the first event, so the rewind replays the whole stream. A completion of work
+claimed before the re-sequence cannot settle the flag: the queued trigger is below its cursor and is flagged again as a
+straggler.
+{verified: ReceivedStreamResequenceSqlTests.Resequence_RewindsEveryPerspectiveOfTheStreamFromItsStart_AndLeavesTheCollectiveSinkAloneAsync, ReceivedStreamResequenceSqlTests.Apply_ACompletionThatRacesTheFlag_LeavesTheRewindAskedForAsync}
+
 ### Below the row's position: the runner rewinds too {#below-position}
 
 {verified: PerspectiveApplyIdempotencyTests.RunWithEvents_EventBelowTheRowsPositionNeverFolded_IsRewoundIntoTheRowAsync, PerspectiveApplyIdempotencyTests.RunWithEvents_TheRowsOwnLastEventRedelivered_IsDroppedWithoutARewindAsync, PerspectiveApplyIdempotencyTests.RunWithEvents_AnOlderFoldedEventRedelivered_RewindsAndLeavesTheRowAsItWasAsync, NeverAppliedEventsAreNotDroppedTests.NoCursorRow_RowAheadOfTheBatch_AnEventTheFilterDiscardsWasAnsweredByDetectionAsync}
