@@ -633,7 +633,7 @@ Every Whizbang message travels in a `MessageEnvelope` with a unique `MessageId` 
 
 - **Authenticated transports** - Azure Service Bus (AAD / SAS) and RabbitMQ credentials authenticate every publish and consume; TLS protects the payload in transit.
 - **Credential validation on messages** - `MessageSecurityOptions.ValidateCredentials = true` (default) rejects messages whose security context fails validation.
-- **Supply-chain integrity** - lock files + signed packages for the software half of this OWASP category.
+- **Supply-chain integrity** - lock files + signed packages for the software half of this OWASP category. Packages are also [reproducible](https://github.com/whizbang-lib/whizbang/blob/develop/docs/RELEASING.md#reproducible-builds): rebuilding a release's commit yields byte-identical packages, so anyone can check that a published package came from its source.
 
 ### 9. Security Logging and Monitoring Failures
 
