@@ -25,6 +25,7 @@ codeReferences:
   - src/Whizbang.Core/Uuid7IdProvider.cs
   - src/Whizbang.Core/WhizbangIdServiceCollectionExtensions.cs
   - src/Whizbang.Core/WhizbangIdAttribute.cs
+  - src/Whizbang.Core/UuidVersions.cs
   - src/Whizbang.Core/SuppressGuidInterceptionAttribute.cs
   - src/Whizbang.Core/Configuration/WhizbangOptions.cs
   - src/Whizbang.Core/Validation/GuidOrderingValidator.cs
@@ -41,6 +42,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdVersionAcceptanceTests.cs
   - tests/Whizbang.Generators.Tests/WhizbangIdAcceptAnyVersionTests.cs
+  - tests/Whizbang.Generators.Tests/WhizbangIdVersionsTests.cs
+  - tests/Whizbang.Generators.Tests/WhizbangIdGrandfatheredTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdGrandfatheredTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderRegistryTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdServiceCollectionExtensionsTests.cs
@@ -669,7 +673,7 @@ public readonly partial struct CustomerId;
 The `[WhizbangId]` attribute triggers source generation that creates:
 - Value object with `Value` property (Guid)
 - `New()` static method for creating new IDs (uses `TrackedGuid.New()` internally)
-- `From(Guid)` / `From(TrackedGuid)` static methods for wrapping existing GUIDs: **both validate UUIDv7** and throw `ArgumentException` for non-v7 values (unless the id is declared with [`AcceptAnyVersion`](#accept-any-version))
+- `From(Guid)` / `From(TrackedGuid)` static methods for wrapping existing GUIDs: **both validate UUIDv7** and throw `ArgumentException` for non-v7 values (unless the id lists other [`Versions`](#accepted-versions), is declared with [`AcceptAnyVersion`](#accept-any-version), or [grandfathers](#grandfathered-values) the value)
 - `Parse(string)` method for deserialization (validates UUIDv7)
 - Equality operators and `IComparable<T>`
 - Implicit conversion to Guid (explicit conversion from Guid)
@@ -699,7 +703,9 @@ Guid underlyingGuid = orderId.Value;
 ### Ids that are not UUIDv7 {#accept-any-version}
 
 Some identities are not UUIDv7 and never will be: name-derived ids (UUIDv5 or v8), ids derived from a hash, and
-v4 ids issued by an external identity provider. Declare those ids with `AcceptAnyVersion = true`:
+v4 ids issued by an external identity provider. When you know which versions an id's values are made with, list them
+with [`Versions`](#accepted-versions) and keep the id strict. For ids issued outside your system, whose version you
+do not control, declare `AcceptAnyVersion = true`:
 
 ```csharp{title="Accepting any Guid version" description="An id that takes any non-empty Guid, such as one issued by an external identity provider" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "AcceptAnyVersion"] tests=["WhizbangIdVersionAcceptanceTests.AnyVersion_FromGuid_RoundTripsAsync", "WhizbangIdVersionAcceptanceTests.AnyVersion_New_StillProducesUuidV7Async", "WhizbangIdVersionAcceptanceTests.AnyVersion_EmptyGuid_IsRejectedByTheCheckedEntryPointsAsync", "WhizbangIdVersionAcceptanceTests.Strict_NonV7_IsRejectedByFromParseCastAndJsonAsync"]}
 using Whizbang.Core;
@@ -763,9 +769,98 @@ creates, keep the default, so they stay UUIDv7 and sort by creation time.
 #### Declare the option the same way everywhere
 
 An id can be declared through more than one `[WhizbangId]`: on the struct, on a property, or on a constructor
-parameter. When some of those set `AcceptAnyVersion = true` and others do not, the id keeps the UUIDv7 rule, whatever
-order the attributes are found in, and [WHIZ029](../../operations/diagnostics/whiz029) is reported at each
-`AcceptAnyVersion = true` that is ignored.
+parameter. When some of those set `AcceptAnyVersion = true` and others do not, the id keeps the stricter rule of the
+others (UUIDv7, or their `Versions` list), whatever order the attributes are found in, and
+[WHIZ029](../../operations/diagnostics/whiz029) is reported at each `AcceptAnyVersion = true` that is ignored.
+
+### A list of accepted versions {#accepted-versions}
+
+Ids your system derives on purpose sit between the two rules. An id that is minted with `New()` in one place and
+derived without coordination from the same facts in another (every writer arrives at the same id with
+`NameBasedGuid.V5`) holds UUIDv7 and UUIDv5 values, and nothing else. `AcceptAnyVersion` would let it take a random v4
+minted by a browser, a raw hash poured into a Guid, or a value pasted from another kind of id. List the versions
+instead:
+
+```csharp{title="Accepting a list of versions" description="An id that is minted (v7) or derived by name (v5), and refuses every other version" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "Versions"] tests=["WhizbangIdVersionAcceptanceTests.AllowList_AcceptedVersion_RoundTripsThroughEveryCheckedEntryPointAsync", "WhizbangIdVersionAcceptanceTests.AllowList_VersionNotInTheList_IsRejectedByEveryCheckedEntryPointAsync", "WhizbangIdVersionAcceptanceTests.AllowList_Refusal_NamesTheAcceptedVersionsAndTheOneReceivedAsync", "WhizbangIdVersionAcceptanceTests.AllowList_New_StillProducesUuidV7Async"]}
+using Whizbang.Core;
+using Whizbang.Core.ValueObjects;
+
+[WhizbangId(Versions = UuidVersions.V7 | UuidVersions.V5)]
+public readonly partial struct ConnectorId;
+
+var minted = ConnectorId.New();                                       // v7: accepted
+var derived = ConnectorId.From(NameBasedGuid.V5(ns, "tenant-a/crm")); // v5: accepted
+
+// A v4 from crypto.randomUUID(): throws ArgumentException
+// "ConnectorId requires UUIDv5 or UUIDv7 but received version 4"
+ConnectorId.Parse("3f2504e0-4f89-41d3-9a0c-0305e82c3301");
+```
+
+`UuidVersions` is a flags enum with one flag per RFC 9562 version, `V1` to `V8`. `Versions` defaults to `V7`, so an
+id that does not write it, or writes `Versions = UuidVersions.V7`, generates exactly the code it always has.
+
+| Way in | Default | `Versions = V7 \| V5` | `AcceptAnyVersion = true` |
+|--------|---------|----------------------|---------------------------|
+| `From(Guid)`, `From(TrackedGuid)`, `Parse`, explicit cast, transport JSON reader, GraphQL scalar | v7 only | v7 or v5 | any non-empty |
+| `Guid.Empty` | refused | refused | refused |
+| Public constructor, `Value` initializer (load path) | not checked | not checked | not checked |
+| `New()` | v7 | v7 | v7 |
+
+Only v7 values are time-ordered: an accepted v5 has `IsTimeOrdered` `false`, `GetTimestamp()` returns no meaningful
+time, and comparisons involving it do not order by creation time ([What the option costs](#what-the-option-costs)
+applies to the non-v7 values).
+
+Do not stamp version 7 over hashed bits to make a derived id pass the default rule: the timestamp bits would be
+meaningless, so `GetTimestamp()` would lie and ordering would be random. An honest v5 in the list is better.
+
+The declarations of one id must agree:
+
+- When they list different versions, the id accepts the versions they have in common, whatever order the attributes
+  are found in, and [WHIZ037](../../operations/diagnostics/whiz037) is reported at each list that was narrowed. An
+  omitted `Versions` counts as `V7`.
+- Writing `Versions` together with `AcceptAnyVersion = true` is the error
+  [WHIZ038](../../operations/diagnostics/whiz038).
+- An empty list (`UuidVersions.None`), or declarations with no version in common, is the error
+  [WHIZ039](../../operations/diagnostics/whiz039).
+
+### Grandfathered values {#grandfathered-values}
+
+Applications adopting strong ids on existing data often find a handful of stored values that will never fit the
+rule: seed data with hand-typed constant ids, well-known system identities, a few records created before the
+application minted UUIDv7. Re-keying them means an upcaster for the stream and for every event that mentions the old
+id, and a rebuild of every affected perspective. Opening the type with `AcceptAnyVersion` drops the protection for
+every future value just to admit a few old ones.
+
+Instead, name them. Every generated id declares a partial method, `IsGrandfathered`, that the id type can implement:
+
+```csharp{title="Grandfathering a frozen set of values" description="A strict id that accepts a few seeded values that predate the UUIDv7 rule, and refuses every other non-v7 value" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "Grandfathered"] tests=["WhizbangIdGrandfatheredTests.Grandfathered_IsAcceptedByEveryCheckedEntryPointAsync", "WhizbangIdGrandfatheredTests.NotGrandfathered_IsStillRefusedAsync", "WhizbangIdGrandfatheredTests.EmptyGuid_IsRefusedWhateverTheHookSaysAsync"]}
+using System.Collections.Frozen;
+using Whizbang.Core;
+
+[WhizbangId]
+public readonly partial struct ProductCatalogId {
+  // Seeded before ids were UUIDv7. Frozen: new values are always minted.
+  private static readonly FrozenSet<Guid> _grandfathered = new[] {
+    new Guid("3f2504e0-4f89-41d3-9a0c-0305e82c3301"),
+    new Guid("6ba7b810-9dad-41d1-80b4-00c04fd430c8"),
+  }.ToFrozenSet();
+
+  static partial void IsGrandfathered(Guid value, ref bool grandfathered) =>
+    grandfathered = _grandfathered.Contains(value);
+}
+```
+
+- `From`, `Parse`, the explicit cast, the transport JSON reader and the GraphQL scalar ask the hook when a value
+  breaks the id's rule (UUIDv7, or its `Versions` list), and accept the value when the hook sets `grandfathered`.
+  Every other value is still refused.
+- `Guid.Empty` is never grandfathered, whatever the hook says, and `New()` mints UUIDv7 as always.
+- An id that does not implement the hook behaves as before: the compiler removes the call.
+- The hook runs for every value that breaks the rule, so keep it a set lookup: no I/O, no large computation.
+- It is a `void` method with a `ref` result because C# lets only a `void` partial method go unimplemented.
+- It composes with [`Versions`](#accepted-versions); on an `AcceptAnyVersion` id, which refuses only `Guid.Empty`,
+  it is never asked.
+
+Keep the list frozen, and track it down to zero as the old values are retired.
 
 ## Strongly-Typed ID Providers
 
