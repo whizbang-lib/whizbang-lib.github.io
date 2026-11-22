@@ -35,7 +35,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamSealingSqlTests.cs
   - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/ArchiveLocationMismatchExceptionTests.cs
-  - tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs
+  - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs
   - tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobMessageBodyStoreValidationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaBootstrapPhaseTests.cs
   - tests/Whizbang.Core.Unit.Workers.Tests/Schema/SchemaBootstrapRetryTests.cs

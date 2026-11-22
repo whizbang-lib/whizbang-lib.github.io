@@ -10616,17 +10616,17 @@
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Purge_QueuesTheObjects_AndTheStepDeletesThemAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Step_AFailingDelete_StaysQueued_AndIsRetriedAfterItsBackoffAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "Step_SweepsAtMostOncePerInterval_AndOnlyWithADelayAsync",
         "linkSource": "XmlTag"
       },
@@ -13094,162 +13094,162 @@
     ],
     "AzureBlobArchiveObjectStore": [
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Store_WithoutAClock_MeasuresAgesOnTheSystemClockAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_WholeStream_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_WithAnAccessTier_StoresEveryObjectAtIt_WithoutOne_TheAccountDefaultAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_TwoPrefixes_EachAddsItsObjects_AndAReadSpansThemAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_ARefusal_KeepsItsStatus_AndUploadsNothingAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_TheUploadFails_TheStreamStaysFullyHot_AndNothingIsListedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_ACrashAfterTheUploadBeforeTheCommit_IsRetriedWithoutADuplicateAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_ACorruptedObject_IsDetectedByItsHash_AndNothingIsDecodedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_AnObjectNameThisStoreDidNotWrite_IsRefusedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_RecordsTheConfiguredLocation_AndOnlyAPathFromTheStreamOnEachObject_NeverASecretAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_Restore_Delete_InAnotherContainer_ThrowTheMismatch_AndTouchNoObjectAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_OfAStreamWhoseObjectsAreElsewhere_ThrowsTheMismatch_AndWritesNothing_UntilRepointedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_AtAnotherAccountEndpoint_ThrowsTheMismatch_UntilTheLocationRowIsUpdatedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "CopiedDatabase_CannotDeleteTheSourceEnvironmentsObjectsAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "RepointLocation_MakesAMismatchedDatabaseConsistent_ForAnotherContainerAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "RepointLocation_AfterTheCopyArchivedItsOwnStreams_MergesTheSourceLocationAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "VerifyLocationOff_AMismatchedRecord_IsRead_Restored_AndDeleted_InTheConfiguredLocationOnlyAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_ARecordWithNoLocation_IsRefused_AndTouchesNoObjectAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_ALegacyRecord_IsReadByTheStoreConfiguredForItsContainer_AndRefusedByAnyOtherAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_EventsTheTableStoreArchived_ComeBackInVersionOrderWithTheObjectsAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_ARowArchivedBeforeTheStoreKeptEveryColumn_MovesIntoAnObject_WithItsNullsAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Restore_PutsTheStreamBackExactly_AndRemovesItsObjectsAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Restore_AVersionConflict_KeepsTheArchiveAndItsObjectsAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Delete_RemovesTheObjectsAndTheManifest_TheTombstoneStaysAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Delete_OfAPrefixArchive_StampsTheLedgersArchiveDeletedAtAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Delete_AnObjectThatCannotBeRemoved_IsLogged_AndTheDeleteStillCompletesAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Purge_QueuesTheObjects_AndTheStepDeletesThemAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Step_AFailingDelete_StaysQueued_AndIsRetriedAfterItsBackoffAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Step_AnObjectAlreadyGone_CountsAsDeletedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Step_AnObjectWhoseStreamIsBeingArchived_IsLeftForALaterRun_WithoutCountingAnAttemptAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Restore_ThenArchiveTheSameEventsAgain_KeepsTheLiveObject_OutOfTheQueueAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Registration_TheDriversPrefixTruncate_ArchivesThroughTheBlobStore_ActivatedByConfigurationAloneAsync",
         "linkSource": "XmlTag"
       },
@@ -13460,7 +13460,7 @@
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "VerifyLocationOff_AMismatchedRecord_IsRead_Restored_AndDeleted_InTheConfiguredLocationOnlyAsync",
         "linkSource": "XmlTag"
       }
@@ -38278,42 +38278,42 @@
     ],
     "ArchiveSweepMetrics": [
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs",
         "testMethod": "Write_ClaimsTheContainer_WithAMarkerNamingTheDatabase_AndTheOwnerSweepsAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs",
         "testMethod": "Sweep_ASecondDatabaseOnTheSameContainer_Refuses_AndBothEnvironmentsObjectsSurviveAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs",
         "testMethod": "Sweep_ADatabaseRestoredToItsOwnContainer_StillMatchesItsMarkerAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs",
         "testMethod": "Sweep_ARepointedCopy_ClaimsItsNewContainer_AndSweepsItAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs",
         "testMethod": "Sweep_AForeignMarkerPlacedFirst_Refuses_AndTheWriteStillSucceedsAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs",
         "testMethod": "Sweep_AMarkerItCannotClaimOrRead_Refuses_AndTheWriteStillSucceedsAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs",
         "testMethod": "Sweep_AContainerWithoutAMarker_IsClaimedByTheSweep_AndSweptAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs",
         "testMethod": "Sweep_InADatabaseThatNeverWroteToTheLocation_CountsTheRefusalAsync",
         "linkSource": "XmlTag"
       },
@@ -47642,217 +47642,217 @@
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Store_WithoutAClock_MeasuresAgesOnTheSystemClockAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_WholeStream_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_WithAnAccessTier_StoresEveryObjectAtIt_WithoutOne_TheAccountDefaultAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_TwoPrefixes_EachAddsItsObjects_AndAReadSpansThemAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_ARefusal_KeepsItsStatus_AndUploadsNothingAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_TheUploadFails_TheStreamStaysFullyHot_AndNothingIsListedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_ACrashAfterTheUploadBeforeTheCommit_IsRetriedWithoutADuplicateAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_ACorruptedObject_IsDetectedByItsHash_AndNothingIsDecodedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_AnObjectNameThisStoreDidNotWrite_IsRefusedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_RecordsTheConfiguredLocation_AndOnlyAPathFromTheStreamOnEachObject_NeverASecretAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_Restore_Delete_InAnotherContainer_ThrowTheMismatch_AndTouchNoObjectAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_OfAStreamWhoseObjectsAreElsewhere_ThrowsTheMismatch_AndWritesNothing_UntilRepointedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_AtAnotherAccountEndpoint_ThrowsTheMismatch_UntilTheLocationRowIsUpdatedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "CopiedDatabase_CannotDeleteTheSourceEnvironmentsObjectsAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "RepointLocation_MakesAMismatchedDatabaseConsistent_ForAnotherContainerAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "RepointLocation_AfterTheCopyArchivedItsOwnStreams_MergesTheSourceLocationAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "VerifyLocationOff_AMismatchedRecord_IsRead_Restored_AndDeleted_InTheConfiguredLocationOnlyAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_ARecordWithNoLocation_IsRefused_AndTouchesNoObjectAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_ALegacyRecord_IsReadByTheStoreConfiguredForItsContainer_AndRefusedByAnyOtherAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_EventsTheTableStoreArchived_ComeBackInVersionOrderWithTheObjectsAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_ARowArchivedBeforeTheStoreKeptEveryColumn_MovesIntoAnObject_WithItsNullsAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Restore_PutsTheStreamBackExactly_AndRemovesItsObjectsAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Restore_AVersionConflict_KeepsTheArchiveAndItsObjectsAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Delete_RemovesTheObjectsAndTheManifest_TheTombstoneStaysAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Delete_OfAPrefixArchive_StampsTheLedgersArchiveDeletedAtAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Delete_AnObjectThatCannotBeRemoved_IsLogged_AndTheDeleteStillCompletesAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Purge_QueuesTheObjects_AndTheStepDeletesThemAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Step_AFailingDelete_StaysQueued_AndIsRetriedAfterItsBackoffAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Step_AnObjectAlreadyGone_CountsAsDeletedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Step_AnObjectWhoseStreamIsBeingArchived_IsLeftForALaterRun_WithoutCountingAnAttemptAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Restore_ThenArchiveTheSameEventsAgain_KeepsTheLiveObject_OutOfTheQueueAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Registration_TheDriversPrefixTruncate_ArchivesThroughTheBlobStore_ActivatedByConfigurationAloneAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreImmutabilityTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreImmutabilityTests.cs",
         "testMethod": "Write_NeverReplacesAnObject_WithDifferentBytesUnderItsName_TheStreamStaysHotAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreImmutabilityTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreImmutabilityTests.cs",
         "testMethod": "EveryStorageRequest_CreatesReadsListsOrPlainDeletes_NeverUpdatesOrPurgesAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "DeleteAfter_ARestoreAndADelete_LeaveTheirObjects_UntilTheDelayHasPassedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "DeleteAfter_ADatabaseRestoredToAnEarlierCopy_ReadsEveryStream_OnlyWithTheDelayOnAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "Sweep_WithoutADelay_DoesNothing_AndNeverListsTheContainerAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "Sweep_DeletesOnlyObjectsNothingNames_OnceTheyAreOlderThanTheDelayAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "Sweep_APageWithNoObjectOldEnough_DeletesNothingAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "Sweep_InADatabaseThatNeverWroteToTheLocation_DeletesNothingAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "Sweep_AnObjectWhoseStreamIsBeingWritten_IsLeftForALaterSweepAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "Sweep_AnOrphanThatCannotBeDeleted_IsLogged_AndLeftForTheNextSweepAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "Step_SweepsAtMostOncePerInterval_AndOnlyWithADelayAsync",
         "linkSource": "XmlTag"
       },
@@ -47951,12 +47951,12 @@
     ],
     "RepointLocationAsync": [
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "RepointLocation_MakesAMismatchedDatabaseConsistent_ForAnotherContainerAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "RepointLocation_AfterTheCopyArchivedItsOwnStreams_MergesTheSourceLocationAsync",
         "linkSource": "XmlTag"
       },
@@ -48055,22 +48055,22 @@
     ],
     "WriteAsync": [
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_WholeStream_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_TheUploadFails_TheStreamStaysFullyHot_AndNothingIsListedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_ACrashAfterTheUploadBeforeTheCommit_IsRetriedWithoutADuplicateAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_OfAStreamWhoseObjectsAreElsewhere_ThrowsTheMismatch_AndWritesNothing_UntilRepointedAsync",
         "linkSource": "XmlTag"
       },
@@ -48102,12 +48102,12 @@
     ],
     "ReadAsync": [
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_WholeStream_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_EventsTheTableStoreArchived_ComeBackInVersionOrderWithTheObjectsAsync",
         "linkSource": "XmlTag"
       },
@@ -48194,12 +48194,12 @@
     ],
     "RestoreAsync": [
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Restore_PutsTheStreamBackExactly_AndRemovesItsObjectsAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Restore_AVersionConflict_KeepsTheArchiveAndItsObjectsAsync",
         "linkSource": "XmlTag"
       },
@@ -48211,7 +48211,7 @@
     ],
     "DeleteAsync": [
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Delete_RemovesTheObjectsAndTheManifest_TheTombstoneStaysAsync",
         "linkSource": "XmlTag"
       },
@@ -48223,47 +48223,47 @@
     ],
     "SweepOrphanedObjectsAsync": [
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "DeleteAfter_ARestoreAndADelete_LeaveTheirObjects_UntilTheDelayHasPassedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "DeleteAfter_ADatabaseRestoredToAnEarlierCopy_ReadsEveryStream_OnlyWithTheDelayOnAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "Sweep_WithoutADelay_DoesNothing_AndNeverListsTheContainerAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "Sweep_DeletesOnlyObjectsNothingNames_OnceTheyAreOlderThanTheDelayAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "Sweep_APageWithNoObjectOldEnough_DeletesNothingAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "Sweep_InADatabaseThatNeverWroteToTheLocation_DeletesNothingAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "Sweep_AnObjectWhoseStreamIsBeingWritten_IsLeftForALaterSweepAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "Sweep_AnOrphanThatCannotBeDeleted_IsLogged_AndLeftForTheNextSweepAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "Step_SweepsAtMostOncePerInterval_AndOnlyWithADelayAsync",
         "linkSource": "XmlTag"
       }
@@ -198394,7 +198394,7 @@
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_Restore_Delete_InAnotherContainer_ThrowTheMismatch_AndTouchNoObjectAsync",
         "linkSource": "XmlTag"
       }
@@ -198443,7 +198443,7 @@
     ],
     "ArchiveObjectCorruptedException": [
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_ACorruptedObject_IsDetectedByItsHash_AndNothingIsDecodedAsync",
         "linkSource": "XmlTag"
       },
@@ -198477,12 +198477,12 @@
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs",
         "testMethod": "Step_SweepsAtMostOncePerInterval_AndOnlyWithADelayAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Purge_QueuesTheObjects_AndTheStepDeletesThemAsync",
         "linkSource": "XmlTag"
       }
@@ -199162,162 +199162,162 @@
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Store_WithoutAClock_MeasuresAgesOnTheSystemClockAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_WholeStream_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_WithAnAccessTier_StoresEveryObjectAtIt_WithoutOne_TheAccountDefaultAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_TwoPrefixes_EachAddsItsObjects_AndAReadSpansThemAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_ARefusal_KeepsItsStatus_AndUploadsNothingAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_TheUploadFails_TheStreamStaysFullyHot_AndNothingIsListedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_ACrashAfterTheUploadBeforeTheCommit_IsRetriedWithoutADuplicateAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_ACorruptedObject_IsDetectedByItsHash_AndNothingIsDecodedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_AnObjectNameThisStoreDidNotWrite_IsRefusedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_RecordsTheConfiguredLocation_AndOnlyAPathFromTheStreamOnEachObject_NeverASecretAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_Restore_Delete_InAnotherContainer_ThrowTheMismatch_AndTouchNoObjectAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_OfAStreamWhoseObjectsAreElsewhere_ThrowsTheMismatch_AndWritesNothing_UntilRepointedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_AtAnotherAccountEndpoint_ThrowsTheMismatch_UntilTheLocationRowIsUpdatedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "CopiedDatabase_CannotDeleteTheSourceEnvironmentsObjectsAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "RepointLocation_MakesAMismatchedDatabaseConsistent_ForAnotherContainerAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "RepointLocation_AfterTheCopyArchivedItsOwnStreams_MergesTheSourceLocationAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "VerifyLocationOff_AMismatchedRecord_IsRead_Restored_AndDeleted_InTheConfiguredLocationOnlyAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_ARecordWithNoLocation_IsRefused_AndTouchesNoObjectAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_ALegacyRecord_IsReadByTheStoreConfiguredForItsContainer_AndRefusedByAnyOtherAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Read_EventsTheTableStoreArchived_ComeBackInVersionOrderWithTheObjectsAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Write_ARowArchivedBeforeTheStoreKeptEveryColumn_MovesIntoAnObject_WithItsNullsAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Restore_PutsTheStreamBackExactly_AndRemovesItsObjectsAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Restore_AVersionConflict_KeepsTheArchiveAndItsObjectsAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Delete_RemovesTheObjectsAndTheManifest_TheTombstoneStaysAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Delete_OfAPrefixArchive_StampsTheLedgersArchiveDeletedAtAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Delete_AnObjectThatCannotBeRemoved_IsLogged_AndTheDeleteStillCompletesAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Purge_QueuesTheObjects_AndTheStepDeletesThemAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Step_AFailingDelete_StaysQueued_AndIsRetriedAfterItsBackoffAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Step_AnObjectAlreadyGone_CountsAsDeletedAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Step_AnObjectWhoseStreamIsBeingArchived_IsLeftForALaterRun_WithoutCountingAnAttemptAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Restore_ThenArchiveTheSameEventsAgain_KeepsTheLiveObject_OutOfTheQueueAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
+        "testFile": "tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs",
         "testMethod": "Registration_TheDriversPrefixTruncate_ArchivesThroughTheBlobStore_ActivatedByConfigurationAloneAsync",
         "linkSource": "XmlTag"
       }
@@ -567587,7 +567587,7 @@
     }
   ],
   "metadata": {
-    "generated": "2026-11-21T23:48:03.987Z",
+    "generated": "2026-11-22T00:42:23.597Z",
     "sourceFiles": 2445,
     "testFiles": 4412,
     "totalLinks": 26824,

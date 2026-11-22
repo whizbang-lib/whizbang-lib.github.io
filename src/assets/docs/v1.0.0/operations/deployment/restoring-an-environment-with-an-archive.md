@@ -21,11 +21,11 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/553_ArchiveLocationPinIsNormalized.sql
   - src/Whizbang.Core/Archival/ArchiveLocationMismatchHandling.cs
 testReferences:
-  - tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreImmutabilityTests.cs
-  - tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs
-  - tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs
-  - tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs
-  - tests/Whizbang.Storage.AzureBlob.Integration.Tests/AzureBlobArchiveStoreLocationMismatchTests.cs
+  - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreImmutabilityTests.cs
+  - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs
+  - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs
+  - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs
+  - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreLocationMismatchTests.cs
   - tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobArchiveRegistrationTests.cs
 ---
 
