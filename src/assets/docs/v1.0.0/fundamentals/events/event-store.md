@@ -36,6 +36,7 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPostgresEventStore.RetryTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaInitializationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/FirstEventInStreamReadTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEventOriginReadTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -376,6 +377,19 @@ Neither of the other two orders will do:
 - **Commit sequence.** It records when the stamper reached a row, not where the row sits in its stream. Rows
   stamped as they were written follow their versions, but rows stamped after the fact can run backward against
   them, and a replay in that order folded a stream's last write first.
+
+**Every read carries the event's origin.** An event received from another service is stored with its origin
+(`origin_service_id`, `origin_commit_sequence`), and each read puts it on the envelope as `SourceServiceId` and
+`SourceCommitSequence`. A replay uses it to deal a received stream back into
+[the order its origin committed it in](../perspectives/rewind#replay-ordering). The EF Core store's reads always carried
+it. The Dapper Postgres store's did not, so on that driver a rewind or a rebuild treated every received event as
+local and folded the stream in arrival order: an update the origin committed before a delete could replay after it,
+leaving the row with the older value ([#2509](https://github.com/whizbang-lib/whizbang/issues/2509)). Every Dapper read
+that materializes events now selects the origin: both `ReadAsync` overloads, `ReadPolymorphicAsync`,
+`GetEventsBetweenAsync` and `GetEventsBetweenPolymorphicAsync`. `JsonbPersistenceModel` carries it from the row to the
+envelope in two properties, `OriginServiceId` and `OriginCommitSequence`, both null for a local event. The Sqlite store
+has no origin columns, so its envelopes carry none and its replays keep the local order.
+{verified: DapperEventOriginReadTests.EveryReader_CarriesEachEventsOrigin_OntoItsEnvelopeAsync, DapperEventOriginReadTests.Replay_OfAReceivedStreamReadOnDapper_FoldsInItsOriginsOrderAsync}
 
 ### Reading after an event {#read-after}
 
