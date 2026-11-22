@@ -27,7 +27,7 @@ codeReferences:
   - src/Whizbang.Core/WhizbangIdAttribute.cs
   - src/Whizbang.Core/WhizbangIdForms.cs
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/WhizbangIdTypeMapping.cs
-  - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdScalarRewrite.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/WhizbangIdConvention.cs
   - src/Whizbang.Core/SuppressGuidInterceptionAttribute.cs
   - src/Whizbang.Core/Configuration/WhizbangOptions.cs
   - src/Whizbang.Core/Validation/GuidOrderingValidator.cs
@@ -45,7 +45,6 @@ testReferences:
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdVersionAcceptanceTests.cs
   - tests/Whizbang.Generators.Tests/WhizbangIdAcceptAnyVersionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/WhizbangIdDocumentStorageTests.cs
-  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/StrongIdScalarRewriteIntegrationTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderRegistryTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdServiceCollectionExtensionsTests.cs
@@ -799,12 +798,9 @@ var one = await query.Where(r => r.Data.OrderId == orderId).ToListAsync(ct);
 var some = await query.Where(r => ids.Contains(r.Data.OrderId)).ToListAsync(ct);
 ```
 
-A release before this one stored each id as the object `{"Value": "..."}`. On the first startup after upgrading, the
-stored-form phase rewrites every table that holds an id, once, before the service serves queries (journaled in
-`wh_stored_form_migrations` as `strong-id-scalar:<table>:<shape>`). Until a row is rewritten, reads take either form
-and count the object form on `whizbang.perspective.identifier_form_fallbacks`. A query that compares an id cannot read
-the object form, which is why the rewrite runs first. SQL of your own that matched `{"Value": "..."}` (a view, a
-trigger, a report) has to match the UUID string instead.
+SQL of your own over a document (a view, a trigger, a report) sees a strong id as a UUID string too, so it compares
+`(data ->> 'OrderId')::uuid` exactly as it would for a `Guid` property. A context built without the Whizbang options
+extension gets the same mapping from the generated `OnModelCreating`.
 
 ## Strongly-Typed ID Providers
 
