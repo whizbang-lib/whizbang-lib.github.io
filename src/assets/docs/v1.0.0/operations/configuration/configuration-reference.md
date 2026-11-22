@@ -30,7 +30,10 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Notifications/PostgresNotificationsServiceCollectionExtensions.cs
   - src/Whizbang.Offloads.AzureBlob/AzureBlobOffloadServiceCollectionExtensions.cs
   - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveServiceCollectionExtensions.cs
-  - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveOptions.cs
+  - src/Whizbang.Storage.AzureBlob/AzureBlobArchiveOptions.cs
+  - src/Whizbang.Storage.AzureBlob/AzureBlobStorageOptions.cs
+  - src/Whizbang.Storage.AzureBlob/AzureBlobStorageConfiguration.cs
+  - src/Whizbang.Storage.AzureBlob/AzureBlobOffloadOptions.cs
   - src/Whizbang.Core/Workers/PinnedPoolServiceCollectionExtensions.cs
   - src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs
   - src/Whizbang.Core/Messaging/WorkCoordinatorGateOptions.cs
@@ -67,7 +70,9 @@ codeReferences:
   - src/Whizbang.Core/Versioning/UpgradeOrder.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
 testReferences:
-  - tests/Whizbang.Archive.AzureBlob.Tests/AzureBlobArchiveLocationTests.cs
+  - tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobArchiveLocationTests.cs
+  - tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageConfigurationTests.cs
+  - tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobStorageTurnkeyTests.cs
   - tests/Whizbang.Core.Unit.Perspectives.Tests/Archival/StreamLifecycleOptionsBinderTests.cs
   - tests/Whizbang.Core.Unit.Workers.Tests/Workers/TableRewriteStrategyTests.cs
   - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PartitionManagementStrategyTests.cs
@@ -120,7 +125,7 @@ Whizbang follows the standard .NET configuration model ([Microsoft: Configuratio
 | Mechanism | What it means | Applies to |
 |-----------|---------------|------------|
 | **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | **67 sections**: `Whizbang` itself, `Whizbang:Core`, `Whizbang:Tracing`, `Whizbang:SchemaInitialization`, `Whizbang:WorkCoordinator`, every `Whizbang:Workers:*` worker, `Whizbang:StreamIntegrity`, `Whizbang:DeadLetterRecovery`, `Whizbang:DeadLetterLogging`, `Whizbang:DatabaseFailureEscalation`, `Whizbang:Redelivery`, `Whizbang:Perspectives:*`, `Whizbang:Temporal`, `Whizbang:Tags` and the rest listed in the [Quick Map](#quick-map); plus `Whizbang:AspNet:*` with ASP.NET hosting, `Whizbang:Sagas` with sagas, `Whizbang:Scope` and `Whizbang:StartupStatusGraph` with GraphQL, `Whizbang:Database*` with the Postgres driver, `Whizbang:Transports:AzureServiceBus` / `Whizbang:Transports:RabbitMQ` with those transports, the [per-instance sections](#per-instance-sections) keyed by breaker, transport, database and tag, and `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `ConnectionStrings:*`, `ConnectionPool:*` |
-| **Opt-in binding helper** | A one-line registration call reads the section for you. Without that call, the section is inert. | `Whizbang:BodyOffload` + `Whizbang:Offloads:AzureBlob:<name>` (via `AddWhizbangAzureBlobOffloadsFromConfiguration`) |
+| **Bound with a referenced package** | A package that activates itself (a turnkey package) reads its section when `AddWhizbang()` runs; with the package referenced, setting a key just works, and without it the key does nothing (the startup log warns, naming the package). | `Whizbang:Storage:AzureBlob` (with its `Offloads` and `Archive` sections) and the earlier `Whizbang:Offloads:AzureBlob:<name>` and `Whizbang:Archive:AzureBlob`, via `Whizbang.Storage.AzureBlob` ([details](#azure-blob-storage)) |
 | **Code-configured** | The options class is configured through an `Action<TOptions>` lambda (or `services.Configure<TOptions>(...)`). The library never reads a configuration section for it — **a configuration key for one of these does nothing unless your service binds it**. Every table below carries an environment-variable column; these read `— *code-only*`, so a blank is always deliberate rather than an omission (see [the binding recipe](#code-configured-options-the-binding-recipe)). | The classes with no configuration section in the [Quick Map](#quick-map): `ServiceRegistrationOptions`, `PerStreamSerializerOptions`, `WhizbangGraphQLOptions`, and the keys a bound class marks *code-only* |
 
 > **The most common configuration mistake** is setting environment variables for a code-configured section — for example `Whizbang__PerStreamSerializer__StreamChannelCapacity` — and expecting them to take effect. Nothing in the library reads that section. Every class below states which mechanism applies to it.
@@ -141,7 +146,7 @@ Whizbang follows the standard .NET configuration model ([Microsoft: Configuratio
 | `Whizbang:Tracing:Verbosity` | `Whizbang__Tracing__Verbosity` |
 | `Whizbang:Database:SignalingMode` | `Whizbang__Database__SignalingMode` |
 | `Whizbang:WorkCoordinatorGate:MaxConcurrent` | `Whizbang__WorkCoordinatorGate__MaxConcurrent` |
-| `Whizbang:Offloads:AzureBlob:my-provider:ContainerName` | `Whizbang__Offloads__AzureBlob__my-provider__ContainerName` |
+| `Whizbang:Storage:AzureBlob:Offloads:ContainerName` | `Whizbang__Storage__AzureBlob__Offloads__ContainerName` |
 | `ConnectionStrings:db` | `ConnectionStrings__db` |
 | `ConnectionPool:MaxPoolSize` | `ConnectionPool__MaxPoolSize` |
 
@@ -233,9 +238,12 @@ DbContext), the latest registration is used and startup logs a warning naming th
 | `ConnectionStrings:*` | — (strings, naming conventions below) | Automatic |
 | `ConnectionPool:*` | — (generated DbContext registration) | Automatic |
 | `Whizbang:BodyOffload` | `MessageBodyOffloadOptions` (every key) | Automatic (`AddWhizbangBodyOffload()`, which every provider helper calls) |
-| `Whizbang:BodyOffload:Cipher` | the built-in body cipher (`AesGcmEnvelopeCipher`) | Opt-in helper |
-| `Whizbang:Offloads:AzureBlob:<name>` | `AzureBlobOffloadOptions` | Opt-in helper |
-| `Whizbang:Archive:AzureBlob` | `AzureBlobArchiveOptions` | Opt-in helper (`AddWhizbangAzureBlobArchive`) |
+| `Whizbang:BodyOffload:Cipher` | the built-in body cipher (`AesGcmEnvelopeCipher`) | With body offload from configuration (`Whizbang.Storage.AzureBlob`, or `AddWhizbangBodyCipherFromConfiguration`) |
+| `Whizbang:Storage:AzureBlob` | `AzureBlobStorageOptions` (the account) | With `Whizbang.Storage.AzureBlob` referenced; see [Azure Blob Storage](#azure-blob-storage) |
+| `Whizbang:Storage:AzureBlob:Offloads` | `AzureBlobOffloadOptions` | With `Whizbang.Storage.AzureBlob` referenced |
+| `Whizbang:Storage:AzureBlob:Archive` | `AzureBlobArchiveOptions` | With `Whizbang.Storage.AzureBlob` referenced |
+| `Whizbang:Offloads:AzureBlob:<name>` | `AzureBlobOffloadOptions` | Read for compatibility, with a startup warning; the new keys win |
+| `Whizbang:Archive:AzureBlob` | `AzureBlobArchiveOptions` | Read for compatibility, with a startup warning; the new keys win |
 | `Whizbang:Archive` (`ReadThrough`) | `ArchiveOptions` | Automatic (worker pipeline, event store decoration); see [Archive and stream lifecycle](#archive-and-stream-lifecycle-options) |
 | `Whizbang:StreamLifecycle` (`Enabled`, `Types:<StreamType>:AppendToArchived`, `IdleTtl`, `MaxAge`, `KeepTailVersions`, `TenantByteCap`, `Action`) | `StreamLifecycleOptions` | Automatic (worker pipeline); see [Archive and stream lifecycle](#archive-and-stream-lifecycle-options) |
 | `Whizbang:Perspectives:ArchivedStreamRows` (`<Perspective>`) | `ArchivedStreamRowsOptions` | Automatic (worker pipeline); see [Archive and stream lifecycle](#archive-and-stream-lifecycle-options) |
@@ -596,40 +604,59 @@ The delegates (`CompositeFactory`, `PriorityFor`) are code-only. Setting `SlideS
 - **`ServiceBusInfrastructureOptions`** is not read by the framework, so it has no section.
 - **`TransportConsumerOptions.SubscriberName`** is not read by the consumer; only `Destinations` binds.
 
-## Opt-In Binding: Message Body Offload
+## Azure Blob Storage {#azure-blob-storage}
 
-Calling the helper reads both offload sections; without the call, both sections are inert and offload stays disabled:
+With `Whizbang.Storage.AzureBlob` referenced, `AddWhizbang()` reads `Whizbang:Storage:AzureBlob`: one account, and a
+section per feature. A feature activates when its section is set and an account is named for it (its own, or the
+shared one); a section with no account leaves the feature off and warns at start. A `ServiceUri` authenticates with the
+`TokenCredential` the host registers, so no secret is in configuration. `WhizbangCoreOptions.AutoRegisterStorageProviders
+= false` (code-only) keeps the package inactive. **Details:** [Azure Blob Storage](../../fundamentals/storage/azure-blob).
+{verified: AzureBlobStorageConfigurationTests.TheNewKeys_NameOneAccount_AndEachFeatureTakesItAsync, AzureBlobStorageConfigurationTests.AValueThatCannotBeRead_FailsTheStart_NamingTheKey_NeverEchoingASecretAsync, AzureBlobStorageTurnkeyTests.Turnkey_APackageThatIsReferencedAndConfigured_ArchivesAndOffloadsThroughBlob_WithoutACallAsync}
 
-```csharp{
-title: "Opt into configuration-driven offload registration"
-description: "One call reads Whizbang:Offloads:AzureBlob:* and Whizbang:BodyOffload from IConfiguration; without it both sections are inert."
-framework: "NET10"
-category: "Configuration"
-difficulty: "BEGINNER"
-tags: ["configuration", "body-offload", "azure-blob", "binding"]
-unverified: "wiring illustration - covered by the offload provider integration tests"
-}
-builder.Services.AddWhizbangAzureBlobOffloadsFromConfiguration(builder.Configuration);
-```
-
-Every child of `Whizbang:Offloads:AzureBlob` registers one named provider. The provider whose name matches `Whizbang:BodyOffload:ProviderName` becomes the active offload target. **Details:** [Message Body Store](../../fundamentals/offloads/message-body-store#end-to-end-di), [Azure Blob provider](../../fundamentals/offloads/providers/azure-blob).
-
-### Whizbang:Offloads:AzureBlob:&lt;name&gt; → AzureBlobOffloadOptions
+### Whizbang:Storage:AzureBlob → AzureBlobStorageOptions
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
-| `ConnectionString` | [`SensitiveString?`](sensitive-settings.md) | `null` | `Whizbang__Offloads__AzureBlob__<name>__ConnectionString` | Azure Storage connection string (emulator or live) |
-| `ContainerName` | `string` | `whizbang-offload-bodies` | `Whizbang__Offloads__AzureBlob__<name>__ContainerName` | Container holding offloaded bodies; lazily created on first upload |
-| `DefaultAccessTier` | `AccessTier?` | `null` (account default) | `Whizbang__Offloads__AzureBlob__<name>__DefaultAccessTier` | Blob access tier for uploads (Hot/Cool/Cold/Archive) |
-| `MaxDownloadBytes` | `long?` | `null` (no cap) | `Whizbang__Offloads__AzureBlob__<name>__MaxDownloadBytes` | Defensive cap on download size; refuses claims reporting a larger body. The read itself always stops at the size the claim declares |
+| `ServiceUri` | `Uri?` | `null` | `Whizbang__Storage__AzureBlob__ServiceUri` | Blob service endpoint every feature uses unless it names its own; authenticates with the registered `TokenCredential` |
+| `ConnectionString` | [`SensitiveString?`](sensitive-settings.md) | `null` | `Whizbang__Storage__AzureBlob__ConnectionString` | Storage connection string every feature uses unless it names its own (Azurite, or an account key from the host's secret store) |
+| `ConnectionName` | `string?` | `null` | `Whizbang__Storage__AzureBlob__ConnectionName` | Logical connection name; with no endpoint or connection string set, the account is `ConnectionStrings:<ConnectionName>`. The archive's location name unless the archive sets its own; refused if it contains `;` or `=` |
+
+### Whizbang:Storage:AzureBlob:Offloads → AzureBlobOffloadOptions {#azure-blob-offloads}
+
+Setting this section makes its store the body-offload target (`MessageBodyOffloadOptions.ProviderName`), over
+`Whizbang:BodyOffload:ProviderName`. **Details:** [Azure Blob provider](../../fundamentals/offloads/providers/azure-blob).
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `ProviderName` | `string` | `azure-blob` | `Whizbang__Storage__AzureBlob__Offloads__ProviderName` | Name the store registers under and every claim records; keep it stable |
+| `ServiceUri` | `Uri?` | the shared account | `Whizbang__Storage__AzureBlob__Offloads__ServiceUri` | The offload's own endpoint |
+| `ConnectionString` | [`SensitiveString?`](sensitive-settings.md) | the shared account | `Whizbang__Storage__AzureBlob__Offloads__ConnectionString` | The offload's own connection string |
+| `ContainerName` | `string` | `whizbang-offload-bodies` | `Whizbang__Storage__AzureBlob__Offloads__ContainerName` | Container holding offloaded bodies; lazily created on first upload |
+| `DefaultAccessTier` | `AccessTier?` | `null` (account default) | `Whizbang__Storage__AzureBlob__Offloads__DefaultAccessTier` | Blob access tier for uploads |
+| `MaxDownloadBytes` | `long?` | `null` (no cap) | `Whizbang__Storage__AzureBlob__Offloads__MaxDownloadBytes` | Defensive cap on download size; refuses claims reporting a larger body |
+
+### Whizbang:Offloads:AzureBlob:&lt;name&gt; (read for compatibility)
+
+The earlier package's section, still read by `Whizbang.Storage.AzureBlob` with a startup warning naming the new keys.
+Each child registers one store under its name, so claims already sent resolve; `Whizbang:BodyOffload:ProviderName`
+picks among them. The earlier call `AddWhizbangAzureBlobOffloadsFromConfiguration(configuration)` (now `[Obsolete]`)
+reads the same keys from the configuration it is given.
+{verified: AzureBlobStorageConfigurationTests.TheEarlierKeys_StillBind_WithAWarningNamingTheNewKey_AndTheNewKeyWinsAsync, AzureBlobOffloadFromConfigurationTests.FromConfiguration_RegistersProvider_BindsOptions_AndSelectorAsync}
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `ConnectionString` | [`SensitiveString?`](sensitive-settings.md) | `null` | `Whizbang__Offloads__AzureBlob__<name>__ConnectionString` | Azure Storage connection string (emulator or live); required |
+| `ContainerName` | `string` | `whizbang-offload-bodies` | `Whizbang__Offloads__AzureBlob__<name>__ContainerName` | Container holding offloaded bodies |
+| `DefaultAccessTier` | `AccessTier?` | `null` (account default) | `Whizbang__Offloads__AzureBlob__<name>__DefaultAccessTier` | Blob access tier for uploads |
+| `MaxDownloadBytes` | `long?` | `null` (no cap) | `Whizbang__Offloads__AzureBlob__<name>__MaxDownloadBytes` | Defensive cap on download size |
 
 ### Whizbang:BodyOffload → MessageBodyOffloadOptions {#whizbangbodyoffload--messagebodyoffloadoptions}
 
-Every key binds whenever body offload is registered: `AddWhizbangBodyOffload()`, which the provider helpers above call, reads this section after any code configuration, so a setting here overrides a value set in code. {verified: MessageBodyOffloadOptionsBindingTests.EveryDocumentedKey_BindsAsync, MessageBodyOffloadOptionsBindingTests.UnreadableValues_KeepTheDefaultsAsync}
+Every key binds whenever body offload is registered: `AddWhizbangBodyOffload()`, which every provider registration calls, reads this section after any code configuration, so a setting here overrides a value set in code. {verified: MessageBodyOffloadOptionsBindingTests.EveryDocumentedKey_BindsAsync, MessageBodyOffloadOptionsBindingTests.UnreadableValues_KeepTheDefaultsAsync}
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
-| `ProviderName` | `string?` | `null` (offload disabled) | `Whizbang__BodyOffload__ProviderName` | Must match a registered provider name |
+| `ProviderName` | `string?` | `null` (offload disabled) | `Whizbang__BodyOffload__ProviderName` | Must match a registered provider name; `Whizbang:Storage:AzureBlob:Offloads`, when set, chooses instead (with a startup warning if this is set too) |
 | `SizeThresholdBytes` | `long` | `65536` (64 KB) | `Whizbang__BodyOffload__SizeThresholdBytes` | Body size at/above which offload kicks in |
 | `ActiveCleanup` | `bool` | `false` | `Whizbang__BodyOffload__ActiveCleanup` | Delete the body explicitly after the inbox row is acked |
 | `CipherName` | `string?` | `null` (bodies stored as serialized) | `Whizbang__BodyOffload__CipherName` | Names the cipher every offloaded body is sealed with; the cipher itself is registered from the `Cipher` subsection below |
@@ -642,7 +669,7 @@ Every key binds whenever body offload is registered: `AddWhizbangBodyOffload()`,
 
 ### Whizbang:BodyOffload:Cipher → the built-in AES-256-GCM cipher
 
-Read by the same helper (through `AddWhizbangBodyCipherFromConfiguration`) whenever `Whizbang:BodyOffload:CipherName` is set. A name without a valid key, or a half-configured rotation window, fails at startup naming the setting. **Details, key generation, rotation and the operations checklist:** [Message Body Store](../../fundamentals/offloads/message-body-store#cipher-from-settings). {verified: BodyCipherFromConfigurationTests.WithANameAndAKey_RegistersTheAesGcmCipherByName_AndNamesItOnTheOptionsAsync, BodyCipherFromConfigurationTests.WithANameButNoKey_ThrowsAtStartup_NamingTheSettingAsync, AzureBlobOffloadFromConfigurationTests.FromConfiguration_WithACipherInSettings_BindsTheCipherName_AndRegistersTheCipherAsync}
+Read whenever `Whizbang:BodyOffload:CipherName` is set and body offload comes from configuration (`Whizbang.Storage.AzureBlob` reads it when the container is built; `AddWhizbangBodyCipherFromConfiguration(configuration)` at registration). A name without a valid key, or a half-configured rotation window, fails at startup naming the setting. **Details, key generation, rotation and the operations checklist:** [Message Body Store](../../fundamentals/offloads/message-body-store#cipher-from-settings). {verified: BodyCipherFromConfigurationTests.WithANameAndAKey_RegistersTheAesGcmCipherByName_AndNamesItOnTheOptionsAsync, BodyCipherFromConfigurationTests.WithANameButNoKey_ThrowsAtStartup_NamingTheSettingAsync, AzureBlobOffloadFromConfigurationTests.FromConfiguration_WithACipherInSettings_BindsTheCipherName_AndRegistersTheCipherAsync}
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
@@ -651,42 +678,36 @@ Read by the same helper (through `AddWhizbangBodyCipherFromConfiguration`) whene
 | `PreviousKeyId` | `string?` | `null` | `Whizbang__BodyOffload__Cipher__PreviousKeyId` | During a rotation window, the label being retired; requires `PreviousKeyEncryptionKey` |
 | `PreviousKeyEncryptionKey` | `string?` (base64, 32 bytes) | `null` | `Whizbang__BodyOffload__Cipher__PreviousKeyEncryptionKey` | During a rotation window, the key being retired; a secret |
 
-## Opt-In Binding: Azure Blob Archive Store {#azure-blob-archive}
+### Whizbang:Storage:AzureBlob:Archive → AzureBlobArchiveOptions {#azure-blob-archive}
 
-Calling the helper reads `Whizbang:Archive:AzureBlob` and makes the Azure Blob store the service's archive store, in
-place of the Postgres-table store the drivers register; without the call the section is inert. A `ServiceUri`
-authenticates with the `TokenCredential` the host registers, so no secret is in configuration. **Details:**
-[Archive Store](../../fundamentals/events/archive-store#the-azure-blob-store).
+Setting this section, with an account named for it, moves the archive out of the database: the Postgres driver's
+coordinator writes through the Azure Blob object store. **Details:** [Archive Store](../../fundamentals/events/archive-store#the-azure-blob-store).
 {verified: AzureBlobArchiveRegistrationTests.Configuration_BindsEverySetting_AndKeepsTheDefaultsForWhatIsAbsentAsync, AzureBlobArchiveRegistrationTests.Configuration_AValueThatCannotBeRead_IsRefused_NamingTheKeyAsync, AzureBlobArchiveLocationTests.ConnectionName_ThatLooksLikeAConnectionString_IsRefused_WhenBoundAndWhenBuiltAsync, AzureBlobArchiveLocationTests.LocationMismatch_DefaultsToError_SoAMismatchStopsTheArchiveAsync, AzureBlobArchiveLocationTests.LocationMismatch_BindsEveryHandling_InAnyCaseAsync, AzureBlobArchiveLocationTests.VerifyLocation_IsRefused_NamingTheSettingThatReplacedItAsync}
 
-```csharp{
-title: "Opt into the Azure Blob archive store from configuration"
-description: "One call reads Whizbang:Archive:AzureBlob and replaces the Postgres-table archive store; without it the section is inert."
-framework: "NET10"
-category: "Configuration"
-difficulty: "BEGINNER"
-tags: ["configuration", "archive", "azure-blob", "binding"]
-tests: ["AzureBlobArchiveStoreTests.Registration_TheDriversPrefixTruncate_ArchivesThroughTheBlobStoreAsync"]
-}
-builder.Services.AddWhizbangAzureBlobArchive(builder.Configuration);
-```
-
-### Whizbang:Archive:AzureBlob → AzureBlobArchiveOptions
 
 `VerifyLocation` was removed in favor of `LocationMismatch`: a configuration that still sets it is refused, naming its
 replacement ([upgrading](../../fundamentals/events/archive-store#upgrading-from-verify-location)).
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
-| `ServiceUri` | `Uri?` | `null` | `Whizbang__Archive__AzureBlob__ServiceUri` | Blob service endpoint; authenticates with the registered `TokenCredential`. Set this or `ConnectionString` |
-| `ConnectionString` | [`SensitiveString?`](sensitive-settings.md) | `null` | `Whizbang__Archive__AzureBlob__ConnectionString` | Storage connection string (Azurite, or an account key from the host's secret store) |
-| `ContainerName` | `string` | `whizbang-archive` | `Whizbang__Archive__AzureBlob__ContainerName` | Container the archive objects are written to; created on the first write |
-| `ConnectionName` | `string` | `default` | `Whizbang__Archive__AzureBlob__ConnectionName` | Logical name of the storage connection, recorded in the [archive location](../../fundamentals/events/archive-store#archive-locations) and compared without case or surrounding whitespace; refused if it looks like a connection string (contains `;` or `=`) or is only whitespace |
-| `LocationMismatch` | `ArchiveLocationMismatchHandling` | `Error` | `Whizbang__Archive__AzureBlob__LocationMismatch` | What an archive record whose location is not the configured one does: `Error` refuses the operation, `Warning` or `Info` go ahead in the configured location and log at that level, `Ignore` goes ahead without comparing; any case, anything else refused ([location mismatch handling](../../fundamentals/events/archive-store#location-mismatch)) |
-| `CompressionLevel` | `int` | `4` | `Whizbang__Archive__AzureBlob__CompressionLevel` | Brotli quality, 0 to 11 ([why 4](../../fundamentals/events/archive-store#azure-blob-configuration)) |
-| `MaxEventsPerChunk` | `int` | `10000` | `Whizbang__Archive__AzureBlob__MaxEventsPerChunk` | Most events one archive object holds; 1 or more |
-| `AccessTier` | `AccessTier?` | `null` (the account's default) | `Whizbang__Archive__AzureBlob__AccessTier` | Tier every archive object is written at: `Hot`, `Cool` or `Cold`; `Archive` is refused at startup ([why](../../fundamentals/events/archive-store#access-tier)) |
-| `DeleteAfter` | `TimeSpan?` | `null` (deletions run at once) | `Whizbang__Archive__AzureBlob__DeleteAfter` | How long a queued archive object deletion waits before the object is deleted, for storage without soft delete; above zero when set, and at least the database's restore window. Also turns on the daily orphan sweep ([deletion delay](../deployment/restoring-an-environment-with-an-archive#a-deletion-delay)) {verified: AzureBlobArchiveRegistrationTests.Configuration_DeleteAfter_IsOffByDefault_AndBindsATimeSpanAsync} |
+| `ServiceUri` | `Uri?` | the shared account | `Whizbang__Storage__AzureBlob__Archive__ServiceUri` | Blob service endpoint; authenticates with the registered `TokenCredential`. Set this or `ConnectionString` |
+| `ConnectionString` | [`SensitiveString?`](sensitive-settings.md) | the shared account | `Whizbang__Storage__AzureBlob__Archive__ConnectionString` | Storage connection string (Azurite, or an account key from the host's secret store) |
+| `ContainerName` | `string` | `whizbang-archive` | `Whizbang__Storage__AzureBlob__Archive__ContainerName` | Container the archive objects are written to; created on the first write |
+| `ConnectionName` | `string` | the shared `ConnectionName`, else `default` | `Whizbang__Storage__AzureBlob__Archive__ConnectionName` | Logical name of the storage connection, recorded in the [archive location](../../fundamentals/events/archive-store#archive-locations) and compared without case or surrounding whitespace; refused if it looks like a connection string (contains `;` or `=`) or is only whitespace |
+| `LocationMismatch` | `ArchiveLocationMismatchHandling` | `Error` | `Whizbang__Storage__AzureBlob__Archive__LocationMismatch` | What an archive record whose location is not the configured one does: `Error` refuses the operation, `Warning` or `Info` go ahead in the configured location and log at that level, `Ignore` goes ahead without comparing; any case, anything else refused ([location mismatch handling](../../fundamentals/events/archive-store#location-mismatch)) |
+| `CompressionLevel` | `int` | `4` | `Whizbang__Storage__AzureBlob__Archive__CompressionLevel` | Brotli quality, 0 to 11 ([why 4](../../fundamentals/events/archive-store#azure-blob-configuration)) |
+| `MaxEventsPerChunk` | `int` | `10000` | `Whizbang__Storage__AzureBlob__Archive__MaxEventsPerChunk` | Most events one archive object holds; 1 or more |
+| `AccessTier` | `AccessTier?` | `null` (the account's default) | `Whizbang__Storage__AzureBlob__Archive__AccessTier` | Tier every archive object is written at: `Hot`, `Cool` or `Cold`; `Archive` is refused at startup ([why](../../fundamentals/events/archive-store#access-tier)) |
+| `DeleteAfter` | `TimeSpan?` | `null` (deletions run at once) | `Whizbang__Storage__AzureBlob__Archive__DeleteAfter` | How long a queued archive object deletion waits before the object is deleted, for storage without soft delete; above zero when set, and at least the database's restore window. Also turns on the daily orphan sweep ([deletion delay](../deployment/restoring-an-environment-with-an-archive#a-deletion-delay)) {verified: AzureBlobArchiveRegistrationTests.Configuration_DeleteAfter_IsOffByDefault_AndBindsATimeSpanAsync} |
+
+### Whizbang:Archive:AzureBlob (read for compatibility)
+
+The earlier package's section, still read with a startup warning naming the new keys; a key set in both takes the new
+value. It takes the same keys as [the new section](#azure-blob-archive) (`ServiceUri`, `ConnectionString`,
+`ContainerName`, `ConnectionName`, `LocationMismatch`, `CompressionLevel`, `MaxEventsPerChunk`, `AccessTier`,
+`DeleteAfter`), with environment variables `Whizbang__Archive__AzureBlob__<Key>`. The earlier call
+`AddWhizbangAzureBlobArchive(configuration)` (now `[Obsolete]`) reads it from the configuration it is given.
+{verified: AzureBlobStorageConfigurationTests.TheEarlierKeys_StillBind_WithAWarningNamingTheNewKey_AndTheNewKeyWinsAsync}
 
 ### Archive and stream lifecycle {#archive-and-stream-lifecycle-options}
 
@@ -761,6 +782,7 @@ Entry point to subsystem configuration. **Configure:** `AddWhizbang(options => �
 | `MessagePayloadWarningRatio` | `double` | `0.8` | `Whizbang__Core__MessagePayloadWarningRatio` | Fraction of the limit at which a payload is logged as approaching it |
 | `ShowBanner` | `bool` | `true` | `Whizbang__ShowBanner` | Print the ASCII banner on startup (the key is `Whizbang:ShowBanner`, see [Service Name and Banner](#service-name-and-banner)) |
 | `AutoRegisterAspNetHosting` | `bool` | `true` | — *code-only* | Fold in `AddWhizbangAspNet()` automatically when the Hosting.AspNet assembly is loaded; decided while services are registered, before configuration can be read |
+| `AutoRegisterStorageProviders` | `bool` | `true` | — *code-only* | Run every loaded storage provider package's registration (such as `Whizbang.Storage.AzureBlob`), each feature activating from its configuration; `false` keeps the package loaded but inactive. Decided while services are registered ([opting out](../../fundamentals/storage/azure-blob#opting-out)) |
 | `ValidateRegistrations` | `bool` | `true` | — *code-only* | Check required registrations at startup; decided at registration |
 | `ImmediateDetachedChainWarningThreshold` | `int` | `10` | — *code-only* | Not read by the framework today |
 
