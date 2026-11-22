@@ -48,8 +48,9 @@ Logging writes the redaction through the type's `ToString` and `IFormattable` im
 
 | Setting | Key |
 |---------|-----|
-| `AzureBlobArchiveOptions.ConnectionString` | `Whizbang:Archive:AzureBlob:ConnectionString` |
-| `AzureBlobOffloadOptions.ConnectionString` | `Whizbang:Offloads:AzureBlob:<provider>:ConnectionString` |
+| `AzureBlobStorageOptions.ConnectionString` | `Whizbang:Storage:AzureBlob:ConnectionString` |
+| `AzureBlobArchiveOptions.ConnectionString` | `Whizbang:Storage:AzureBlob:Archive:ConnectionString`, and the earlier `Whizbang:Archive:AzureBlob:ConnectionString` |
+| `AzureBlobOffloadOptions.ConnectionString` | `Whizbang:Storage:AzureBlob:Offloads:ConnectionString`, and the earlier `Whizbang:Offloads:AzureBlob:<provider>:ConnectionString` |
 | `WhizbangNotificationOptions.DirectConnectionString` | `Whizbang:Database:DirectConnectionString` |
 | `WhizbangPinnedPoolOptions.ConnectionString` | `Whizbang:Workers:PinnedPool:ConnectionString` |
 

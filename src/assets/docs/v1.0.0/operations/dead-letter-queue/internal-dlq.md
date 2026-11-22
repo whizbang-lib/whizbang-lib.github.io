@@ -101,6 +101,12 @@ CREATE TABLE IF NOT EXISTS wh_dead_letters (
 );
 ```
 
+`failure_reason` holds a `MessageFailureReason`. One value is never a dead letter's reason: `AwaitingStreamHead` (30)
+is a waiting state an inbox row shows in `wh_inbox_state` while it is held back behind an earlier event of its stream
+that is not yet stored. It costs no attempt, so waiting never exhausts a row into this table, and it clears when the
+row is stored. See [A row waiting for its stream head](../../fundamentals/work-coordinator/claim-loop.md#a-row-waiting-for-its-stream-head).
+{verified: AwaitingStreamHeadSqlTests.Claim_AWaitingRowWhoseLeaseLapsed_IsReclaimedStillAwaitingTheHead_NotAsALeaseExpiryAsync, AwaitingStreamHeadSqlTests.Claim_OnceTheHeadIsHeld_TheWaitingRowIsStored_AndNoLongerShowsItWaitsAsync}
+
 The columns split into four groups:
 
 1. **Snapshot** (`source_*`, `stream_id`, `message_type`, `destination`,

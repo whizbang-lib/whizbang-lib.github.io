@@ -129,7 +129,7 @@ The opt-in is additive; the tier-1+2 defaults remain in effect. Use `ExcludeWork
 
 ## Configuration
 
-The options class is `WhizbangPinnedPoolOptions`. The registration helper takes a configure callback so the consumer can bind from any configuration source — typically `Whizbang:Workers:PinnedPool` in `appsettings.json` / env vars (kept consistent with devops conventions), but the binding itself happens in the consumer (matches the pattern used by `AddWhizbangAzureBlobOffload` and keeps `Whizbang.Core` AOT-clean).
+The options class is `WhizbangPinnedPoolOptions`. The registration helper takes a configure callback so the consumer can bind from any configuration source — typically `Whizbang:Workers:PinnedPool` in `appsettings.json` / env vars (kept consistent with devops conventions), but the binding itself happens in the consumer (keeps `Whizbang.Core` AOT-clean).
 
 | Property | Type | Default | Description |
 |---|---|---|---|

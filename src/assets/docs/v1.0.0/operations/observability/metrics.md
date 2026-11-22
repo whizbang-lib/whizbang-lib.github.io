@@ -14,7 +14,7 @@ tags: 'metrics, opentelemetry, counters, histograms, monitoring, Prometheus, Gra
 codeReferences:
   - src/Whizbang.Core/Observability/IntegrityCompletion.cs
   - src/Whizbang.Core/Observability/WhizbangMetrics.cs
-  - src/Whizbang.Archive.AzureBlob/ArchiveSweepMetrics.cs
+  - src/Whizbang.Data.Postgres/ArchiveSweepMetrics.cs
   - src/Whizbang.Core/Observability/PassiveCounter.cs
   - src/Whizbang.Core/Observability/MaintenanceMetrics.cs
   - src/Whizbang.Core/Observability/PendingReclamation.cs
@@ -148,7 +148,7 @@ Additional subsystem meters:
 | `Whizbang.Housekeeping` | `HousekeepingCoordinator` | Arbitration verdicts, the running activity, per-activity volume rollup, and idle seconds-since-activity |
 | `Whizbang.Core.Routing.MessageDiscard` | `MessageDiscardPolicy` | Unsubscribed-message skips at the inbox and outbox gates |
 | `Whizbang.Postgres.Notifications` | `NotifyMetrics` | LISTEN/NOTIFY signal delivery and connection state |
-| `Whizbang.Archive.AzureBlob` | `ArchiveSweepMetrics` | Orphan sweeps of the Azure Blob archive store refused, by reason |
+| `Whizbang.Archive.AzureBlob` | `ArchiveSweepMetrics` (Whizbang.Data.Postgres; the meter keeps the name of its first package) | Orphan sweeps of the archive coordinator refused, by reason |
 | `Whizbang.Capabilities` | `CapabilityMetrics` | Which external capabilities (Postgres extensions first) each scope can use, by state |
 | `Whizbang.Sagas` | `SagaMetrics` | Saga initiation, completion, item and hook outcomes |
 | `Whizbang.Liveness` | `InstanceLivenessMetrics` | Heartbeat watchdog and slow beats, death announcements and retractions |

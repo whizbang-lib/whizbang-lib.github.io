@@ -8,22 +8,25 @@ description: >-
   Restore a service database to a point in time and bring its Azure Blob archive to the same point: why the two stay
   consistent (objects are never updated, the store never purges), how to restore in place or into another environment,
   and the deletion delay for storage without soft delete.
-tags: 'archive, azure-blob, owner-marker, one-database-per-container, point-in-time-restore, pitr, soft-delete, disaster-recovery, restore, deletion-delay, delete-after, orphan-sweep, repoint'
+tags: 'archive, azure-blob, owner-marker, one-database-per-container, point-in-time-restore, pitr, soft-delete, disaster-recovery, restore, deletion-delay, delete-after, orphan-sweep, repoint, location-mismatch, failover'
 codeReferences:
-  - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveStore.cs
-  - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveOptions.cs
+  - src/Whizbang.Data.Postgres/PostgresObjectArchiveStore.cs
+  - src/Whizbang.Storage.AzureBlob/AzureBlobArchiveOptions.cs
   - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveServiceCollectionExtensions.cs
-  - src/Whizbang.Archive.AzureBlob/ArchiveObjectDeletionStep.cs
-  - src/Whizbang.Archive.AzureBlob/ArchiveSweepMetrics.cs
+  - src/Whizbang.Core/Archival/ArchiveObjectDeletionStep.cs
+  - src/Whizbang.Data.Postgres/ArchiveSweepMetrics.cs
   - src/Whizbang.Data.Postgres/Migrations/465_ArchiveDatabaseIdentity.sql
   - src/Whizbang.Data.Postgres/Migrations/269_ArchiveObjectDeletionQueue.sql
   - src/Whizbang.Data.Postgres/Migrations/353_ArchiveLocations.sql
+  - src/Whizbang.Data.Postgres/Migrations/553_ArchiveLocationPinIsNormalized.sql
+  - src/Whizbang.Core/Archival/ArchiveLocationMismatchHandling.cs
 testReferences:
   - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreImmutabilityTests.cs
   - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreDeleteAfterTests.cs
   - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreOwnerMarkerTests.cs
   - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs
-  - tests/Whizbang.Archive.AzureBlob.Tests/AzureBlobArchiveRegistrationTests.cs
+  - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreLocationMismatchTests.cs
+  - tests/Whizbang.Storage.AzureBlob.Tests/AzureBlobArchiveRegistrationTests.cs
 ---
 
 # Restoring an Environment with an Archive
@@ -104,7 +107,28 @@ another region):
    first refused read names. No object is moved or rewritten; the one location row is updated.
 
 Until the location is repointed, every read, restore and delete of a copied record is refused with
-`ArchiveLocationMismatchException`, so a copy never reads or deletes the source environment's objects.
+`ArchiveLocationMismatchException`, so a copy never reads or deletes the source environment's objects. That is the
+default, `Whizbang:Storage:AzureBlob:Archive:LocationMismatch = Error`.
+
+### When infrastructure decides the location {#when-infrastructure-decides}
+
+{verified: AzureBlobArchiveStoreTests.Move_ARecordPinnedToTheOldLocation_IsHandledAsConfiguredAsync, AzureBlobArchiveStoreTests.Copy_QueuedDeletionsPinnedToTheSource_AreHandledAsConfiguredAsync}
+
+Where restores, storage failovers and copies to other environments are run by infrastructure that always points the
+service at the container holding the right objects, the repoint step can be left out by choosing another
+[location mismatch handling](../../fundamentals/events/archive-store#location-mismatch):
+
+| Move | `Error` (default) | `Warning` or `Info` | `Ignore` |
+|---|---|---|---|
+| Database and storage restored in place, configuration unchanged | No mismatch | No mismatch | No mismatch |
+| Storage restored into another container | Stops until repointed | Goes ahead in the configured container, logged | Goes ahead, not logged |
+| Storage failed over to another account endpoint | Stops until repointed | Goes ahead at the configured endpoint, logged | Goes ahead, not logged |
+| Storage failed over with the account's endpoint unchanged | No mismatch | No mismatch | No mismatch |
+| Database copied to another environment | Stops until repointed; its deletion queue deletes nothing | Goes ahead in the copy's container, logged; queued deletions run there | Goes ahead, not logged; queued deletions run there |
+
+A location written only another way (case, surrounding whitespace, a trailing slash, the default port) is never a
+mismatch ([normalized locations](../../fundamentals/events/archive-store#normalized-locations)). Repointing still
+works under every setting and is what stops the log entries; afterwards the setting can go back to `Error`.
 
 ## A deletion delay {#a-deletion-delay}
 
@@ -123,9 +147,11 @@ tests: ["AzureBlobArchiveRegistrationTests.Configuration_DeleteAfter_IsOffByDefa
 }
 {
   "Whizbang": {
-    "Archive": {
+    "Storage": {
       "AzureBlob": {
-        "DeleteAfter": "35.00:00:00"
+        "Archive": {
+          "DeleteAfter": "35.00:00:00"
+        }
       }
     }
   }
@@ -137,7 +163,7 @@ tests: ["AzureBlobArchiveRegistrationTests.Configuration_DeleteAfter_IsOffByDefa
 | Off by default: a queued deletion runs at once, as before the option existed. | Azure Blob Storage with soft delete already keeps a deleted object for its retention period, which is the better place for that window; the delay is for storage that has none. | {verified: AzureBlobArchiveRegistrationTests.Configuration_DeleteAfter_IsOffByDefault_AndBindsATimeSpanAsync, AzureBlobArchiveStoreTests.DeleteAfter_ADatabaseRestoredToAnEarlierCopy_ReadsEveryStream_OnlyWithTheDelayOnAsync} |
 | A deletion is due `DeleteAfter` after the database queued it (`queued_at`), and the store checks that when it drains the queue, not when it queues. | The queue is filled by a trigger inside the transaction that stopped naming the object, which knows nothing of a service's settings. Checking at the drain also means turning the delay on covers deletions already queued, and turning it off lets them all run at once. | {verified: AzureBlobArchiveStoreTests.DeleteAfter_ARestoreAndADelete_LeaveTheirObjects_UntilTheDelayHasPassedAsync} |
 | A value of zero or less, or one that is not a time span, is refused when it is bound, when the host starts and when the store is built. | A zero delay would look like protection and give none. | {verified: AzureBlobArchiveRegistrationTests.Configuration_AValueThatCannotBeRead_IsRefused_NamingTheKeyAsync, AzureBlobArchiveRegistrationTests.Startup_ADeleteAfterOfZeroSetInCode_FailsTheHostAtStartAsync, AzureBlobArchiveRegistrationTests.Store_RefusesADeleteAfterThatIsNotAboveZeroAsync} |
-| Ages are measured on the service's `TimeProvider`, against the time the database queued the deletion and the time storage created the object. | The delay is days long, so any skew between the service's, the database's and the storage's clocks is immaterial, and one injectable clock makes every age testable without waiting. | {verified: AzureBlobArchiveRegistrationTests.Registration_TheStoreMeasuresAgesOnTheRegisteredTimeProviderAsync} |
+| Ages are measured on the service's `TimeProvider`, against the time the database queued the deletion and the time storage created the object. | The delay is days long, so any skew between the service's, the database's and the storage's clocks is immaterial, and one injectable clock makes every age testable without waiting. | {verified: PostgresArchiveStoresTests.Create_WithAnObjectStore_IsTheCoordinator_OnTheRegisteredClock_WithMetricsOnlyWhenTheHostHasThemAsync} |
 
 Data a [purge](../../fundamentals/events/archive-store#purging-a-stream-archived-to-blob) removed stays in storage
 for the delay, just as it stays in the database's own backups for their retention. Crypto-shredding is the immediate
@@ -150,7 +176,7 @@ erasure: an object whose key is destroyed is unreadable wherever a copy of it re
 With a delay set, objects can be left that nothing will delete: those written after the point a database was restored
 to (the restored database never queued their deletion), and an upload whose transaction never committed. Once a day,
 the maintenance step sweeps the container and deletes every object that no manifest row and no queued deletion names
-and that storage created at least `DeleteAfter` ago. Operators can also run a sweep with `SweepOrphanedObjectsAsync`.
+and that storage created at least `DeleteAfter` ago. Operators can also run a sweep with `IArchiveObjectCoordinator.SweepOrphanedObjectsAsync` (resolve `IArchiveStore` as `IArchiveObjectCoordinator`).
 
 | Choice | Reason | Verified |
 |---|---|---|
@@ -158,7 +184,7 @@ and that storage created at least `DeleteAfter` ago. Operators can also run a sw
 | Only objects at least `DeleteAfter` old are swept. | A write uploads its objects before its manifest rows commit, so a young unnamed object may be a write still in flight. The same age makes the sweep follow the delay: an object a restored database might still name is never swept within it. | {verified: AzureBlobArchiveStoreTests.Sweep_DeletesOnlyObjectsNothingNames_OnceTheyAreOlderThanTheDelayAsync} |
 | Each object is deleted under its stream's lock, after checking again that nothing names it; a stream being written is left for the next sweep. | A write holds the stream's lock from before its upload until its manifest rows commit, so the sweep never deletes an object a write is about to name. | {verified: AzureBlobArchiveStoreTests.Sweep_AnObjectWhoseStreamIsBeingWritten_IsLeftForALaterSweepAsync} |
 | A name is kept when any manifest row or queued deletion names it, in any location, and a name the store did not write is never touched. | The sweep removes only what is certainly this store's and certainly unnamed. | {verified: AzureBlobArchiveStoreTests.Sweep_DeletesOnlyObjectsNothingNames_OnceTheyAreOlderThanTheDelayAsync} |
-| A database that has never written to the configured location sweeps nothing. | Such a database (a copy not yet repointed) names nothing in the container, so a sweep would delete every object. | {verified: AzureBlobArchiveStoreTests.Sweep_InADatabaseThatNeverWroteToTheLocation_DeletesNothingAsync} |
+| A database that has never written to the configured location sweeps nothing, whatever the [location mismatch handling](../../fundamentals/events/archive-store#location-mismatch). | Such a database (a copy not yet repointed) names nothing in the container, so a sweep would delete every object. Under `Warning`, `Info` or `Ignore` the copy's reads and writes go ahead, but it sweeps only once it has written to the configured location or the location is repointed. | {verified: AzureBlobArchiveStoreTests.Sweep_InADatabaseThatNeverWroteToTheLocation_DeletesNothingAsync} |
 | A sweep runs only in a container whose owner marker names this database ([one database per container](#one-database-per-container)). | Two databases sharing a container would each delete the other's objects as orphans. | {verified: AzureBlobArchiveStoreTests.Sweep_ASecondDatabaseOnTheSameContainer_Refuses_AndBothEnvironmentsObjectsSurviveAsync} |
 | The step sweeps at most once per day per process. | Listing a large container is the expensive part, and orphans only cost storage; a daily sweep bounds both. | {verified: AzureBlobArchiveStoreTests.Step_SweepsAtMostOncePerInterval_AndOnlyWithADelayAsync} |
 
@@ -185,7 +211,7 @@ container the same way, or reads the marker that is there and compares it with i
 | A database restored to its own container. | The restored database carries the same id, so the marker still names it and the sweep runs. | {verified: AzureBlobArchiveStoreTests.Sweep_ADatabaseRestoredToItsOwnContainer_StillMatchesItsMarkerAsync} |
 | A copy [repointed](#restoring-into-another-environment) to a new container. | Its first write or sweep claims the new container. | {verified: AzureBlobArchiveStoreTests.Sweep_ARepointedCopy_ClaimsItsNewContainer_AndSweepsItAsync} |
 
-Every refusal is counted by `whizbang.archive.orphan_sweep.refused` (meter `Whizbang.Archive.AzureBlob`), tagged
+Every refusal is counted by `whizbang.archive.orphan_sweep.refused` (meter `Whizbang.Archive.AzureBlob`, a name kept when the coordinator moved to the Postgres driver), tagged
 `reason`: `foreign_marker`, `marker_unclaimable` or `unknown_location`.
 
 | Choice | Reason | Verified |
@@ -201,4 +227,5 @@ there. Repoint every copy to its own container before giving it a deletion delay
 ## Related
 
 - [Archive Store](../../fundamentals/events/archive-store): the Azure Blob store, its manifest, locations and repointing
-- [Configuration reference](../configuration/configuration-reference): `Whizbang:Archive:AzureBlob`
+- [Configuration reference](../configuration/configuration-reference): `Whizbang:Storage:AzureBlob:Archive` (the earlier `Whizbang:Archive:AzureBlob` is still read)
+- [Azure Blob Storage](../../fundamentals/storage/azure-blob): the package, the account and turnkey activation
