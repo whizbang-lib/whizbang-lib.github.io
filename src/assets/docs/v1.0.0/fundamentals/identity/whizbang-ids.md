@@ -25,6 +25,9 @@ codeReferences:
   - src/Whizbang.Core/Uuid7IdProvider.cs
   - src/Whizbang.Core/WhizbangIdServiceCollectionExtensions.cs
   - src/Whizbang.Core/WhizbangIdAttribute.cs
+  - src/Whizbang.Core/WhizbangIdForms.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/WhizbangIdTypeMapping.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdScalarRewrite.cs
   - src/Whizbang.Core/SuppressGuidInterceptionAttribute.cs
   - src/Whizbang.Core/Configuration/WhizbangOptions.cs
   - src/Whizbang.Core/Validation/GuidOrderingValidator.cs
@@ -41,6 +44,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdVersionAcceptanceTests.cs
   - tests/Whizbang.Generators.Tests/WhizbangIdAcceptAnyVersionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/WhizbangIdDocumentStorageTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/StrongIdScalarRewriteIntegrationTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderRegistryTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdServiceCollectionExtensionsTests.cs
@@ -766,6 +771,40 @@ An id can be declared through more than one `[WhizbangId]`: on the struct, on a 
 parameter. When some of those set `AcceptAnyVersion = true` and others do not, the id keeps the UUIDv7 rule, whatever
 order the attributes are found in, and [WHIZ029](../../operations/diagnostics/whiz029) is reported at each
 `AcceptAnyVersion = true` that is ignored.
+
+### Ids in a perspective document {#stored-form}
+
+Inside a perspective document a strong id is stored as its UUID string, the same as a `Guid` and as the transport
+writes it:
+
+```json{title="A strong id in a stored document" description="Every strong id in a perspective document is its UUID string" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "WhizbangId", "Perspectives"] tests=["WhizbangIdDocumentStorageTests.Whizbang_WritesEveryIdAsAUuidStringAsync"]}
+{ "OrderId": "019e244a-6bda-78a9-a08f-a1011c9c31dd", "ParentId": null, "Lines": [{ "LineId": "019e244a-..." }] }
+```
+
+Both writers of the document agree: Entity Framework, through the `uuid` type mapping every generated perspective
+context gives each `[WhizbangId]` type, and the atomic upsert's serializer. That holds at any depth: a member, a member
+of a nested object, a member of a collection element, and a nullable id.
+
+Because the stored form does not depend on the CLR type, a read-model property can change from `Guid` to a strong id
+with no change to the stored data, so read models can adopt strong ids one property at a time.
+
+Queries compare the id as a uuid:
+
+```csharp{title="Querying a strong id in a document" description="Id equality and Contains over ids translate to SQL" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "Perspectives"] tests=["WhizbangIdDocumentStorageTests.Whizbang_IdEqualityTranslatesAndMatchesAsync", "WhizbangIdDocumentStorageTests.Whizbang_ContainsOverIdsTranslatesAndMatchesAsync"]}
+// CAST(data ->> 'OrderId' AS uuid) = @orderId
+// (data @> {"OrderId": "..."} when the model has a whole-document index)
+var one = await query.Where(r => r.Data.OrderId == orderId).ToListAsync(ct);
+
+// CAST(data ->> 'OrderId' AS uuid) = ANY (@ids)
+var some = await query.Where(r => ids.Contains(r.Data.OrderId)).ToListAsync(ct);
+```
+
+A release before this one stored each id as the object `{"Value": "..."}`. On the first startup after upgrading, the
+stored-form phase rewrites every table that holds an id, once, before the service serves queries (journaled in
+`wh_stored_form_migrations` as `strong-id-scalar:<table>:<shape>`). Until a row is rewritten, reads take either form
+and count the object form on `whizbang.perspective.identifier_form_fallbacks`. A query that compares an id cannot read
+the object form, which is why the rewrite runs first. SQL of your own that matched `{"Value": "..."}` (a view, a
+trigger, a report) has to match the UUID string instead.
 
 ## Strongly-Typed ID Providers
 
