@@ -290,7 +290,7 @@ cost.
 |---|---|
 | A rewind (a cursor that asks for one, an inversion on the drain, an event below the row's position) | it replays the stream from a snapshot or from its start, which is a per-stream read by nature |
 | A bootstrap snapshot | it snapshots one stream's existing row |
-| A rebuild | rebuilds stay per pair until staging-table rebuilds ([#2248](https://github.com/whizbang-lib/whizbang/issues/2248)) |
+| A blue-green rebuild's catch-up and swap | they write the live table's shadow row by row; its first pass uses the [staging load](rebuild#staging-load), and a rebuild in place writes [a batch at a time](rebuild#batched-writes) |
 | The collective sink | a collective event has no single row; it is dispatched as before |
 | A drain's later laps | events that arrive while a stream drains are applied per pair, lap by lap |
 | The commit sequence of a pair's last event | read per pair from the event store; batching it is a follow-up |
@@ -311,7 +311,11 @@ registered, the state source and the write sinks by the PostgreSQL driver, which
 A service-wide default is `PerspectiveWorkerOptions.WriteMode`, and a single perspective overrides it with
 `[PerspectiveWriteMode]`, which the generator reads: every generated runner registers its perspective's declared mode
 (`PerspectiveWriteModes`), so the worker chooses each pair's path without resolving the runner. A perspective with no
-generated runner prepares nothing and is always written per stream. Only named modes can be selected, never a free
+generated runner prepares nothing and is always written per stream. A [rebuild in place](rebuild#batched-writes), or of
+selected streams, follows the same write mode for each batch of streams it reads: a set-based perspective's rebuild
+writes each batch's rows through the write sink, and a per-stream one writes each row on its own
+([#2522](https://github.com/whizbang-lib/whizbang/issues/2522)).
+{verified: PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_WritesEachBatchsRowsThroughTheSinkWithOneWrite_NotOneWritePerRowAsync, PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_OfAServiceThatWritesPerStream_WritesEachRowOnItsOwnAsync} Only named modes can be selected, never a free
 combination of the three seams, so an invalid combination cannot be built.
 
 ```csharp{
