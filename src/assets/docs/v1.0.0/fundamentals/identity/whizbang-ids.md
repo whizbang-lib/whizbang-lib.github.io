@@ -28,6 +28,7 @@ codeReferences:
   - src/Whizbang.Core/WhizbangIdForms.cs
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/WhizbangIdTypeMapping.cs
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdScalarRewrite.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdToleranceRewriter.cs
   - src/Whizbang.Core/SuppressGuidInterceptionAttribute.cs
   - src/Whizbang.Core/Configuration/WhizbangOptions.cs
   - src/Whizbang.Core/Validation/GuidOrderingValidator.cs
@@ -47,6 +48,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/WhizbangIdDocumentStorageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/StrongIdScalarRewriteIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/WhizbangIdModelTimingTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GraphQLWhizbangIdFilterIndexTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderRegistryTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdServiceCollectionExtensionsTests.cs
@@ -809,12 +811,15 @@ A collection of ids (`List<OrderId>`) is stored as an array of UUID strings, and
 needs the Whizbang options extension, which every generated perspective context carries: a context registered by hand
 without it cannot build a model that holds a collection of ids {verified: WhizbangIdDocumentStorageTests.Convention_ListOfIdsCannotBuildTheModelAsync}.
 
-A release before this one stored each id as the object `{"Value": "..."}`. On the first startup after upgrading, the
-stored-form phase rewrites every table that holds an id, once, before the service serves queries (journaled in
-`wh_stored_form_migrations` as `strong-id-scalar:<table>:<shape>`). Until a row is rewritten, reads take either form
-and count the object form on `whizbang.perspective.identifier_form_fallbacks`. A query that compares an id cannot read
-the object form, which is why the rewrite runs first. SQL of your own that matched `{"Value": "..."}` (a view, a
-trigger, a report) has to match the UUID string instead.
+A release before this one stored each id as the object `{"Value": "..."}`. The stored-form phase rewrites those rows at
+startup (journaled in `wh_stored_form_migrations` as `strong-id-scalar:<table>:<shape>`), a batch at a time and one
+update per row, including ids in dictionary keys and values. A large table it does not finish within its budget keeps
+what it converted and carries on at the next startup. Until every row is converted, and for a row an instance of the
+earlier release writes during a rolling deploy, both forms are read: reads take either form and count the object
+form on `whizbang.perspective.identifier_form_fallbacks`, and every query that compares an id (equality, `Contains`,
+ordering, a collection element, a collection of ids, document containment) matches either form
+{verified: WhizbangIdDocumentStorageTests.Whizbang_EveryIdQueryFindsARowStillInTheObjectFormAsync, StrongIdScalarRewriteIntegrationTests.AnIdPredicate_FindsObjectFormRows_BeforeTheRewriteAndFromAnOldWriterAfterItSettlesAsync, GraphQLWhizbangIdFilterIndexTests.EqAndIn_FindARowStillInTheObjectForm_ThroughTheDocumentIndexAsync}.
+SQL of your own that matched `{"Value": "..."}` (a view, a trigger, a report) has to match the UUID string instead.
 
 ## Strongly-Typed ID Providers
 
