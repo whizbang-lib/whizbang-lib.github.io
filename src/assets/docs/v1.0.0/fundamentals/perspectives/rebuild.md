@@ -353,7 +353,7 @@ Every rebuild mode (blue-green and its catch-up passes, in place, and selected s
 at a time** ([#2513](https://github.com/whizbang-lib/whizbang/issues/2513)). A rebuild used to read each stream's
 events with a statement of its own, so after the [staging load](#staging-load) took the writes off the critical path,
 the reads were what a rebuild of many small streams waited on. Now each batch of up to
-`Whizbang:Perspectives:Rebuild:StreamReadBatchSize` streams (default 100) is read with one read of the event store,
+100 streams (by default) is read with one read of the event store,
 and each stream is then folded from that read exactly as the per-stream rebuild folds it.
 
 ```mermaid{caption="One batch of a rebuild: one read of the batch's events, one planned read each of its rows, purge markers and commit sequences, then each stream folded on its own; the cursors of a flush are written with one call of wh_complete_rebuilt_cursors." tests=["PerspectiveRebuilderBatchedReadTests.Rebuild_ReadsEachBatchOfStreamsWithOneRead_NotOneReadPerStreamAsync", "PerspectiveRebuilderBatchedReadTests.Rebuild_ReadsEachBatchsRowsPurgeMarkersAndCommitSequences_WithOneReadEach_NotOnePerStreamAsync", "BlueGreenRebuildIntegrationTests.Rebuild_SendsTheSameStatementsForTheSameBatches_WhateverTheirStreamCountAsync"]}
@@ -405,23 +405,6 @@ its own statement, because it writes the live table rather than an empty one; ba
 | A row moves under its write (another writer changed it after the batch read it) | The retry reads the row again on its own, not from the batch's older read | {verified: PerspectiveRebuilderBatchedReadTests.Rebuild_ARowThatMovesUnderItsWrite_IsReadAgainOnItsOwn_NotFromTheBatchsReadAsync} |
 | `StreamReadBatchSize` is 1 or below | Each stream reads its own events, as a rebuild did before | {verified: PerspectiveRebuilderBatchedReadTests.Rebuild_WithABatchSizeBelowOne_ReadsEachStreamOnItsOwnAsync} |
 | No rebuild options registered | 100 streams per batch | {verified: PerspectiveRebuilderBatchedReadTests.Rebuild_WithNoRebuildOptionsRegistered_ReadsAHundredStreamsPerBatchAsync, PerspectiveRebuilderBatchedReadTests.PerspectiveRebuildOptions_ReadsAHundredStreamsPerBatch_ByDefaultAsync} |
-
-**Setting the batch size.** `Whizbang:Perspectives:Rebuild:StreamReadBatchSize` (`PerspectiveRebuildOptions`, bound
-automatically; see the [configuration reference](../../operations/configuration/configuration-reference#perspectiverebuildoptions)).
-A larger batch makes fewer, larger reads and holds more streams' events in memory at once; set it to 1 to read each
-stream on its own.
-
-```json{title="Rebuild batch size" description="Reads the events of 250 streams with each read of a rebuild, instead of the default 100." category="Configuration" difficulty="BEGINNER" tags=["Perspectives", "Rebuild", "Configuration"] tests=["ProcessWideOptionsBindingTests.PerspectiveRebuildOptions_EveryKeyBindsAsync"]}
-{
-  "Whizbang": {
-    "Perspectives": {
-      "Rebuild": {
-        "StreamReadBatchSize": 250
-      }
-    }
-  }
-}
-```
 
 **A hand-written runner.** `IPerspectiveRunner` gains `ReadRebuildEventsAsync` (read a batch's events, or return
 `null`) and `RunRebuildWithEventsAsync` (fold one stream from events already read). Both have defaults: the first

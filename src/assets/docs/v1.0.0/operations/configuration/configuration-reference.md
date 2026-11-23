@@ -124,7 +124,7 @@ Whizbang follows the standard .NET configuration model ([Microsoft: Configuratio
 
 | Mechanism | What it means | Applies to |
 |-----------|---------------|------------|
-| **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | **68 sections**: `Whizbang` itself, `Whizbang:Core`, `Whizbang:Tracing`, `Whizbang:SchemaInitialization`, `Whizbang:WorkCoordinator`, every `Whizbang:Workers:*` worker, `Whizbang:StreamIntegrity`, `Whizbang:DeadLetterRecovery`, `Whizbang:DeadLetterLogging`, `Whizbang:DatabaseFailureEscalation`, `Whizbang:Redelivery`, `Whizbang:Perspectives:*`, `Whizbang:Temporal`, `Whizbang:Tags` and the rest listed in the [Quick Map](#quick-map); plus `Whizbang:AspNet:*` with ASP.NET hosting, `Whizbang:Sagas` with sagas, `Whizbang:Scope` and `Whizbang:StartupStatusGraph` with GraphQL, `Whizbang:Database*` with the Postgres driver, `Whizbang:Transports:AzureServiceBus` / `Whizbang:Transports:RabbitMQ` with those transports, the [per-instance sections](#per-instance-sections) keyed by breaker, transport, database and tag, and `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `ConnectionStrings:*`, `ConnectionPool:*` |
+| **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | **67 sections**: `Whizbang` itself, `Whizbang:Core`, `Whizbang:Tracing`, `Whizbang:SchemaInitialization`, `Whizbang:WorkCoordinator`, every `Whizbang:Workers:*` worker, `Whizbang:StreamIntegrity`, `Whizbang:DeadLetterRecovery`, `Whizbang:DeadLetterLogging`, `Whizbang:DatabaseFailureEscalation`, `Whizbang:Redelivery`, `Whizbang:Perspectives:*`, `Whizbang:Temporal`, `Whizbang:Tags` and the rest listed in the [Quick Map](#quick-map); plus `Whizbang:AspNet:*` with ASP.NET hosting, `Whizbang:Sagas` with sagas, `Whizbang:Scope` and `Whizbang:StartupStatusGraph` with GraphQL, `Whizbang:Database*` with the Postgres driver, `Whizbang:Transports:AzureServiceBus` / `Whizbang:Transports:RabbitMQ` with those transports, the [per-instance sections](#per-instance-sections) keyed by breaker, transport, database and tag, and `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `ConnectionStrings:*`, `ConnectionPool:*` |
 | **Bound with a referenced package** | A package that activates itself (a turnkey package) reads its section when `AddWhizbang()` runs; with the package referenced, setting a key just works, and without it the key does nothing (the startup log warns, naming the package). | `Whizbang:Storage:AzureBlob` (with its `Offloads` and `Archive` sections) and the earlier `Whizbang:Offloads:AzureBlob:<name>` and `Whizbang:Archive:AzureBlob`, via `Whizbang.Storage.AzureBlob` ([details](#azure-blob-storage)) |
 | **Code-configured** | The options class is configured through an `Action<TOptions>` lambda (or `services.Configure<TOptions>(...)`). The library never reads a configuration section for it — **a configuration key for one of these does nothing unless your service binds it**. Every table below carries an environment-variable column; these read `— *code-only*`, so a blank is always deliberate rather than an omission (see [the binding recipe](#code-configured-options-the-binding-recipe)). | The classes with no configuration section in the [Quick Map](#quick-map): `ServiceRegistrationOptions`, `PerStreamSerializerOptions`, `WhizbangGraphQLOptions`, and the keys a bound class marks *code-only* |
 
@@ -287,7 +287,6 @@ DbContext), the latest registration is used and startup logs a warning naming th
 | `Whizbang:StandbyWatcher` | `StandbyWatcherOptions` | Automatic (worker pipeline) |
 | `Whizbang:DebuggerAwareClock` | `DebuggerAwareClockOptions` | Automatic |
 | `Whizbang:Perspectives:Snapshots`, `Whizbang:Perspectives:Rewind`, `Whizbang:Perspectives:StreamLock` | `PerspectiveSnapshotOptions`, `PerspectiveRewindOptions`, `PerspectiveStreamLockOptions` | Automatic (worker pipeline) |
-| `Whizbang:Perspectives:Rebuild` | `PerspectiveRebuildOptions` | Automatic |
 | `Whizbang:Workers:PerspectiveAffinity` | `PerspectiveStreamAffinityOptions` | Automatic (worker pipeline) |
 | `Whizbang:AspNet:Availability`, `Whizbang:AspNet:Correlation`, `Whizbang:AspNet:SecurityHeaders` | `WhizbangAvailabilityOptions`, `WhizbangCorrelationOptions`, `WhizbangSecurityHeadersOptions` | Automatic (`AddWhizbangAspNet`, folded into `AddWhizbang`) |
 | `Whizbang:Sagas` | `SagaOptions` (all but `PerItemStreamNamespace`) | Automatic (`AddWhizbangSagas`) |
@@ -1431,14 +1430,6 @@ Re-delivery (repair) pump bounds. **Configure:** bound automatically from `Whizb
 | `DebounceWindow` | `TimeSpan` | `00:00:05` | `Whizbang__Perspectives__Rewind__DebounceWindow` | Sliding window before executing a rewind |
 | `MaxDebounceWindow` | `TimeSpan` | `00:00:30` | `Whizbang__Perspectives__Rewind__MaxDebounceWindow` | Hard cap on debounce duration |
 
-### PerspectiveRebuildOptions
-
-Settings of every perspective rebuild, whatever its mode. **Configure:** bound automatically from `Whizbang:Perspectives:Rebuild`; `services.Configure<PerspectiveRebuildOptions>(…)` also applies. **Details:** [Batched reads](../../fundamentals/perspectives/rebuild#batched-reads).
-
-| Property | Type | Default | Environment variable | Purpose |
-|----------|------|---------|----------------------|---------|
-| `StreamReadBatchSize` | `int` | `100` | `Whizbang__Perspectives__Rebuild__StreamReadBatchSize` | How many streams a rebuild reads the events of with one read; each stream is then folded on its own, in its own order. `1` or below reads each stream on its own |
-
 ### PerspectiveStreamLockOptions
 
 **Configure:** bound automatically from `Whizbang:Perspectives:StreamLock`; `services.Configure<PerspectiveStreamLockOptions>(…)` also applies. **Details:** no dedicated page yet.
@@ -2300,7 +2291,7 @@ The process-wide classes followed (#1014), each locked by a test that sets every
 `Whizbang:Core`, `Whizbang:Redelivery`, `Whizbang:ThrottleRetry`, `Whizbang:StreamRateLimiter`,
 `Whizbang:SystemEvents`, `Whizbang:MessageSecurity`, `Whizbang:Health`, `Whizbang:Lifecycle`,
 `Whizbang:StandbyWatcher`, `Whizbang:DebuggerAwareClock`, `Whizbang:Perspectives:Snapshots`,
-`Whizbang:Perspectives:Rewind`, `Whizbang:Perspectives:Rebuild`, `Whizbang:Perspectives:StreamLock`,
+`Whizbang:Perspectives:Rewind`, `Whizbang:Perspectives:StreamLock`,
 `Whizbang:Workers:PerspectiveAffinity`, `Whizbang:AspNet:Availability`,
 `Whizbang:AspNet:Correlation`, `Whizbang:AspNet:SecurityHeaders`, `Whizbang:Sagas`,
 `Whizbang:Scope` and `Whizbang:StartupStatusGraph`. The tests are `ProcessWideOptionsBindingTests`,
