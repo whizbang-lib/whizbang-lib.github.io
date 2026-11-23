@@ -722,6 +722,14 @@ and differs from the event's own id. A retry of the handling re-derives the even
 rather than a second one nothing else refers to. See [GenerateStreamId](../../extending/attributes/generatestreamid#derived-stream-ids).
 {verified: GeneratedStreamIdentityTests.Derive_TheSameMessageId_DerivesTheSameStreamIdAsync, GeneratedStreamIdentityTests.Derive_KeepsTheMessageIdsFirst92Bits_SoTheStreamSortsWithTheMessageThatStartedItAsync, GeneratedStreamIdentityTests.Derive_IsAVersion7IdWithTheRfcVariantAsync, DispatcherDerivedIdentityInHandlingTests.PublishAsync_GenerateStreamId_InsideAHandling_ARetryStartsTheSameStreamAsync, DispatcherDerivedIdentityInHandlingTests.CascadeMessageAsync_GenerateStreamId_ARetryOfTheHandlingStartsTheSameStreamAsync}
 
+**A command's stream derives from the handling.** A `[GenerateStreamId]` command sent with `SendAsync` or a local
+invoke inside a receptor body still carries a minted id of its own, so its stream derives from the handling instead
+(`GeneratedStreamIdentity.DeriveInHandling`, [#2537](https://github.com/whizbang-lib/whizbang/issues/2537)). It takes
+the handling's position, then the command's position among the streams the handling starts this way. A redelivery
+sends on the same streams. These positions do not take ordinals from the handling's events. See
+[GenerateStreamId](../../extending/attributes/generatestreamid#derived-stream-ids).
+{verified: DispatcherDerivedIdentityInHandlingTests.SendAsync_GenerateStreamId_InsideAHandling_ARedeliveryStartsTheSameStreamAsync, DispatcherDerivedIdentityInHandlingTests.SendAsync_GenerateStreamId_DoesNotShiftTheHandlingsEmissionIdsAsync, DispatcherDerivedIdentityInHandlingTests.LocalInvokeAsync_GenerateStreamId_InsideAHandling_ARedeliveryStartsTheSameStreamAsync}
+
 ### Source service id on published envelopes {#source-service-id}
 {verified: OutboxDrainWorkerTests.OutboxDrainWorker_LocalServiceIdLookupFailsOnceAtStartup_ResolvesBeforeTheNextBatchAsync, OutboxDrainWorkerTests.OutboxDrainWorker_LocalServiceIdResolvedAtStartup_DoesNotLookItUpAgainAsync, OutboxDrainWorkerTests.OutboxDrainWorker_LocalServiceIdEmptyAtStartup_WarnsAndRetriesBeforeEachBatchAsync, OutboxDrainWorkerTests.OutboxDrainWorker_LocalServiceIdLookupKeepsFailing_RecordsEachRetryAtDebugAsync}
 
