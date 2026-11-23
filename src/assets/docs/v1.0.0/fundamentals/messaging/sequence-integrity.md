@@ -82,7 +82,7 @@ the hold of a type that sets `Bounded` without naming the mode again.
 
 ### Per dispatch {#per-dispatch}
 
-```csharp
+```csharp{title="Choose sequence integrity for one dispatch" description="A dispatch overrides the type and the configured default" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging","Sequence Integrity"] tests=["DispatchOptionsSequenceIntegrityTests.WithSequenceIntegrity_SetsTheMode_AndTheHoldTimeOnlyWhenGivenAsync","SequenceIntegrityPolicyTests.TheDispatchsSetting_BeatsTheTypeAndTheDefaultAsync"]}
 // This one posting must reach the ledger in order, whatever its type says.
 await dispatcher.PublishAsync(
     new LedgerPosted(ledgerId),
@@ -99,7 +99,7 @@ await dispatcher.PublishAsync(
 
 ### On the event type {#on-the-event-type}
 
-```csharp
+```csharp{title="Choose sequence integrity on the event type" description="The attribute, with an optional hold time in milliseconds" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging","Sequence Integrity"] tests=["SequenceIntegrityPolicyTests.TheTypesAttribute_BeatsTheConfiguredDefaultAsync","MessageTypeCatalogGeneratorTests.Generator_StampsSequenceIntegrityOnEntriesAsync"]}
 [SequenceIntegrity(SequenceIntegrity.UntilStamped)]
 public record LedgerPosted([property: StreamId] Guid LedgerId) : IEvent;
 
@@ -117,7 +117,7 @@ argument is the hold time in milliseconds; zero or less (the default) takes the 
 
 ### The configured default {#the-configured-default}
 
-```json
+```json{title="Configure the default sequence integrity" description="The service-wide default and hold time" category="Configuration" difficulty="BEGINNER" tags=["Messaging","Sequence Integrity","Configuration"] tests=["SequenceIntegrityPolicyTests.TheConfiguredDefault_AppliesToATypeThatDeclaresNoneAsync","SequenceIntegrityPolicyTests.OutOfTheBox_AnEventIsHeldBoundedForOneSecondAsync"]}
 {
   "Whizbang": {
     "Core": {
