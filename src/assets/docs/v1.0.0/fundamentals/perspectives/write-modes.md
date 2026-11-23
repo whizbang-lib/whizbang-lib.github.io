@@ -145,6 +145,15 @@ the per-pair path, and a write whose sink is missing or failed as a whole is com
 the per-pair path. A service with several DbContexts writes each perspective through its own: the driver registers one
 sink per context, keyed by the context's type.
 
+**A batch that outlives its lease.** A drain batch runs under one lease, whose token cancels its prepare, write and
+completions once it runs out. Each pair that had already ended by then is finished with its own outcome: a pair that
+produced its result is reported with it, and a pair that failed is reported with its own failure, exactly as the
+per-pair path finishes an apply that returned
+([#2536](https://github.com/whizbang-lib/whizbang/issues/2536)). Only pairs still in flight when the lease runs out are
+failed on the lease, so their rows are re-issued. A result is finished with the expired lease's token, so a step that
+observes cancellation can still route the pair to the lease failure, as on the per-pair path.
+{verified: PerspectiveWorkerDrainModeTests.SetBasedDrain_ABatchThatOutlivesItsLease_FailsEveryPairOfTheBatchAsync, PerspectiveWorkerDrainModeTests.SetBasedDrain_APairWithAResultWhenItsBatchsLeaseRanOut_IsReportedWithItsResultAsync, PerspectiveWorkerDrainModeTests.SetBasedDrain_APairThatFailedBeforeItsBatchsLeaseRanOut_IsReportedWithItsOwnFailureAsync, PerspectiveWorkerDrainModeTests.PerPairDrain_APairWithAResultWhenItsLeaseRanOut_IsReportedWithItsResultAsync, PerspectiveWorkerDrainModeTests.PerPairDrain_AnApplyThatFailsAsItsLeaseRunsOut_IsReportedWithItsOwnFailureAsync}
+
 The per-pair path is built from the same begin, finish and failure steps, so the two cannot drift.
 
 ### Step 3: the fold is fixed {#fold}
