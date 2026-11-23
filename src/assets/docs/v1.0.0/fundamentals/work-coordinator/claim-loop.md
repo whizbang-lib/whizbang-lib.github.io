@@ -14,7 +14,8 @@ description: >-
   true, how a claim ranks only the peers that are alive and eligible for work,
   why a caller that is not eligible claims nothing, how an owner renews the
   inbox leases it let run out, why the perspective drain's calls are priced
-  by their batch rather than the backlog or the applied history,
+  by their batch rather than the backlog or the applied history, why the
+  per-stream walk stops at its row bound at every depth,
   and why a claim no longer announces the caller's lifecycle phase.
 tags: 'work-coordinator, claim-loop, claim-work, acquisition, backpressure, work-stealing, command-lane'
 codeReferences:
@@ -40,6 +41,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/390_TheClaimLeasesNoInboxAFullWorkingSetWouldHandBack.sql
   - src/Whizbang.Data.Postgres/Migrations/462_HeldLeasesAreRenewedByTheirOwner.sql
   - src/Whizbang.Data.Postgres/Migrations/536_PerspectiveWorkQueueCallsArePricedByTheBatch.sql
+  - src/Whizbang.Data.Postgres/Migrations/557_TheStreamWalkStopsAtItsBoundAtEveryDepth.sql
   - src/Whizbang.Data.Postgres/ConcurrentIndexBuild.cs
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/Signals/BasePollSignalSource.cs
@@ -73,6 +75,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/ClaimWorkerAliveLockTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockLivenessSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/AliveLockRankCostScenarioTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/ClaimPollPerCallCostScenarioTests.cs
 ---
 
 # Claim loop
@@ -297,6 +300,41 @@ The test reproduces both shapes: it polls empty tables enough times for the sess
 plans it will keep, fills every queue table with wide rows, polls again on the same session, and reads
 from `pg_stat_user_tables` how many tuples each table gave up for that one call. A bounded poll reads
 a few batches; one bounded by the backlog reads all of it.
+
+### The stream walk stops at its bound at every depth {#the-stream-walk-stops-at-every-depth}
+{verified: ClaimPollPerCallCostScenarioTests.ClaimPollPerCallCost_DoesNotFollowStreamDepth_ReportAsync}
+
+Once the perspective acquisition has chosen its streams, it walks each one in event order and leases the first rows up
+to the claim's row bound. Each row is checked on the way that no earlier event of its stream is still leased or
+scheduled, so a stream is never claimed out of order. The bound only saves work if the walk stops there, and until
+migration 557 it did so only for some depths.
+
+The check was written as a test that a subquery finds nothing (`(SELECT 1 ... LIMIT 1) IS NULL`), and the planner
+estimates such a test to pass one row in two hundred. It therefore expected the walk almost never to reach its bound
+early, and for streams it judged short it read the stream's whole pending tail instead, sorted it, and ran the check on
+every row of it. Each check reads every earlier event of the stream, so that plan cost the square of the depth. Streams
+12 events deep stayed cheap, and for streams 200 deep the planner chose the ordered walk, so the cost showed at the
+depths in between.
+
+**From migration 557** ([#2523](https://github.com/whizbang-lib/whizbang/issues/2523)) the check is written so the
+planner expects it to pass (`COALESCE((SELECT FALSE ... LIMIT 1), TRUE)`). It is true exactly when the old test was, so
+the rows claimed, their order and the lock order are unchanged; only the estimate moved, and the walk in event order
+that stops at the row bound is chosen at every depth.
+
+Blocks read per claim, over 100 streams with a batch of 10, for the dearest of six fixed id layouts at each depth:
+
+| Stream depth (pending events) | Before 557 | From 557 |
+|---|---|---|
+| 12 | 1,441 | 1,439 (unchanged) |
+| 25 | 2,998 | 1,347 |
+| 50 | 8,561 | 1,397 |
+| 100 | 3,541 | 1,111 |
+| 200 | 1,428 | 1,424 (unchanged) |
+
+The scenario (`ClaimPollPerCallCostScenarioTests`) measures every depth over six id layouts, each seeded so a run
+measures the same workloads every time, and gates the dearest layout of each depth at 2,000 blocks a claim. A ceiling
+that held only for one draw of ids, or only at the shallow and deep ends, would not say that a claim's cost is bounded
+by its batch.
 
 ## The statistics follow the tables too
 {verified: ClaimWorkStaleStatisticsTests.ClaimWork_StatisticsFromBeforeTheLoad_AcquiringIsStillPricedByTheBatchAsync, ClaimWorkStaleStatisticsTests.RefreshStaleQueueStatistics_FreshStatistics_AnalyzesNothingAsync, ClaimWorkStaleStatisticsTests.RefreshStaleQueueStatistics_WhileAPeerRefreshesTheTable_WaitsAndDoesNotAnalyzeAgainAsync, ClaimWorkStaleStatisticsTests.RefreshStaleQueueStatistics_WhileAnotherSessionHoldsTheTable_GivesUpWithinTheLockTimeoutAsync}
