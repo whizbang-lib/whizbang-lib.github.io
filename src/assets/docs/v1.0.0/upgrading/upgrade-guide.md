@@ -804,3 +804,12 @@ These matter to services that run [stream integrity](../resilience/stream-integr
   Where a random v4 is genuinely needed, mark the code `[SuppressGuidInterception]`.
   `WhizbangGuidInterceptionEnabled=false` turns interception off, which is strongly advised against. See
   [Guid interception](../fundamentals/identity/whizbang-ids.md#guid-interception).
+
+### A `[GenerateStreamId]` message keeps its stream when sent again {#generated-stream-per-instance}
+
+*[#2539](https://github.com/whizbang-lib/whizbang/issues/2539)*
+
+- **What changed:** sending the same message instance twice now keeps its generated stream instead of minting a
+  second one.
+- **What to do:** create a new message instance for each new stream. See
+  [GenerateStreamId](../extending/attributes/generatestreamid.md#derived-stream-ids).

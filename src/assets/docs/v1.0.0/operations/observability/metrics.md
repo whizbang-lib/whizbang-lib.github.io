@@ -580,7 +580,7 @@ which holds folded models in memory across drains and writes each one later. See
 | `whizbang.perspective.write_behind.bytes` | ObservableGauge (By) | Bytes the held models take, measured as their serialized size |
 | `whizbang.perspective.write_behind.lookups` | Counter\<long\> | Write-behind pairs prepared on a held model (`hit`) or a database read (`miss`); the hit rate is hits over both. Tags: `perspective_name`, `result` |
 | `whizbang.perspective.write_behind.flush_lag` | ms | Time from a model's first held batch to its flush. Tag: `reason` |
-| `whizbang.perspective.write_behind.forced_flushes` | Counter\<long\> | Held models flushed before their interval. Tag: `reason` (`sync`, `bypass`, `bounds`, `batches`, `requested`, `stop`) |
+| `whizbang.perspective.write_behind.forced_flushes` | Counter\<long\> | Held models flushed before their interval. Tag: `reason` (`sync`, `bypass`, `bounds`, `batches`, `requested`, `rebuild`, `stop`) |
 | `whizbang.perspective.write_behind.dropped` | Counter\<long\> | Held models dropped unwritten because their rows' lease ran out; they replay from their checkpoints |
 
 {verified: PerspectiveWorkerDrainModeTests.WriteBehind_AHotStreamsBatches_AreHeld_ThenWrittenOnceWhenTheIntervalElapsesAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ASyncWaitOnAHeldEvent_FlushesItsModelAtOnceAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AModelThatOutlivesItsLease_IsDropped_NeverWrittenAsync}
