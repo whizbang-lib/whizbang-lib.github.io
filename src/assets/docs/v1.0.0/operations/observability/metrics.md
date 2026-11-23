@@ -16,6 +16,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/WhizbangMetrics.cs
   - src/Whizbang.Data.Postgres/ArchiveSweepMetrics.cs
   - src/Whizbang.Core/Observability/PassiveCounter.cs
+  - src/Whizbang.Core/Observability/GuidOrderingMetrics.cs
   - src/Whizbang.Core/Observability/MaintenanceMetrics.cs
   - src/Whizbang.Core/Observability/PendingReclamation.cs
   - src/Whizbang.Core/Observability/PendingReclamationSampler.cs
@@ -71,6 +72,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/ProbeCadenceMetricsTests.cs
   - tests/Whizbang.Core.Component.Tests/Observability/PassiveCounterTests.cs
   - tests/Whizbang.Core.Tests/Observability/PassiveCounterDriftLockTests.cs
+  - tests/Whizbang.Core.Tests/Validation/GuidOrderingEntryPointValidationTests.cs
   - tests/Whizbang.Core.Tests/Observability/MaintenanceMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/DispatcherMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/LifecycleMetricsTests.cs
@@ -151,6 +153,7 @@ Additional subsystem meters:
 | `Whizbang.Postgres.Notifications` | `NotifyMetrics` | LISTEN/NOTIFY signal delivery and connection state |
 | `Whizbang.Archive.AzureBlob` | `ArchiveSweepMetrics` (Whizbang.Data.Postgres; the meter keeps the name of its first package) | Orphan sweeps of the archive coordinator refused, by reason |
 | `Whizbang.Capabilities` | `CapabilityMetrics` | Which external capabilities (Postgres extensions first) each scope can use, by state |
+| `Whizbang.GuidOrdering` | `GuidOrderingMetrics` | Distinct event, message and stream ids that entered without the UUIDv7 time order they need ([time-ordering checks](#time-ordering-checks)) |
 | `Whizbang.Sagas` | `SagaMetrics` | Saga initiation, completion, item and hook outcomes |
 | `Whizbang.Liveness` | `InstanceLivenessMetrics` | Heartbeat watchdog and slow beats, death announcements and retractions |
 | `Whizbang.Probes` | `ProbeCadenceMetrics` | Periodic probe ticks by worker and outcome (the idle footprint), suppressed duty attempts |
@@ -1164,6 +1167,30 @@ nothing.
 To watch for a stopped consumer, alert on `backlog_age_seconds` rather than on depth; the `backlog` health component
 degrades on the same reading once it passes `Whizbang:BacklogAge:AgeThreshold` (default 15 minutes). To find the
 namespace whose quota is exhausted, compare `ops_rate` across `transport_namespace` values.
+
+## Whizbang.GuidOrdering {#time-ordering-checks}
+
+{verified: GuidOrderingEntryPointValidationTests.ValidateMessageId_AtWarning_LogsAndCountsEachIdOnceAsync, GuidOrderingEntryPointValidationTests.ReportStreamId_NonV7AtTheDefault_IsAcceptedLoggedOnceAndCountedAsync, GuidOrderingEntryPointValidationTests.GuidOrderingMetrics_IsInTheFrameworkMeterListAsync}
+
+Meter name: `Whizbang.GuidOrdering` (`GuidOrderingMetrics`), registered by `AddWhizbang()` and included in
+`WhizbangMeters.All`.
+
+The [time-ordering checks](../../fundamentals/identity/whizbang-ids#time-ordering-checks) run where event and message
+ids enter the framework. These counters count the ids that entered without the time order they need. Each distinct id
+is counted once, so a total is a number of distinct ids, and the goal is a flat line at zero.
+
+| Metric Name | Type | Tags | Description |
+|-------------|------|------|-------------|
+| `whizbang.guid_ordering.non_v7_message_ids` | Counter\<long\> | `entry_point`, `version` | Distinct event and message ids accepted although they are not UUIDv7. Counted only when `GuidOrderingViolationSeverity` is `Warning` or `Info`; at `Error`, the default, such an id is refused instead, and at `None` it is not counted |
+| `whizbang.guid_ordering.non_v7_stream_ids` | Counter\<long\> | `entry_point`, `version` | Distinct stream ids that are not UUIDv7. A stream id's version affects only index locality, so these are reported, not refused, unless `StreamIdOrderingViolationSeverity` is raised to `Error`. Counted at `Warning` (the default) or `Info`; an id of a type declared with `AcceptAnyVersion` is never counted. See [Stream id versions](../../fundamentals/identity/whizbang-ids#stream-id-versions) |
+
+`entry_point` names the check that saw the id, for example `EFCoreWorkCoordinator.OutboxWrite`,
+`BatchStrategy.QueueInbox` or `EFCoreEventStore.Append`, which points at the code that wrote it. `version` is the
+id's UUID version as received. The memory of ids already counted holds up to 100,000 ids and is cleared when it fills,
+so on a service that sees more distinct offending ids than that, an id may be counted again.
+
+To find the code that mints non-v7 ids in an existing application, set `Whizbang:GuidOrderingViolationSeverity` to
+`Warning`, fix each `entry_point` this counter names until it stays at zero, then return to `Error`.
 
 ## Other Meters {#other-meters}
 

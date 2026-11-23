@@ -795,8 +795,8 @@ Runtime guid-tracking and guardrail behavior. **Configure:** bound automatically
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
-| `DisableGuidTracking` | `bool` | `false` | `Whizbang__DisableGuidTracking` | Disable TrackedGuid validation project-wide |
-| `GuidOrderingViolationSeverity` | `GuidOrderingSeverity` | `Warning` | `Whizbang__GuidOrderingViolationSeverity` | Severity for time-ordering violations in IDs (`Error` also throws) |
+| `DisableGuidTracking` | `bool` | `false` | `Whizbang__DisableGuidTracking` | Bypass `GuidOrderingValidator.ValidateForTimeOrdering` project-wide; does not turn off the entry point [time-ordering checks](../../fundamentals/identity/whizbang-ids#time-ordering-checks) |
+| `GuidOrderingViolationSeverity` | `GuidOrderingSeverity` | `Error` | `Whizbang__GuidOrderingViolationSeverity` | What happens to an event or message id that is not UUIDv7: `Error` refuses it with `GuidOrderingException`; `Warning` or `Info` logs it once and counts it; `None` accepts it silently. `Guid.Empty` is refused at every severity ([time-ordering checks](../../fundamentals/identity/whizbang-ids#time-ordering-severity)) |
 | `ShowBanner` | `bool` | `true` | — *obsolete* | Read by nothing; the banner follows `Whizbang:ShowBanner` through `WhizbangCoreOptions.ShowBanner` |
 | `AutoGenerateStreamIds` | `bool` | `true` | `Whizbang__AutoGenerateStreamIds` | Auto-generate a StreamId for `IHasStreamId` events with `Guid.Empty` |
 | `Guardrails` | `WhizbangGuardrailsOptions` | `new()` | `Whizbang__Guardrails` | Receptor double-fire tracking (below) |
