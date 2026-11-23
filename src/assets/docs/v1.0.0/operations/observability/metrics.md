@@ -1,8 +1,8 @@
 ---
 title: Metrics Reference
 pageType: reference
-verifiedAgainstCommit: 5bad79ca
-verifiedDate: 2026-10-20
+verifiedAgainstCommit: 'bf8517ac'
+verifiedDate: 2026-11-23
 version: 1.0.0
 category: Observability
 order: 6
@@ -73,6 +73,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Observability/PassiveCounterTests.cs
   - tests/Whizbang.Core.Tests/Observability/PassiveCounterDriftLockTests.cs
   - tests/Whizbang.Core.Tests/Validation/GuidOrderingEntryPointValidationTests.cs
+  - tests/Whizbang.Core.Tests/Validation/GuidOrderingSuppressionTests.cs
   - tests/Whizbang.Core.Tests/Observability/MaintenanceMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/DispatcherMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/LifecycleMetricsTests.cs
@@ -117,7 +118,7 @@ testReferences:
   - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxHandlerWorkerQueueDepthTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.UnreadableRows.cs
-lastMaintainedCommit: '62abd3a45'
+lastMaintainedCommit: 'bf8517ac'
 ---
 
 # Metrics Reference
@@ -1181,16 +1182,25 @@ is counted once, so a total is a number of distinct ids, and the goal is a flat 
 
 | Metric Name | Type | Tags | Description |
 |-------------|------|------|-------------|
-| `whizbang.guid_ordering.non_v7_message_ids` | Counter\<long\> | `entry_point`, `version` | Distinct event and message ids accepted although they are not UUIDv7. Counted only when `GuidOrderingViolationSeverity` is `Warning` or `Info`; at `Error`, the default, such an id is refused instead, and at `None` it is not counted |
+| `whizbang.guid_ordering.non_v7_message_ids` | Counter\<long\> | `entry_point`, `version`, `suppressed` | Distinct event and message ids accepted although they are not UUIDv7. Counted when `GuidOrderingViolationSeverity` is `Warning` or `Info`, or at `Error` for a message type carrying `[SuppressGuidOrderingValidation]`; any other non-v7 id at `Error`, the default, is refused instead, and at `None` nothing is counted, with or without the attribute |
 | `whizbang.guid_ordering.non_v7_stream_ids` | Counter\<long\> | `entry_point`, `version` | Distinct stream ids that are not UUIDv7. A stream id's version affects only index locality, so these are reported, not refused, unless `StreamIdOrderingViolationSeverity` is raised to `Error`. Counted at `Warning` (the default) or `Info`; an id of a type declared with `AcceptAnyVersion` is never counted. See [Stream id versions](../../fundamentals/identity/whizbang-ids#stream-id-versions) |
 
 `entry_point` names the check that saw the id, for example `EFCoreWorkCoordinator.OutboxWrite`,
 `BatchStrategy.QueueInbox` or `EFCoreEventStore.Append`, which points at the code that wrote it. `version` is the
-id's UUID version as received. The memory of ids already counted holds up to 100,000 ids and is cleared when it fills,
+id's UUID version as received.
+
+`suppressed` is always present on `non_v7_message_ids` and says why the id was accepted: `true` when its message type
+carries [`[SuppressGuidOrderingValidation]`](../../fundamentals/identity/whizbang-ids#suppressing-the-time-ordering-check),
+`false` when the configured severity alone let it through. Suppressed and unsuppressed ids are separate series, so
+driving the `suppressed=false` series to zero leaves only the deliberate opt-outs. `non_v7_stream_ids` never carries
+the tag, because the attribute does not affect stream ids
+{verified: GuidOrderingSuppressionTests.ValidateMessageId_TheCount_CarriesTheSuppressedTagAsync, GuidOrderingSuppressionTests.ValidateMessageId_SuppressedAndNot_AreSeparateSeriesAsync, GuidOrderingSuppressionTests.ReportStreamId_TheStreamCount_CarriesNoSuppressedTagAsync}.
+
+The memory of ids already counted holds up to 100,000 ids and is cleared when it fills,
 so on a service that sees more distinct offending ids than that, an id may be counted again.
 
 To find the code that mints non-v7 ids in an existing application, set `Whizbang:GuidOrderingViolationSeverity` to
-`Warning`, fix each `entry_point` this counter names until it stays at zero, then return to `Error`.
+`Warning`, fix each `entry_point` this counter names until its `suppressed=false` series stays at zero, then return to `Error`.
 
 ## Other Meters {#other-meters}
 
