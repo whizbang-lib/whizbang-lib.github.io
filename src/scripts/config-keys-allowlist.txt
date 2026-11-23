@@ -16,5 +16,3 @@ Whizbang:StandbyWatcher:RequesterLivenessWindow  # configuration-reference#remov
 Whizbang:Database:RoleAssignment:Enabled                # configuration-reference#removed-keys lists it as a removed key (#2044): every duty is a role assignment
 Whizbang:Database:RoleAssignment:HoldLegacySessionLock  # configuration-reference#removed-keys lists it as a removed key (#2044): the legacy-lock bridge is gone
 Whizbang:Database:Stamper:AdvisoryLockKey               # configuration-reference#removed-keys lists it as a removed key (#2044): the stamper takes no lock of its own
-Whizbang:Storage:AzureBlob                    # TEMPORARY: read by whizbang#2514, which needs this page on develop before its <docs> guard passes; remove once #2514 merges
-Whizbang:Archive:AzureBlob:LocationMismatch   # TEMPORARY: the earlier key, read by whizbang#2507/#2514; remove once both merge

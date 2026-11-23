@@ -17,6 +17,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IDeferredOutboxChannel.cs
   - src/Whizbang.Core/Messaging/DeferredOutboxChannel.cs
   - src/Whizbang.Core/Messaging/EmissionIdentity.cs
+  - src/Whizbang.Core/Messaging/ReceptorHandling.cs
+  - src/Whizbang.Core/Messaging/GeneratedStreamIdentity.cs
   - src/Whizbang.Core/Observability/CascadeEnvelopeWrapper.cs
   - src/Whizbang.Core/Observability/MessageDispatchContext.cs
   - src/Whizbang.Core/Observability/WorkCoordinatorMetrics.cs
@@ -27,6 +29,9 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Messaging/DeferredOutboxChannelTests.cs
   - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EmissionIdentityTests.cs
   - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherEmissionIdentityTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherDerivedIdentityInHandlingTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/GeneratedStreamIdentityTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ReceptorHandlingTests.cs
   - tests/Whizbang.Core.Tests/Observability/MessageEnvelopeHandlerNameTests.cs
   - tests/Whizbang.Core.Tests/Observability/WorkCoordinatorMetricsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreOutboxEmissionDedupTests.cs
@@ -654,7 +659,7 @@ Composite children use the same layout (`CompositeChildIdentity`, canonical pref
 ### Where the dispatcher mints
 {verified: DispatcherEmissionIdentityTests.CascadeMessageAsync_NoSourceEnvelope_MintsFreshTimeOrderedIdsAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_SourceWithoutMessageId_MintsFreshIdsAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_SiblingHandlerRowOfSameMessage_DerivesDistinctEventIdsAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_TwoServicesHandlingSameMessage_DeriveDistinctEventIdsAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_DifferentEmittedTypes_DeriveDistinctEventIdsAsync}
 
-Both cascade paths (the result cascade and `CascadeMessageAsync`, which the generated receptor invokers use) mint through one private method. A **root emission**, with no source envelope or a source without a message id, keeps today's behavior: a fresh time-ordered `TrackedGuid`. Everything else derives. The generated `CascadeToOutboxAsync` override already converts the event id it is handed into the outbox `MessageId`, so the derived id reaches the outbox row with no generator change.
+Both cascade paths (the result cascade and `CascadeMessageAsync`, which the generated receptor invokers use) mint through one private method. A **root emission**, with no source envelope or a source without a message id, keeps today's behavior: a fresh time-ordered `TrackedGuid`. Everything else derives. The generated `CascadeToOutboxAsync` override already converts the event id it is handed into the outbox `MessageId`, so the derived id reaches the outbox row with no generator change. An explicit `PublishAsync` inside a receptor body goes through the same method, with the handling as its source ([below](#explicit-publish-identity)).
 
 **Nested cascades are anchored.** A local cascade hands in-process receptors a `CascadeEnvelopeWrapper` that reports the *inbound* message's id and handler. Without care, a nested receptor emitting the same type as the top-level handler would derive the same id and be silently deduplicated away. The wrapper therefore carries `EmissionAnchor`: the cascaded event's own id (or, for a cascaded command, which has no event id, the next ordinal-derived id of the handling). Emissions through an anchored wrapper derive from the anchor; an unanchored wrapper falls back to the inbound message id. {verified: DispatcherEmissionIdentityTests.CascadeMessageAsync_LocalDispatch_HandsReceptorsAWrapperAnchoredOnTheCascadedEventAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_LocalDispatchOfACommand_AnchorsOnAnOrdinalOfTheHandlingAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_EmissionThroughAnAnchoredWrapper_DerivesFromTheAnchorNotTheInboundMessageAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_EmissionThroughAnUnanchoredWrapper_FallsBackToTheInboundMessageIdAsync}
 
@@ -685,10 +690,37 @@ sequenceDiagram
     D->>D: emission_deduplicated{message_type} + 1, Debug log; nothing republished
 ```
 
-### Explicit `PublishAsync` inside a handler still mints
-{verified: DispatcherEmissionIdentityTests.CascadeMessageAsync_NoSourceEnvelope_MintsFreshTimeOrderedIdsAsync}
+### Explicit `PublishAsync` inside a receptor derives too {#explicit-publish-identity}
+{verified: DispatcherDerivedIdentityInHandlingTests.PublishAsync_InsideAHandling_DerivesTheIdTheHandlingsCascadeWouldAsync, DispatcherDerivedIdentityInHandlingTests.PublishAsync_InsideAHandling_ARetryPublishesUnderTheSameIdsAsync, DispatcherDerivedIdentityInHandlingTests.PublishAsync_WithOptions_InsideAHandling_ARetryPublishesUnderTheSameIdAsync, DispatcherDerivedIdentityInHandlingTests.PublishAsync_AfterTheHandlingReturnedAnEvent_TakesTheHandlingsNextOrdinalAsync, DispatcherDerivedIdentityInHandlingTests.PublishAsync_SiblingHandlersOfOneMessage_PublishUnderDistinctIdsAsync, DispatcherDerivedIdentityInHandlingTests.PublishAsync_OutsideAHandling_MintsAFreshIdEachTimeAsync, ReceptorHandlingTests.InvokeAsync_TheReceptorBody_RunsInTheHandlingOfItsEnvelopeAsync}
 
-Derivation applies to **cascaded** emissions: events returned from a receptor (auto-cascade) or passed through `CascadeMessageAsync` with a source envelope. An explicit `PublishAsync` call from inside a handler is deliberately left non-deterministic. The ambient initiating context carries no handler identity, so two handler rows of one message in one service that both `PublishAsync` the same type would derive identical ids and one of them would be dropped, which is a worse failure than a republish. Until the handler name is threaded into the initiating context, prefer returning events from the receptor when retry safety matters; that path is covered.
+An event a receptor publishes **explicitly**, with either `IDispatcher.PublishAsync` overload, derives its id exactly as
+an event the receptor returns ([#2520](https://github.com/whizbang-lib/whizbang/issues/2520)). The receptor invoker runs
+every receptor body inside the **handling** of its envelope (the inbound message, with its handler name), and a
+publish made inside that handling derives from it with the same five inputs. Returned and published events **share the
+handling's ordinals**: an event published after the receptor returned one of the same type takes the next ordinal, so
+the two can never derive one id. Two handlers of one message publish under distinct ids, because each handling carries
+its own handler name.
+
+A retry of the handling materializes a fresh envelope, starts again at ordinal zero and re-derives every id, so the
+stored copies of the first run absorb the second run's. Before, each run published again to every subscriber.
+
+| Where `PublishAsync` is called | The event's id |
+|---|---|
+| Inside a receptor body, or work the body starts and awaits (the handling flows with the execution context) | Derived from the handling, on the ordinals it shares with what the receptor returns |
+| Outside any receptor (an API endpoint, a background service) | Minted fresh, as before |
+
+**Derived ids carry the cause's time.** A derived id keeps its [source's first bits](#layout-sorts-where-its-source-sorts),
+so an event published inside a handling carries the handled message's time, as a returned event always has. Ordering
+such events by id orders them by their cause, not by when they were published; order a stream by its
+[version](../events/event-store#read-order). A handling whose first run happened before the upgrade and whose retry
+happens after it publishes once more, because the two runs derive differently.
+
+**The stream a message starts derives too.** A `[GenerateStreamId]` event, returned or published, starts a stream whose
+id derives from the event's own id (`GeneratedStreamIdentity`): the event id's first 92 bits, then 36 bits of SHA-256
+over `whizbang.generated-stream.v1\n{eventId:N}`. The stream sorts with the event that started it, stays a version 7 id,
+and differs from the event's own id. A retry of the handling re-derives the event's id, and so starts the same stream
+rather than a second one nothing else refers to. See [GenerateStreamId](../../extending/attributes/generatestreamid#derived-stream-ids).
+{verified: GeneratedStreamIdentityTests.Derive_TheSameMessageId_DerivesTheSameStreamIdAsync, GeneratedStreamIdentityTests.Derive_KeepsTheMessageIdsFirst92Bits_SoTheStreamSortsWithTheMessageThatStartedItAsync, GeneratedStreamIdentityTests.Derive_IsAVersion7IdWithTheRfcVariantAsync, DispatcherDerivedIdentityInHandlingTests.PublishAsync_GenerateStreamId_InsideAHandling_ARetryStartsTheSameStreamAsync, DispatcherDerivedIdentityInHandlingTests.CascadeMessageAsync_GenerateStreamId_ARetryOfTheHandlingStartsTheSameStreamAsync}
 
 ### Source service id on published envelopes {#source-service-id}
 {verified: OutboxDrainWorkerTests.OutboxDrainWorker_LocalServiceIdLookupFailsOnceAtStartup_ResolvesBeforeTheNextBatchAsync, OutboxDrainWorkerTests.OutboxDrainWorker_LocalServiceIdResolvedAtStartup_DoesNotLookItUpAgainAsync, OutboxDrainWorkerTests.OutboxDrainWorker_LocalServiceIdEmptyAtStartup_WarnsAndRetriesBeforeEachBatchAsync, OutboxDrainWorkerTests.OutboxDrainWorker_LocalServiceIdLookupKeepsFailing_RecordsEachRetryAtDebugAsync}
