@@ -143,9 +143,10 @@ event's own id** (`GeneratedStreamIdentity.Derive`, [#2520](https://github.com/w
   redelivered handling sends its commands on the streams its first run started. These positions are separate from the
   handling's event ordinals, so sending a command never changes the ids of the events the handling returns or
   publishes. Outside a handling, a command's stream is minted fresh, as before.
-- **One send keeps one stream.** However often the send path assigns the stream, a stored copy of a command and its
-  local run name the same stream
-  {verified: GeneratedStreamAssignmentsTests.GetOrAdd_TheSameMessageTwice_DerivesOnceAndKeepsItsStreamAsync}.
+- **One message, one stream.** Every envelope a send builds for a message (the local run's, the stored copy's) names
+  the same stream, inside or outside a handling ([#2539](https://github.com/whizbang-lib/whizbang/issues/2539)).
+  Sending the same instance again keeps that stream; a new instance starts a new one
+  {verified: DispatchTangentialParityComponentTests.EverySendThatRunsHereAndWritesACopy_GivesTheCommandOneStreamAsync, GeneratedStreamAssignmentsTests.GetOrAdd_TheSameMessageTwice_DerivesOnceAndKeepsItsStreamAsync}.
 
 The derivation is a compatibility contract: a stored stream id is referenced by every record on its stream, so the
 layouts are versioned (`whizbang.generated-stream.v1`, and `whizbang.generated-stream.in-handling.v1` for a command
@@ -155,14 +156,14 @@ sent inside a handling) and never change in place.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `OnlyIfEmpty` | `bool` | `false` | When `true`, only generates a StreamId if the current value is `Guid.Empty`. When `false`, always generates a new StreamId. |
+| `OnlyIfEmpty` | `bool` | `false` | When `true`, only generates a StreamId if the current value is `Guid.Empty`. When `false`, generates a StreamId for each new message instance, replacing any value it carries. |
 
 ## How It Works
 
 1. **At compile time**: The source generator discovers `[GenerateStreamId]` attributes and generates a `GetGenerationPolicy` method with type-specific switch arms.
 
 2. **At dispatch time**: The Dispatcher calls `GetGenerationPolicy(message)` to determine if auto-generation should occur:
-   - `(ShouldGenerate: true, OnlyIfEmpty: false)` → Always generate new StreamId
+   - `(ShouldGenerate: true, OnlyIfEmpty: false)` → Generate a StreamId for each new message instance
    - `(ShouldGenerate: true, OnlyIfEmpty: true)` → Generate only if current StreamId is `Guid.Empty`
    - `(ShouldGenerate: false, OnlyIfEmpty: false)` → No auto-generation; guard will throw if StreamId is `Guid.Empty`
 
