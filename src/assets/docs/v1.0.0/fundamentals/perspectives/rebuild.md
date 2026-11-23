@@ -340,6 +340,14 @@ var result = await rebuilder.RebuildStreamsAsync("OrderPerspective", corruptedSt
 
 **Best for**: Targeted fixes for specific aggregates.
 
+### Write-behind models are flushed first {#write-behind-flush}
+
+Every rebuild, in any mode, first flushes the models a [write-behind](write-modes#write-behind) perspective holds for
+it: every held model of the perspective for a rebuild of every stream, only the named streams' models for a rebuild of
+selected streams. A model held before the rebuild is then written before the rebuild reads its row, not over it
+afterwards. See [Writers outside the runner](write-modes#write-behind-outside-writers).
+{verified: PerspectiveWorkerDrainModeTests.WriteBehind_ARebuildOfAHeldStream_FlushesItsModelBeforeTheRebuildReadsItsRowAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ARebuildOfEveryStream_FlushesEveryModelOfThePerspectiveBeforeItReadsARowAsync}
+
 ### Fold order and the recorded position {#fold-order}
 
 {verified: PerspectiveRebuilderIntegrationTests.RebuildStreamsAsync_WhenCommitSequencesRunBackwardAgainstVersions_FoldsInVersionOrderAndWritesItAsync, PerspectiveRebuilderIntegrationTests.RebuildStreamsAsync_StampsRunBackward_EveryFieldEndsOnItsLastVersionAsync, PerspectiveRebuilderIntegrationTests.RebuildStreamsAsync_StampsRunBackward_RebuildingTwiceLeavesTheSameRowAsync, PerspectiveRebuilderIntegrationTests.RebuildStreamsAsync_StampsRunBackwardAndNoRowExists_CreatesTheVersionOrderRowAsync}

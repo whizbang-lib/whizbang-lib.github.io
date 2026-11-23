@@ -457,9 +457,10 @@ A model is flushed when its interval elapses. It is flushed early (a **forced** 
 | `bounds` | The cache is over `MaxModels` or `MaxBytes`, and the model is among the oldest (eviction flushes, it never discards) |
 | `batches` | The model holds `MaxBatchesPerModel` batches |
 | `requested` | `PerspectiveWorker.FlushWriteBehindAsync` was called |
+| `rebuild` | A [rebuild](rebuild) of the model's perspective is starting: a rebuild of every stream flushes every model of the perspective, a rebuild of named streams flushes those streams' models ([#2533](https://github.com/whizbang-lib/whizbang/issues/2533)) |
 | `stop` | The worker is stopping: every held model is flushed before the detached stages are waited for |
 
-{verified: PerspectiveWorkerDrainModeTests.WriteBehind_ASyncWaitOnAHeldEvent_FlushesItsModelAtOnceAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ClaimedWorkForAHeldStream_FlushesTheModelFirstAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ANewModelThatDoesNotFit_IsWrittenAtOnce_AndAnOverBoundCacheFlushesItsOldestAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AModelAtItsBatchCap_IsFlushedAfterTheBatchThatReachesItAsync, PerspectiveWorkerDrainModeTests.WriteBehind_TheWorkerStopping_FlushesEveryHeldModelAsync}
+{verified: PerspectiveWorkerDrainModeTests.WriteBehind_ASyncWaitOnAHeldEvent_FlushesItsModelAtOnceAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ClaimedWorkForAHeldStream_FlushesTheModelFirstAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ANewModelThatDoesNotFit_IsWrittenAtOnce_AndAnOverBoundCacheFlushesItsOldestAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AModelAtItsBatchCap_IsFlushedAfterTheBatchThatReachesItAsync, PerspectiveWorkerDrainModeTests.WriteBehind_TheWorkerStopping_FlushesEveryHeldModelAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ARebuildOfAHeldStream_FlushesItsModelBeforeTheRebuildReadsItsRowAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ARebuildOfEveryStream_FlushesEveryModelOfThePerspectiveBeforeItReadsARowAsync}
 
 **A model whose lease ran out is dropped, never written.** A held model's rows are leased to this instance only for the
 lease less its grace, counted from its first held batch. Past that, the stream may already be another instance's, so
@@ -471,12 +472,18 @@ again once it has it.
 ### Writers outside the runner {#write-behind-outside-writers}
 
 The merged write is checked against the row version its first batch was prepared on. A writer outside the runner that
-changed the row while the model was held (a collective, a rebuild, a consumer's own SQL) is met by that check as a
+changed the row while the model was held (a collective, a consumer's own SQL, or a rebuild that meets a model held
+after it started) is met by that check as a
 conflict, and every held batch is then re-applied on the per-pair path, oldest first, on the row it finds, so neither
 write is lost. A merged write the ordering guard refuses is re-applied the same way, where the guard rewinds the stream
 on the row it finds, and a merged write the database rejects hands every held batch to the per-pair path, where each
 fails or is written as it would have been. A completion that throws fails only its own batch.
 {verified: PerspectiveWriteModeConformanceTests.WriteBehind_ARowAnotherWriterChangesWhileItsModelIsHeld_KeepsBothWritesAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AMergedWriteTheGuardRefuses_IsReappliedAsAConflictAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AMergedWriteTheDatabaseRejects_HandsEveryHeldBatchToThePerPairPathAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ACompletionThatThrows_FailsOnlyItsBatchAsync}
+
+**A rebuild flushes first.** Before a rebuild reads any row, it flushes the models held for the perspective it
+rebuilds, so a model held before the rebuild is written before it rather than over it. A flush that fails is logged
+and does not fail the rebuild: its batches were released unwritten and replay from their checkpoint.
+{verified: PerspectiveWorkerDrainModeTests.WriteBehind_ARebuildOfAHeldStream_FlushesItsModelBeforeTheRebuildReadsItsRowAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ARebuildWhoseFlushFails_IsLogged_AndRebuildsOverNoHeldModelAsync}
 
 A [rebuild in place](rebuild#batched-writes) of a write-behind perspective writes each row on its own: it is a
 one-off write of every row, with nothing to gain from holding them.
@@ -501,7 +508,7 @@ On the `Whizbang.Perspectives` meter (see the [metrics reference](../../operatio
 | `whizbang.perspective.write_behind.bytes` | ObservableGauge (By) | Bytes the held models take |
 | `whizbang.perspective.write_behind.lookups` | Counter\<long\> | Write-behind pairs prepared on a held model (`result` = `hit`) or a database read (`miss`); the hit rate is hits over both. Tags: `perspective_name`, `result` |
 | `whizbang.perspective.write_behind.flush_lag` | Histogram\<double\> (ms) | Time from a model's first held batch to its flush. Tag: `reason` |
-| `whizbang.perspective.write_behind.forced_flushes` | Counter\<long\> | Models flushed before their interval. Tag: `reason` (`sync`, `bypass`, `bounds`, `batches`, `requested`, `stop`) |
+| `whizbang.perspective.write_behind.forced_flushes` | Counter\<long\> | Models flushed before their interval. Tag: `reason` (`sync`, `bypass`, `bounds`, `batches`, `requested`, `rebuild`, `stop`) |
 | `whizbang.perspective.write_behind.dropped` | Counter\<long\> | Models dropped unwritten because their lease ran out |
 
 A low hit rate says the perspective's streams are not hot enough for write-behind to pay. Any `dropped` says a held
