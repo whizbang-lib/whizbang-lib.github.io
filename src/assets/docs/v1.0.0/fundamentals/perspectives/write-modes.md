@@ -7,10 +7,11 @@ status: current
 version: 1.0.0
 description: >-
   How the perspective runner writes a batch of folded models: set-based across streams by default,
-  per-stream as an option, and the seams that later write modes plug into.
+  per-stream as an option, write-behind as an opt-in for a few very hot streams, and the seams the
+  modes plug into.
 tags: >-
   perspectives, write-modes, set-based, batching, round-trips, fan-out, perspective-runner,
-  perspective-worker, conformance-suite
+  perspective-worker, conformance-suite, write-behind
 codeReferences:
   - src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
@@ -27,6 +28,20 @@ codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveApplyBatch.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.ClaimedGroups.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.DrainGroups.cs
+  - src/Whizbang.Core/Workers/PerspectiveWorker.WriteBehind.cs
+  - src/Whizbang.Core/Workers/PerspectiveWriteBehindCache.cs
+  - src/Whizbang.Core/Workers/WriteBehindBatchState.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveWriteBehindOptions.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveWriteBehindRow.cs
+  - src/Whizbang.Core/Perspectives/PendingPerspectiveWrite.cs
+  - src/Whizbang.Core/Observability/PerspectiveMetrics.cs
+testReferences:
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDrainModeTests.WriteBehind.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveWriteModeConformanceTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveWriteModeConformanceTests.WriteBehind.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveWriteBehindOptionsTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PerspectiveWriteBehindCacheTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/SetBasedPerspectiveWorkerIntegrationTests.MeasureWriteBehind.cs
 ---
 
 # Perspective Write Modes
@@ -34,10 +49,9 @@ codeReferences:
 A **write mode** decides how the perspective worker turns a batch of claimed work into durable rows. The default is
 **set-based**: every stream in the batch is folded in memory, and the results are written with a few statements per
 table instead of one save per stream. The earlier path, one save per (stream, perspective) pair, stays available as the
-**per-stream** mode.
-
-Write-behind ([#2247](https://github.com/whizbang-lib/whizbang/issues/2247)) and staging-table rebuilds
-([#2248](https://github.com/whizbang-lib/whizbang/issues/2248)) are later, separate modes.
+**per-stream** mode. A third mode, **write-behind** ([#2247](https://github.com/whizbang-lib/whizbang/issues/2247)),
+is opt-in and never the default: it holds folded models in memory across batches and writes each one later, for read
+models with a few very hot streams.
 
 ## Why {#why}
 
@@ -230,8 +244,9 @@ The write sink groups the pending writes by table and by operation and writes ea
 
 The flush policy (`IApplyBatchStrategy`) decides when a batch's prepared writes reach the sink. The default,
 `FlushEveryBatchStrategy`, writes them at once, so a batch's rows are durable before its pairs complete. It is
-registered with the worker; a policy returns one outcome per write, as the sink does, and a write-behind policy
-([#2247](https://github.com/whizbang-lib/whizbang/issues/2247)) is a later mode on this seam.
+registered with the worker; a policy returns one outcome per write, as the sink does. The
+[write-behind mode](#write-behind) holds its models before this step, and when it flushes a model it writes it
+through this same policy and sink.
 
 The ordering guard is evaluated **per row**, inside the statement, exactly as it is for a single-row write today.
 Physical fields are written in the same statement as the document, so split and extracted storage stay consistent
@@ -290,7 +305,7 @@ cost.
 |---|---|
 | A rewind (a cursor that asks for one, an inversion on the drain, an event below the row's position) | it replays the stream from a snapshot or from its start, which is a per-stream read by nature |
 | A bootstrap snapshot | it snapshots one stream's existing row |
-| A rebuild | rebuilds stay per pair until staging-table rebuilds ([#2248](https://github.com/whizbang-lib/whizbang/issues/2248)) |
+| A blue-green rebuild's catch-up and swap | they write the live table's shadow row by row; its first pass uses the [staging load](rebuild#staging-load), and a rebuild in place writes [a batch at a time](rebuild#batched-writes) |
 | The collective sink | a collective event has no single row; it is dispatched as before |
 | A drain's later laps | events that arrive while a stream drains are applied per pair, lap by lap |
 | The commit sequence of a pair's last event | read per pair from the event store; batching it is a follow-up |
@@ -302,6 +317,213 @@ own. It stays as a selectable mode for comparison, and it is also the path the s
 pair needs it (a rewind, an evicted or purged row, a write the store cannot prepare, a conflict, a rejected row). Because both modes share the fold
 and the completion, the per-stream mode is not a second implementation that can drift.
 
+## Write-behind mode {#write-behind}
+
+[#2247](https://github.com/whizbang-lib/whizbang/issues/2247). Opt-in, never the default. A perspective with a few very
+hot streams (a counter, an aggregate) receives a few events per stream in every drain, and set-based mode writes its row
+once per drain. Write-behind keeps each folded model in memory across drains and writes it later, with the same
+set-based writer, so a stream's many small batches cost one write.
+
+```csharp{
+title: "Write one hot perspective behind"
+description: "A per-perspective write-behind override, with the two bounds every write-behind worker needs."
+framework: "NET10"
+category: "Perspectives"
+difficulty: "ADVANCED"
+tags: ["perspectives", "write-modes", "write-behind"]
+unverified: "illustrative; the bounds and the attribute are exercised by PerspectiveWriteModeConformanceTests.WriteBehind_AHotStreamsBatches_AreHeld_ThenWrittenOnceAsync"
+}
+services.Configure<PerspectiveWorkerOptions>(options => {
+  options.WriteBehind.MaxModels = 10_000;
+  options.WriteBehind.MaxBytes = 64L * 1024 * 1024;
+});
+
+[PerspectiveWriteMode(PerspectiveWriteMode.WriteBehind)]
+public sealed class PageViewCounterPerspective : IPerspectiveFor<PageViewCount, PageViewed> {
+  public PageViewCount Apply(PageViewCount current, PageViewed evt) {
+    return current with { Views = current.Views + 1 };
+  }
+}
+```
+
+### How a model is held {#write-behind-hold}
+
+Holding happens on the perspective drain, where both production coordinators hand every perspective stream. A drain's
+set-based lap prepares a write-behind pair as it prepares any other, and then, instead of writing it:
+
+1. keeps the folded model, serialized, as the pair's held row; the next batch of the stream folds onto it rather than
+   reading the row from the database (a cache **hit**);
+2. leaves the batch unfinished: its checkpoint, completion report, [sync](perspective-sync) signal and
+   `PostPerspective*` stages all wait for its model's flush, and its work rows stay pending and leased to this instance;
+3. leaves out of the next drains of the stream the events a held model already folded (their rows are still pending, so
+   the claim offers the stream again), and continues from the held model's position.
+
+A flush writes each model's held batches with **one merged write**: the first batch's operation and the row version it
+was prepared on, carrying the last batch's document, metadata, scope and physical values. It goes through the same
+[flush policy](#flush-policy) and [write sink](#grouped-statements) as a set-based batch. Every held batch is then
+completed with that write's outcome, oldest first, and finished as the drain finishes a pair.
+
+```mermaid{caption="Write-behind on the drain: a hot stream's batches fold onto the held model; a flush writes them with one merged write and then completes each held batch, oldest first. A model whose lease ran out is dropped, never written." tests=["PerspectiveWorkerDrainModeTests.WriteBehind_AHotStreamsBatches_AreHeld_ThenWrittenOnceWhenTheIntervalElapsesAsync", "PerspectiveWorkerDrainModeTests.WriteBehind_ASyncWaitOnAHeldEvent_FlushesItsModelAtOnceAsync", "PerspectiveWorkerDrainModeTests.WriteBehind_AModelThatOutlivesItsLease_IsDropped_NeverWrittenAsync"]}
+graph TB
+    Drain["Drain lap<br/>prepare each pair"]
+    Fits{"Write checked against<br/>the row version, and<br/>the model fits the bounds?"}
+    Hold["Hold the model<br/>batch not finished,<br/>rows stay leased"]
+    Write["Written now<br/>as set-based"]
+    Trigger["Flush trigger<br/>interval, batch cap, bounds,<br/>sync wait, row needed current,<br/>stop, FlushWriteBehindAsync"]
+    Lease{"Lease still<br/>this instance's?"}
+    Merged["One merged write<br/>same flush policy and sink"]
+    Complete["Complete each held batch<br/>oldest first: checkpoint,<br/>sync, PostPerspective stages"]
+    Drop["Drop unwritten<br/>replays from the checkpoint"]
+    PerPair["Each held batch<br/>re-applied per pair"]
+
+    Drain --> Fits
+    Fits -->|yes| Hold
+    Fits -->|no| Write
+    Hold --> Trigger --> Lease
+    Lease -->|yes| Merged --> Complete
+    Lease -->|no| Drop
+    Merged -->|"row moved, refused<br/>or rejected"| PerPair
+
+    class Drain,Hold layer-core
+    class Merged,Write layer-event
+    class Complete layer-read
+    class Drop,PerPair layer-command
+```
+
+A batch is written at once, as set-based writes it, when its model cannot be held: a purge, a write that is not checked
+against the row's version (only a checked write can meet a writer it missed), or a new model that does not fit the
+bounds. A model held for the same stream is flushed before such a write goes with its batch.
+{verified: PerspectiveWorkerDrainModeTests.WriteBehind_AHotStreamsBatches_AreHeld_ThenWrittenOnceWhenTheIntervalElapsesAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ALaterLapOfTheSameDrain_HoldsOntoTheModelItsFirstLapHeldAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ALaterDrainOfOnlyHeldEvents_AppliesNothingAgainAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ANewModelThatDoesNotFit_IsWrittenAtOnce_AndAnOverBoundCacheFlushesItsOldestAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AnUncheckedWrite_IsNeverHeldAsync, PerspectiveWriteModeConformanceTests.WriteBehind_AHotStreamsBatches_AreHeld_ThenWrittenOnceAsync}
+
+### Trade-offs {#write-behind-trade-offs}
+
+| | What write-behind costs | Why it is safe |
+|---|---|---|
+| **Memory** | The held models, serialized | The cache is bounded by a model count and a byte count, both required |
+| **Flush lag** | A held model's row, checkpoint, sync signal and lifecycle stages trail its events by up to the flush interval | A sync wait on a held event flushes its model at once, so a reader that waits for its write never waits for the interval |
+| **A crash** | The held models are lost | Nothing else is: no held batch moved its checkpoint, so its rows are claimed again after their lease and replay from the checkpoint. Applies are pure, so the replay folds the same model |
+
+{verified: PerspectiveWriteModeConformanceTests.WriteBehind_ACrash_LosesOnlyTheHeldModels_AndTheStreamReplaysFromItsCheckpointAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ASyncWaitOnAHeldEvent_FlushesItsModelAtOnceAsync}
+
+### Bounds {#write-behind-bounds}
+
+The model cache has no unlimited default. Its bounds are `PerspectiveWorkerOptions.WriteBehind`
+(`PerspectiveWriteBehindOptions`; the configuration keys are under the write-behind settings in the
+[configuration reference](../../operations/configuration/configuration-reference#perspectiveworkeroptions)):
+
+| Bound | Default | What it bounds |
+|---|---|---|
+| `MaxModels` | none, required | The most models held at once, across every write-behind perspective of the worker |
+| `MaxBytes` | none, required | The most bytes the held models take, measured as their serialized size |
+| `MaxFlushIntervalMilliseconds` | 1,000 | How long a model is held at most, from the batch that first held it. At most half of the lease less its grace (135,000 with the default 300 s lease and 30 s grace), so a held model is flushed while its rows are still leased to this instance |
+| `MaxBatchesPerModel` | 32 | How many batches one model holds at most before it is flushed |
+
+A worker that writes anything behind without `MaxModels` and `MaxBytes` (or with an interval or batch cap out of range)
+does not start, and says what is missing and how to fix it: a service whose write mode is `WriteBehind` fails in
+`StartAsync`, and a worker one of whose perspectives declares `[PerspectiveWriteMode(PerspectiveWriteMode.WriteBehind)]`
+stops before it applies anything. Only the perspectives this worker applies count. A new model that does not fit
+either bound is written at once, as set-based writes it; a held model's later batch is always added, and the oldest
+models are flushed until the cache is back under its bounds.
+{verified: PerspectiveWriteBehindOptionsTests.TheBounds_HaveNoDefault_AndTheIntervalAndBatchCapDoAsync, PerspectiveWriteBehindOptionsTests.TheServiceMode_WithoutBounds_NamesBothMissingBoundsAndTheFixAsync, PerspectiveWriteBehindOptionsTests.ADeclaredPerspective_WithoutBounds_IsNamedAsync, PerspectiveWriteBehindOptionsTests.AnIntervalBeyondHalfTheLeaseLessItsGrace_IsRefusedAsync, PerspectiveWorkerDrainModeTests.WriteBehind_TheServiceModeWithoutBounds_FailsToStartAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ADeclaredPerspectiveWithoutBounds_StopsTheWorkerBeforeItAppliesAnythingAsync, PerspectiveWriteBehindCacheTests.ANewModel_IsHeld_OnlyWhenItFitsBothBoundsAsync, PerspectiveWriteBehindCacheTests.Due_FlushesOnlyAsManyOldModelsAsBringTheCacheBackUnderItsBoundsAsync}
+
+The bounds bind from `Whizbang:Workers:Perspective:WriteBehind` (environment variables
+`Whizbang__Workers__Perspective__WriteBehind__MaxModels` and so on):
+
+```json{title="Write-behind bounds" description="The two required bounds of the write-behind model cache, with the flush interval and batch cap at their defaults." category="Configuration" difficulty="INTERMEDIATE" tags=["Perspectives", "Write-behind", "Configuration"] tests=["PerspectiveWriteBehindOptionsTests.TheBounds_HaveNoDefault_AndTheIntervalAndBatchCapDoAsync"]}
+{
+  "Whizbang": {
+    "Workers": {
+      "Perspective": {
+        "WriteBehind": {
+          "MaxModels": 10000,
+          "MaxBytes": 67108864,
+          "MaxFlushIntervalMilliseconds": 1000,
+          "MaxBatchesPerModel": 32
+        }
+      }
+    }
+  }
+}
+```
+
+### What forces a flush {#write-behind-flush}
+
+A model is flushed when its interval elapses. It is flushed early (a **forced** flush, counted by reason) when:
+
+| Reason (`reason` tag) | When |
+|---|---|
+| `sync` | A [perspective sync](perspective-sync) wait waits on an event the model holds |
+| `bypass` | Anything else is about to touch its row and needs it current: a rewind of the stream, a purge, a per-pair drain or a perspective that no longer writes behind, or a claimed apply of the stream |
+| `bounds` | The cache is over `MaxModels` or `MaxBytes`, and the model is among the oldest (eviction flushes, it never discards) |
+| `batches` | The model holds `MaxBatchesPerModel` batches |
+| `requested` | `PerspectiveWorker.FlushWriteBehindAsync` was called |
+| `stop` | The worker is stopping: every held model is flushed before the detached stages are waited for |
+
+{verified: PerspectiveWorkerDrainModeTests.WriteBehind_ASyncWaitOnAHeldEvent_FlushesItsModelAtOnceAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ClaimedWorkForAHeldStream_FlushesTheModelFirstAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ANewModelThatDoesNotFit_IsWrittenAtOnce_AndAnOverBoundCacheFlushesItsOldestAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AModelAtItsBatchCap_IsFlushedAfterTheBatchThatReachesItAsync, PerspectiveWorkerDrainModeTests.WriteBehind_TheWorkerStopping_FlushesEveryHeldModelAsync}
+
+**A model whose lease ran out is dropped, never written.** A held model's rows are leased to this instance only for the
+lease less its grace, counted from its first held batch. Past that, the stream may already be another instance's, so
+the model is dropped unwritten, logged at Warning and counted on `whizbang.perspective.write_behind.dropped`; its rows
+replay from the checkpoint wherever the stream is claimed next. A flush that had to wait for the stream's gate checks
+again once it has it.
+{verified: PerspectiveWorkerDrainModeTests.WriteBehind_AModelThatOutlivesItsLease_IsDropped_NeverWrittenAsync, PerspectiveWriteBehindCacheTests.AModelPastTheLease_IsExpired_NotFlushedAsync}
+
+### Writers outside the runner {#write-behind-outside-writers}
+
+The merged write is checked against the row version its first batch was prepared on. A writer outside the runner that
+changed the row while the model was held (a collective, a rebuild, a consumer's own SQL) is met by that check as a
+conflict, and every held batch is then re-applied on the per-pair path, oldest first, on the row it finds, so neither
+write is lost. A merged write the ordering guard refuses is re-applied the same way, where the guard rewinds the stream
+on the row it finds, and a merged write the database rejects hands every held batch to the per-pair path, where each
+fails or is written as it would have been. A completion that throws fails only its own batch.
+{verified: PerspectiveWriteModeConformanceTests.WriteBehind_ARowAnotherWriterChangesWhileItsModelIsHeld_KeepsBothWritesAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AMergedWriteTheGuardRefuses_IsReappliedAsAConflictAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AMergedWriteTheDatabaseRejects_HandsEveryHeldBatchToThePerPairPathAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ACompletionThatThrows_FailsOnlyItsBatchAsync}
+
+A [rebuild in place](rebuild#batched-writes) of a write-behind perspective writes each row on its own: it is a
+one-off write of every row, with nothing to gain from holding them.
+
+### The API {#write-behind-api}
+
+| Member | What it does |
+|---|---|
+| `PerspectiveWorker.FlushWriteBehindAsync(cancellationToken)` | Flushes every held model now, whatever its interval: each one's batches are written, completed and finished before the task completes. Nothing to do when nothing writes behind |
+| `PerspectiveWorker.OnWriteBehindHeld` | Raised with the (stream, perspective) of each batch held instead of written. A diagnostic signal: a test waits on it rather than on time |
+| `PerspectiveWorker.WriteBehindModels` | The models the cache holds now; zero when nothing writes behind |
+
+{verified: PerspectiveWriteModeConformanceTests.WriteBehind_AHotStreamsBatches_AreHeld_ThenWrittenOnceAsync}
+
+### Metrics {#write-behind-metrics}
+
+On the `Whizbang.Perspectives` meter (see the [metrics reference](../../operations/observability/metrics#perspectives)):
+
+| Metric | Type | What it says |
+|---|---|---|
+| `whizbang.perspective.write_behind.models` | ObservableGauge | Models the cache holds |
+| `whizbang.perspective.write_behind.bytes` | ObservableGauge (By) | Bytes the held models take |
+| `whizbang.perspective.write_behind.lookups` | Counter\<long\> | Write-behind pairs prepared on a held model (`result` = `hit`) or a database read (`miss`); the hit rate is hits over both. Tags: `perspective_name`, `result` |
+| `whizbang.perspective.write_behind.flush_lag` | Histogram\<double\> (ms) | Time from a model's first held batch to its flush. Tag: `reason` |
+| `whizbang.perspective.write_behind.forced_flushes` | Counter\<long\> | Models flushed before their interval. Tag: `reason` (`sync`, `bypass`, `bounds`, `batches`, `requested`, `stop`) |
+| `whizbang.perspective.write_behind.dropped` | Counter\<long\> | Models dropped unwritten because their lease ran out |
+
+A low hit rate says the perspective's streams are not hot enough for write-behind to pay. Any `dropped` says a held
+model could not be flushed within its lease (its flush failed, or waited too long for its stream), and its batches
+replayed from their checkpoint; the worker's Warning names the perspective and the stream.
+{verified: PerspectiveWorkerDrainModeTests.WriteBehind_AHotStreamsBatches_AreHeld_ThenWrittenOnceWhenTheIntervalElapsesAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AModelThatOutlivesItsLease_IsDropped_NeverWrittenAsync}
+
+### Measurement {#write-behind-measurement}
+
+Measured with `Measure_HotStreamsAsync`: 5 hot streams taking 2,000 events each, committed a round at a time while the
+worker drains them, through the production completion path, one mode at a time, on PostgreSQL:
+
+| | Set-based | Write-behind |
+|---|---|---|
+| Events per second | 263 | 305 |
+| Statements against the perspective table | 2,771 | 419 |
+| Statements in total | 12,442 | 8,028 |
+
+The run is paced by its own commit loop (one round trip per round), so events per second says little; the statement
+counts are what to trust. Write-behind sent the perspective table about 15 percent of the statements. Measure a
+perspective's own workload before choosing write-behind for it.
+
 ## Selecting a mode {#selection}
 
 Set-based is the default. A service that registers nothing gets it, and every seam's default implementation is
@@ -311,8 +533,24 @@ registered, the state source and the write sinks by the PostgreSQL driver, which
 A service-wide default is `PerspectiveWorkerOptions.WriteMode`, and a single perspective overrides it with
 `[PerspectiveWriteMode]`, which the generator reads: every generated runner registers its perspective's declared mode
 (`PerspectiveWriteModes`), so the worker chooses each pair's path without resolving the runner. A perspective with no
-generated runner prepares nothing and is always written per stream. Only named modes can be selected, never a free
+generated runner prepares nothing and is always written per stream. A [rebuild in place](rebuild#batched-writes), or of
+selected streams, follows the same write mode for each batch of streams it reads: a set-based perspective's rebuild
+writes each batch's rows through the write sink, and a per-stream one writes each row on its own
+([#2522](https://github.com/whizbang-lib/whizbang/issues/2522)).
+{verified: PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_WritesEachBatchsRowsThroughTheSinkWithOneWrite_NotOneWritePerRowAsync, PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_OfAServiceThatWritesPerStream_WritesEachRowOnItsOwnAsync} Only named modes can be selected, never a free
 combination of the three seams, so an invalid combination cannot be built.
+
+| Mode | When to choose it |
+|---|---|
+| `SetBased` (default) | Almost always: a batch's rows are written with a few statements per table, and each row is durable before its pair completes |
+| `PerStream` | For comparison, or a perspective that must be written exactly as before set-based writes |
+| `WriteBehind` (opt-in) | A perspective with a few very hot streams (a counter, an aggregate) whose many small batches each cost a write. See [Write-behind mode](#write-behind) |
+
+**Why write-behind is opt-in.** It trades guarantees the other modes give for fewer writes: a held model's row lags
+its events by up to the flush interval, the service holds models in memory, and the cache needs bounds that only the
+service can size, so there is no default to fall back to. A fan-out over many streams gains nothing from it, since each
+stream is written once either way. A service chooses it for the perspectives it measured it on.
+{verified: PerspectiveWriteModesTests.WorkerOptions_DefaultToSetBasedAsync, PerspectiveWriteBehindOptionsTests.TheBounds_HaveNoDefault_AndTheIntervalAndBatchCapDoAsync}
 
 ```csharp{
 title: "Select the per-stream write mode for a service and set-based for one perspective"
@@ -337,18 +575,8 @@ public sealed class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, Orde
 
 ## Later modes {#later-modes}
 
-Each later mode is the same pipeline with different seams, and reuses the set-based write sink so the modes cannot
-drift apart.
-
-### Write-behind {#write-behind}
-
-[#2247](https://github.com/whizbang-lib/whizbang/issues/2247), opt-in, never the default. For read models with a few
-very hot streams (counters, aggregates), folded models stay in memory across batches and are flushed later. Its
-guarantees: memory is bounded (a model count and a byte limit are required, and evicting a model flushes it); the
-checkpoint advances only with flushed state, so a crash replays from the checkpoint, which is correct because applies
-are pure; a cached model is valid only while this instance holds the stream's claim; lifecycle stages and the sync
-tracker fire after the flush, and a sync wait forces an early flush of that stream; and writes outside the runner
-(collectives, rewind, the ordering guard, rebuild) invalidate or refresh the cached models they touch.
+A later mode is the same pipeline with different seams, and reuses the set-based write sink so the modes cannot drift
+apart, as [write-behind](#write-behind) does.
 
 ### Staging-table rebuilds {#staging-table-rebuilds}
 
@@ -364,7 +592,8 @@ the same way here as in a live batch.
 A write mode is supported only when it passes the **same conformance suite**: one integration suite on PostgreSQL,
 parameterized by write mode, that runs real generated runners through the real pipeline (the claim loop, the worker,
 the driver's state source and write sinks) and asserts what the read model must hold whatever the mode
-(`PerspectiveWriteModeConformanceTests`). Every case runs against the set-based and the per-stream mode.
+(`PerspectiveWriteModeConformanceTests`). Every case runs against the set-based, the per-stream and the write-behind
+mode.
 
 Concurrent writers are driven deterministically through the flush-policy seam: a test `IApplyBatchStrategy` runs
 between the batch's prepare and its write and changes the row in the database, as another writer acting in that window
@@ -383,8 +612,10 @@ writes that happened. Every wait is on the completion or failure of the work row
 
 Snapshots and rewind from a snapshot, collectives on the same rows, lifecycle receptors and rebuild are not in the
 suite yet; they are covered for the set-based path by focused tests of the runner's prepare and complete, and are the
-next cases to add. Write-behind and staging-table rebuilds must pass the suite before they ship, and a feature added to
-perspectives later is added to the suite, so every mode is held to it.
+next cases to add. Write-behind passes the suite, with its own cases beside it (a hot stream's batches held and written
+once, a crash that loses only the held models, a row another writer changes while its model is held; see
+[Write-behind mode](#write-behind)). A feature added to perspectives later is added to the suite, so every mode is held
+to it.
 
 ## Measurements {#measurements}
 

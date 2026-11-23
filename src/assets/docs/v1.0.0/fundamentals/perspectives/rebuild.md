@@ -45,6 +45,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/PerspectiveRebuildRequestHandler.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveRebuildRequestHandler.cs
   - src/Whizbang.Core/Workers/IntegrityAuditWorker.cs
+  - src/Whizbang.Core/Workers/PerspectiveApplyBatch.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveWriteSink.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/RebuildCreatedAtIntegrationTests.cs
   - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveSnapshotFloorTests.cs
@@ -82,6 +84,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/IntegrityAuditWorkerTests.cs
   - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRebuilderBatchedReadTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/BlueGreenRebuildIntegrationTests.BatchedReads.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/PerspectiveRebuilderBatchedWriteTests.cs
   - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/RunnerBase/RunnerBaseEntryPointTests.cs
   - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/IPerspectiveRunnerDefaultsTests.cs
 lastMaintainedCommit: '01f07906'
@@ -390,9 +393,8 @@ stays for a caller that writes one cursor.
 {verified: ArchivedStreamRebuildSqlTests.Completer_WritesEveryCursorOfAFlush_WithOneStatement_ParkedAndLiveAlikeAsync, DapperArchivedStreamRebuildTests.Completer_WritesEveryCursorOfAFlush_WithOneStatement_ParkedAndLiveAlikeAsync}
 
 **What it costs.** A blue-green rebuild's statements grow with its batches, not its streams: two batches send the same
-statements whether they hold 4, 8 or 12 streams. A rebuild in place, or of selected streams, still writes each row with
-its own statement, because it writes the live table rather than an empty one; batching those writes is
-[#2522](https://github.com/whizbang-lib/whizbang/issues/2522).
+statements whether they hold 4, 8 or 12 streams. A rebuild in place, or of selected streams, writes each batch's rows
+together too; see [batched writes](#batched-writes).
 {verified: BlueGreenRebuildIntegrationTests.Rebuild_SendsTheSameStatementsForTheSameBatches_WhateverTheirStreamCountAsync}
 
 | Situation | What the rebuild does | Verified |
@@ -428,6 +430,74 @@ stream on its own.
 returns `null` and the second calls `RunRebuildAsync`, so a hand-written runner keeps compiling and reads each stream
 on its own. Runners built on `PerspectiveRunnerBase`, which every generated runner is, implement both.
 {verified: IPerspectiveRunnerDefaultsTests.ReadRebuildEventsAsync_Default_ReturnsNullAsync, IPerspectiveRunnerDefaultsTests.RunRebuildWithEventsAsync_Default_RunsTheRebuildThatReadsItsOwnEventsAsync}
+
+### Batched writes {#batched-writes}
+
+{verified: PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_WritesEachBatchsRowsThroughTheSinkWithOneWrite_NotOneWritePerRowAsync, PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_ReadsEachBatchsRowsOnce_AndNoRowOnItsOwnAsync, BlueGreenRebuildIntegrationTests.Rebuild_SendsTheSameStatementsForTheSameBatches_WhateverTheirStreamCountAsync}
+
+A rebuild in place, and a rebuild of [selected streams](#selected-streams), writes the rows of each batch it
+[read together](#batched-reads) **together** ([#2522](https://github.com/whizbang-lib/whizbang/issues/2522)). It used to
+write each row with a statement of its own, so once the reads were batched, the writes were what a rebuild of many
+small streams paid for. Each batch now goes through the same set-based write the
+[perspective worker](write-modes#the-batch) uses:
+
+1. **Prepare.** Each stream of the batch is folded onto its own row from the batch's read, exactly as the per-stream
+   rebuild folds it, and its row is prepared for the write.
+2. **Write.** The prepared rows go to the host's write sink (`IPerspectiveWriteSink`) through its flush policy, which
+   writes them with [one statement per table and shape](write-modes#grouped-statements).
+3. **Complete.** Each stream is completed with the outcome of its own row, and its cursor, counts and progress are
+   recorded as before.
+
+```mermaid{caption="One batch of a rebuild in place: one read, every stream prepared from it, one write per table and shape through the write sink, then each stream completed with its own outcome. A row the batch write does not take is written on its own." tests=["PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_WritesEachBatchsRowsThroughTheSinkWithOneWrite_NotOneWritePerRowAsync", "PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_ARowThatMovesUnderTheBatchsWrite_IsReadAgainAndWrittenOnItsOwnAsync", "PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_ARowTheSinkRejects_IsWrittenOnItsOwn_AndAFailureThereFailsOnlyItsStreamAsync"]}
+flowchart LR
+    R[One read of the<br/>batch's events and rows] --> P[Prepare each stream:<br/>fold onto its own row]
+    P --> W[Write sink:<br/>one statement per<br/>table and shape]
+    W --> C[Complete each stream:<br/>cursor, counts, progress]
+    W -. row moved under the write,<br/>or rejected by the database .-> O[That row read again<br/>and written on its own]
+    O --> C
+```
+
+**Each row ends as the per-row write left it.** The fold, the stamp, the cursor, the counts and the progress are the
+same as a rebuild that writes each row on its own:
+
+| Situation | What the rebuild does | Verified |
+|---|---|---|
+| The ordering guard refuses a row's write | Counted [already correct](#already-correct) or refused, as the per-row write counts it ([#2252](https://github.com/whizbang-lib/whizbang/issues/2252)). A rebuild never rewinds the stream, as a refused live write does. | {verified: PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_AWriteTheGuardRefuses_IsCountedAlreadyCorrectOrRefused_AsThePerRowWriteCountsItAsync, PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_AWriteTheGuardRefuses_NeverRewindsTheStream_AsALiveRefusalDoesAsync} |
+| A row moves under the batch's write (another writer changed it after the batch read it) | That row is read again and written on its own | {verified: PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_ARowThatMovesUnderTheBatchsWrite_IsReadAgainAndWrittenOnItsOwnAsync} |
+| The database rejects a row | That row is written on its own; if it fails there, only its stream fails, and the batch's other rows are written | {verified: PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_ARowTheSinkRejects_IsWrittenOnItsOwn_AndAFailureThereFailsOnlyItsStreamAsync} |
+| A stream that [ends in a purge](#terminal-purges) | The purge marker is recorded before the batch removes the row, and the purge is counted as the per-row purge is | {verified: PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_APurge_IsWrittenWithTheBatch_AndCountedAsThePerRowPurgeIsAsync} |
+| An upcaster re-keyed some of a stream's events onto another row | Those events are handed over to be folded with that row after the batch, in the stream's own order, as the stream's own rebuild hands them over; the ones after its own row only when its own row's write did not fail | {verified: PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_AStreamWhoseEventsWereRekeyed_FoldsEveryRowAsThePerRowRebuildDoesAsync, PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_AStreamWhoseOwnRowFails_HandsOverTheEventsRekeyedAfterIt_AsItsOwnRebuildDoesAsync} |
+| The batch cannot take its locks | Logged at Warning, naming the perspective and the batch's size; each stream of the batch is rebuilt on its own | {verified: PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_WhenTheBatchCannotTakeItsLocks_LogsIt_AndRebuildsEachStreamOnItsOwnAsync} |
+| The rebuild is canceled while the batch takes its locks | The rebuild ends; its streams are not rebuilt one by one instead | {verified: PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_CanceledWhileTheBatchTakesItsLocks_EndsTheRebuild_RatherThanRebuildingEachStreamAsync} |
+| The batched read left a stream out | That stream is rebuilt on its own | {verified: PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_AStreamTheBatchedReadLeftOut_IsRebuiltOnItsOwnAsync} |
+| The host registers its own flush policy (`IApplyBatchStrategy`) | The batch is written through it, as a live batch is | {verified: PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_WritesThroughTheHostsFlushPolicy_WhenItRegistersOneAsync} |
+
+**When each row is still written on its own.** The batched write follows the perspective's
+[write mode](write-modes#selection), and needs a write sink and a batch read:
+
+| Case | Why | Verified |
+|---|---|---|
+| The service or the perspective writes per stream (`PerspectiveWorkerOptions.WriteMode`, or `[PerspectiveWriteMode(PerspectiveWriteMode.PerStream)]`) | A rebuild in place writes the way the live worker writes | {verified: PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_OfAServiceThatWritesPerStream_WritesEachRowOnItsOwnAsync} |
+| A perspective with no generated runner | Only a generated runner prepares a write | {verified: PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_OfAPerspectiveWithNoGeneratedRunner_WritesEachRowOnItsOwnAsync} |
+| The Dapper driver, or any host that registers no write sink | There is nothing to write a batch through | {verified: PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_WritesEachBatchsRowsThroughTheSinkWithOneWrite_NotOneWritePerRowAsync} |
+| A container that cannot say whether a write sink is registered (no `IServiceProviderIsService`) | The rebuild cannot tell a sink is there | {verified: PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_InAContainerThatCannotSayWhatItRegisters_WritesEachRowOnItsOwnAsync} |
+| A stream read on its own (`StreamReadBatchSize` 1 or below, or a stream with [archived data](#archived-data)) | Its batch read did not hold it | {verified: PerspectiveRebuilderBatchedWriteTests.Rebuild_InPlace_ReadingEachStreamOnItsOwn_WritesEachRowOnItsOwnAsync} |
+
+A [blue-green rebuild](#blue-green) is unchanged: its first pass writes the empty shadow table through the
+[staging load](#staging-load), and a prepared write names the live table, not the shadow.
+
+**What it costs.** Measured with `Rebuild_SendsTheSameStatementsForTheSameBatches_WhateverTheirStreamCountAsync`: a rebuild
+of 4, 8 and 12 selected streams, each in two batches, counting every statement the rebuild sends:
+
+| Streams | Statements before | Statements after |
+|---|---|---|
+| 4 | 13 | 11 |
+| 8 | 17 | 11 |
+| 12 | 22 (calculated) | 13 |
+
+Before, every stream added a write of its own. Now each batch writes its rows with one statement per write shape (one
+for the batch's new rows and one for its existing ones), at most two per batch whatever the batch holds, so a rebuild's
+statements grow with its batches, not its streams, as a blue-green rebuild's already do.
 
 ## Archived data {#archived-data}
 
