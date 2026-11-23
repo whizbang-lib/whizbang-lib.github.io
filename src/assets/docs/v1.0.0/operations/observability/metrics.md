@@ -685,6 +685,18 @@ Passive counters for instance liveness: the heartbeat writer's out-of-cadence an
 
 {verified: InstanceLivenessMetricsTests.Counters_ReportWhatWasAddedWhenPolledAsync, InstanceLivenessMetricsTests.Meter_IsNamedForTheLivenessDomainAsync, InstanceLivenessMetricsTests.WithoutAMeterFactory_StillConstructsAsync}
 
+## Whizbang.SequenceIntegrity {#sequence-integrity}
+
+Meter name: `Whizbang.SequenceIntegrity` (`SequenceHoldMetrics`)
+
+How long the outbox has held an event for its commit-order stamp. Each instance reads its own holdings every `Whizbang:Core:SequenceHoldSampleInterval` and logs a warning past `Whizbang:Core:SequenceHoldWarningAge`. Design and operator guidance: [Sequence Integrity](/v1.0.0/fundamentals/messaging/sequence-integrity#watching-held-messages).
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.outbox.sequence_hold.oldest_age_seconds` | ObservableGauge\<double\> | Age in seconds of the oldest outbox event this instance holds for its stamp; `0` when it holds none, no value when the reading failed |
+
+{verified: SequenceHoldWorkerTests.OnItsInterval_ReadsThisInstancesOldestHold_AndPublishesItsAgeAsync, SequenceHoldWorkerTests.NothingHeld_ReadsZero_AndAFailedReading_ReportsNothingAsync}
+
 ## Whizbang.Probes {#probes}
 
 Meter name: `Whizbang.Probes` (`ProbeCadenceMetrics`)
