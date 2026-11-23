@@ -914,13 +914,12 @@ event version. A UUIDv7 stream id keeps related rows close together in the index
 out, which costs some index efficiency and nothing else.
 
 So a stream id that is not a UUIDv7 is **reported, not refused**. `WhizbangOptions.StreamIdOrderingViolationSeverity`
-(configuration key `Whizbang:StreamIdOrderingViolationSeverity`) defaults to `Warning`: each such stream id is logged
+defaults to `Warning`: each such stream id is logged
 once and counted in `whizbang.guid_ordering.non_v7_stream_ids`. Raise it to `Error` to refuse non-v7 stream ids, or set
 `Info` or `None` to quiet the report
 {verified: GuidOrderingEntryPointValidationTests.ReportStreamId_NonV7AtTheDefault_IsAcceptedLoggedOnceAndCountedAsync, GuidOrderingEntryPointValidationTests.ReportStreamId_RaisedToError_IsRefusedAsync, GuidOrderingEntryPointValidationTests.ReportStreamId_AtInfo_LogsAtInformationAsync, GuidOrderingEntryPointValidationTests.ReportStreamId_AtNone_IsSilentAsync, GuidOrderingRefusalMatrixTests.EventStoreAppend_NonV7StreamId_IsStoredByDefault_AndRefusedAtErrorAsync}.
 
 ```csharp{title="Strict stream ids" description="Refuse stream ids that are not UUIDv7" category="Configuration" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "StreamId", "Severity"] tests=["GuidOrderingEntryPointValidationTests.ReportStreamId_RaisedToError_IsRefusedAsync", "GuidOrderingInMemoryAppendTests.Append_NonV7StreamId_RaisedToError_IsRefusedAsync"]}
-// The same as setting Whizbang:StreamIdOrderingViolationSeverity to Error in configuration
 services.Configure<WhizbangOptions>(options => {
   options.StreamIdOrderingViolationSeverity = GuidOrderingSeverity.Error;
 });
