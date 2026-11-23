@@ -30,9 +30,9 @@ lastMaintainedCommit: '01f07906'
 
 ## Description
 
-This informational diagnostic is reported when a GUID creation call could be intercepted but was suppressed via the `[SuppressGuidInterception]` attribute. This indicates intentional opt-out from TrackedGuid wrapping.
+This informational diagnostic is reported when a GUID creation call could be intercepted but was suppressed via the `[SuppressGuidInterception]` attribute. This indicates an intentional opt-out: the suppressed call keeps its original value (a random v4 for `Guid.NewGuid()`) instead of being replaced with `TrackedGuid.New()`. Such an id must not become an event or message id, which the [time-ordering checks](../../fundamentals/identity/whizbang-ids#time-ordering-checks) refuse.
 
-The diagnostic is reported whenever the generator runs — even if the MSBuild property `WhizbangGuidInterceptionEnabled` is not set (the property only gates whether interceptor code is generated for the non-suppressed calls).
+Guid interception is on by default. The diagnostic is reported whenever the generator runs; `WhizbangGuidInterceptionEnabled=false` (strongly advised against) only stops interceptor code from being generated for the non-suppressed calls.
 
 Suppression via `#pragma warning disable WHIZ055`/`WHIZ056` around a call disables interception silently — those calls produce **no** WHIZ059 (only attribute-based suppression is reported).
 
@@ -176,5 +176,5 @@ public Guid CreateId() => Guid.NewGuid();
 ## See Also
 
 - [WhizbangIds](../../fundamentals/identity/whizbang-ids.md) - TrackedGuid and strongly-typed IDs
-- [TrackedGuid Interception](../../fundamentals/identity/whizbang-ids.md#trackedguid-interception-opt-in) - Full interception documentation
+- [TrackedGuid Interception](../../fundamentals/identity/whizbang-ids#guid-interception) - Full interception documentation
 - SuppressGuidInterceptionAttribute - Attribute documentation

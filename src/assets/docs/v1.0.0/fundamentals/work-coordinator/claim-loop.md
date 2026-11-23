@@ -622,6 +622,29 @@ The test measures each call at both depths, on a database it alone uses, with th
 and with the generic plan a long-lived connection may settle on, and fails when the deeper call reads more than the
 shallower one plus one row per stream, or more than a fixed number of rows per stream of its batch.
 
+### The eviction finds pending outbox work through an index {#eviction-outbox-probe}
+{verified: PerspectiveWorkQueueBacklogCostSqlTests.CleanupCompletedStreams_WithAFullOutbox_ReadsWhatItsBatchHolds_NotTheOutboxAsync, PerspectiveWorkQueueBacklogCostSqlTests.CleanupCompletedStreams_AnOutboxRowAlreadyPublished_DoesNotHoldTheStreamAsync}
+
+The eviction removes a stream's ledger row only when no work table holds pending work for it. It treats an outbox row
+as pending only while the row is both unprocessed and unpublished, the rows the outbox claim can still take
+(migration 558, [#2538](https://github.com/whizbang-lib/whizbang/issues/2538)). That is the predicate of the outbox's
+stream-run index (`idx_outbox_stream_run`), so each candidate stream's outbox check is one descent of that index, and
+the eviction's cost follows its batch, not the size of the outbox. Before, the check asked only for unprocessed rows,
+which no outbox index answers, so every candidate stream with no other pending work read the whole outbox.
+
+The framework sets `published_at` only together with `processed_at`, so the streams evicted are the same for every row
+it writes. No index is added, so writing to the outbox costs what it did. Blocks read, measured with
+`EXPLAIN (ANALYZE, BUFFERS)` over 12,500 pending outbox rows of other streams, with half of each batch evictable:
+
+| Batch | Before | After |
+|---|---|---|
+| 100 streams | 38,109 | 510 |
+| 1,000 streams, planned for the call's arguments | 381,890 | 5,891 |
+| 1,000 streams, generic plan | 381,015 | 5,016 |
+
+The test fills the outbox with 12,500 pending rows of other streams and fails when an eviction of 1,000 streams reads
+more than three rows per stream of its batch, under both plans.
+
 ## The claim runs only what can find work {#the-claim-runs-only-what-can-find-work}
 {verified: ClaimFixedCostSqlTests.InboxReOffer_AnInstanceHoldingOneLane_WalksOnlyThatLane_AndOffersItsStreamAsync, ClaimFixedCostSqlTests.InboxReOffer_ALaneHoldingOnlyUnfetchableRows_IsStillWalked_AndOffersNothingAsync, ClaimFixedCostSqlTests.Claim_AnInstanceHoldingNothing_RunsNoReOfferWalkAsync, ClaimFixedCostSqlTests.PerspectiveReOffer_AnInstanceHoldingOneBucket_WalksOnlyThatBucket_AndOffersItsStreamAsync, ClaimFixedCostSqlTests.PerspectiveReOffer_TheIdleBucketWhileWithheld_IsNotOffered_AndNotWalkedAsync, ClaimFixedCostSqlTests.StorePass_ARowWhoseEventIsAlreadyStored_IsStamped_WithoutRunningTheCopyAsync, ClaimFixedCostSqlTests.StorePass_AfterAPassWithNoCandidate_AReadyRowIsStoredByTheNextClaimAsync, ClaimFixedCostSqlTests.StorePass_AnOrdinaryEvent_RunsNoCollectiveRoutingAsync, ClaimFixedCostSqlTests.StorePass_ACollectiveEvent_IsStillRoutedToTheCollectiveSinkAsync}
 
