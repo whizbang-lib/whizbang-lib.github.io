@@ -82,6 +82,14 @@ Run it locally against a docs checkout next to the repository:
 pwsh .github/scripts/Test-DocsTagTarget.ps1 -DocsRoot ../whizbang-lib.github.io
 ```
 
+## Sonar's complexity and parameter limits fail the build {#sonar-queue-rules}
+
+The merge queue's quality gate runs SonarCloud, which flags a method whose cognitive complexity is over 15 (3 for a property accessor) under rule S3776, and one with more than 7 parameters under S107. The analyzer package ships both rules turned off, so until #2515 they surfaced only in the queue and cost a queue run each time.
+
+The root `.editorconfig` now turns both rules on for `src/**.cs` at the same limits, and the build treats them as errors, so a local build and PR CI fail on them before the queue does. Split a large method into helpers, or group related parameters into a small value type. A real exception takes `[SuppressMessage]` with a justification that says why.
+
+Test, sample, benchmark and tool code keep both rules off, because the gate does not check them there. `SonarQueueRulesTests` in `tests/Whizbang.RepoAnalyzers.Tests` runs the build's own analyzer over code under each folder, one member over each limit and one exactly at it, so the test fails if either rule or its scope changes.
+
 ## Giving a new diagnostic its ID
 
 `diagnostic-ids.txt` at the repository root lists every ID: its status, the project that defines it, and its meaning. A new diagnostic takes the lowest free number in its block there, and its row is added in the same change. A repository check takes the next number in the WHIZ600 block; anything that ships takes a number outside it.

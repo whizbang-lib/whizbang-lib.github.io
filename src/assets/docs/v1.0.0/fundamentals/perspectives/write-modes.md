@@ -207,6 +207,14 @@ Whatever the plan cannot answer (a store that does not read in batches, a batche
 read per stream, exactly as without a state source. Only a prepare consults it: a pair rerun on the per-stream path
 reads its row afresh.
 
+A [rebuild](rebuild#batched-reads) plans each batch of its streams through the same seam
+([#2513](https://github.com/whizbang-lib/whizbang/issues/2513)): the rows it re-derives, the purge markers of the
+missing ones and the commit sequences of their events are each read once per batch. A rebuild plans **no stream as
+known new**, because the row it re-derives may already exist, so every row is read; it reads no recorded position from
+the planned row, as its per-stream read does not; and only the first attempt of a row's write reads from the plan, so a
+row that moved under the write is read again on its own.
+{verified: PerspectiveRebuilderBatchedReadTests.Rebuild_ReadsEachBatchsRowsPurgeMarkersAndCommitSequences_WithOneReadEach_NotOnePerStreamAsync, PerspectiveRebuilderBatchedReadTests.Rebuild_ARowThatMovesUnderItsWrite_IsReadAgainOnItsOwn_NotFromTheBatchsReadAsync}
+
 ### Statements grouped by table and operation {#grouped-statements}
 
 The write sink groups the pending writes by table and by operation and writes each group with one statement:
