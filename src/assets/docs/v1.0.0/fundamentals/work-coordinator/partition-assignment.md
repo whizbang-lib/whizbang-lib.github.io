@@ -176,7 +176,8 @@ while it drains:
   begin with, because an instance id is new for each process.
   What it gives back is only what it has not started: once nothing is in hand, the run-control path
   [releases the streams of its last claim that no drain has begun](/v1.0.0/fundamentals/work-coordinator/claim-loop#release-on-halt),
-  so a peer takes those over at once rather than after their leases lapse.
+  so the peer its partitions are now assigned to takes those over at once rather than after their leases lapse.
+  The release clears each stream's stored owner, so a released stream follows the assignment, not the instance that held it.
 
 {verified: WorkEligibilitySqlTests.Candidates_ADrainingInstanceWithAFreshHeartbeat_IsLeftOutAtOnceAsync, WorkEligibilitySqlTests.Rank_ADrainingPeer_ItsShareMovesToTheCallerAtOnceAsync, AliveVersusEligibleE2ETests.ADrainingInstance_StopsBeingEligible_AndItsShareGoesToItsPeerAsync}
 
