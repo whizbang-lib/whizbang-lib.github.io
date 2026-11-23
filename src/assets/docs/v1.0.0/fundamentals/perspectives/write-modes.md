@@ -426,6 +426,26 @@ either bound is written at once, as set-based writes it; a held model's later ba
 models are flushed until the cache is back under its bounds.
 {verified: PerspectiveWriteBehindOptionsTests.TheBounds_HaveNoDefault_AndTheIntervalAndBatchCapDoAsync, PerspectiveWriteBehindOptionsTests.TheServiceMode_WithoutBounds_NamesBothMissingBoundsAndTheFixAsync, PerspectiveWriteBehindOptionsTests.ADeclaredPerspective_WithoutBounds_IsNamedAsync, PerspectiveWriteBehindOptionsTests.AnIntervalBeyondHalfTheLeaseLessItsGrace_IsRefusedAsync, PerspectiveWorkerDrainModeTests.WriteBehind_TheServiceModeWithoutBounds_FailsToStartAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ADeclaredPerspectiveWithoutBounds_StopsTheWorkerBeforeItAppliesAnythingAsync, PerspectiveWriteBehindCacheTests.ANewModel_IsHeld_OnlyWhenItFitsBothBoundsAsync, PerspectiveWriteBehindCacheTests.Due_FlushesOnlyAsManyOldModelsAsBringTheCacheBackUnderItsBoundsAsync}
 
+The bounds bind from `Whizbang:Workers:Perspective:WriteBehind` (environment variables
+`Whizbang__Workers__Perspective__WriteBehind__MaxModels` and so on):
+
+```json{title="Write-behind bounds" description="The two required bounds of the write-behind model cache, with the flush interval and batch cap at their defaults." category="Configuration" difficulty="INTERMEDIATE" tags=["Perspectives", "Write-behind", "Configuration"] tests=["PerspectiveWriteBehindOptionsTests.TheBounds_HaveNoDefault_AndTheIntervalAndBatchCapDoAsync"]}
+{
+  "Whizbang": {
+    "Workers": {
+      "Perspective": {
+        "WriteBehind": {
+          "MaxModels": 10000,
+          "MaxBytes": 67108864,
+          "MaxFlushIntervalMilliseconds": 1000,
+          "MaxBatchesPerModel": 32
+        }
+      }
+    }
+  }
+}
+```
+
 ### What forces a flush {#write-behind-flush}
 
 A model is flushed when its interval elapses. It is flushed early (a **forced** flush, counted by reason) when:
