@@ -813,3 +813,20 @@ These matter to services that run [stream integrity](../resilience/stream-integr
   second one.
 - **What to do:** create a new message instance for each new stream. See
   [GenerateStreamId](../extending/attributes/generatestreamid.md#derived-stream-ids).
+
+### Every dispatch inside a handling derives its message ids {#every-dispatch-derives}
+
+*[#2543](https://github.com/whizbang-lib/whizbang/issues/2543)*
+
+- **What changed:** inside a receptor's handling, `SendAsync`, every `LocalInvokeAsync` and
+  `LocalInvokeWithReceiptAsync` overload, the batch methods (`SendManyAsync`, `LocalSendManyAsync`,
+  `PublishManyAsync`, `LocalInvokeManyAsync`), a publish routed to local receptors only, and `CascadeMessageAsync`
+  with no source envelope now derive their message ids from the handling, as explicit publishes already did. A
+  redelivered handling sends the same messages under the same ids. Outside a handling every id is still a fresh
+  UUIDv7.
+- **Who is affected:** nobody needs to change code. A handling first run before the upgrade and redelivered after it
+  sends once more under new ids, as before. A handling that publishes to its local receptors only, or cascades with no
+  source envelope, now spends an emission ordinal on that call, so the events it emits afterwards derive different ids
+  than on the previous version for a handling redelivered across the deploy.
+- **What to do:** nothing. See
+  [Every dispatch path inside a handling derives](../fundamentals/dispatcher/message-cascade.md#every-dispatch-path-derives).

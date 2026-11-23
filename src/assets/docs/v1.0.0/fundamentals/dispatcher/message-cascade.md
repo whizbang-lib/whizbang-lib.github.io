@@ -730,6 +730,34 @@ sends on the same streams. These positions do not take ordinals from the handlin
 [GenerateStreamId](../../extending/attributes/generatestreamid#derived-stream-ids).
 {verified: DispatcherDerivedIdentityInHandlingTests.SendAsync_GenerateStreamId_InsideAHandling_ARedeliveryStartsTheSameStreamAsync, DispatcherDerivedIdentityInHandlingTests.SendAsync_GenerateStreamId_DoesNotShiftTheHandlingsEmissionIdsAsync, DispatcherDerivedIdentityInHandlingTests.LocalInvokeAsync_GenerateStreamId_InsideAHandling_ARedeliveryStartsTheSameStreamAsync}
 
+### Every dispatch path inside a handling derives {#every-dispatch-path-derives}
+{verified: DispatchSurfaceDerivedIdentityComponentTests.EveryDispatchMethod_IsProbedOrDelegatesToAProbedOneAsync, DispatchSurfaceDerivedIdentityComponentTests.InsideAHandling_ARedeliveryProducesTheSameIdsAsync, DispatchSurfaceDerivedIdentityComponentTests.OutsideAHandling_EveryIdIsMintedAsync, DispatchSurfaceDerivedIdentityComponentTests.InsideAHandling_TwoHandlingsOfTheSameCall_ShareNoIdAsync, DispatchSurfaceDerivedIdentityComponentTests.InsideAHandling_ABatchGivesEachItemAnIdOfItsOwnAsync, DispatcherMessageIdSourceGuardTests.EveryIdTheDispatcherMints_IsMintedByAnAllowedMemberAsync, DispatcherSendPathsDerivedIdentityTests.SendAsync_InsideAHandling_DoesNotShiftTheHandlingsEventIdsAsync, DispatcherSendPathsDerivedIdentityTests.CascadeMessageAsync_NoSourceEnvelope_InsideAHandling_DerivesFromTheHandlingAsync, SentMessageIdentityTests.Derive_FixedInputs_DeriveTheCompatibilityValueAsync}
+
+Explicit publishes are not the only way a receptor body sends something. Inside a handling, **every** dispatch path
+derives its message ids from the handling ([#2543](https://github.com/whizbang-lib/whizbang/issues/2543)), so a
+redelivered handling sends the same messages under the same ids and every receiver sees a duplicate, not a new message:
+
+| Path | Inside a handling |
+|---|---|
+| `PublishAsync` (both overloads), a returned event, `CascadeMessageAsync` | Derived from the handling's emission ordinals (above) |
+| A publish routed to local receptors only | Derived; it takes an emission ordinal like any other event |
+| `SendAsync`, `LocalInvokeAsync`, `LocalInvokeWithReceiptAsync` (every overload) | Derived |
+| `SendManyAsync`, `LocalSendManyAsync`, `PublishManyAsync`, `LocalInvokeManyAsync` | Derived per item, by the item's position in the handling, so the same batch on a redelivery gets the same ids |
+| `CascadeMessageAsync` with no source envelope | Derived from the handling the call runs in |
+| The generated cascade code when it is handed no id | Takes its id from the dispatcher (`CascadeMessageIdFor`), so it derives too; generated code never mints |
+
+**Events and commands count separately.** An event takes the handling's emission ordinals. Any other message, such as a
+command, takes ordinals of its own through `SentMessageIdentity`, with the prefix
+`whizbang.sent-message.in-handling.v1` and the same layout as an emission id. Sending a command therefore never shifts
+the ids of the events the handling returns or publishes.
+
+**Outside a handling nothing changes.** An API endpoint, a background service or any other caller with no handling gets
+a fresh UUIDv7 per message, as before.
+
+**One place mints.** Every id the dispatcher creates goes through one private method, and a guard test fails the build
+when any other member of the dispatcher mints an id. A design-lock test enumerates the dispatch surface: a new dispatch
+method fails it until it is probed for derived ids inside a handling and minted ids outside one.
+
 ### Source service id on published envelopes {#source-service-id}
 {verified: OutboxDrainWorkerTests.OutboxDrainWorker_LocalServiceIdLookupFailsOnceAtStartup_ResolvesBeforeTheNextBatchAsync, OutboxDrainWorkerTests.OutboxDrainWorker_LocalServiceIdResolvedAtStartup_DoesNotLookItUpAgainAsync, OutboxDrainWorkerTests.OutboxDrainWorker_LocalServiceIdEmptyAtStartup_WarnsAndRetriesBeforeEachBatchAsync, OutboxDrainWorkerTests.OutboxDrainWorker_LocalServiceIdLookupKeepsFailing_RecordsEachRetryAtDebugAsync}
 
