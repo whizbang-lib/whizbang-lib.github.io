@@ -849,7 +849,7 @@ Every path that brings a new event or message id into the framework runs the che
 | Entry point | What is checked |
 |-------------|-----------------|
 | Work coordinator strategies (Immediate, Interval, Batch, Scoped, StreamAffinity) | Each message passed to `QueueOutboxMessage` and `QueueInboxMessage` |
-| EF Core and Dapper work coordinators | Every outbox and inbox write, including dead letters, handler commits and coalesce |
+| EF Core and Dapper work coordinators | Every outbox and inbox write, including dead letters, handler commits and coalesce; an inbox write's stream id is reported (see [Stream id versions](#stream-id-versions)) |
 | Event store appends (EF Core, Dapper PostgreSQL, SQLite, in memory) | The envelope's message id, which becomes the event id; the stream id is reported (see [Stream id versions](#stream-id-versions)) |
 | Dispatcher | Ids a caller supplies: a cascade's source envelope, a composite's carried child ids, and an id a subclass passes to `CascadeToOutboxAsync` or `CascadeToEventStoreOnlyAsync` |
 | Transport receive | The strong id's JSON converter refuses a non-v7 id when the envelope is deserialized |
@@ -1016,9 +1016,25 @@ Stream ids that are never reported:
 - A UUIDv7, and `Guid.Empty`, which is refused separately as a missing stream id
   {verified: GuidOrderingEntryPointValidationTests.ReportStreamId_V7AndEmpty_AreNeverReportedAsync}.
 
-Stream ids are reported at event store appends and on the dispatcher's outbox path, where the message's .NET type is
-known. Outbox and inbox writes carry the message type only as a string, so a stream id that reaches only the inbox
-from a remote producer is not reported.
+Stream ids are reported at event store appends, on the dispatcher's outbox path, and at the inbox.
+
+A stream id that reaches a service only through its inbox, from a remote producer, is reported too. The EF Core and
+Dapper inbox writes (entry points `EFCoreWorkCoordinator.InboxWrite` and `DapperWorkCoordinator.InboxWrite`) carry the
+message type only as its stored name, so they resolve that name to the type through the names the generated JSON
+contexts register, the same lookup inbox deserialization makes, with no reflection. The type's stream id type then
+comes from the generated stream id extractors, so the same rules apply as everywhere else:
+
+- A non-v7 stream id is stored, logged once per stream with the stream id, the message type name and the entry point,
+  and counted in `whizbang.guid_ordering.non_v7_stream_ids`.
+- At `StreamIdOrderingViolationSeverity = Error` the inbox write is refused before any SQL runs, so nothing of the
+  batch is stored.
+- A stream id declared with `[WhizbangId(AcceptAnyVersion = true)]` is never reported.
+- A stored name that does not resolve to a type is reported, not skipped.
+- A UUIDv7 or an empty stream id returns before the name is looked up.
+
+{verified: EFCoreInboxStreamIdReportTests.NonV7StreamId_ByDefault_IsStoredReportedOnceAndCountedAsync, EFCoreInboxStreamIdReportTests.NonV7StreamId_AtError_IsRefusedAndNothingOfTheBatchIsStoredAsync, EFCoreInboxStreamIdReportTests.AnyVersionStrongStreamId_IsStoredAndNeverReportedAsync, EFCoreInboxStreamIdReportTests.UnresolvableMessageType_IsReportedNotSkippedAsync, DapperInboxStreamIdReportTests.NonV7StreamId_ByDefault_IsStoredReportedOnceAndCountedAsync, DapperInboxStreamIdReportTests.NonV7StreamId_AtError_IsRefusedAndNothingOfTheBatchIsStoredAsync, DapperInboxStreamIdReportTests.AnyVersionStrongStreamId_IsStoredAndNeverReportedAsync, DapperInboxStreamIdReportTests.UnresolvableMessageType_IsReportedNotSkippedAsync, GuidOrderingStreamIdByNameTests.V7AndEmpty_AreNeverReportedByNameAsync, GuidOrderingStreamIdByNameTests.UnresolvableName_IsRefusedAtErrorAsync}
+
+A service that raised stream ids to `Error` therefore now also refuses such messages at the inbox.
 
 ## Framework ids that are not time-ordered {#framework-ids-that-are-not-time-ordered}
 
