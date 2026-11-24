@@ -2,7 +2,7 @@
 title: "WhizbangIds: Strongly-Typed Identity Values"
 pageType: concept
 verifiedAgainstCommit: 'bf8517ac'
-verifiedDate: 2026-11-23
+verifiedDate: 2026-11-24
 version: 1.0.0
 category: "Core Concepts"
 order: 24
@@ -26,6 +26,14 @@ codeReferences:
   - src/Whizbang.Core/WhizbangIdServiceCollectionExtensions.cs
   - src/Whizbang.Core/WhizbangIdAttribute.cs
   - src/Whizbang.Core/UuidVersions.cs
+  - src/Whizbang.Core/WhizbangIdForms.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/WhizbangIdTypeMapping.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdScalarRewrite.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdToleranceRewriter.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdScalarRewriteStep.cs
+  - src/Whizbang.Data.Postgres/BatchedRewriteRunner.cs
+  - src/Whizbang.Data.Postgres/StrongIdDocumentGate.cs
+  - src/Whizbang.Core/Perspectives/WhizbangIdDocumentForm.cs
   - src/Whizbang.Core/SuppressGuidInterceptionAttribute.cs
   - src/Whizbang.Core/SuppressGuidOrderingValidationAttribute.cs
   - src/Whizbang.Core/Validation/GuidOrderingSuppressions.cs
@@ -52,6 +60,11 @@ testReferences:
   - tests/Whizbang.Generators.Tests/WhizbangIdVersionsTests.cs
   - tests/Whizbang.Generators.Tests/WhizbangIdGrandfatheredTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdGrandfatheredTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/WhizbangIdDocumentStorageTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/StrongIdScalarRewriteIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/WhizbangIdModelTimingTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GraphQLWhizbangIdFilterIndexTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/StrongIdDocumentGateTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderRegistryTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdServiceCollectionExtensionsTests.cs
@@ -936,6 +949,119 @@ public readonly partial struct ProductCatalogId {
 
 Keep the list frozen, and track it down to zero as the old values are retired.
 
+### Ids in a perspective document {#stored-form}
+
+Inside a perspective document a strong id is stored as its UUID string, the same as a `Guid` and as the transport
+writes it, once every live instance of the service reads that form ([the switch](#stored-form-switch), below):
+
+```json{title="A strong id in a stored document" description="Every strong id in a perspective document is its UUID string" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "WhizbangId", "Perspectives"] tests=["WhizbangIdDocumentStorageTests.Whizbang_WritesEveryIdAsAUuidStringAsync"]}
+{ "OrderId": "019e244a-6bda-78a9-a08f-a1011c9c31dd", "ParentId": null, "Lines": [{ "LineId": "019e244a-..." }] }
+```
+
+Both writers of the document agree: Entity Framework, through the `uuid` type mapping every generated perspective
+context gives each `[WhizbangId]` type, and the atomic upsert's serializer. That holds at any depth: a member, a member
+of a nested object, a member of a collection element, and a nullable id.
+
+Because the stored form does not depend on the CLR type, a read-model property can change from `Guid` to a strong id
+with no change to the stored data, so read models can adopt strong ids one property at a time.
+
+Queries compare the id as a uuid, and read it in either stored form: a row may still hold the object `{"Value": "..."}`
+a release before this one wrote, until the [rewrite](#stored-form-rewrite) reaches it. The SQL reads the text, and
+takes the `Value` out of it when it is an object:
+
+```sql{title="How a query reads a strong id in a document" description="An id comparison casts either stored form to uuid" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "WhizbangId", "Perspectives", "SQL"] tests=["WhizbangIdDocumentStorageTests.Whizbang_IdEqualityTranslatesAndMatchesAsync", "WhizbangIdDocumentStorageTests.Whizbang_ContainsOverIdsTranslatesAndMatchesAsync"]}
+-- r.Data.OrderId == orderId
+CAST(CASE
+    WHEN w.data ->> 'OrderId' LIKE '{%' THEN jsonb_extract_path_text(CAST(w.data ->> 'OrderId' AS jsonb), 'Value')
+    ELSE w.data ->> 'OrderId'
+END AS uuid) = @orderId
+
+-- ids.Contains(r.Data.OrderId): the same expression
+... = ANY (@ids)
+```
+
+A model with a whole-document index answers an id equality through it instead, with one containment test per form, so
+the index serves both:
+
+```sql{title="An id equality through the document index" description="Two containment arms, one per stored form" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "WhizbangId", "Perspectives", "SQL", "Indexes"] tests=["GraphQLWhizbangIdFilterIndexTests.IdEquality_FindsBothFormsThroughTheDocumentIndex_InEitherContainmentModeAsync"]}
+-- r.Data.OrderId == orderId
+w.data @> '{"OrderId": "019e244a-..."}' OR w.data @> '{"OrderId": {"Value": "019e244a-..."}}'
+
+-- ids.Contains(r.Data.OrderId)
+w.data @> ANY (jsonb_containment_set('OrderId', @ids))
+  OR w.data @> ANY (jsonb_strong_id_containment_set('OrderId', @ids))
+```
+
+In C#, compare the id itself:
+
+```csharp{title="Querying a strong id in a document" description="Id equality and Contains over ids translate to SQL" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "Perspectives"] tests=["WhizbangIdDocumentStorageTests.Whizbang_IdEqualityTranslatesAndMatchesAsync", "WhizbangIdDocumentStorageTests.Whizbang_ContainsOverIdsTranslatesAndMatchesAsync"]}
+var one = await query.Where(r => r.Data.OrderId == orderId).ToListAsync(ct);
+var some = await query.Where(r => ids.Contains(r.Data.OrderId)).ToListAsync(ct);
+```
+
+Compare the id itself, not its `Value`: inside a document the id is a scalar, so a query on `r.Data.OrderId.Value`
+does not translate {verified: WhizbangIdDocumentStorageTests.Whizbang_QueryOnTheIdsValueDoesNotTranslateAsync}. A
+nullable id compares with `null` and with a nullable variable either way round {verified: WhizbangIdDocumentStorageTests.Whizbang_NullableIdComparedWithNullTranslatesAndMatchesAsync}.
+
+A collection of ids (`List<OrderId>`) is stored as an array of UUID strings, and `Contains` over it translates
+{verified: WhizbangIdDocumentStorageTests.Whizbang_ListOfIdsIsAnArrayOfUuidStringsAndContainsTranslatesAsync}. That
+needs the Whizbang options extension, which every generated perspective context carries: a context registered by hand
+without it cannot build a model that holds a collection of ids {verified: WhizbangIdDocumentStorageTests.Convention_ListOfIdsCannotBuildTheModelAsync}.
+
+Every query that compares an id matches either form: equality, `Contains`, ordering, a collection element, a collection
+of ids, document containment in either containment mode, and the predicates of `ExecuteUpdate` and `ExecuteDelete`
+{verified: WhizbangIdDocumentStorageTests.Whizbang_EveryIdQueryFindsARowStillInTheObjectFormAsync, WhizbangIdDocumentStorageTests.Whizbang_OrderingByAnIdSortsRowsInEitherStoredFormAsync, WhizbangIdDocumentStorageTests.Whizbang_ExecuteUpdateSetsAnIdAsAUuidString_AndItsIdPredicateMatchesBothFormsAsync, StrongIdScalarRewriteIntegrationTests.AnIdPredicate_FindsObjectFormRows_BeforeTheRewriteAndFromAnOldWriterAfterItSettlesAsync, GraphQLWhizbangIdFilterIndexTests.IdEquality_FindsBothFormsThroughTheDocumentIndex_InEitherContainmentModeAsync}.
+Reads take either form and count the object form on `whizbang.perspective.identifier_form_fallbacks`. SQL of your own
+that matched `{"Value": "..."}` (a view, a trigger, a report) has to match both forms, as above, until the rewrite has
+settled, and then the UUID string.
+
+#### The switch waits for the whole fleet {#stored-form-switch}
+
+A release before this one maps a strong id in a document as an object, and its Entity Framework reader throws on a
+UUID string {verified: WhizbangIdDocumentStorageTests.Structural_CannotReadARowInTheUuidStringFormAsync}. During a
+rolling deploy both releases are live against the same tables, so nothing writes the UUID string until every live
+instance can read it. It takes one package; there is no ordered pair of releases to deploy:
+
+1. **Each instance announces what it reads.** Its heartbeat writes `stored_form_level` into its row of
+   `wh_service_instances.metadata`: `2` for this release, which reads the UUID string; `1` or nothing for an earlier
+   one. What an instance announces decides, not its version, so two prereleases of one release are told apart.
+2. **The gate latches once every live instance reads it.** `wh_strong_id_document_gate()`, asked at every start and every
+   maintenance cycle, latches the `wh_settings` row `strong_id_uuid_string_documents` once at least one instance is live
+   and every live instance is at level 2 or higher. Until then both writers write the object form every release reads
+   {verified: StrongIdDocumentGateTests.AnInstanceThatDoesNotReadTheUuidString_HoldsTheWriteFormAndTheRewrite_WhateverItsVersionAsync, StrongIdDocumentGateTests.WhileAnEarlierInstanceIsLive_NeitherWriterWritesTheUuidStringAsync, WhizbangIdDocumentStorageTests.Whizbang_WhileTheGateIsClosed_WritesTheObjectForm_WhichTheEarlierReleaseReadsAsync}.
+3. **Each instance switches its writes and says so.** An instance that sees the gate open writes the UUID string from
+   then on, and its heartbeat adds `strong_id_document_form: "uuid-string"`. A process writes the UUID string only once
+   the gate of every database schema it writes documents to is open.
+4. **The rewrite starts once every live instance writes it.** So no instance writes the object form behind the rewrite
+   {verified: StrongIdDocumentGateTests.TheRewrite_WaitsUntilEveryLiveInstanceWritesTheUuidString_ThenRunsAsync}.
+
+The latch is one-way, like the [stored-metadata trim gate](../../data/event-store#trim-gate): once open it stays open,
+so an instance of an earlier release started after it cannot read rows written since, and rolling back below this
+release is then not supported {verified: StrongIdDocumentGateTests.OnceOpen_TheGateStaysOpen_WhenAnEarlierInstanceAppearsAsync}.
+
+| Gate answer | Meaning | Writes | Rewrite |
+|---|---|---|---|
+| `closed (n of m live instances read strong ids as UUID strings)` | A live instance cannot read the UUID string | Object form | Waits |
+| `opened` | This call latched the gate | UUID string | Waits |
+| `open (n of m live instances write strong ids as UUID strings)` | Every live instance reads it; some still write the object form | UUID string | Waits |
+| `ready` | Every live instance reads and writes it | UUID string | Runs |
+
+To see where a schema stands, run `SELECT wh_strong_id_document_gate();` (it latches the gate when it can, as the
+maintenance cycle would).
+
+#### The rewrite {#stored-form-rewrite}
+
+Rows a release before this one stored in the object form, including ids in dictionary keys and values, are rewritten a
+batch at a time. Each batch commits on its own under the rewrite's own advisory lock, not the schema lock, so a starting
+instance's schema pass never waits on a running batch
+{verified: StrongIdScalarRewriteIntegrationTests.AStartingInstance_DoesNotWaitOnARunningSliceAsync}. Each batch records
+in `wh_stored_form_migrations` (as `strong-id-scalar:<table>:<shape>`) the last primary key it reached. Startup runs one
+slice, and the maintenance cycle carries on from the recorded key until every table is settled, so a table of any size
+finishes, a restart redoes nothing, and two instances never convert the same rows
+{verified: StrongIdScalarRewriteIntegrationTests.ATableLargerThanOneRun_SettlesAcrossRuns_EachResumingWhereTheLastStoppedAsync, StrongIdScalarRewriteIntegrationTests.TwoInstances_NeverConvertTheSameRowsAsync, StrongIdScalarRewriteIntegrationTests.TheMaintenanceStep_FinishesWhatStartupLeft_ThenDoesNothingAsync}.
+A table settles on a complete pass that converts nothing, so a row written in the object form behind the recorded key
+is converted by the next pass {verified: StrongIdScalarRewriteIntegrationTests.ARowWrittenBehindTheKeyDuringTheRewrite_IsConvertedByTheNextPassAsync}.
+
 ## Time-ordering checks {#time-ordering-checks}
 
 Event and message ids must be UUIDv7. The framework checks each one where it enters, before any SQL runs, and refuses
@@ -1123,9 +1249,12 @@ services.Configure<WhizbangOptions>(options => {
 
 Stream ids that are never reported:
 
-- A stream id whose strong id type is declared with [`[WhizbangId(AcceptAnyVersion = true)]`](#accept-any-version):
-  you declared that its values come from outside and are not UUIDv7
-  {verified: GuidOrderingEntryPointValidationTests.ReportStreamId_AnIdTypeThatAcceptsAnyVersion_IsNeverReportedAsync, GuidOrderingEntryPointValidationTests.ReportStreamId_AStrictIdType_IsReportedAsync}.
+- A stream id whose strong id type's own rule accepts it: one declared with
+  [`[WhizbangId(AcceptAnyVersion = true)]`](#accept-any-version), a version its [`Versions`](#accepted-versions) list
+  holds (with the RFC 9562 variant), or one of its [grandfathered values](#grandfathered-values). You declared that
+  those values are not UUIDv7, so the only cost is index locality; a version the list does not hold is still reported,
+  and refused at `Error`
+  {verified: GuidOrderingEntryPointValidationTests.ReportStreamId_AnIdTypeThatAcceptsAnyVersion_IsNeverReportedAsync, GuidOrderingEntryPointValidationTests.ReportStreamId_AStrictIdType_IsReportedAsync, GuidOrderingStreamIdByTypeTests.ReportStreamId_AVersionTheIdTypeLists_IsNeverReportedAsync, GuidOrderingStreamIdByTypeTests.ReportStreamId_AVersionTheIdTypeDoesNotList_IsRefusedAtErrorAsync, GuidOrderingStreamIdByTypeTests.ReportStreamId_AGrandfatheredValue_IsNeverReported_AndAnotherOfItsVersionIsAsync, GuidOrderingInMemoryAppendTests.Append_AStreamIdItsTypeLists_IsStoredAtError_AndOneItDoesNotIsRefusedAsync}.
 - A UUIDv7, and `Guid.Empty`, which is refused separately as a missing stream id
   {verified: GuidOrderingEntryPointValidationTests.ReportStreamId_V7AndEmpty_AreNeverReportedAsync}.
 
@@ -1141,11 +1270,12 @@ comes from the generated stream id extractors, so the same rules apply as everyw
   and counted in `whizbang.guid_ordering.non_v7_stream_ids`.
 - At `StreamIdOrderingViolationSeverity = Error` the inbox write is refused before any SQL runs, so nothing of the
   batch is stored.
-- A stream id declared with `[WhizbangId(AcceptAnyVersion = true)]` is never reported.
+- A stream id whose strong id type's own rule accepts it (any version, a listed version, a grandfathered value) is
+  never reported.
 - A stored name that does not resolve to a type is reported, not skipped.
 - A UUIDv7 or an empty stream id returns before the name is looked up.
 
-{verified: EFCoreInboxStreamIdReportTests.NonV7StreamId_ByDefault_IsStoredReportedOnceAndCountedAsync, EFCoreInboxStreamIdReportTests.NonV7StreamId_AtError_IsRefusedAndNothingOfTheBatchIsStoredAsync, EFCoreInboxStreamIdReportTests.AnyVersionStrongStreamId_IsStoredAndNeverReportedAsync, EFCoreInboxStreamIdReportTests.UnresolvableMessageType_IsReportedNotSkippedAsync, DapperInboxStreamIdReportTests.NonV7StreamId_ByDefault_IsStoredReportedOnceAndCountedAsync, DapperInboxStreamIdReportTests.NonV7StreamId_AtError_IsRefusedAndNothingOfTheBatchIsStoredAsync, DapperInboxStreamIdReportTests.AnyVersionStrongStreamId_IsStoredAndNeverReportedAsync, DapperInboxStreamIdReportTests.UnresolvableMessageType_IsReportedNotSkippedAsync, GuidOrderingStreamIdByNameTests.V7AndEmpty_AreNeverReportedByNameAsync, GuidOrderingStreamIdByNameTests.UnresolvableName_IsRefusedAtErrorAsync}
+{verified: EFCoreInboxStreamIdReportTests.NonV7StreamId_ByDefault_IsStoredReportedOnceAndCountedAsync, EFCoreInboxStreamIdReportTests.NonV7StreamId_AtError_IsRefusedAndNothingOfTheBatchIsStoredAsync, EFCoreInboxStreamIdReportTests.AnyVersionStrongStreamId_IsStoredAndNeverReportedAsync, EFCoreInboxStreamIdReportTests.UnresolvableMessageType_IsReportedNotSkippedAsync, DapperInboxStreamIdReportTests.NonV7StreamId_ByDefault_IsStoredReportedOnceAndCountedAsync, DapperInboxStreamIdReportTests.NonV7StreamId_AtError_IsRefusedAndNothingOfTheBatchIsStoredAsync, DapperInboxStreamIdReportTests.AnyVersionStrongStreamId_IsStoredAndNeverReportedAsync, DapperInboxStreamIdReportTests.UnresolvableMessageType_IsReportedNotSkippedAsync, EFCoreInboxStreamIdReportTests.VersionsStrongStreamId_AListedVersionIsStored_AndAnUnlistedOneRefusedAtErrorAsync, GuidOrderingStreamIdByNameTests.V7AndEmpty_AreNeverReportedByNameAsync, GuidOrderingStreamIdByNameTests.UnresolvableName_IsRefusedAtErrorAsync}
 
 A service that raised stream ids to `Error` therefore now also refuses such messages at the inbox.
 

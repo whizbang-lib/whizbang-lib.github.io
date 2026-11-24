@@ -170,12 +170,16 @@ input OrderIdOperationFilterInput {
 - A filter value is checked the way an argument is: a value that is not a UUID, or a Guid the id refuses, is a
   GraphQL error with the code `WHIZBANG_INVALID_ID` and the reason {verified: WhizbangIdFilteringTests.Eq_WithAGuidTheIdRefuses_IsTheIdsErrorAsync, WhizbangIdFilteringTests.In_WithAValueThatIsNotAUuid_IsTheIdsErrorAsync}.
 - Entity Framework Core translates each operation to SQL both for an id in a perspective document and for an id
-  column with a value converter {verified: WhizbangIdFilterTranslationTests.LensRow_Eq_ComparesTheGuidInsideTheIdInTheDocumentInSqlAsync, WhizbangIdFilterTranslationTests.Column_EqAndIn_GoThroughTheValueConverterAsync, GraphQLWhizbangIdFilterIntegrationTests.Eq_FindsTheRowWithThatIdInSqlAsync}.
-  In a document the filter compares the Guid inside the id; on a column (and for an optional id, or one promoted to
-  a column of its own) it compares the id with an id, through the column's converter.
+  column with a value converter {verified: WhizbangIdFilterTranslationTests.LensRow_Eq_ComparesTheIdInTheDocumentAsAUuidInSqlAsync, WhizbangIdFilterTranslationTests.Column_EqAndIn_GoThroughTheValueConverterAsync, GraphQLWhizbangIdFilterIntegrationTests.Eq_FindsTheRowWithThatIdInSqlAsync}.
+  The filter compares the id with an id everywhere. In a document the id is stored as its UUID string, or, in a row
+  the stored-form rewrite has not reached yet, as the object `{"Value": "..."}`
+  ([Ids in a perspective document](../../fundamentals/identity/whizbang-ids#stored-form)), so the comparison casts
+  either form to uuid: `CAST(CASE WHEN data ->> 'OrderId' LIKE '{%' THEN jsonb_extract_path_text(CAST(data ->> 'OrderId'
+  AS jsonb), 'Value') ELSE data ->> 'OrderId' END AS uuid) = @p`. On a column it goes through the column's converter.
 - An id in a document cannot carry an index of its own (`[Indexed]` on one reports WHIZ303). To index lookups by
   it, declare `[PerspectiveQueries(MatchOnAnyField = true)]` on the model: `eq` and `in` then compile to
-  `data @> ...`, which the whole-document index answers {verified: GraphQLWhizbangIdFilterIndexTests.Eq_IsAnsweredByTheDocumentIndexAsync, GraphQLWhizbangIdFilterIndexTests.In_IsAnsweredByTheDocumentIndexAsync}.
+  two containment tests, one per stored form (`data @> '{"OrderId": "..."}' OR data @> '{"OrderId": {"Value": "..."}}'`),
+  both of which the whole-document index answers {verified: GraphQLWhizbangIdFilterIndexTests.Eq_IsAnsweredByTheDocumentIndexAsync, GraphQLWhizbangIdFilterIndexTests.In_IsAnsweredByTheDocumentIndexAsync, GraphQLWhizbangIdFilterIndexTests.EqAndIn_FindARowStillInTheObjectForm_ThroughTheDocumentIndexAsync}.
   `neq` and `nin` read every row, as a negation does for any field.
 - `in` and `nin` become one comparison per id joined with `OR` (or `AND` for `nin`) as a balanced tree, so a list
   of thousands of ids still translates {verified: GraphQLWhizbangIdFilterIntegrationTests.InAndNin_WithThousandsOfIds_AnswerTheRequestAsync, WhizbangIdFilterHandlerTests.AnyOf_NestsTheComparisonsAsABalancedTreeAsync}.
