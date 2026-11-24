@@ -4,7 +4,7 @@ pageType: reference
 audience: [contributor]
 status: current
 order: 5
-description: The build errors this repository raises on its own code and tests (WHIZ600 to WHIZ609), what each one protects, and how a new diagnostic gets its ID from the one registry of every WHIZ ID
+description: The build errors this repository raises on its own code and tests (WHIZ600 to WHIZ610), what each one protects, and how a new diagnostic gets its ID from the one registry of every WHIZ ID
 tags: contributing, analyzers, diagnostics, testing, sharding, ci
 ---
 
@@ -26,6 +26,7 @@ Every build diagnostic in this repository has one ID form, `WHIZ` and three digi
 | [WHIZ607](../v1.0.0/operations/diagnostics/whiz607.md) | `Whizbang.RepoAnalyzers` | Library code reads a type, namespace or assembly name, or resolves a type from a string, outside the shared naming code. |
 | [WHIZ608](../v1.0.0/operations/diagnostics/whiz608.md) | `Whizbang.RepoAnalyzers` | A suppression of WHIZ607 that does not say why. |
 | [WHIZ609](../v1.0.0/operations/diagnostics/whiz609.md) | `Whizbang.TestAnalyzers` | A test class with an `[After(Test)]` hook that is also disposable, so TUnit tears it down twice. |
+| [WHIZ610](../v1.0.0/operations/diagnostics/whiz610.md) | `Whizbang.RepoAnalyzers` | Library code reads a type's name for a log call at `Information` or below, or for an activity's name, before the log level or a listener is checked. |
 
 WHIZ600 to WHIZ604 were `WHZ0001` to `WHZ0005` until they moved into the single ID form. A suppression or severity setting that names an old ID no longer applies.
 
@@ -58,6 +59,17 @@ to it that does not say why. Both apply to projects under `src/` only. [Type Nam
 lists which helper gives which form and the banned-symbol backstop.
 
 {verified: TypeNameSourceAnalyzerTests.Descriptors_AreTheRepositoryRulesReportedAsErrorsAsync, TypeNameSourceAnalyzerTests.Runtime_ANameReadOffATypeOrAssembly_IsReportedAsync, TypeNameSourceAnalyzerTests.Suppression_WithoutAJustification_IsReportedAsync}
+
+## WHIZ610: type names are read only when a log or a trace needs them {#whiz610}
+
+The runtime caches a type's name behind a weak handle that any garbage collection can drop, so a per-message path that
+reads a name for a debug log or an activity name allocates after every collection even with debug logging and tracing
+off. WHIZ610 fails a library build that passes a name read through the shared naming code to a log call at
+`Information` or below, or to `ActivitySource.StartActivity`, outside an `IsEnabled` or `HasListeners` check. It
+applies to every project under `src/`, because nothing in the code says which methods run once per message.
+[WHIZ610](../v1.0.0/operations/diagnostics/whiz610.md) lists the checks it recognizes and what it cannot see.
+
+{verified: EagerLogTypeNameAnalyzerTests.Descriptor_IsARepositoryRuleReportedAsAnErrorAsync, EagerLogTypeNameAnalyzerTests.UnguardedLogArgument_IsReportedAsync, EagerLogTypeNameAnalyzerTests.GuardedOrNotALowLevelLogArgument_IsNotReportedAsync}
 
 ## Docs tags point at published pages {#docs-tag-targets}
 

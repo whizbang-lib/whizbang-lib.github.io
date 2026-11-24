@@ -374,6 +374,15 @@ The `[AS]` filter matches a source by its exact name, or every source in the pro
 prefix such as `Whizbang.*`. Several filters go in one value separated by newlines, which is easier in a
 `dotnet-monitor` configuration file than on a command line.
 
+### Cost with nothing listening {#cost-with-nothing-listening}
+
+Every dispatch and every perspective sync wait starts an activity named for its message type (`Dispatch OrderPlaced`,
+`PerspectiveSync OrderPlaced`). The name is built only once something listens to the source: with no listener, the
+framework reads no type name and allocates nothing for the activity. Type names are also read once per type and kept,
+so a traced service pays for a name's text, not for rereading it after each garbage collection (see
+[Each form is read once per type](../../fundamentals/identity/type-formatting#names-read-once-per-type))
+{verified: DispatchActivityTests.StartForType_WithNothingListening_BuildsNoNameAndAllocatesNothingAsync, DispatchActivityTests.StartForType_WithAListener_NamesTheActivityByTheTypeAsync}.
+
 ### Span Tags
 
 All Whizbang spans include these tags:
