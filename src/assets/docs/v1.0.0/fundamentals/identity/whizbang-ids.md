@@ -1,8 +1,8 @@
 ---
 title: "WhizbangIds: Strongly-Typed Identity Values"
 pageType: concept
-verifiedAgainstCommit: 0bc6065b
-verifiedDate: 2026-08-05
+verifiedAgainstCommit: 'bf8517ac'
+verifiedDate: 2026-11-23
 version: 1.0.0
 category: "Core Concepts"
 order: 24
@@ -26,6 +26,9 @@ codeReferences:
   - src/Whizbang.Core/WhizbangIdServiceCollectionExtensions.cs
   - src/Whizbang.Core/WhizbangIdAttribute.cs
   - src/Whizbang.Core/SuppressGuidInterceptionAttribute.cs
+  - src/Whizbang.Core/SuppressGuidOrderingValidationAttribute.cs
+  - src/Whizbang.Core/Validation/GuidOrderingSuppressions.cs
+  - src/Whizbang.Generators/GuidOrderingSuppressionRegistryGenerator.cs
   - src/Whizbang.Core/Configuration/WhizbangOptions.cs
   - src/Whizbang.Core/Validation/GuidOrderingValidator.cs
   - src/Whizbang.Core/Validation/GuidOrderingException.cs
@@ -54,6 +57,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Validation/GuidOrderingEntryPointValidationTests.cs
   - tests/Whizbang.Core.Tests/Validation/GuidOrderingInMemoryAppendTests.cs
   - tests/Whizbang.Core.Tests/Validation/FrameworkNonTimeOrderedIdsTests.cs
+  - tests/Whizbang.Core.Tests/Validation/GuidOrderingSuppressionTests.cs
+  - tests/Whizbang.Generators.Tests/GuidOrderingSuppressionRegistryGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/NonTimeOrderedIdAnalyzerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/GuidOrderingRefusalMatrixTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/GuidOrderingEntryPointGuardTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperGuidOrderingRefusalMatrixTests.cs
@@ -63,7 +69,7 @@ testReferences:
   - tests/Whizbang.Generators.Tests/ThirdPartyGuidInterceptionTests.cs
   - tests/Whizbang.Generators.Tests/GuidUsageAnalyzerTests.cs
   - tests/Whizbang.Migrate.Tests/Transformers/GuidToTrackedGuidTransformerTests.cs
-lastMaintainedCommit: '01f07906'
+lastMaintainedCommit: 'bf8517ac'
 ---
 
 # WhizbangIds: Strongly-Typed Identity Values
@@ -846,7 +852,7 @@ Every path that brings a new event or message id into the framework runs the che
 | Entry point | What is checked |
 |-------------|-----------------|
 | Work coordinator strategies (Immediate, Interval, Batch, Scoped, StreamAffinity) | Each message passed to `QueueOutboxMessage` and `QueueInboxMessage` |
-| EF Core and Dapper work coordinators | Every outbox and inbox write, including dead letters, handler commits and coalesce |
+| EF Core and Dapper work coordinators | Every outbox and inbox write, including dead letters, handler commits and coalesce; an inbox write's stream id is reported (see [Stream id versions](#stream-id-versions)) |
 | Event store appends (EF Core, Dapper PostgreSQL, SQLite, in memory) | The envelope's message id, which becomes the event id; the stream id is reported (see [Stream id versions](#stream-id-versions)) |
 | Dispatcher | Ids a caller supplies: a cascade's source envelope, a composite's carried child ids, and an id a subclass passes to `CascadeToOutboxAsync` or `CascadeToEventStoreOnlyAsync` |
 | Transport receive | The strong id's JSON converter refuses a non-v7 id when the envelope is deserialized |
@@ -887,6 +893,9 @@ Some rules hold at every severity:
 
 - **`Guid.Empty` is always refused**
   {verified: GuidOrderingEntryPointValidationTests.ValidateMessageId_EmptyIsRefusedAtEverySeverityAsync}.
+- **One message type can opt out.** A type carrying `[SuppressGuidOrderingValidation]` has its non-v7 ids accepted
+  at `Error` and still logged and counted (see
+  [Suppressing the time-ordering check](#suppressing-the-time-ordering-check)).
 - **A UUIDv7 is always accepted silently**
   {verified: GuidOrderingEntryPointValidationTests.ValidateMessageId_V7_IsAcceptedSilentlyAtEverySeverityAsync}.
 - **Transport receive stays strict.** The generated JSON converter for a strong id calls its checked `From`, so a
@@ -909,6 +918,80 @@ services.Configure<WhizbangOptions>(options => {
 });
 ```
 
+## Suppressing the time-ordering check {#suppressing-the-time-ordering-check}
+
+`[SuppressGuidOrderingValidation]` opts one message type out of the event and message id check. It is a deliberate,
+visible opt-out for ids whose source you cannot change, such as a legacy system that issues UUIDv4. It is not a way to
+hide mistakes: every id it lets through is still logged and counted, and the count names it.
+
+```csharp{title="Opting one message type out" description="A message type whose ids come from a system that cannot mint UUIDv7, and a method that parses them" category="Configuration" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "GuidOrdering", "Suppression"] tests=["GuidOrderingSuppressionTests.ValidateMessageId_ASuppressedTypeAtError_IsAcceptedLoggedAsAWarningAndCountedOnceAsync", "NonTimeOrderedIdAnalyzerTests.AMethodCarryingTheSuppression_IsQuiet_AndItsNeighborStillReportsAsync"]}
+// Ids come from a legacy system that issues UUIDv4 and cannot be changed
+[SuppressGuidOrderingValidation]
+public sealed record LegacyOrderImported(Guid OrderId) : IEvent;
+
+public static class LegacyImport {
+  [SuppressGuidOrderingValidation] // no WHIZ037 for the parse below
+  public static MessageId IdFor(string legacyId) => new(Guid.Parse(legacyId));
+}
+```
+
+### On a message type {#suppression-on-a-message-type}
+
+On a class, record, struct or record struct, every entry point that checks an event or message id (see
+[Where ids are checked](#time-ordering-entry-points)) treats a non-v7 id of exactly that type as if
+`GuidOrderingViolationSeverity` were at most `Warning`:
+
+| Configured severity | A non-v7 id of an attributed type |
+|---------------------|-----------------------------------|
+| `Error` (default) | Accepted, logged once as a warning that names the attribute, and counted with `suppressed=true` |
+| `Warning` | The same |
+| `Info` | Accepted, logged once at Information, and counted with `suppressed=true` |
+| `None` | Accepted silently and not counted, as for any other type |
+
+The attribute only lowers `Error`; it never raises a lower severity
+{verified: GuidOrderingSuppressionTests.ValidateMessageId_ASuppressedTypeAtError_IsAcceptedLoggedAsAWarningAndCountedOnceAsync, GuidOrderingSuppressionTests.ValidateMessageId_ASuppressedTypeByNameAtError_IsAcceptedAndLoggedAsync, GuidOrderingSuppressionTests.ValidateMessageId_ASuppressedTypeAtInfo_StaysAtInformationAsync, GuidOrderingSuppressionTests.ValidateMessageId_ASuppressedTypeAtNone_IsSilentAsync, GuidOrderingSuppressionTests.ValidateMessageId_AtNone_IsSilentAndUncountedWhetherSuppressedOrNotAsync, GuidOrderingSuppressionTests.ValidateMessageId_AnUnattributedTypeAtError_IsStillRefusedAsync, GuidOrderingSuppressionTests.InMemoryAppend_ASuppressedPayloadWithAV4_IsStoredAsync, GuidOrderingSuppressionTests.InMemoryAppend_AnUnattributedPayloadWithAV4_IsRefusedAsync}.
+The warning says why the id was accepted and what it costs:
+
+```text{title="Accepted because of the attribute" description="The warning logged once for a non-v7 id of a type carrying [SuppressGuidOrderingValidation]" category="Diagnostics" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "GuidOrdering", "Suppression"] unverified="message text read from GuidOrderingValidator"}
+EFCoreWorkCoordinator.OutboxWrite accepted message id 3f2504e0-4f89-41d3-9a0c-0305e82c3301 for LegacyOrderImported: version 4, not UUIDv7, because the type carries [SuppressGuidOrderingValidation]. Version assignment, apply order and replay read the time in event and message ids, so this type's ids are ordered by their bytes, not by when they were minted.
+```
+
+That cost is real: the type's ids are ordered by their bytes wherever version assignment, apply order and replay read
+the time in an id (see [Why event and message ids must be time-ordered](#why-time-ordered)). Use the attribute only for
+ids you cannot mint yourself.
+
+What the attribute never does:
+
+- **Let `Guid.Empty` through.** The empty id is refused at every severity, attribute or not
+  {verified: GuidOrderingSuppressionTests.ValidateMessageId_TheEmptyIdOfASuppressedType_IsRefusedAtEverySeverityAsync, GuidOrderingSuppressionTests.InMemoryAppend_ASuppressedPayloadWithTheEmptyId_IsRefusedAsync}.
+- **Apply to a derived type.** It is not inherited, so each type opts out on its own
+  {verified: GuidOrderingSuppressionTests.ADerivedTypeOfAnAttributedType_IsNotSuppressedAsync}.
+- **Change stream id reporting.** Stream ids follow `StreamIdOrderingViolationSeverity` (see
+  [Stream id versions](#stream-id-versions)), and their counter carries no `suppressed` tag
+  {verified: GuidOrderingSuppressionTests.ReportStreamId_TheStreamCount_CarriesNoSuppressedTagAsync}.
+- **Accept a non-v7 id on the wire.** `MessageId.From` and the strong id's JSON converter stay strict, so a non-v7 id
+  arriving at transport receive is still refused when the envelope is deserialized.
+
+A generic type that carries the attribute covers every construction of it
+{verified: GuidOrderingSuppressionTests.AnAttributedGenericType_IsSuppressedForEveryConstructionAsync}.
+
+### On a method {#suppression-on-a-method}
+
+On a method, or on a type for the code inside it, the attribute is a compile-time opt-out only:
+[WHIZ037](../../operations/diagnostics/whiz037) is not reported inside it, including in its lambdas and local
+functions. It changes nothing at run time; the ids that code produces are checked by their message type, as above
+{verified: NonTimeOrderedIdAnalyzerTests.AMethodCarryingTheSuppression_IsQuiet_AndItsNeighborStillReportsAsync, NonTimeOrderedIdAnalyzerTests.ATypeCarryingTheSuppression_IsQuietInEveryMemberAsync}.
+
+### How it is read {#suppression-registry}
+
+The source generator registers each attributed message type by its stored name in a generated module initializer, and
+the check looks the type up there (`GuidOrderingSuppressions`). No attribute is read by reflection, so the opt-out
+works under AOT, and a private nested type is honored too. A UUIDv7 passes the check before the lookup runs
+{verified: GuidOrderingSuppressionTests.AnAttributedType_IsRegisteredByTheGeneratedModuleInitializerAsync, GuidOrderingSuppressionTests.APrivateNestedAttributedType_IsRegisteredByNameAsync, GuidOrderingSuppressionRegistryGeneratorTests.Generator_RegistersEachAttributedTypeByItsStoredNameAsync, GuidOrderingSuppressionRegistryGeneratorTests.Generator_SkipsUnattributedDerivedAndMethodTargetsAsync}.
+
+To see what the opt-outs let through, watch `whizbang.guid_ordering.non_v7_message_ids` with `suppressed=true` (see
+[Metrics: time-ordering checks](../../operations/observability/metrics#time-ordering-checks)).
+
 ## Stream id versions {#stream-id-versions}
 
 A stream id's version affects only index locality. The framework hashes a stream id for partitioning and lock order,
@@ -917,7 +1000,7 @@ event version. A UUIDv7 stream id keeps related rows close together in the index
 out, which costs some index efficiency and nothing else.
 
 So a stream id that is not a UUIDv7 is **reported, not refused**. `WhizbangOptions.StreamIdOrderingViolationSeverity`
-defaults to `Warning`: each such stream id is logged
+(configuration key `Whizbang:StreamIdOrderingViolationSeverity`) defaults to `Warning`: each such stream id is logged
 once and counted in `whizbang.guid_ordering.non_v7_stream_ids`. Raise it to `Error` to refuse non-v7 stream ids, or set
 `Info` or `None` to quiet the report
 {verified: GuidOrderingEntryPointValidationTests.ReportStreamId_NonV7AtTheDefault_IsAcceptedLoggedOnceAndCountedAsync, GuidOrderingEntryPointValidationTests.ReportStreamId_RaisedToError_IsRefusedAsync, GuidOrderingEntryPointValidationTests.ReportStreamId_AtInfo_LogsAtInformationAsync, GuidOrderingEntryPointValidationTests.ReportStreamId_AtNone_IsSilentAsync, GuidOrderingRefusalMatrixTests.EventStoreAppend_NonV7StreamId_IsStoredByDefault_AndRefusedAtErrorAsync}.
@@ -936,9 +1019,25 @@ Stream ids that are never reported:
 - A UUIDv7, and `Guid.Empty`, which is refused separately as a missing stream id
   {verified: GuidOrderingEntryPointValidationTests.ReportStreamId_V7AndEmpty_AreNeverReportedAsync}.
 
-Stream ids are reported at event store appends and on the dispatcher's outbox path, where the message's .NET type is
-known. Outbox and inbox writes carry the message type only as a string, so a stream id that reaches only the inbox
-from a remote producer is not reported.
+Stream ids are reported at event store appends, on the dispatcher's outbox path, and at the inbox.
+
+A stream id that reaches a service only through its inbox, from a remote producer, is reported too. The EF Core and
+Dapper inbox writes (entry points `EFCoreWorkCoordinator.InboxWrite` and `DapperWorkCoordinator.InboxWrite`) carry the
+message type only as its stored name, so they resolve that name to the type through the names the generated JSON
+contexts register, the same lookup inbox deserialization makes, with no reflection. The type's stream id type then
+comes from the generated stream id extractors, so the same rules apply as everywhere else:
+
+- A non-v7 stream id is stored, logged once per stream with the stream id, the message type name and the entry point,
+  and counted in `whizbang.guid_ordering.non_v7_stream_ids`.
+- At `StreamIdOrderingViolationSeverity = Error` the inbox write is refused before any SQL runs, so nothing of the
+  batch is stored.
+- A stream id declared with `[WhizbangId(AcceptAnyVersion = true)]` is never reported.
+- A stored name that does not resolve to a type is reported, not skipped.
+- A UUIDv7 or an empty stream id returns before the name is looked up.
+
+{verified: EFCoreInboxStreamIdReportTests.NonV7StreamId_ByDefault_IsStoredReportedOnceAndCountedAsync, EFCoreInboxStreamIdReportTests.NonV7StreamId_AtError_IsRefusedAndNothingOfTheBatchIsStoredAsync, EFCoreInboxStreamIdReportTests.AnyVersionStrongStreamId_IsStoredAndNeverReportedAsync, EFCoreInboxStreamIdReportTests.UnresolvableMessageType_IsReportedNotSkippedAsync, DapperInboxStreamIdReportTests.NonV7StreamId_ByDefault_IsStoredReportedOnceAndCountedAsync, DapperInboxStreamIdReportTests.NonV7StreamId_AtError_IsRefusedAndNothingOfTheBatchIsStoredAsync, DapperInboxStreamIdReportTests.AnyVersionStrongStreamId_IsStoredAndNeverReportedAsync, DapperInboxStreamIdReportTests.UnresolvableMessageType_IsReportedNotSkippedAsync, GuidOrderingStreamIdByNameTests.V7AndEmpty_AreNeverReportedByNameAsync, GuidOrderingStreamIdByNameTests.UnresolvableName_IsRefusedAtErrorAsync}
+
+A service that raised stream ids to `Error` therefore now also refuses such messages at the inbox.
 
 ## Framework ids that are not time-ordered {#framework-ids-that-are-not-time-ordered}
 

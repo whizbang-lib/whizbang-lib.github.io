@@ -1,7 +1,7 @@
 ---
 title: 'WHIZ037: A Constructed Or Parsed Guid Flows Into An Id'
 pageType: troubleshooting
-verifiedAgainstCommit: '7b794a96'
+verifiedAgainstCommit: 'bf8517ac'
 verifiedDate: 2026-11-23
 description: >-
   Warning reported when a Guid built with new Guid(...) or read with Guid.Parse or Guid.TryParse is written to a
@@ -22,9 +22,10 @@ codeReferences:
   - src/Whizbang.Generators/NonTimeOrderedIdAnalyzer.cs
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Core/Validation/GuidOrderingValidator.cs
+  - src/Whizbang.Core/SuppressGuidOrderingValidationAttribute.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/NonTimeOrderedIdAnalyzerTests.cs
-lastMaintainedCommit: '7b794a96'
+lastMaintainedCommit: 'bf8517ac'
 ---
 
 # WHIZ037: A Constructed Or Parsed Guid Flows Into An Id
@@ -58,8 +59,63 @@ And it is written to one of these targets:
 - a member marked `[StreamId]`;
 - the argument of the `MessageId` or `EventId` constructor.
 
-The value can be written directly, or through a local whose initializer is one of the shapes, or which is the `out`
-argument of `Guid.TryParse`.
+The value can be written directly, or through a local (see [How a local is followed](#how-a-local-is-followed)).
+
+### How a local is followed {#how-a-local-is-followed}
+
+When the value written to an id is a local, WHIZ037 looks at every assignment that can reach that use. It runs a
+reaching-assignment analysis over the method's control flow, and looks at no other method. The assignments it sees are
+the local's initializer, later assignments to it, and an `out` argument the local is passed to. Of the `out`
+arguments, only one passed to `Guid.TryParse` counts as one of the shapes; an `out` into any other method is a clean
+value
+{verified: NonTimeOrderedIdAnalyzerTests.FlaggedShape_ReportsWHIZ037WarningAsync, NonTimeOrderedIdAnalyzerTests.QuietShape_ReportsNothingAsync}.
+
+If any assignment that reaches the use is one of the shapes, the use is reported:
+
+- **A straight line**: the last assignment before the use is the one that reaches it. A flagged value that is
+  overwritten with a clean one before the use is quiet, and a flagged assignment after the use, outside any loop, never
+  reaches it.
+- **Branches merge**: where branches join, each branch's last assignment reaches the use, so one flagged arm is enough
+  to report. An arm that replaces its flagged value with a clean one before the join is quiet.
+- **Loops converge**: an assignment later in a loop body reaches a use earlier in the body round the loop's back edge.
+  The sets of reaching assignments only ever grow, so nested loops settle, and each use is reported once
+  {verified: NonTimeOrderedIdAnalyzerTests.NestedLoops_ConvergeAndReportOncePerUseAsync}.
+- **Lambdas and local functions** may run at any point, so inside one, a captured local may hold any value the
+  enclosing method assigns to it, before or after the lambda is created.
+- **A `catch` block** may start from any assignment in the method, so a flagged assignment in the `try` reaches a use
+  in the `catch` even when a clean one follows it in the `try`.
+
+```csharp{title="Reaching assignments" description="Which assignments to a local reach the id it is written to" category="Diagnostics" difficulty="INTERMEDIATE" tags=["WHIZ037", "Guid", "Analyzer", "FlowAnalysis"] tests=["NonTimeOrderedIdAnalyzerTests.FlaggedShape_ReportsWHIZ037WarningAsync", "NonTimeOrderedIdAnalyzerTests.QuietShape_ReportsNothingAsync"]}
+// Reported: the parse in one arm reaches the use where the arms join
+public static void Run(Envelope e, string s, bool c) {
+  Guid id;
+  if (c) { id = Guid.Parse(s); } else { id = TrackedGuid.New(); }
+  e.MessageId = id;   // WHIZ037
+}
+
+// Reported: the parse at the end of the body reaches the use round the back edge
+public static void Run(Envelope e, string s, int n) {
+  Guid id = TrackedGuid.New();
+  for (var i = 0; i < n; i++) { e.MessageId = id; id = Guid.Parse(s); }   // WHIZ037
+}
+
+// Quiet: the parsed value is overwritten with a clean one before the use
+public static void Run(Envelope e, string s) {
+  var id = Guid.Parse(s);
+  id = TrackedGuid.New();
+  e.MessageId = id;
+}
+```
+
+What is not followed, and so is quiet:
+
+- **A parameter**, even one the method assigns: its value is the caller's, and following it means following every
+  call site, which the analyzer does not do.
+- **A field or property copied into the local**: its writers can be anywhere in the type.
+- **A conditional expression** (`c ? a : b`): it is not one of the shapes.
+- **A write from inside a lambda or local function** that captures the local, seen from the enclosing method.
+- **An assignment inside a `finally` block**, past the block: the control flow graph leaves a `finally` block by a
+  region exit, not by an edge to the code after it.
 
 ### When it does not fire
 
@@ -125,10 +181,18 @@ envelope.MessageId = new Guid(storedV7Bytes);
 #pragma warning restore WHIZ037
 ```
 
+For code that deliberately handles ids from a source that cannot mint UUIDv7, such as a legacy import, put
+[`[SuppressGuidOrderingValidation]`](../../fundamentals/identity/whizbang-ids#suppressing-the-time-ordering-check) on
+the method or type instead. WHIZ037 is not reported inside it, including in its lambdas and local functions, and the
+code beside it still reports. On a method the attribute changes nothing at run time; to accept the non-v7 ids at run
+time, put it on the message type
+{verified: NonTimeOrderedIdAnalyzerTests.AMethodCarryingTheSuppression_IsQuiet_AndItsNeighborStillReportsAsync, NonTimeOrderedIdAnalyzerTests.ATypeCarryingTheSuppression_IsQuietInEveryMemberAsync}.
+
 ## Related
 
 - [Time-ordering checks](../../fundamentals/identity/whizbang-ids#time-ordering-checks)
 - [Stream id versions](../../fundamentals/identity/whizbang-ids#stream-id-versions)
+- [Suppressing the time-ordering check](../../fundamentals/identity/whizbang-ids#suppressing-the-time-ordering-check)
 - [Guid interception](../../fundamentals/identity/whizbang-ids#guid-interception)
 - [WHIZ055: Guid.NewGuid() Usage](whiz055)
 - [WHIZ058: GUID Call Intercepted](whiz058)
