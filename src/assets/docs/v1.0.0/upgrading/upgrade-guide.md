@@ -931,3 +931,26 @@ These matter to services that run [stream integrity](../resilience/stream-integr
   partitions move is expected. See [Ownership by map](../fundamentals/work-coordinator/partition-assignment.md#ownership-by-map),
   [Handover](../fundamentals/work-coordinator/partition-assignment.md#handover) and
   [Fencing](../fundamentals/work-coordinator/partition-assignment.md#fencing).
+
+### Streams are ordered by position, never by id; `MessageOrderingExtensions` is removed {#stream-order}
+
+*[#2551](https://github.com/whizbang-lib/whizbang/issues/2551)*
+
+- **What changed:** a stored batch is versioned in the order its events were emitted, and a received stream in its
+  origin's order (each origin by the commit sequence it carries, dealt into the arrival slots it holds), never by id.
+  The outbox strategies flush a stream in the order its messages were appended instead of sorting them by id. The
+  perspective reads return a stream by version. The inbox fetch ranks a stream's received events by stored version and
+  its commands by arrival (a new `wh_inbox.arrival_position`), and returns the rank as `InboxBatchRow.StreamPosition`;
+  the perspective read returns each event's version (`StreamEventData.Version`, carried onto the envelope's
+  `LocalStreamVersion`). The drivers call two new functions, `fetch_inbox_batch_in_stream_order` and
+  `get_stream_events_in_stream_order`; `fetch_inbox_batch` and `get_stream_events` keep their results for a caller
+  built before them. No worker or runner re-sorts a stream by id. Migrations 580 to 583.
+- **Who is affected (breaking):** code that calls `OrderByMessageId` from the public `MessageOrderingExtensions`, which
+  is removed. Code that reads `fetch_inbox_batch` or `get_stream_events` itself keeps working, in the same order as
+  before.
+- **What to do:** order a stream with `StreamOrder.InStreamOrder` (fetched inbox rows by `StreamPosition`, one stream's
+  envelopes by `LocalStreamVersion`), or keep the order the read returned. Streams already stored keep their versions;
+  a stream written after the upgrade by a producer still on the previous release is versioned in the order its batches
+  are listed, and the inbox rows already queued keep the order they were dispatched in until now. See
+  [Stream version ordering](../fundamentals/event-store/version-ordering.md) and the
+  [stream order rule](../extending/internals/event-ordering-invariant.md).
