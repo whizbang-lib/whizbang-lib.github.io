@@ -378,6 +378,16 @@ public ValueTask<OrderCreatedEvent> HandleAsync(
 }
 ```
 
+### 4. Type Names on Per-Message Paths {#type-names-on-per-message-paths}
+
+The runtime caches a type's name behind a weak handle, so any garbage collection can drop it and the next read
+allocates again. Whizbang reads a message type's name on a per-message path only when a log level, a trace listener or
+a report needs it, and `TypeNameFormatter` keeps each form of a name once per type, so the dispatch, outbox, inbox and
+lifecycle paths do not allocate type names after a collection with debug logging and tracing off. Your own handlers
+can do the same: check `ILogger.IsEnabled` before formatting a type name for a debug log. See
+[Each form is read once per type](../../fundamentals/identity/type-formatting.md#names-read-once-per-type)
+{verified: TypeNameFormatterCachingTests.EveryForm_AfterTheFirstRead_AllocatesNothingEvenAfterACollectionAsync, ReceptorInvokerSkipLoggingTests.Skip_WithDebugOff_ReadsNoTypeNameAsync, DispatchActivityTests.StartForType_WithNothingListening_BuildsNoNameAndAllocatesNothingAsync}.
+
 ---
 
 ## Concurrency Optimizations

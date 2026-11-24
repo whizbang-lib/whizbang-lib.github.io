@@ -766,3 +766,50 @@ These matter to services that run [stream integrity](../resilience/stream-integr
 - **What to do:** nothing is required this release: the earlier calls (now `[Obsolete]`) and keys
   (now with a startup warning) keep working. To move, follow
   [migrating from the earlier packages](../fundamentals/storage/azure-blob.md#migrating-from-the-earlier-packages).
+
+### Event and message ids that are not UUIDv7 are refused {#time-ordering-checks}
+
+*[#2528](https://github.com/whizbang-lib/whizbang/issues/2528)*
+
+- **What changed:** event and message ids are checked for UUIDv7 where they enter the framework: every
+  work coordinator strategy, every outbox and inbox write (including dead letters), every event store
+  append, and the ids a caller supplies to the dispatcher. A non-v7 id throws `GuidOrderingException`
+  before any SQL runs, and nothing of its batch is written. `GuidOrderingViolationSeverity` now
+  defaults to `Error` (it was `Warning`, and nothing called the check). `Guid.Empty` is refused at every
+  severity. A stream id that is not UUIDv7 is logged once and counted, not refused; the new
+  `StreamIdOrderingViolationSeverity` (default `Warning`) can raise it to `Error`.
+- **Who is affected:** applications that build event or message ids from `new Guid(...)`, `Guid.Parse`,
+  a v4 or v5 generator, or a value from another system. Ids minted with `TrackedGuid.New()`,
+  `MessageId.New()` or a `[WhizbangId]` type's `New()` are UUIDv7 and are unaffected. The new warning
+  [WHIZ037](../operations/diagnostics/whiz037.md) points at most of these flows at compile time.
+- **What to do:** mint those ids with `TrackedGuid.New()` or a `[WhizbangId]` type. To find offenders
+  without refusing them, set `Whizbang:GuidOrderingViolationSeverity` to `Warning`, watch
+  `whizbang.guid_ordering.non_v7_message_ids` (meter `Whizbang.GuidOrdering`) until it stays at zero,
+  then return to `Error`. See
+  [Time-ordering checks](../fundamentals/identity/whizbang-ids.md#time-ordering-checks).
+
+### Guid interception is on by default and returns UUIDv7 {#guid-interception-default}
+
+*[#2528](https://github.com/whizbang-lib/whizbang/issues/2528)*
+
+- **What changed:** the Guid interceptor is on by default, and an intercepted `Guid.NewGuid()` or
+  `Guid.CreateVersion7()` now returns `TrackedGuid.New()`, a UUIDv7. Before, interception was opt-in
+  and wrapped the original call. Calls into Marten, UUIDNext and Medo.Uuid7 are no longer intercepted.
+- **Who is affected:** every project that references the generator. Code that relied on
+  `Guid.NewGuid()` returning a random v4, for example to spread keys across a range, now gets
+  time-ordered ids.
+- **What to do:** nothing for a project that references the NuGet package; its props allows the
+  interceptors namespace. A project that references the generator as a project adds
+  `<InterceptorsNamespaces>$(InterceptorsNamespaces);Whizbang.Generators.Generated</InterceptorsNamespaces>`.
+  Where a random v4 is genuinely needed, mark the code `[SuppressGuidInterception]`.
+  `WhizbangGuidInterceptionEnabled=false` turns interception off, which is strongly advised against. See
+  [Guid interception](../fundamentals/identity/whizbang-ids.md#guid-interception).
+
+### A `[GenerateStreamId]` message keeps its stream when sent again {#generated-stream-per-instance}
+
+*[#2539](https://github.com/whizbang-lib/whizbang/issues/2539)*
+
+- **What changed:** sending the same message instance twice now keeps its generated stream instead of minting a
+  second one.
+- **What to do:** create a new message instance for each new stream. See
+  [GenerateStreamId](../extending/attributes/generatestreamid.md#derived-stream-ids).

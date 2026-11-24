@@ -1,8 +1,8 @@
 ---
 title: Metrics Reference
 pageType: reference
-verifiedAgainstCommit: 5bad79ca
-verifiedDate: 2026-10-20
+verifiedAgainstCommit: 'bf8517ac'
+verifiedDate: 2026-11-23
 version: 1.0.0
 category: Observability
 order: 6
@@ -16,6 +16,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/WhizbangMetrics.cs
   - src/Whizbang.Data.Postgres/ArchiveSweepMetrics.cs
   - src/Whizbang.Core/Observability/PassiveCounter.cs
+  - src/Whizbang.Core/Observability/GuidOrderingMetrics.cs
   - src/Whizbang.Core/Observability/MaintenanceMetrics.cs
   - src/Whizbang.Core/Observability/PendingReclamation.cs
   - src/Whizbang.Core/Observability/PendingReclamationSampler.cs
@@ -57,6 +58,7 @@ codeReferences:
   - src/Whizbang.Core/Transports/ITrafficClassOpsRateSource.cs
   - src/Whizbang.Transports.AzureServiceBus/AsbTrafficClassOpsRateSource.cs
 testReferences:
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDrainModeTests.WriteBehind.cs
   - tests/Whizbang.Core.Tests/Observability/TableRewriteMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityBacklogMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityCompletionMetricsTests.cs
@@ -70,6 +72,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/ProbeCadenceMetricsTests.cs
   - tests/Whizbang.Core.Component.Tests/Observability/PassiveCounterTests.cs
   - tests/Whizbang.Core.Tests/Observability/PassiveCounterDriftLockTests.cs
+  - tests/Whizbang.Core.Tests/Validation/GuidOrderingEntryPointValidationTests.cs
+  - tests/Whizbang.Core.Tests/Validation/GuidOrderingSuppressionTests.cs
   - tests/Whizbang.Core.Tests/Observability/MaintenanceMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/DispatcherMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/LifecycleMetricsTests.cs
@@ -114,7 +118,7 @@ testReferences:
   - tests/Whizbang.Core.Unit.Workers.Tests/Workers/InboxHandlerWorkerQueueDepthTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.UnreadableRows.cs
-lastMaintainedCommit: '62abd3a45'
+lastMaintainedCommit: 'bf8517ac'
 ---
 
 # Metrics Reference
@@ -150,6 +154,7 @@ Additional subsystem meters:
 | `Whizbang.Postgres.Notifications` | `NotifyMetrics` | LISTEN/NOTIFY signal delivery and connection state |
 | `Whizbang.Archive.AzureBlob` | `ArchiveSweepMetrics` (Whizbang.Data.Postgres; the meter keeps the name of its first package) | Orphan sweeps of the archive coordinator refused, by reason |
 | `Whizbang.Capabilities` | `CapabilityMetrics` | Which external capabilities (Postgres extensions first) each scope can use, by state |
+| `Whizbang.GuidOrdering` | `GuidOrderingMetrics` | Distinct event, message and stream ids that entered without the UUIDv7 time order they need ([time-ordering checks](#time-ordering-checks)) |
 | `Whizbang.Sagas` | `SagaMetrics` | Saga initiation, completion, item and hook outcomes |
 | `Whizbang.Liveness` | `InstanceLivenessMetrics` | Heartbeat watchdog and slow beats, death announcements and retractions |
 | `Whizbang.Probes` | `ProbeCadenceMetrics` | Periodic probe ticks by worker and outcome (the idle footprint), suppressed duty attempts |
@@ -564,6 +569,23 @@ is stale; the worker's warning names the cause.
 
 {verified: PendingEventsStatisticsRefreshTests.Success_SetsTheGauge_AndLogsNothingAsync, PendingEventsStatisticsRefreshTests.Failure_WarnsNamingTheQueryAndTheStaleGauge_KeepsTheLastValue_AndCountsItAsync, PendingEventsStatisticsRefreshTests.FailureStreak_WarnsOnce_ThenLogsAtDebug_AndCountsEveryFailureAsync, PendingEventsStatisticsRefreshTests.RecoveryAfterAStreak_ReportsTheGaugeCurrentAgain_AndTheNextFailureWarnsAgainAsync, PendingEventsStatisticsRefreshTests.Cancellation_IsNotAFailure_AndPropagatesAsync, PerspectiveWorkerStartupAndMaintenanceTests.Maintenance_StatisticsGatherFails_WarnsNamingTheQuery_AndCountsTheFailureAsync}
 
+### Write-behind {#perspective-write-behind}
+
+Reported only when a perspective uses the opt-in [write-behind mode](../../fundamentals/perspectives/write-modes.md#write-behind),
+which holds folded models in memory across drains and writes each one later. See
+[write-behind metrics](../../fundamentals/perspectives/write-modes.md#write-behind-metrics) for how to read them.
+
+| Metric Name | Unit / Type | Description |
+|-------------|-------------|-------------|
+| `whizbang.perspective.write_behind.models` | ObservableGauge | Models the write-behind cache holds |
+| `whizbang.perspective.write_behind.bytes` | ObservableGauge (By) | Bytes the held models take, measured as their serialized size |
+| `whizbang.perspective.write_behind.lookups` | Counter\<long\> | Write-behind pairs prepared on a held model (`hit`) or a database read (`miss`); the hit rate is hits over both. Tags: `perspective_name`, `result` |
+| `whizbang.perspective.write_behind.flush_lag` | ms | Time from a model's first held batch to its flush. Tag: `reason` |
+| `whizbang.perspective.write_behind.forced_flushes` | Counter\<long\> | Held models flushed before their interval. Tag: `reason` (`sync`, `bypass`, `bounds`, `batches`, `requested`, `rebuild`, `stop`) |
+| `whizbang.perspective.write_behind.dropped` | Counter\<long\> | Held models dropped unwritten because their rows' lease ran out; they replay from their checkpoints |
+
+{verified: PerspectiveWorkerDrainModeTests.WriteBehind_AHotStreamsBatches_AreHeld_ThenWrittenOnceWhenTheIntervalElapsesAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ASyncWaitOnAHeldEvent_FlushesItsModelAtOnceAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AModelThatOutlivesItsLease_IsDropped_NeverWrittenAsync}
+
 ### Batch Composition Histograms
 
 | Metric Name | Type | Description |
@@ -662,6 +684,18 @@ Passive counters for instance liveness: the heartbeat writer's out-of-cadence an
 | `whizbang.liveness.deaths_retracted` | Counter\<long\> | Announced deaths retracted because the instance was alive again on a later tick; a beat was late, not absent |
 
 {verified: InstanceLivenessMetricsTests.Counters_ReportWhatWasAddedWhenPolledAsync, InstanceLivenessMetricsTests.Meter_IsNamedForTheLivenessDomainAsync, InstanceLivenessMetricsTests.WithoutAMeterFactory_StillConstructsAsync}
+
+## Whizbang.SequenceIntegrity {#sequence-integrity}
+
+Meter name: `Whizbang.SequenceIntegrity` (`SequenceHoldMetrics`)
+
+How long the outbox has held an event for its commit-order stamp. Each instance reads its own holdings every `Whizbang:Core:SequenceHoldSampleInterval` and logs a warning past `Whizbang:Core:SequenceHoldWarningAge`. Design and operator guidance: [Sequence Integrity](/v1.0.0/fundamentals/messaging/sequence-integrity#watching-held-messages).
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.outbox.sequence_hold.oldest_age_seconds` | ObservableGauge\<double\> | Age in seconds of the oldest outbox event this instance holds for its stamp; `0` when it holds none, no value when the reading failed |
+
+{verified: SequenceHoldWorkerTests.OnItsInterval_ReadsThisInstancesOldestHold_AndPublishesItsAgeAsync, SequenceHoldWorkerTests.NothingHeld_ReadsZero_AndAFailedReading_ReportsNothingAsync}
 
 ## Whizbang.Probes {#probes}
 
@@ -1146,6 +1180,39 @@ nothing.
 To watch for a stopped consumer, alert on `backlog_age_seconds` rather than on depth; the `backlog` health component
 degrades on the same reading once it passes `Whizbang:BacklogAge:AgeThreshold` (default 15 minutes). To find the
 namespace whose quota is exhausted, compare `ops_rate` across `transport_namespace` values.
+
+## Whizbang.GuidOrdering {#time-ordering-checks}
+
+{verified: GuidOrderingEntryPointValidationTests.ValidateMessageId_AtWarning_LogsAndCountsEachIdOnceAsync, GuidOrderingEntryPointValidationTests.ReportStreamId_NonV7AtTheDefault_IsAcceptedLoggedOnceAndCountedAsync, GuidOrderingEntryPointValidationTests.GuidOrderingMetrics_IsInTheFrameworkMeterListAsync}
+
+Meter name: `Whizbang.GuidOrdering` (`GuidOrderingMetrics`), registered by `AddWhizbang()` and included in
+`WhizbangMeters.All`.
+
+The [time-ordering checks](../../fundamentals/identity/whizbang-ids#time-ordering-checks) run where event and message
+ids enter the framework. These counters count the ids that entered without the time order they need. Each distinct id
+is counted once, so a total is a number of distinct ids, and the goal is a flat line at zero.
+
+| Metric Name | Type | Tags | Description |
+|-------------|------|------|-------------|
+| `whizbang.guid_ordering.non_v7_message_ids` | Counter\<long\> | `entry_point`, `version`, `suppressed` | Distinct event and message ids accepted although they are not UUIDv7. Counted when `GuidOrderingViolationSeverity` is `Warning` or `Info`, or at `Error` for a message type carrying `[SuppressGuidOrderingValidation]`; any other non-v7 id at `Error`, the default, is refused instead, and at `None` nothing is counted, with or without the attribute |
+| `whizbang.guid_ordering.non_v7_stream_ids` | Counter\<long\> | `entry_point`, `version` | Distinct stream ids that are not UUIDv7. A stream id's version affects only index locality, so these are reported, not refused, unless `StreamIdOrderingViolationSeverity` is raised to `Error`. Counted at `Warning` (the default) or `Info`; an id of a type declared with `AcceptAnyVersion` is never counted. See [Stream id versions](../../fundamentals/identity/whizbang-ids#stream-id-versions) |
+
+`entry_point` names the check that saw the id, for example `EFCoreWorkCoordinator.OutboxWrite`,
+`BatchStrategy.QueueInbox` or `EFCoreEventStore.Append`, which points at the code that wrote it. `version` is the
+id's UUID version as received.
+
+`suppressed` is always present on `non_v7_message_ids` and says why the id was accepted: `true` when its message type
+carries [`[SuppressGuidOrderingValidation]`](../../fundamentals/identity/whizbang-ids#suppressing-the-time-ordering-check),
+`false` when the configured severity alone let it through. Suppressed and unsuppressed ids are separate series, so
+driving the `suppressed=false` series to zero leaves only the deliberate opt-outs. `non_v7_stream_ids` never carries
+the tag, because the attribute does not affect stream ids
+{verified: GuidOrderingSuppressionTests.ValidateMessageId_TheCount_CarriesTheSuppressedTagAsync, GuidOrderingSuppressionTests.ValidateMessageId_SuppressedAndNot_AreSeparateSeriesAsync, GuidOrderingSuppressionTests.ReportStreamId_TheStreamCount_CarriesNoSuppressedTagAsync}.
+
+The memory of ids already counted holds up to 100,000 ids and is cleared when it fills,
+so on a service that sees more distinct offending ids than that, an id may be counted again.
+
+To find the code that mints non-v7 ids in an existing application, set `Whizbang:GuidOrderingViolationSeverity` to
+`Warning`, fix each `entry_point` this counter names until its `suppressed=false` series stays at zero, then return to `Error`.
 
 ## Other Meters {#other-meters}
 

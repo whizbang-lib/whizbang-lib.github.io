@@ -1,11 +1,12 @@
 ---
 title: 'WHIZ056: Guid.CreateVersion7() Usage'
 pageType: troubleshooting
-verifiedAgainstCommit: 9a416b5b
-verifiedDate: 2026-10-17
+verifiedAgainstCommit: '7b794a96'
+verifiedDate: 2026-11-23
 description: >-
   Warning diagnostic for each call to Guid.CreateVersion7(), whose UUIDv7 has only millisecond precision. Use
-  TrackedGuid.New() or a [WhizbangId] type for sub-millisecond ordering.
+  TrackedGuid.New() or a [WhizbangId] type for sub-millisecond ordering. With Guid interception on (the default) the
+  call is replaced with TrackedGuid.New().
 version: 1.0.0
 category: Diagnostics
 severity: Warning
@@ -24,6 +25,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Generators.Tests/GuidUsageAnalyzerTests.cs
   - tests/Whizbang.Generators.Tests/GuidInterceptorGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/GuidInterceptorRuntimeTests.cs
 lastMaintainedCommit: '9a416b5b'
 ---
 
@@ -42,6 +44,14 @@ are not guaranteed to sort in creation order.
 `[WhizbangId]` type such as `OrderId` uses it internally. See
 [WhizbangIds](../../fundamentals/identity/whizbang-ids#tracked-guid).
 
+### With Guid interception on (the default)
+
+[Guid interception](../../fundamentals/identity/whizbang-ids#guid-interception) is on by default, and it replaces each
+`Guid.CreateVersion7()` with `TrackedGuid.New()` at compile time, so the call orders within a millisecond by its
+counter {verified: GuidInterceptorRuntimeTests.InterceptedCreateVersion7_ReturnsVersion7Async}. WHIZ056 is still
+reported so the source says what runs: write `TrackedGuid.New()` or a `[WhizbangId]` type.
+`WhizbangGuidInterceptionEnabled=false` turns interception off, which is strongly advised against.
+
 ### When it fires, and when it does not
 
 - It fires once per **invocation written as a member access** that binds to `System.Guid.CreateVersion7`, for
@@ -53,7 +63,7 @@ are not guaranteed to sort in creation order.
 ## Diagnostic Message
 
 ```text{title="WHIZ056 message" description="The descriptor's message; it has no placeholders" category="Diagnostics" difficulty="BEGINNER" tags=["WHIZ056", "Guid", "Diagnostics"] unverified="message text read from the descriptor"}
-Use TrackedGuid.New() for sub-millisecond precision instead of Guid.CreateVersion7()
+Use TrackedGuid.New() for sub-millisecond precision instead of Guid.CreateVersion7(); with interception on (the default) this call is replaced with TrackedGuid.New()
 ```
 
 ## Common Causes
@@ -112,9 +122,9 @@ var externalId = Guid.CreateVersion7();
 dotnet_diagnostic.WHIZ056.severity = none
 ```
 
-**The pragma also affects Guid interception.** When `WhizbangGuidInterceptionEnabled` is on, the
+**The pragma also affects Guid interception.** With interception on (the default), the
 `GuidInterceptorGenerator` skips any `Guid.NewGuid()` or `Guid.CreateVersion7()` call inside an active
-`#pragma warning disable WHIZ056` (or `WHIZ055`) region, so the call is not wrapped as a `TrackedGuid`
+`#pragma warning disable WHIZ056` (or `WHIZ055`) region, so the call is not replaced and keeps its own value
 {verified: GuidInterceptorGeneratorTests.Generator_PragmaDisableWhiz056_SuppressesInterceptionAsync}. `.editorconfig` and
 `NoWarn` only change the warning; they do not stop interception.
 

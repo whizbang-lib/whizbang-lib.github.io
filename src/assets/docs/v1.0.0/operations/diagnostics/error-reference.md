@@ -592,6 +592,7 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ034 | Warning | [InheritFrom Lists The Stream ID's Own Type](whiz034.md) |
 | WHIZ035 | Warning | [IHasStreamId Is Written Instead Of A Strong-ID Stream ID](whiz035.md) |
 | WHIZ036 | Error | [Stream ID Is Ambiguous](whiz036.md) |
+| WHIZ037 | Warning | [A Constructed Or Parsed Guid Flows Into An Id](whiz037.md) |
 | WHIZ040 | Info | [User Service Discovered](whiz040.md) |
 | WHIZ041 | Info | [Abstract Class Skipped](whiz041.md) |
 | WHIZ042 | Retired | [No User Services Found](whiz042.md) (retired: never reported, ID never reused) |
@@ -684,6 +685,7 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ607 | Error | [Type Name Read Outside the Shared Naming Code](whiz607.md) (repository check) |
 | WHIZ608 | Error | [Type-Naming Exception Without a Reason](whiz608.md) (repository check) |
 | WHIZ609 | Error | [Test Fixture Tears Down Twice](whiz609.md) (repository check) |
+| WHIZ610 | Error | [Type Name Read Before the Log Level Is Checked](whiz610.md) (repository check) |
 | WHIZ701 | Info | [EF Core Perspective Discovery](whiz701.md) |
 | WHIZ702 | Info | [EF Core Migration Files Discovery](whiz702.md) |
 | WHIZ703 | Info | [No DbContext Found](whiz703.md) |

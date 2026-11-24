@@ -15,12 +15,15 @@ codeReferences:
   - src/Whizbang.Generators/StreamIdGenerator.cs
   - src/Whizbang.Core/Validation/StreamIdGuard.cs
   - src/Whizbang.Core/Registry/StreamIdTypeRegistry.cs
+  - src/Whizbang.Core/Messaging/GeneratedStreamIdentity.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/GenerateStreamIdGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/StreamIdDerivedFirstGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/StreamIdTypeTableGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/StreamIdGeneratorTests.cs
   - tests/Whizbang.Core.Tests/Validation/StreamIdGuardTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/GeneratedStreamIdentityTests.cs
+  - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherDerivedIdentityInHandlingTests.cs
 lastMaintainedCommit: '0a29f1a5'
 ---
 
@@ -86,7 +89,7 @@ public record OrderCreatedEvent : IEvent {
 }
 ```
 
-When dispatched, `OrderId` will always be populated with a new UUIDv7 (TrackedGuid.New()).
+When dispatched, `OrderId` is always populated with a new stream id, a UUIDv7. For an event that id derives from the event's own id; for a command sent inside a receptor's handling it derives from the handling; otherwise it is minted ([Derived stream ids](#derived-stream-ids)).
 
 ### Appending Events
 
@@ -117,18 +120,50 @@ public record InventoryReserved : IEvent {
   {verified: DispatcherStrongIdStreamInheritanceTests.AfterARefusal_AnEventWithGenerateStreamId_MintsItsOwnIdAsync}.
   See [Inheriting a stream of another id type](streamid#inheriting-a-stream-of-another-id-type).
 
+## Derived stream ids {#derived-stream-ids}
+
+{verified: GeneratedStreamIdentityTests.Derive_TheSameMessageId_DerivesTheSameStreamIdAsync, GeneratedStreamIdentityTests.Derive_TwoMessages_DeriveTwoStreamsAsync, GeneratedStreamIdentityTests.Derive_IsNotTheMessageIdItselfAsync, GeneratedStreamIdentityTests.Derive_KeepsTheMessageIdsFirst92Bits_SoTheStreamSortsWithTheMessageThatStartedItAsync, GeneratedStreamIdentityTests.Derive_IsAVersion7IdWithTheRfcVariantAsync, GeneratedStreamIdentityTests.Derive_AnEmptyMessageId_IsRefusedAsync, DispatcherDerivedIdentityInHandlingTests.PublishAsync_GenerateStreamId_InsideAHandling_ARetryStartsTheSameStreamAsync, DispatcherDerivedIdentityInHandlingTests.CascadeMessageAsync_GenerateStreamId_ARetryOfTheHandlingStartsTheSameStreamAsync, DispatcherDerivedIdentityInHandlingTests.PublishAsync_WithOptions_GenerateStreamId_DerivesTheStreamFromThePublishedIdAsync, DispatcherDerivedIdentityInHandlingTests.PublishAsync_GenerateStreamId_OutsideAHandling_StartsANewStreamDerivedFromTheFreshIdAsync, GeneratedStreamIdentityTests.DeriveInHandling_TheSameInputs_DeriveTheSameStreamIdAsync, GeneratedStreamIdentityTests.DeriveInHandling_SortsAtTheCauseThenByOrdinalAsync, GeneratedStreamIdentityTests.DeriveInHandling_IsAVersion7IdWithTheRfcVariantAsync, DispatcherDerivedIdentityInHandlingTests.SendAsync_GenerateStreamId_InsideAHandling_ARedeliveryStartsTheSameStreamAsync, DispatcherDerivedIdentityInHandlingTests.SendAsync_GenerateStreamId_TwoCommandsInOneHandling_StartTwoStreamsInSendOrderAsync, DispatcherDerivedIdentityInHandlingTests.SendAsync_GenerateStreamId_OutsideAHandling_MintsAFreshStreamEachTimeAsync}
+
+An event that starts a stream, whether a receptor returns it or publishes it, takes a stream id **derived from the
+event's own id** (`GeneratedStreamIdentity.Derive`, [#2520](https://github.com/whizbang-lib/whizbang/issues/2520)):
+
+- **It sorts with the event.** The stream id keeps the event id's first 92 bits (its millisecond, counter and
+  ordinal), so the stream sorts where the event that started it sorts.
+- **It is a version 7 id**, accepted everywhere a minted one is, and it differs from the event's own id.
+- **A retry starts the same stream.** Inside a receptor's handling the event's id
+  [derives from the handling](../../fundamentals/dispatcher/message-cascade#explicit-publish-identity), so a retry of the
+  handling (a lapsed lease, a completion that never committed, a repair that re-runs the receptor) re-derives the same
+  event id, and with it the same stream id. Before, each run started a new stream that nothing else referred to.
+- **Outside a handling** (an API endpoint, a background service), the event's id is minted fresh, so its stream is new
+  each time, as before.
+- **A command sent inside a handling** derives its stream from the handling, because the command's own id is still
+  minted ([#2537](https://github.com/whizbang-lib/whizbang/issues/2537), `GeneratedStreamIdentity.DeriveInHandling`).
+  The inputs are the handled message, the service, the handler, the command type, and the command's position among
+  the streams the handling starts this way. The stream sorts with the handled message and is a version 7 id. A
+  redelivered handling sends its commands on the streams its first run started. These positions are separate from the
+  handling's event ordinals, so sending a command never changes the ids of the events the handling returns or
+  publishes. Outside a handling, a command's stream is minted fresh, as before.
+- **One message, one stream.** Every envelope a send builds for a message (the local run's, the stored copy's) names
+  the same stream, inside or outside a handling ([#2539](https://github.com/whizbang-lib/whizbang/issues/2539)).
+  Sending the same instance again keeps that stream; a new instance starts a new one
+  {verified: DispatchTangentialParityComponentTests.EverySendThatRunsHereAndWritesACopy_GivesTheCommandOneStreamAsync, GeneratedStreamAssignmentsTests.GetOrAdd_TheSameMessageTwice_DerivesOnceAndKeepsItsStreamAsync}.
+
+The derivation is a compatibility contract: a stored stream id is referenced by every record on its stream, so the
+layouts are versioned (`whizbang.generated-stream.v1`, and `whizbang.generated-stream.in-handling.v1` for a command
+sent inside a handling) and never change in place.
+
 ## Parameters
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `OnlyIfEmpty` | `bool` | `false` | When `true`, only generates a StreamId if the current value is `Guid.Empty`. When `false`, always generates a new StreamId. |
+| `OnlyIfEmpty` | `bool` | `false` | When `true`, only generates a StreamId if the current value is `Guid.Empty`. When `false`, generates a StreamId for each new message instance, replacing any value it carries. |
 
 ## How It Works
 
 1. **At compile time**: The source generator discovers `[GenerateStreamId]` attributes and generates a `GetGenerationPolicy` method with type-specific switch arms.
 
 2. **At dispatch time**: The Dispatcher calls `GetGenerationPolicy(message)` to determine if auto-generation should occur:
-   - `(ShouldGenerate: true, OnlyIfEmpty: false)` → Always generate new StreamId
+   - `(ShouldGenerate: true, OnlyIfEmpty: false)` → Generate a StreamId for each new message instance
    - `(ShouldGenerate: true, OnlyIfEmpty: true)` → Generate only if current StreamId is `Guid.Empty`
    - `(ShouldGenerate: false, OnlyIfEmpty: false)` → No auto-generation; guard will throw if StreamId is `Guid.Empty`
 
@@ -175,7 +210,7 @@ The `[GenerateStreamId]` attribute is fully AOT-compatible:
 
 - Discovery happens at compile time via the source generator
 - The policy is read from the generated per-type entry for the message's type (no reflection)
-- Generation uses `TrackedGuid.New()` (UUIDv7) for time-ordered, database-friendly IDs
+- Generation derives a UUIDv7 from the starting event's id (`GeneratedStreamIdentity`), or mints one with `TrackedGuid.New()` for a command, so ids stay time-ordered and database-friendly
 
 ## See Also
 

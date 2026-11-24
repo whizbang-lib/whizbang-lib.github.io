@@ -124,7 +124,7 @@ Whizbang follows the standard .NET configuration model ([Microsoft: Configuratio
 
 | Mechanism | What it means | Applies to |
 |-----------|---------------|------------|
-| **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | **67 sections**: `Whizbang` itself, `Whizbang:Core`, `Whizbang:Tracing`, `Whizbang:SchemaInitialization`, `Whizbang:WorkCoordinator`, every `Whizbang:Workers:*` worker, `Whizbang:StreamIntegrity`, `Whizbang:DeadLetterRecovery`, `Whizbang:DeadLetterLogging`, `Whizbang:DatabaseFailureEscalation`, `Whizbang:Redelivery`, `Whizbang:Perspectives:*`, `Whizbang:Temporal`, `Whizbang:Tags` and the rest listed in the [Quick Map](#quick-map); plus `Whizbang:AspNet:*` with ASP.NET hosting, `Whizbang:Sagas` with sagas, `Whizbang:Scope` and `Whizbang:StartupStatusGraph` with GraphQL, `Whizbang:Database*` with the Postgres driver, `Whizbang:Transports:AzureServiceBus` / `Whizbang:Transports:RabbitMQ` with those transports, the [per-instance sections](#per-instance-sections) keyed by breaker, transport, database and tag, and `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `ConnectionStrings:*`, `ConnectionPool:*` |
+| **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | **68 sections**: `Whizbang` itself, `Whizbang:Core`, `Whizbang:Tracing`, `Whizbang:SchemaInitialization`, `Whizbang:WorkCoordinator`, every `Whizbang:Workers:*` worker, `Whizbang:StreamIntegrity`, `Whizbang:DeadLetterRecovery`, `Whizbang:DeadLetterLogging`, `Whizbang:DatabaseFailureEscalation`, `Whizbang:Redelivery`, `Whizbang:Perspectives:*`, `Whizbang:Temporal`, `Whizbang:Tags` and the rest listed in the [Quick Map](#quick-map); plus `Whizbang:AspNet:*` with ASP.NET hosting, `Whizbang:Sagas` with sagas, `Whizbang:Scope` and `Whizbang:StartupStatusGraph` with GraphQL, `Whizbang:Database*` with the Postgres driver, `Whizbang:Transports:AzureServiceBus` / `Whizbang:Transports:RabbitMQ` with those transports, the [per-instance sections](#per-instance-sections) keyed by breaker, transport, database and tag, and `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `ConnectionStrings:*`, `ConnectionPool:*` |
 | **Bound with a referenced package** | A package that activates itself (a turnkey package) reads its section when `AddWhizbang()` runs; with the package referenced, setting a key just works, and without it the key does nothing (the startup log warns, naming the package). | `Whizbang:Storage:AzureBlob` (with its `Offloads` and `Archive` sections) and the earlier `Whizbang:Offloads:AzureBlob:<name>` and `Whizbang:Archive:AzureBlob`, via `Whizbang.Storage.AzureBlob` ([details](#azure-blob-storage)) |
 | **Code-configured** | The options class is configured through an `Action<TOptions>` lambda (or `services.Configure<TOptions>(...)`). The library never reads a configuration section for it — **a configuration key for one of these does nothing unless your service binds it**. Every table below carries an environment-variable column; these read `— *code-only*`, so a blank is always deliberate rather than an omission (see [the binding recipe](#code-configured-options-the-binding-recipe)). | The classes with no configuration section in the [Quick Map](#quick-map): `ServiceRegistrationOptions`, `PerStreamSerializerOptions`, `WhizbangGraphQLOptions`, and the keys a bound class marks *code-only* |
 
@@ -287,6 +287,7 @@ DbContext), the latest registration is used and startup logs a warning naming th
 | `Whizbang:StandbyWatcher` | `StandbyWatcherOptions` | Automatic (worker pipeline) |
 | `Whizbang:DebuggerAwareClock` | `DebuggerAwareClockOptions` | Automatic |
 | `Whizbang:Perspectives:Snapshots`, `Whizbang:Perspectives:Rewind`, `Whizbang:Perspectives:StreamLock` | `PerspectiveSnapshotOptions`, `PerspectiveRewindOptions`, `PerspectiveStreamLockOptions` | Automatic (worker pipeline) |
+| `Whizbang:Perspectives:Rebuild` | `PerspectiveRebuildOptions` | Automatic |
 | `Whizbang:Workers:PerspectiveAffinity` | `PerspectiveStreamAffinityOptions` | Automatic (worker pipeline) |
 | `Whizbang:AspNet:Availability`, `Whizbang:AspNet:Correlation`, `Whizbang:AspNet:SecurityHeaders` | `WhizbangAvailabilityOptions`, `WhizbangCorrelationOptions`, `WhizbangSecurityHeadersOptions` | Automatic (`AddWhizbangAspNet`, folded into `AddWhizbang`) |
 | `Whizbang:Sagas` | `SagaOptions` (all but `PerItemStreamNamespace`) | Automatic (`AddWhizbangSagas`) |
@@ -780,6 +781,10 @@ Entry point to subsystem configuration. **Configure:** `AddWhizbang(options => �
 | `EmptyStreamIdPolicy` | `EmptyStreamIdPolicy` | `Reject` | `Whizbang__Core__EmptyStreamIdPolicy` | Handling of `Guid.Empty` stream ids (see [Empty Stream ID Policy](empty-stream-id-policy)) |
 | `MaxMessagePayloadBytes` | `long?` | `5242880` (5 MiB) | `Whizbang__Core__MaxMessagePayloadBytes` | Default per-message payload limit; `0` turns the default limit off |
 | `MessagePayloadWarningRatio` | `double` | `0.8` | `Whizbang__Core__MessagePayloadWarningRatio` | Fraction of the limit at which a payload is logged as approaching it |
+| `SequenceIntegrity` | `SequenceIntegrity` | `Bounded` | `Whizbang__Core__SequenceIntegrity` | Whether the outbox holds an event for its commit-order stamp when neither its type nor its dispatch says: `None`, `Bounded` or `UntilStamped` (see [Sequence Integrity](../../fundamentals/messaging/sequence-integrity#the-configured-default)) |
+| `SequenceHoldTime` | `TimeSpan` | `00:00:01` | `Whizbang__Core__SequenceHoldTime` | The longest a `Bounded` event is held for its stamp when nothing more specific names a hold time |
+| `SequenceHoldWarningAge` | `TimeSpan` | `00:01:00` | `Whizbang__Core__SequenceHoldWarningAge` | Age past which the oldest event an instance holds for its stamp is logged as a warning ([held-age metric](../../fundamentals/messaging/sequence-integrity#watching-held-messages)) |
+| `SequenceHoldSampleInterval` | `TimeSpan` | `00:00:15` | `Whizbang__Core__SequenceHoldSampleInterval` | How often each instance measures that age; zero or less turns the measurement off |
 | `ShowBanner` | `bool` | `true` | `Whizbang__ShowBanner` | Print the ASCII banner on startup (the key is `Whizbang:ShowBanner`, see [Service Name and Banner](#service-name-and-banner)) |
 | `AutoRegisterAspNetHosting` | `bool` | `true` | — *code-only* | Fold in `AddWhizbangAspNet()` automatically when the Hosting.AspNet assembly is loaded; decided while services are registered, before configuration can be read |
 | `AutoRegisterStorageProviders` | `bool` | `true` | — *code-only* | Run every loaded storage provider package's registration (such as `Whizbang.Storage.AzureBlob`), each feature activating from its configuration; `false` keeps the package loaded but inactive. Decided while services are registered ([opting out](../../fundamentals/storage/azure-blob#opting-out)) |
@@ -794,8 +799,9 @@ Runtime guid-tracking and guardrail behavior. **Configure:** bound automatically
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
-| `DisableGuidTracking` | `bool` | `false` | `Whizbang__DisableGuidTracking` | Disable TrackedGuid validation project-wide |
-| `GuidOrderingViolationSeverity` | `GuidOrderingSeverity` | `Warning` | `Whizbang__GuidOrderingViolationSeverity` | Severity for time-ordering violations in IDs (`Error` also throws) |
+| `DisableGuidTracking` | `bool` | `false` | `Whizbang__DisableGuidTracking` | Bypass `GuidOrderingValidator.ValidateForTimeOrdering` project-wide; does not turn off the entry point [time-ordering checks](../../fundamentals/identity/whizbang-ids#time-ordering-checks) |
+| `GuidOrderingViolationSeverity` | `GuidOrderingSeverity` | `Error` | `Whizbang__GuidOrderingViolationSeverity` | What happens to an event or message id that is not UUIDv7: `Error` refuses it with `GuidOrderingException`; `Warning` or `Info` logs it once and counts it; `None` accepts it silently. `Guid.Empty` is refused at every severity ([time-ordering checks](../../fundamentals/identity/whizbang-ids#time-ordering-severity)) |
+| `StreamIdOrderingViolationSeverity` | `GuidOrderingSeverity` | `Warning` | `Whizbang__StreamIdOrderingViolationSeverity` | What happens to a stream id that is not UUIDv7. A stream id's version affects only index locality, so by default it is reported: logged once and counted. `Error` refuses it with `GuidOrderingException`; `Info` logs at information; `None` accepts it silently ([stream id versions](../../fundamentals/identity/whizbang-ids#stream-id-versions)) |
 | `ShowBanner` | `bool` | `true` | — *obsolete* | Read by nothing; the banner follows `Whizbang:ShowBanner` through `WhizbangCoreOptions.ShowBanner` |
 | `AutoGenerateStreamIds` | `bool` | `true` | `Whizbang__AutoGenerateStreamIds` | Auto-generate a StreamId for `IHasStreamId` events with `Guid.Empty` |
 | `Guardrails` | `WhizbangGuardrailsOptions` | `new()` | `Whizbang__Guardrails` | Receptor double-fire tracking (below) |
@@ -1384,7 +1390,11 @@ Re-delivery (repair) pump bounds. **Configure:** bound automatically from `Whizb
 | `IdleThresholdPolls` | `int` | `2` | `Whizbang__Workers__Perspective__IdleThresholdPolls` | Consecutive empty polls before `OnWorkProcessingIdle` |
 | `PerspectiveBatchSize` | `int` | `100` | `Whizbang__Workers__Perspective__PerspectiveBatchSize` | Events processed per batch before saving model + checkpoint |
 | `MaxConcurrentPerspectives` | `int` | `30` | `Whizbang__Workers__Perspective__MaxConcurrentPerspectives` | Max perspective groups processed concurrently per batch; the effective per-consumer width is clamped against the coordinator gate (note below) |
-| `WriteMode` | `PerspectiveWriteMode` | `SetBased` | `Whizbang__Workers__Perspective__WriteMode` | How perspective rows are written: set-based across the batch's streams, or per stream; a perspective overrides it with `[PerspectiveWriteMode]`. See [Perspective Write Modes](../../fundamentals/perspectives/write-modes.md#selection) |
+| `WriteMode` | `PerspectiveWriteMode` | `SetBased` | `Whizbang__Workers__Perspective__WriteMode` | How perspective rows are written: set-based across the batch's streams, per stream, or write-behind (opt-in; needs the `WriteBehind` bounds below); a perspective overrides it with `[PerspectiveWriteMode]`. See [Perspective Write Modes](../../fundamentals/perspectives/write-modes.md#selection) |
+| `WriteBehind:MaxModels` | `int?` | none; required when anything writes behind | `Whizbang__Workers__Perspective__WriteBehind__MaxModels` | Most models the write-behind cache holds at once, across every write-behind perspective of the worker. A worker that writes anything behind without it does not start. See [write-behind bounds](../../fundamentals/perspectives/write-modes.md#write-behind-bounds) |
+| `WriteBehind:MaxBytes` | `long?` | none; required when anything writes behind | `Whizbang__Workers__Perspective__WriteBehind__MaxBytes` | Most bytes the held models take, as their serialized size. A worker that writes anything behind without it does not start |
+| `WriteBehind:MaxFlushIntervalMilliseconds` | `int` | `1000` | `Whizbang__Workers__Perspective__WriteBehind__MaxFlushIntervalMilliseconds` | Longest a model is held before it is flushed, from its first held batch; at most half of `LeaseSeconds` less the lease grace, or the worker does not start |
+| `WriteBehind:MaxBatchesPerModel` | `int` | `32` | `Whizbang__Workers__Perspective__WriteBehind__MaxBatchesPerModel` | Most batches one model holds before it is flushed |
 | `MaxConcurrentDrainConsumers` | `int` | `4` | `Whizbang__Workers__Perspective__MaxConcurrentDrainConsumers` | Parallel consumer loops on the channel reader; consumers × per-consumer width may use at most half of `WorkCoordinatorGateOptions.MaxConcurrent` (note below) |
 | `MaxStreamsPerBatch` | `int` | `300` | `Whizbang__Workers__Perspective__MaxStreamsPerBatch` | Max streams returned per batch from the SQL function |
 | `DrainLoopMaxIterations` | `int` | `5` | `Whizbang__Workers__Perspective__DrainLoopMaxIterations` | Cap on per-stream drain-loop refetch iterations; 1 disables |
@@ -1429,6 +1439,14 @@ Re-delivery (repair) pump bounds. **Configure:** bound automatically from `Whizb
 | `MaxConcurrentRewinds` | `int` | `3` | `Whizbang__Perspectives__Rewind__MaxConcurrentRewinds` | Cap on concurrent rewind operations |
 | `DebounceWindow` | `TimeSpan` | `00:00:05` | `Whizbang__Perspectives__Rewind__DebounceWindow` | Sliding window before executing a rewind |
 | `MaxDebounceWindow` | `TimeSpan` | `00:00:30` | `Whizbang__Perspectives__Rewind__MaxDebounceWindow` | Hard cap on debounce duration |
+
+### PerspectiveRebuildOptions
+
+Settings of every perspective rebuild, whatever its mode. **Configure:** bound automatically from `Whizbang:Perspectives:Rebuild`; `services.Configure<PerspectiveRebuildOptions>(…)` also applies. **Details:** [Batched reads](../../fundamentals/perspectives/rebuild#batched-reads).
+
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `StreamReadBatchSize` | `int` | `100` | `Whizbang__Perspectives__Rebuild__StreamReadBatchSize` | How many streams a rebuild reads the events of with one read; each stream is then folded on its own, in its own order. `1` or below reads each stream on its own |
 
 ### PerspectiveStreamLockOptions
 
@@ -2291,7 +2309,7 @@ The process-wide classes followed (#1014), each locked by a test that sets every
 `Whizbang:Core`, `Whizbang:Redelivery`, `Whizbang:ThrottleRetry`, `Whizbang:StreamRateLimiter`,
 `Whizbang:SystemEvents`, `Whizbang:MessageSecurity`, `Whizbang:Health`, `Whizbang:Lifecycle`,
 `Whizbang:StandbyWatcher`, `Whizbang:DebuggerAwareClock`, `Whizbang:Perspectives:Snapshots`,
-`Whizbang:Perspectives:Rewind`, `Whizbang:Perspectives:StreamLock`,
+`Whizbang:Perspectives:Rewind`, `Whizbang:Perspectives:Rebuild`, `Whizbang:Perspectives:StreamLock`,
 `Whizbang:Workers:PerspectiveAffinity`, `Whizbang:AspNet:Availability`,
 `Whizbang:AspNet:Correlation`, `Whizbang:AspNet:SecurityHeaders`, `Whizbang:Sagas`,
 `Whizbang:Scope` and `Whizbang:StartupStatusGraph`. The tests are `ProcessWideOptionsBindingTests`,
