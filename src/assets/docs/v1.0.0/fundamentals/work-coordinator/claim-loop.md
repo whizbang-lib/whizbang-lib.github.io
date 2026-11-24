@@ -873,7 +873,7 @@ Two invariants:
 ## Ranking: who counts as alive {#ranking-who-counts-as-alive}
 {verified: AliveLockLivenessSqlTests.Rank_ADirectPeerOnTheSlowCadenceHoldingItsLock_IsCountedAsync, AliveLockLivenessSqlTests.Rank_ADirectPeerWhoseLockIsReleased_IsCountedOutAtOnceAsync, AliveLockLivenessSqlTests.Rank_APooledPeerPastTheCutoff_IsCountedOutWhateverLockItsSessionHoldsAsync, AliveLockLivenessSqlTests.Rank_APooledPeerWithAFreshHeartbeat_IsCountedAsync, AliveLockLivenessSqlTests.Rank_ARowWithNoRecordedMode_IsJudgedAsPooledAsync}
 
-This section is how a claim decides with [ownership by map](partition-assignment.md#ownership-by-map) off, the default;
+This section is how a claim decides with [ownership by map](partition-assignment.md#ownership-by-map) off (a service that opted out, or one whose switch is not on yet);
 see [below](#claims-in-map-mode) for the other mode. Unowned work is claimed by share. Every claim tests a partition
 through one predicate, `wh_partition_in_share(partition, rank, count, owners)` (migration 564): with a map, the
 partition is the claimer's when the map gives it to the member at the claimer's rank; without one, when
@@ -895,7 +895,7 @@ When a direct instance loses its lock, the next claim of any peer judges it by o
 ### With ownership by map on {#claims-in-map-mode}
 {verified: OwnershipByMapClaimSqlTests.WithNoValidMap_NothingIsClaimed_AndTheClaimSaysSoAsync, OwnershipByMapClaimSqlTests.AnAssignerLapse_DoesNotStallClaims_WhileTheMapsMembersAreLiveAsync, OwnershipByMapClaimSqlTests.AClaimerOutsideTheMap_ClaimsNothing_InAnyQueueAsync, OwnershipByMapClaimSqlTests.Perspective_TheMapMovesThePartition_TheNewOwnerClaimsTheStream_AndTheStoredOwnerNothingAsync, OwnershipByMapClaimSqlTests.Outbox_TheMapMovesThePartition_TheNewOwnerClaimsTheStream_AndTheStoredOwnerNothingAsync, OwnershipByMapClaimSqlTests.Inbox_TheMapMovesThePartition_TheNewOwnerClaimsTheStream_AndTheStoredOwnerNothingAsync, ClaimPathsDecideThroughTheOwnershipTableGuardTests.EveryClaimFunction_DecidesThroughWhIOwn_AndRanksOnlyInTheLegacyBranchAsync}
 
-With the service's [ownership-by-map switch](partition-assignment.md#ownership-switch) on (off by default), nothing in
+With the service's [ownership-by-map switch](partition-assignment.md#ownership-switch) on (the default), nothing in
 the claim ranks instances, and nothing reads a stream's stored owner:
 
 - **No valid map, no claim.** A claimer with no valid published map (published, and its lease running or every member

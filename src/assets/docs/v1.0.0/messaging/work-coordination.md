@@ -71,8 +71,8 @@ leave moves about 1/N of the partitions.
 2. The published map gives each partition to one member, its live instances that are eligible for work. Without a map (an earlier release's assigner), partition `p` goes to the member at rank `p % member count`; without a current assignment, a claimer ranks the live `wh_service_instances` rows itself, ordered by id
 3. Unowned or orphaned work is claimable by the instance whose share holds its partition (`wh_partition_in_share`)
 4. Who owns a stream with work in flight depends on the service's [ownership mode](../fundamentals/work-coordinator/partition-assignment.md#ownership-modes):
-   - **Off (the default):** streams pin to the instance that first stores work for them (`wh_active_streams.assigned_instance_id`, first-write-wins); ownership is reassigned only when the owning instance dies, or when it releases unstarted work
-   - **On:** the stream belongs to its partition's owner in `wh_partition_ownership`, and nothing else decides; a stream follows its partition when the map moves it
+   - **Off:** streams pin to the instance that first stores work for them (`wh_active_streams.assigned_instance_id`, first-write-wins); ownership is reassigned only when the owning instance dies, or when it releases unstarted work
+   - **On (the default):** the stream belongs to its partition's owner in `wh_partition_ownership`, and nothing else decides; a stream follows its partition when the map moves it
 
 **Benefits:**
 - **Fair Distribution**: The map is balanced within one partition per instance
@@ -163,7 +163,7 @@ sequenceDiagram
 
 **`wh_active_streams`** - The stream ledger
 - One row per active stream, with its partition, lease and last activity
-- With ownership by map off (the default), `assigned_instance_id` pins the stream to an instance (first-write-wins), and ownership is reassigned only when the owning instance dies
+- With ownership by map off, `assigned_instance_id` pins the stream to an instance (first-write-wins), and ownership is reassigned only when the owning instance dies
 - With ownership by map on, it is an activity ledger: a store records the stream with no owner, a claim names the instance that claimed it (its partition's owner), and nothing reads it to decide who may claim
 
 **`wh_partition_ownership`** - Partition ownership

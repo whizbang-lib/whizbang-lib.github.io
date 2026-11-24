@@ -7,8 +7,9 @@ description: >-
   The elected partition assigner: one instance, in every driver, decides which instances are live
   and eligible for work and publishes an explicit map of the 10,000 partitions to them, changed
   incrementally after membership settles, fenced by the role epoch and leased by the assigner's own
-  liveness. With ownership by map on, the map alone decides who owns a stream.
-tags: 'work-coordinator, partition-assignment, partition-map, ownership-by-map, settle-window, claim-work, role-election, liveness, eligibility, fencing'
+  liveness. With ownership by map on (the default), the map alone decides who owns a stream, a moved
+  partition is handed over, and a write made under an epoch that has moved on is fenced.
+tags: 'work-coordinator, partition-assignment, partition-map, ownership-by-map, settle-window, claim-work, role-election, liveness, eligibility, fencing, handover, graceful-leave'
 codeReferences:
   - src/Whizbang.Core/Workers/PartitionAssignment.cs
   - src/Whizbang.Core/Workers/PartitionAssigner.cs
@@ -32,6 +33,15 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/565_PartitionsAreOwnedByThePublishedMap.sql
   - src/Whizbang.Data.Postgres/Migrations/566_ClaimsDecideThroughTheOwnershipTable.sql
   - src/Whizbang.Data.Postgres/Migrations/567_StoresNameNoOwnerInMapMode.sql
+  - src/Whizbang.Data.Postgres/Migrations/570_WritesAreFencedByThePartitionEpoch.sql
+  - src/Whizbang.Data.Postgres/Migrations/571_MovedPartitionsAreHandedOver.sql
+  - src/Whizbang.Data.Postgres/Migrations/572_FailureReportsAreFenced.sql
+  - src/Whizbang.Core/Messaging/PartitionTenures.cs
+  - src/Whizbang.Core/Workers/PartitionHandoverWorker.cs
+  - src/Whizbang.Core/Perspectives/PartitionOwnershipLostException.cs
+  - src/Whizbang.Data.Postgres/CoordinatorOwnershipNotices.cs
+  - src/Whizbang.Data.Postgres/Perspectives/PerspectiveWriteFence.cs
+  - src/Whizbang.Data.EFCore.Postgres/EFCorePerspectiveWriteFence.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/LivenessRuleReadersSqlTests.cs
   - tests/Whizbang.Partitioning.Tests/PartitionAssignerTests.cs
@@ -57,6 +67,17 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ClaimPathsDecideThroughTheOwnershipTableGuardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ClaimsReadThePartitionMapGuardTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperCoordinationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/OwnershipFencingSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CoordinatorOwnershipNoticesTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CoordinatorNamesTheClaimedEpochTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveWritesAreFencedTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/TenureFillTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PartitionHandoverSqlTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/PartitionTenuresTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PartitionHandoverWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PartitionHandoverWorkerLoopTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDrainModeTests.WriteBehindHandover.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperOwnershipNoticesTests.cs
 ---
 
 # Partition assignment
@@ -196,9 +217,9 @@ one timeout, not two.
 
 **Missing or stale assignment.** It depends on the [ownership mode](#ownership-by-map):
 
-- **Off (the default).** A claimer keeps using its last assignment until it expires, then ranks itself as before. A
+- **Off.** A claimer keeps using its last assignment until it expires, then ranks itself as before. A
   claim never stops for want of an assignment.
-- **On.** The claim reads the published map in its own statement and ignores the claimer's cached copy. A claimer with
+- **On (the default).** The claim reads the published map in its own statement and ignores the claimer's cached copy. A claimer with
   no valid map claims nothing and waits; it never ranks itself, so two claimers can never use two maps at once
   ([#2554](https://github.com/whizbang-lib/whizbang/issues/2554)). See [map validity](#map-validity).
 {verified: PartitionMapClaimSqlTests.ClaimWork_WithAMapButAStaleVersion_RanksItselfByTheResidueAsync, OwnershipByMapClaimSqlTests.WithNoValidMap_NothingIsClaimed_AndTheClaimSaysSoAsync}
@@ -269,7 +290,11 @@ in the stream ledger (`wh_active_streams.assigned_instance_id`), that owner keep
 instance to store work for a stream becomes its owner. A rebalance then moves only idle streams. **Ownership by map**
 ([#2555](https://github.com/whizbang-lib/whizbang/issues/2555), [#2554](https://github.com/whizbang-lib/whizbang/issues/2554))
 makes the published map the only answer to "who owns stream S": the owner of `partition(S)` in the current map. It is
-behind a per-service switch that is **off by default**.
+behind a per-service switch that is **on by default** ([#2557](https://github.com/whizbang-lib/whizbang/issues/2557)):
+the assigner turns it on once every live instance of the service supports the mode, so a rolling deploy of mixed
+releases keeps the stored-owner rules until the last instance of an earlier release is gone. A partition the map moves
+is [handed over](#handover) rather than moved under a running owner, and a write made under an epoch that has moved on
+is [fenced](#fencing).
 
 ### The ownership table
 
@@ -283,10 +308,9 @@ partition, never per stream.
   members and map writes nothing.
 - **It is written whether or not the switch is on**, so it holds the current map the moment the switch flips.
 
-The epoch and the `handing_over` state are the fencing token and the handover state the next phases use. They are
-written today and checked by nothing yet: fencing and handover are coming with
-[#2556](https://github.com/whizbang-lib/whizbang/issues/2556) and
-[#2557](https://github.com/whizbang-lib/whizbang/issues/2557).
+The epoch is the [fencing](#fencing) token: it rises by one each time the partition changes owner, and every write
+that commits a result names the epoch its work was claimed under. The `handing_over` state, with its next owner and
+deadline, is the [handover](#handover) in progress.
 
 ### One predicate {#one-predicate}
 {verified: PartitionOwnershipSqlTests.IOwn_AnswersTheEpochForTheActiveOwner_AndNullForAnyoneElseAsync, PartitionOwnershipSqlTests.IOwn_APartitionHandingOver_IsOwnedByNobodyNewAsync, PartitionOwnershipSqlTests.IOwn_WorkWithoutAPartition_IsAnyonesAtEpochZeroAsync, PartitionOwnershipSqlTests.IOwn_APartitionNumberPastTheTable_IsOwnedThroughItsRemainderAsync, OwnershipByMapClaimSqlTests.PartitionsIOwn_IsWhIOwnsAnswerForEveryPartitionAsync, ClaimPathsDecideThroughTheOwnershipTableGuardTests.TheGuard_FlagsABypassAndAnUnguardedRank_AndPassesTheSanctionedFormsAsync}
@@ -331,24 +355,32 @@ and services that share no schema switch on their own schedules.
 - **It is one-way.** Once on it is never cleared. An instance that does not support the mode is then no assignment
   candidate, so a publish gives it no partition, and an earlier release that joins afterwards owns nothing and claims
   nothing.
-- **It stays off by default.** `OwnershipByMap` defaults to `false` until the handover and fencing that make moving a
-  busy partition safe are released ([#2556](https://github.com/whizbang-lib/whizbang/issues/2556),
-  [#2557](https://github.com/whizbang-lib/whizbang/issues/2557)); the default turns on with them. It is set in code, not
-  bound from configuration.
+- **It is asked for by default.** `OwnershipByMap` defaults to `true`
+  ([#2557](https://github.com/whizbang-lib/whizbang/issues/2557)), now that [handover](#handover) and
+  [fencing](#fencing) make moving a busy partition safe, and binds from
+  `Whizbang:Database:PartitionAssigner:OwnershipByMap`. The default still waits for every live instance to support the
+  mode. Setting it to `false` keeps the stored-owner rules for a service whose switch is still off; it only stops the
+  assigner asking, so a switch that is already on stays on.
+  {verified: PartitionAssignerWorkerTests.Options_OwnershipByMap_DefaultsOn_AndTheDefaultStillWaitsForEveryInstanceAsync, PartitionAssignerWorkerTests.Tick_WithOwnershipByMapOff_NeverAsksForTheSwitchAsync, PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_BindsEveryAssignerKeyFromConfigurationAsync}
 
 The assigner logs `Ownership by map is on for this service (<answer>)` at Information (EventId 8) once it sees the
 switch on, and `Ownership by map stays off for now: <reason>` at Debug (EventId 9) while it does not.
 
-```csharp{title="Ask for ownership by map" description="Opt a service in before handover and fencing ship; the switch turns on once every live instance supports it" category="Configuration" difficulty="ADVANCED" tags=["Work coordinator", "Partition assignment", "Ownership by map"] tests=["PartitionAssignerWorkerTests.Tick_WithOwnershipByMapOn_AsksForTheSwitchAfterPublishing_AtItsEpochAsync", "PartitionOwnershipSqlTests.Switch_StaysOffWhileALiveInstanceDoesNotSupportTheMode_AndTurnsOnOnceEveryLiveOneDoesAsync"]}
-services.Configure<PartitionAssignerOptions>(options => {
-  // One-way for the service: once every live instance supports it, the switch never turns off.
-  options.OwnershipByMap = true;
-});
+```json{title="Keep the stored-owner rules" description="Opt a service out of ownership by map before its switch turns on; a switch already on stays on" category="Configuration" difficulty="ADVANCED" tags=["Work coordinator", "Partition assignment", "Ownership by map"] tests=["PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_BindsEveryAssignerKeyFromConfigurationAsync", "PartitionAssignerWorkerTests.Tick_WithOwnershipByMapOff_NeverAsksForTheSwitchAsync"]}
+{
+  "Whizbang": {
+    "Database": {
+      "PartitionAssigner": {
+        "OwnershipByMap": false
+      }
+    }
+  }
+}
 ```
 
 ### What each mode does {#ownership-modes}
 
-| | Off (the default) | On |
+| | Off | On (the default) |
 |---|---|---|
 | Who may claim a stream's work | The stream's stored owner while it is live; otherwise the instance whose share of the published map (or, with no current assignment, its own ranking) holds the partition | The partition's owner in `wh_partition_ownership`, through `wh_i_own`, and nobody else |
 | A live stored owner | Blocks every other instance, so a rebalance moves only idle streams | Blocks nobody; a stream follows its partition at the next publish |
@@ -389,6 +421,156 @@ as well:
 Before, an unheld stream rang the live instances' residue, which after any rebalance was usually not the instance whose
 share held the partition.
 
+## Fencing {#fencing}
+{verified: OwnershipFencingSqlTests.HeldEpoch_IsTheOwnersEpochInEitherState_AndMinusOneForAnyoneElseAsync, OwnershipFencingSqlTests.EpochIsCurrent_OnlyForThePartitionsCurrentEpoch_AndAlwaysForAWriteThatNamesNoneAsync, OwnershipFencingSqlTests.Flush_AnOutboxCompletionUnderAStaleEpoch_AffectsNoRow_AndIsReportedFencedAsync, OwnershipFencingSqlTests.Flush_AnOutboxCompletionUnderTheCurrentEpoch_CompletesAsBeforeAsync, OwnershipFencingSqlTests.Flush_APerspectiveEventCompletionUnderAStaleEpoch_AffectsNoRowAsync, OwnershipFencingSqlTests.Flush_ACursorAdvanceUnderAStaleEpoch_LeavesTheCursorAsItWasAsync, OwnershipFencingSqlTests.Flush_AFailureUnderAStaleEpoch_IsNotRecordedAsync, OwnershipFencingSqlTests.ReportedFailure_UnderAStaleEpoch_IsNotRecorded_AndOneThatNamesNoEpochIsAsync, OwnershipFencingSqlTests.PublishMark_UnderAStaleEpoch_AffectsNoRowAsync, OwnershipFencingSqlTests.CompletePerspective_UnderAStaleEpoch_AffectsNoRowAsync, OwnershipFencingSqlTests.HandlerCommit_UnderAStaleEpoch_CommitsNothing_NeitherTheCompletionNorWhatTheHandlerEmittedAsync, OwnershipFencingSqlTests.HandlerBatch_AStaleItemIsReturnedFenced_AndTheRestCommitAsync, OwnershipFencingSqlTests.SwitchOff_AnEpochIsIgnored_AndTheWriteLandsAsBeforeAsync, OwnershipFencingSqlTests.MapMode_AWriteThatNamesNoEpoch_LandsAsBeforeAsync}
+
+A partition's ownership row carries an **epoch**, which rises by one each time the partition changes owner. With
+ownership by map on ([#2556](https://github.com/whizbang-lib/whizbang/issues/2556)), a write made by an instance that
+no longer owns the partition at the epoch its work was claimed under lands nowhere:
+
+1. **A claim reads the epoch.** In its own statement, a claim reads the epoch at which the claimer holds each claimed
+   stream's partition (`wh_held_epoch`) and returns it with the batch (`WorkBatch.StreamEpochs`,
+   `WorkBatch.StreamPartitions`).
+2. **The process ledger remembers it.** The work coordinator records each claim's tenures, and each piece of work it
+   fetches, in one ledger per process (`PartitionTenures`). A piece of work keeps the epoch it was fetched under, even
+   after its stream is claimed again. No worker carries an epoch.
+3. **Every write names it.** When a write commits a result, the coordinator fills in the epoch the ledger recorded for
+   that work, and the SQL checks it in the same statement (`wh_epoch_is_current`). A write whose epoch is no longer its
+   partition's changes no row, and the work stays for the partition's current owner, who replays it from the stored
+   state.
+
+| Write | Where it is checked | `kind` when fenced |
+|---|---|---|
+| An outbox completion, and an outbox publish mark | `flush_completions`, `wh_complete_outbox_published_fenced` | `outbox_completion` |
+| A perspective work completion | `complete_perspective` | `perspective_event_completion` |
+| A perspective cursor advance | `complete_perspective` | `perspective_cursor` |
+| A failure, in a flush or reported on its own (migration 572) | `flush_completions`, `wh_report_failures_fenced` | `<category>_failure`, such as `outbox_failure` |
+| A handler commit (the inbox completion and everything the handler emitted) | `commit_handler_result`, `commit_handler_batch` | `handler_commit` |
+| A perspective row | the set-based and write-behind sink, and the per-pair upsert | `perspective_write` |
+
+**A fenced write is never silent.** The coordinator counts it on
+[`whizbang.work_coordinator.fenced_writes`](/v1.0.0/operations/observability/metrics#work-coordinator-ownership),
+tagged `kind`, and logs `Fenced {Count} {Kind} write(s) in {Operation}` at Debug. A fenced handler commit is returned
+as `HandlerBatchResult.Fenced`, not as a failure, so it is neither retried nor dead-lettered. Both PostgreSQL drivers
+report alike.
+{verified: CoordinatorOwnershipNoticesTests.AFencedWrite_IsCountedByKind_AndLoggedAsync, CoordinatorOwnershipNoticesTests.AFencedPerspectiveCompletion_IsCountedAsync, CoordinatorOwnershipNoticesTests.AFencedFlush_IsCountedAsync, CoordinatorOwnershipNoticesTests.AHandlerCommitUnderAStaleEpoch_IsReportedFenced_NotFailedAsync, DapperOwnershipNoticesTests.AFencedWrite_IsCountedByKind_AndAFencedHandlerCommitIsNotAFailureAsync}
+
+**Perspective rows are fenced too.** The set-based and write-behind sink reports a stale row
+`PerspectiveWriteStatus.Fenced` and writes the rest of the batch. The per-pair upsert throws
+`PartitionOwnershipLostException` before it writes anything. A [write-behind](../perspectives/write-modes#write-behind-flush)
+model whose flush is fenced is dropped, never written. A stream with no tenure in the ledger (written outside a claim)
+is written as before.
+{verified: PerspectiveWritesAreFencedTests.TheSink_FencesAWriteWhosePartitionMoved_AndWritesTheRestAsync, PerspectiveWritesAreFencedTests.TheSink_WhenEveryWriteIsCurrent_WritesThemAllAsync, PerspectiveWritesAreFencedTests.ThePerPairUpsert_OfAStreamWhosePartitionMoved_ThrowsBeforeWritingAsync, PerspectiveWritesAreFencedTests.AStreamWithNoTenure_IsWrittenAsBefore_EvenOnAContextWithoutAHostAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AFencedFlush_DropsTheModel_AndCompletesNothingAsync}
+
+**The ledger is the coordinator's, not the worker's.** Work fetched before the partition moved is fenced although the
+worker that does it names no epoch: the coordinator reads the epoch from `PartitionTenures` and fills it in. A write
+that already names one keeps it. The ledger forgets the partitions this instance hands over, and keeps two generations
+of entries at most, so it is bounded.
+{verified: PartitionTenuresTests.AClaimedStream_HasItsTenure_AndAWorkIdFetchedOnIt_HasTheSameAsync, PartitionTenuresTests.AWorkIdFetchedBeforeAReclaim_KeepsTheTenureItWasFetchedUnderAsync, PartitionTenuresTests.ForgottenPartitions_LoseTheirStreamsAndWork_ThroughTheirRemainder_AndOthersKeepTheirsAsync, PartitionTenuresTests.PastItsCapacity_TheLedgerKeepsTwoGenerations_AndDropsTheOldestAsync, TenureFillTests.Epochs_FillTheKnownWork_LeaveTheUnknownUnnamed_AndKeepWhatTheCallerNamedAsync, CoordinatorNamesTheClaimedEpochTests.AnOutboxCompletion_OfWorkFetchedBeforeThePartitionMoved_IsFencedAsync, CoordinatorNamesTheClaimedEpochTests.AHandlerCommit_OfAMessageFetchedBeforeThePartitionMoved_CommitsNothingAsync, CoordinatorNamesTheClaimedEpochTests.AFailure_OfWorkFetchedBeforeThePartitionMoved_IsNotRecordedAsync, DapperOwnershipNoticesTests.WorkFetchedBeforeThePartitionMoved_IsFencedThoughTheWorkerNamesNoEpochAsync}
+
+**What is not fenced.** A write that names no epoch (an inline path, or a caller built before this release) lands as
+before, and so does every write while the service's switch is off. The perspective row-version check stays: it
+protects concurrent edits of one row, and the epoch protects ownership; they answer different questions. While a
+partition hands over, its epoch stays the old owner's, so the batch it has in flight and the models it saves still
+land; the flip raises the epoch, and only what the old owner writes after that is fenced.
+
+**A claim with no valid map says so.** In map mode a claim that waits because no valid partition map is published
+sets `WorkBatch.PartitionMapUnavailable`, is counted on `whizbang.work_coordinator.partition_map_unavailable`, and is
+warned once per streak (`This instance claims nothing: the service owns partitions by map and no valid partition map
+is published ...`), by both PostgreSQL drivers. The warning comes again only after a claim has found a map.
+{verified: CoordinatorOwnershipNoticesTests.AClaimInMapMode_CarriesTheEpochOfEachStreamsPartitionAsync, CoordinatorOwnershipNoticesTests.AClaimWithTheSwitchOff_CarriesNoEpochAsync, CoordinatorOwnershipNoticesTests.AClaimWithNoValidMap_IsCounted_AndWarnedOncePerStreakAsync, DapperOwnershipNoticesTests.AClaimWithNoValidMap_IsCounted_AndWarnedOncePerStreakAsync}
+
+**Upgrade.** `IWorkCoordinator` gains epoch-taking overloads of `CompleteOutboxPublishedAsync` and
+`CompletePerspectiveAsync`, whose default implementations ignore the epochs, so a custom coordinator is unaffected.
+`HandlerBatchResult` gains an optional `Fenced`.
+
+## Handover {#handover}
+{verified: PartitionHandoverSqlTests.Publish_InMapMode_AMovedPartitionWithALiveOwner_HandsOver_KeepingTheOwnerAndEpochAsync, PartitionHandoverSqlTests.Publish_InMapMode_TheDeadlineIsTheOneThePublishNamesAsync, PartitionHandoverSqlTests.Publish_InMapMode_AMovedPartitionWhoseOwnerIsNotLive_FlipsAtOnceAsync, PartitionHandoverSqlTests.Publish_SwitchOff_MovesAPartitionAtOnce_AsBeforeAsync, PartitionHandoverSqlTests.Claims_APartitionHandingOver_IsClaimableByNeitherSide_UntilTheFlipAsync, PartitionHandoverSqlTests.Ack_FlipsToTheNextOwnerAtEpochPlusOne_AndReleasesTheOldOwnersUnstartedRowsAsync, PartitionHandoverSqlTests.Ack_UnderAStaleEpoch_OrByAnInstanceThatIsNotTheOwner_FlipsNothingAsync, PartitionHandoverSqlTests.Ack_OfAnActivePartition_FlipsNothingAsync, PartitionHandoverSqlTests.HandingOver_ListsWhatTheOldOwnerMustHandOver_AndNothingForAnyoneElseAsync, PartitionHandoverSqlTests.Order_TheNewOwnerTakesTheStreamAfterTheOldOwnersCompletedEvent_AndNotBeforeAsync}
+
+In map mode, a partition is never moved under a running owner
+([#2557](https://github.com/whizbang-lib/whizbang/issues/2557)). A publish that moves a partition away from a **live**
+owner hands it over:
+
+```mermaid{caption="Handing a partition over: nobody claims it while the old owner finishes, saves and acknowledges; the acknowledgement flips it to the next owner at a raised epoch. Past the deadline the assigner flips it instead." tests=["PartitionHandoverSqlTests.Publish_InMapMode_AMovedPartitionWithALiveOwner_HandsOver_KeepingTheOwnerAndEpochAsync", "PartitionHandoverSqlTests.Ack_FlipsToTheNextOwnerAtEpochPlusOne_AndReleasesTheOldOwnersUnstartedRowsAsync", "PartitionHandoverWorkerTests.HeldWorkOfAReadyPartition_IsSavedBeforeTheAcknowledgement_AndNoOtherAsync", "PartitionHandoverSqlTests.ExpiredHandover_PastTheDeadline_TheAssignerFlips_AndReleasesTheOldOwnersRowsWithoutRefundAsync"]}
+sequenceDiagram
+    autonumber
+    participant A as Partition assigner
+    participant T as wh_partition_ownership
+    participant O as Old owner (PartitionHandoverWorker)
+    participant N as Next owner
+    A->>T: publish: handing_over, next owner, deadline (owner and epoch unchanged)
+    Note over T: nobody claims the partition
+    O->>T: which partitions am I handing over?
+    O->>O: wait until none of its streams is being worked
+    O->>O: save write-behind models (reason handover), let queued writes land
+    O->>T: acknowledge at the old epoch
+    T->>T: release unstarted rows; active, owner = next owner, epoch + 1
+    N->>T: next claim sees the partition and replays from the stored state
+    Note over A,T: past the deadline with no acknowledgement, the assigner flips it itself
+```
+
+1. **The assigner marks it.** The partition goes `handing_over`, with its next owner and a deadline
+   (`HandoverDeadline`, default 30 seconds, judged on the database's clock). Its owner and epoch stay the old owner's.
+   A partition whose owner is not live flips at once, and with the switch off a partition moves at once, as before.
+2. **Nobody claims it.** `wh_i_own` answers only for an `active` partition, so neither the old owner nor the next one
+   claims new work there until the flip.
+3. **The old owner finishes.** Its `PartitionHandoverWorker` asks once a second which partitions it is handing over
+   (`IWorkCoordinator.GetPartitionsHandingOverAsync`). It waits for a partition until none of its streams is being
+   worked by the outbox, inbox or perspective drain; a partition whose batch is still in flight waits for a later pass,
+   and the others go ahead.
+4. **It saves what it holds.** Every participant saves what it holds for the partition's streams: the perspective
+   worker flushes its [write-behind](../perspectives/write-modes#write-behind-flush) models there, with flush reason
+   `handover`, and keeps the models of other partitions held. The worker then waits for its queued writes to land under
+   the old epoch.
+5. **It acknowledges.** `AcknowledgeHandoverAsync` releases the old owner's unstarted rows in the partition and flips
+   it to `active`, owned by the next owner at epoch + 1, in one statement checked against the old epoch. An
+   acknowledgement under a stale epoch, by an instance that is not the owner, or of an `active` partition, flips
+   nothing.
+6. **The next owner takes over.** Its next claim sees the partition and works its streams from the stored state, so a
+   stream's next event is taken only after the old owner's last one completed.
+
+{verified: PartitionHandoverWorkerTests.NothingHandingOver_AcknowledgesNothingAsync, PartitionHandoverWorkerTests.NothingHandingOver_ResolvesNoParticipantAsync, PartitionHandoverWorkerTests.APartitionWithAStreamInFlight_Waits_AndTheOthersAreAcknowledgedAsync, PartitionHandoverWorkerTests.HeldWorkOfAReadyPartition_IsSavedBeforeTheAcknowledgement_AndNoOtherAsync, PartitionHandoverWorkerTests.TheQueuedWritesLand_BeforeTheAcknowledgementAsync, PartitionHandoverWorkerTests.DrainChannels_ReportTheStreamsTheirDrainsAreWorkingAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AHandover_SavesTheModelsOfTheMovedStreams_AndKeepsTheOthersHeldAsync, PartitionHandoverWorkerLoopTests.AFailedPass_IsRetriedOnTheNextInterval_AndThenHandsOverAsync, CoordinatorNamesTheClaimedEpochTests.TheCoordinator_ListsWhatThisInstanceHandsOver_AndAcknowledgesItAsync, DapperOwnershipNoticesTests.TheCoordinator_ListsWhatThisInstanceHandsOver_AndAcknowledgesItAsync}
+
+**Past the deadline, the assigner completes it.** An old owner that is stuck, or cut off from the database, never
+acknowledges. On each tick in map mode the assigner completes every handover past its deadline itself
+(`IPartitionAssignmentStore.CompleteExpiredHandoversAsync`, under its role epoch, so a deposed assigner is refused): it
+flips the partition to the next owner at epoch + 1 and releases what the old owner held, without refunding the attempts
+those rows were charged. The old owner's late writes are then [fenced](#fencing), and its held models dropped, not
+written.
+{verified: PartitionHandoverSqlTests.ExpiredHandover_PastTheDeadline_TheAssignerFlips_AndReleasesTheOldOwnersRowsWithoutRefundAsync, PartitionHandoverSqlTests.ExpiredHandover_BeforeTheDeadline_FlipsNothingAsync, PartitionHandoverSqlTests.ExpiredHandover_ByADeposedAssigner_IsRefusedAsync, PartitionAssignerWorkerTests.Tick_InMapMode_CompletesTheHandoversPastTheirDeadline_AtItsEpochAsync, PartitionAssignerWorkerTests.Tick_BeforeMapMode_NeverCompletesAHandoverAsync, PartitionAssignerWorkerTests.Tick_PublishesWithTheConfiguredHandoverDeadlineAsync, PartitionAssignerWorkerTests.Options_HandoverDeadline_DefaultsToThirtySeconds_AndANonPositiveOneIsRefusedAsync}
+
+**A republish can change its mind.** A map that gives the partition back to its old owner while it hands over cancels
+the handover; one that names another next owner redirects it. A lease renewal keeps the old owner's row while the
+partition hands over, and stops renewing it once the partition has moved, so a renewal can never keep work on a
+partition the instance no longer owns.
+{verified: PartitionHandoverSqlTests.Republish_GivingAPartitionBackToItsOwnerWhileHandingOver_CancelsTheHandoverAsync, PartitionHandoverSqlTests.Republish_NamingAnotherNextOwnerWhileHandingOver_RedirectsTheHandoverAsync, PartitionHandoverSqlTests.Renewal_KeepsARowWhileHandingOver_ButNotOnceThePartitionHasMovedAsync, PartitionHandoverSqlTests.Renewal_SwitchOff_RenewsAsBeforeAsync}
+
+**How long a partition is unclaimed.** One in-flight batch plus one flush in the normal case, and the deadline in the
+worst. That window is what keeps a stream's events in order and its writer single while it moves.
+
+**Upgrade.** An implementation of `IPartitionAssignmentStore` takes the handover deadline in `PublishAsync` and
+implements `CompleteExpiredHandoversAsync`. `IWorkCoordinator` gains `GetPartitionsHandingOverAsync`,
+`AcknowledgeHandoverAsync` and `GetLeaveStatusAsync`, whose default implementations hand nothing over. Migration 571.
+
+### Graceful leave {#graceful-leave}
+{verified: PartitionHandoverWorkerLoopTests.Leaving_HandsOverUntilNothingIsOwned_ThenReturnsAsync, PartitionHandoverWorkerLoopTests.Leaving_BeforeTheHeartbeatsStartPoint_AsksTheDatabaseNothingAsync, PartitionHandoverWorkerLoopTests.Leaving_PastTheHeartbeatsStartPoint_ReadsWhatItOwnsAsync, PartitionHandoverWorkerLoopTests.Leaving_WithNoOtherLiveInstance_ReturnsAtOnceAsync, PartitionHandoverWorkerLoopTests.Leaving_GivesUpAfterTheHandoverDeadline_AndAStopEndsTheWaitAsync, CoordinatorNamesTheClaimedEpochTests.TheLeaveStatus_CountsWhatThisInstanceOwns_AndWhoElseCouldTakeItAsync}
+
+A stopping instance hands its partitions over **before it deregisters**. The handover worker is one of the
+[run-control path](/v1.0.0/resilience/managed-resource-run-control#halt-sequence)'s held-work releasers, so it runs
+once the instance is draining (the assigner gives a draining instance no partition, so its next map moves them all)
+and has finished the work in hand, and before the instance releases its roles and deregisters:
+
+- **It hands over until it owns nothing.** Each interval it hands over what the assigner has moved, then asks again
+  (`IWorkCoordinator.GetLeaveStatusAsync`), and returns once it owns no partition.
+- **It returns at once when nobody could take them.** With no other live instance, its partitions have nowhere to go,
+  and waiting would only delay the stop.
+- **It is skipped before the heartbeat's start point.** An instance that never reached Elect was never given a
+  partition, so it asks the database nothing.
+- **It gives up at the deadline.** After `HandoverDeadline` it logs `Leaving: {Owned} partition(s) still owned after
+  {Budget}; deregistering, and the assigner completes their moves` at Warning and lets the stop go on; the assigner
+  completes those moves past their own deadlines. The host's stop budget ends the wait too.
+
+
 ## Draining {#draining}
 
 When an instance starts to drain (its lifecycle enters `Stopping`), it stops being eligible for work
@@ -407,7 +589,7 @@ while it drains:
   brief, and stream leases keep the work single.
   {verified: WorkEligibilitySqlTests.Claim_ADrainingCaller_StillClaimsItsShareAsync}
 - **What happens to the streams it has already claimed depends on the [ownership mode](#ownership-modes).**
-  - **Off (the default).** A claim decides which instance owns a stream, and ownership is left alone: the draining
+  - **Off.** A claim decides which instance owns a stream, and ownership is left alone: the draining
     instance keeps the streams it holds until it finishes them or their leases lapse. Handing a stream that is
     mid-flight to a peer would let two instances work it at once, out of order and twice. What it gives back is only
     what it has not started: once nothing is in hand, the run-control path
@@ -415,11 +597,11 @@ while it drains:
     so the peer its partitions are now assigned to takes those over at once rather than after their leases lapse. The
     release clears each stream's stored owner, so a released stream follows the assignment, not the instance that held
     it.
-  - **On.** No stream is held by its stored owner, so every stream of the drained instance follows its partition to
-    the new owner at the next publish. The rows the instance has leased stay leased to it until it completes or releases
-    them, or their leases lapse. Moving a busy partition safely while its old owner is still working it is what the
-    handover protocol and its fencing add (coming with [#2557](https://github.com/whizbang-lib/whizbang/issues/2557)
-    and [#2556](https://github.com/whizbang-lib/whizbang/issues/2556)), which is why the switch stays off by default.
+  - **On (the default).** No stream is held by its stored owner, so every stream of the drained instance follows its
+    partition at the next publish, which [hands each partition over](#handover) to its next owner: the drained
+    instance finishes what it has in flight there, saves its write-behind models, releases the rest and acknowledges.
+    Before it deregisters it waits for that to finish ([graceful leave](#graceful-leave)). A write it makes after a
+    partition has moved on is [fenced](#fencing).
 
   A starting instance owns no streams to begin with, because an instance id is new for each process.
 
@@ -452,13 +634,14 @@ query instead of adding to it, so a claim with the assignment costs no more than
 | `AssignmentLease` | 90 s | How long an assignment holds without renewal. Must exceed 60 s, the slow heartbeat cadence. |
 | `RepublishInterval` | 5 min | The backstop: republish at least this often. |
 | `SettleWindow` | 5 s | How long a membership change is collected before one map is published ([settle window](#settle-window)). `00:00:00` publishes every change at once; negative is refused. |
-| `OwnershipByMap` | `false` | Ask for the service's [ownership-by-map switch](#ownership-switch) once every live instance supports it. One-way for the service. Code-only; off until handover and fencing ship. |
+| `OwnershipByMap` | `true` | Ask for the service's [ownership-by-map switch](#ownership-switch) once every live instance supports it. One-way for the service: `false` stops the assigner asking, and a switch already on stays on. |
+| `HandoverDeadline` | 30 s | How long a moved partition may [hand over](#handover) before the assigner completes the move itself, judged on the database's clock. Must be positive. |
 
-`AssignmentLease`, `RepublishInterval` and `SettleWindow` bind from `Whizbang:Database:PartitionAssigner`
+Every option binds from `Whizbang:Database:PartitionAssigner`
 ([configuration reference](/v1.0.0/operations/configuration/configuration-reference#partition-assigner)); a key that is
 absent or does not parse keeps the default, and a host's own `Configure<PartitionAssignerOptions>` still has the last
-word. `OwnershipByMap` is not bound from configuration.
-{verified: PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_BindsEveryAssignerKeyFromConfigurationAsync, PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_WithNoAssignerKeys_KeepsTheDefaultsAsync, PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_AHostsOwnConfigureOfTheAssigner_StillWinsAsync, PartitionAssignerTests.SettleWindow_DefaultsToFiveSecondsAsync, PartitionAssignerTests.Validate_ANegativeSettleWindow_IsRefusedAsync, PartitionAssignerTests.Validate_AZeroSettleWindow_PassesAsync}
+word.
+{verified: PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_BindsEveryAssignerKeyFromConfigurationAsync, PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_WithNoAssignerKeys_KeepsTheDefaultsAsync, PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_AHostsOwnConfigureOfTheAssigner_StillWinsAsync, PartitionAssignerWorkerTests.Tick_PublishesWithTheConfiguredHandoverDeadlineAsync, PartitionAssignerTests.SettleWindow_DefaultsToFiveSecondsAsync, PartitionAssignerTests.Validate_ANegativeSettleWindow_IsRefusedAsync, PartitionAssignerTests.Validate_AZeroSettleWindow_PassesAsync}
 
 `Enabled` is removed ([#2559](https://github.com/whizbang-lib/whizbang/issues/2559)): the assigner always runs. A
 configured `Whizbang:Database:PartitionAssigner:Enabled` is logged once at startup as a
@@ -482,6 +665,10 @@ Every transition has a public event, for diagnostics and for tests that wait on 
 - `PartitionAssignerWorker`: `OnBecameAssigner`, `OnStoppedAssigning`, `OnEvaluated` (its reason is `Settling` while a
   change waits out the [settle window](#settle-window)), `OnPublished`.
 - `PartitionAssignmentCache`: `OnPublishAnnounced`, `OnRefreshed`, `OnAssignmentChanged`.
+
+The handover worker raises no event; it logs what each pass flipped (EventId 1, Information), a pass that failed
+(EventId 2, Warning), and how a graceful leave ended (EventId 3, Information, and EventId 4, Warning, past its
+deadline).
 
 ## Related
 

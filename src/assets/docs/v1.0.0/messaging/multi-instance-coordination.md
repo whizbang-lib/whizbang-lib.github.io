@@ -55,7 +55,7 @@ partitions to the live instances that are eligible for work
 work in flight depends on a per-service switch
 ([ownership by map](../fundamentals/work-coordinator/partition-assignment.md#ownership-by-map)):
 
-| | Ownership by map **off** (the default) | Ownership by map **on** |
+| | Ownership by map **off** | Ownership by map **on** (the default) |
 |---|---|---|
 | Authority | The stream ledger, `wh_active_streams.assigned_instance_id`: a live stored owner keeps its stream | The partition ownership table, `wh_partition_ownership`: the owner of the stream's partition, and nothing else |
 | First writer | Pinned as the stream's owner | Not an owner; the ledger records the stream with no owner |
