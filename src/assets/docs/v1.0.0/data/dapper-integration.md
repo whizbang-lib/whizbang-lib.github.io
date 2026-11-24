@@ -15,9 +15,12 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/PostgresConnectionFactory.cs
   - src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperSchemaInitializationRunner.cs
+  - src/Whizbang.Data.Postgres/Notifications/PostgresCoordinationRegistration.cs
 testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/ServiceCollectionExtensionsTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSchemaStartupTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperCoordinationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/DriverCoordinationParityTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -139,6 +142,38 @@ the type registry, lifecycle reconciliation and coalescing. Stream integrity is 
 driver only, its switches default to off on a Dapper host, and turning one on fails the host at start. See
 [What the Dapper work coordinator supports](drivers.md#dapper-coordinator-parity) and
 [What the Dapper driver refuses at startup](drivers.md#what-dapper-refuses-at-startup).
+
+### Coordination: elected duties and the partition assigner {#coordination}
+
+{verified: DriverCoordinationParityTests.EveryPieceOfTheSharedCoordination_IsRegisteredAlikeByBothDriversAsync, DriverCoordinationParityTests.BothDrivers_ResolveTheSameElectorDutyLoopAndAssignerAsync, DapperCoordinationTests.AddWhizbangPostgres_RegistersRoleAssignmentAndTheElectedAssignerAsync, DapperCoordinationTests.TwoInstances_ExactlyOneHoldsTheMaintainerRole_AndOnlyItDoesTheMaintainersWorkAsync, DapperCoordinationTests.TheRebuildGuardsDuty_IsHeldByOneInstanceAtATimeAsync, DapperCoordinationTests.WhenTheMaintainerDies_TheSurvivorTakesTheDutyOverAsync, DapperCoordinationTests.TwoInstances_OneIsElectedAssigner_AndTheOthersClaimPresentsItsMapAsync, DapperSchemaStartupTests.TwoInstancesStarting_MigrateUnderTheSchemaLock_WithoutElectingAMigratorAsync}
+
+`AddWhizbangPostgres` registers the same coordination as the EF Core driver, through one shared registration that both
+drivers call ([#2559](https://github.com/whizbang-lib/whizbang/issues/2559)): role assignment (the elector, the duty
+holder loop and its owed-work store) and the elected
+[partition assigner](../fundamentals/work-coordinator/partition-assignment.md). A parity test fails if either driver
+stops registering any piece of it. So on Dapper, as on EF Core, these run on **one elected instance** instead of on
+every instance:
+
+| Duty | What it is |
+|---|---|
+| `maintainer` | The maintenance sweep and its steps, and the table rewrite at startup ([the maintainer duty](../operations/startup/capabilities-and-duties#the-maintainer-duty-governs-fleet-wide-work)) |
+| `perspective-rebuild:<table>` | The [blue-green rebuild guard](../fundamentals/perspectives/rebuild.md#one-blue-green-rebuild-per-table) of each perspective table: a second rebuild of a table on another instance is refused as in flight |
+| `partition-assigner` | The [partition assigner](../fundamentals/work-coordinator/partition-assignment.md): the claim presents its published map instead of every instance ranking its peers itself, so the published assignment is the one source of stream ownership on both drivers |
+
+When the holder dies, a surviving instance takes the duty over once the holder's lease lapses. The `roles`
+[health component](../resilience/managed-resource-health#roles) names the holders. The coordination connects with the
+driver's connection string unless `Whizbang:Database` (`ConnectionStringKey` or `DirectConnectionString`) names another.
+
+**Schema migration is unchanged.** It is not one of the elected duties on Dapper: every instance still migrates under the
+schema lock in turn, and opens its schema-ready gate only once the schema is in place; no migrator is elected. Electing
+it is tracked in [#2561](https://github.com/whizbang-lib/whizbang/issues/2561).
+
+:::updated
+Before this release a Dapper host registered no role assignment and no assigner: every instance did the maintainer's
+work, each perspective table's rebuild was guarded on its own instance only, and every claim ranked its peers itself.
+Nothing changes in code. A Dapper service that watched the maintainer's work on every instance now sees it on the one
+instance holding the `maintainer` role.
+:::
 
 ---
 

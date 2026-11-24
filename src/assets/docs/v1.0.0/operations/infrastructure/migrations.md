@@ -1177,7 +1177,8 @@ migrator doing exactly what it was allowed to. A negative value is refused at st
 Progress reaches the duty without any phase knowing who holds it: the schema initializer routes the progress its
 start reports to the migrator duty it holds (`StartupProgress.ReportTo`), and every reporting point calls
 `StartupProgress.Note()`. A phase added later reports through the same calls it already uses for its log lines. The
-limit applies to the EF Core driver, which elects a migrator; the Dapper driver holds no election.
+limit applies to the EF Core driver, which elects a migrator; the Dapper driver holds no migrator election (it elects
+its other duties, as the EF Core driver does: see [Dapper coordination](../../data/dapper-integration.md#coordination)).
 
 | Behavior | Why | Verified by |
 |---|---|---|

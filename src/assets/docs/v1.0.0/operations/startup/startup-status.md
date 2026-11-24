@@ -550,9 +550,13 @@ through the same recorder: the row is created by the instance's first heartbeat,
 written on that beat's registration signal. Earlier releases wrote no stage on this driver.
 {verified: DapperHeartbeatPhaseOrderTests.ATransition_IsRecorded_StagePhaseAndVersionTogether_AndAPauseKeepsTheStageAsync, StartupStageReporterTests.InstanceRegistered_WritesTheHeldStage_OnceAsync}
 
-A Dapper host holds no election, so once the database answers it logs Elect as skipped
+A Dapper host holds no migrator election, so once the database answers it logs Elect as skipped
 (`Stage 2 of 7: Elect - skipped: no election could be held, so this instance migrates under the schema lock`), which
-ends Preflight for it as for the EF Core driver. On a current schema it skips Elect and Migrate with the same reasons
+ends Preflight for it as for the EF Core driver. The skip is about the migrator alone: since
+[#2559](https://github.com/whizbang-lib/whizbang/issues/2559) a Dapper host elects its other duties (the maintainer,
+each perspective table's rebuild guard and the partition assigner) through role assignment, as the EF Core driver does
+([Dapper coordination](../../data/dapper-integration.md#coordination)).
+{verified: DapperSchemaStartupTests.TwoInstancesStarting_MigrateUnderTheSchemaLock_WithoutElectingAMigratorAsync, DapperCoordinationTests.AddWhizbangPostgres_RegistersRoleAssignmentAndTheElectedAssignerAsync} On a current schema it skips Elect and Migrate with the same reasons
 as the EF Core driver (`the schema is current; no migrator is needed`, `the schema is current`). The
 [managed-resource health](../../resilience/managed-resource-health#startup-stage) `startup` component reports the same
 stage line.
