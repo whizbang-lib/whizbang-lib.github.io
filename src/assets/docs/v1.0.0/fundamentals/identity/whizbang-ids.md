@@ -29,6 +29,8 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/WhizbangIdTypeMapping.cs
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdScalarRewrite.cs
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdToleranceRewriter.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdScalarRewriteStep.cs
+  - src/Whizbang.Data.Postgres/BatchedRewriteRunner.cs
   - src/Whizbang.Core/SuppressGuidInterceptionAttribute.cs
   - src/Whizbang.Core/SuppressGuidOrderingValidationAttribute.cs
   - src/Whizbang.Core/Validation/GuidOrderingSuppressions.cs
@@ -867,14 +869,24 @@ A collection of ids (`List<OrderId>`) is stored as an array of UUID strings, and
 needs the Whizbang options extension, which every generated perspective context carries: a context registered by hand
 without it cannot build a model that holds a collection of ids {verified: WhizbangIdDocumentStorageTests.Convention_ListOfIdsCannotBuildTheModelAsync}.
 
-A release before this one stored each id as the object `{"Value": "..."}`. The stored-form phase rewrites those rows at
-startup (journaled in `wh_stored_form_migrations` as `strong-id-scalar:<table>:<shape>`), a batch at a time and one
-update per row, including ids in dictionary keys and values. A large table it does not finish within its budget keeps
-what it converted and carries on at the next startup. Until every row is converted, and for a row an instance of the
-earlier release writes during a rolling deploy, both forms are read: reads take either form and count the object
-form on `whizbang.perspective.identifier_form_fallbacks`, and every query that compares an id (equality, `Contains`,
-ordering, a collection element, a collection of ids, document containment) matches either form
-{verified: WhizbangIdDocumentStorageTests.Whizbang_EveryIdQueryFindsARowStillInTheObjectFormAsync, StrongIdScalarRewriteIntegrationTests.AnIdPredicate_FindsObjectFormRows_BeforeTheRewriteAndFromAnOldWriterAfterItSettlesAsync, GraphQLWhizbangIdFilterIndexTests.EqAndIn_FindARowStillInTheObjectForm_ThroughTheDocumentIndexAsync}.
+A release before this one stored each id as the object `{"Value": "..."}`. Those rows are rewritten a batch at a time,
+including ids in dictionary keys and values. Each batch commits on its own under the schema lock and records in
+`wh_stored_form_migrations` (as `strong-id-scalar:<table>:<shape>`) the last primary key it reached. Startup runs one
+slice, and the maintenance cycle carries on from the recorded key until every table is settled, so a table of any size
+finishes, a restart redoes nothing, and two instances never convert the same rows
+{verified: StrongIdScalarRewriteIntegrationTests.ATableLargerThanOneRun_SettlesAcrossRuns_EachResumingWhereTheLastStoppedAsync, StrongIdScalarRewriteIntegrationTests.TwoInstances_NeverConvertTheSameRowsAsync, StrongIdScalarRewriteIntegrationTests.TheMaintenanceStep_FinishesWhatStartupLeft_ThenDoesNothingAsync}.
+A table settles on a complete pass that converts nothing, so a row written in the object form behind the recorded key
+is converted by the next pass {verified: StrongIdScalarRewriteIntegrationTests.ARowWrittenBehindTheKeyDuringTheRewrite_IsConvertedByTheNextPassAsync}.
+
+The rewrite waits while an instance of an earlier library release is live: that release cannot read an id stored as a
+UUID string {verified: WhizbangIdDocumentStorageTests.Structural_CannotReadARowInTheUuidStringFormAsync, StrongIdScalarRewriteIntegrationTests.TheRewrite_WaitsWhileAnOlderReleaseIsLive_AndRunsOnceNoneIsAsync}.
+Until every row is converted, both forms are read. Reads take either form and count the object form on
+`whizbang.perspective.identifier_form_fallbacks`. Every query that compares an id matches either form: equality,
+`Contains`, ordering, a collection element, a collection of ids, document containment, and the predicates of
+`ExecuteUpdate` and `ExecuteDelete`
+{verified: WhizbangIdDocumentStorageTests.Whizbang_EveryIdQueryFindsARowStillInTheObjectFormAsync, WhizbangIdDocumentStorageTests.Whizbang_OrderingByAnIdSortsRowsInEitherStoredFormAsync, WhizbangIdDocumentStorageTests.Whizbang_ExecuteUpdateSetsAnIdAsAUuidString_AndItsIdPredicateMatchesBothFormsAsync, StrongIdScalarRewriteIntegrationTests.AnIdPredicate_FindsObjectFormRows_BeforeTheRewriteAndFromAnOldWriterAfterItSettlesAsync}.
+The document index answers an id equality in both forms, in either containment mode
+{verified: GraphQLWhizbangIdFilterIndexTests.EqAndIn_FindARowStillInTheObjectForm_ThroughTheDocumentIndexAsync, GraphQLWhizbangIdFilterIndexTests.IdEquality_FindsBothFormsThroughTheDocumentIndex_InEitherContainmentModeAsync}.
 SQL of your own that matched `{"Value": "..."}` (a view, a trigger, a report) has to match the UUID string instead.
 
 ## Time-ordering checks {#time-ordering-checks}
