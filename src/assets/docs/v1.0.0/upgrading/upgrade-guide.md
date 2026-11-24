@@ -954,3 +954,15 @@ These matter to services that run [stream integrity](../resilience/stream-integr
   are listed, and the inbox rows already queued keep the order they were dispatched in until now. See
   [Stream version ordering](../fundamentals/event-store/version-ordering.md) and the
   [stream order rule](../extending/internals/event-ordering-invariant.md).
+
+### A locally invoked `[GenerateStreamId]` event derives its stream inside a handling {#local-invoke-generated-stream}
+
+*[#2552](https://github.com/whizbang-lib/whizbang/issues/2552)*
+
+- **What changed:** a `[GenerateStreamId]` event invoked with the void `LocalInvokeAsync` inside a receptor's handling
+  starts a stream derived from the handling, so a redelivered handling starts the same stream; outside a receptor it
+  still mints a fresh one. A published `[GenerateStreamId]` event's local receptors now see the stream derived from the
+  event's id, the one its stored copy and delivery receipt carry, instead of a second minted stream.
+- **Who is affected:** nobody needs to change code. A handling whose first run happened before the upgrade and is
+  redelivered after it starts the invoked event's stream once more, as before.
+- **What to do:** nothing. See [Derived stream ids](../extending/attributes/generatestreamid.md#derived-stream-ids).
