@@ -766,6 +766,15 @@ recorded as applied without how to undo it. Where each kind comes from:
 - **A stored-form conversion** is never in this ledger, and is always irreversible
   ([the rollback gate](../startup/rolling-upgrades#the-rollback-gate)).
 
+**A rollback reverses only the sides this start runs.** The W! migrations and the application's schema (its
+perspective tables, associations and application objects) are [judged apart](../startup/rolling-upgrades#two-verdicts),
+so a rollback runs the stored reverses of the W! migrations only when the W! migrations run this start, and of the
+application's schema only when it runs too. Each side reads its own lossy setting
+(`Whizbang:Startup:Platform:AllowLossyRollback`, `Whizbang:Startup:Application:AllowLossyRollback`, or the shared
+`Whizbang:Startup:AllowLossyRollback` where a side's own key is unset). A held side is left exactly as it is, and a
+change this build defines identically (the same name and content hash) is never reversed, whoever applied it.
+{verified: TwoVerdictsTests.ARollback_ReversesOnlyTheSidesThatRun_EachWithItsOwnLossySettingAsync, SchemaRollbackTests.ASideTheRollbackDoesNotRun_IsLeftAsItIs_UnderTheLockAsync, SchemaRollbackTests.AChangeThisBuildDefinesIdentically_IsNeverReversedUnderTheLock_WhoeverAppliedItAsync}
+
 **A re-apply clears the old reverse.** 359's trigger, redefined by 386, sets `reversal` and `down_sql` to `NULL` when a
 row's content hash changes and the statement does not set them itself. A writer that then records a new reverse
 replaces it; one that records nothing (an older release during a rolling deploy, or a migration that predates the

@@ -302,11 +302,19 @@ anything. On a host whose binary is older than the schema it throws `SchemaStand
 and applies nothing: no bootstrap, no election, no pass. Calling it yourself is not a way around the decision the
 hosted start made.
 
-```csharp{title="A direct call on a stood-down host" description="The turnkey call reads the same Assess verdict as the hosted start and refuses on a stand-down" category="Implementation" difficulty="INTERMEDIATE" tags=["Data","Startup","RollingUpgrades"] tests=["StartupParityTests.TheTurnkeyCall_OnAStoodDownInstance_IsRefused_AndAppliesNothingAsync","StartupVerdictBindingTests.AStandDown_IsRefused_NamingTheReasonAsync"]}
+**When only the application's schema stood down**, the W! migrations still run first
+([two verdicts](../operations/startup/rolling-upgrades#two-verdicts)), so `EnsureWhizbangInitializedAsync` applies them,
+leaves the application's schema as it is, and then throws `SchemaStandDownException`, naming the side and its reason:
+`This instance applied the W! migrations, then stood down because its application schema cannot be served: <reason>`.
+A call that returned success there would hide that the host's data plane stays held. With a verdict that serves, it
+returns as before.
+{verified: WhizbangHostExtensionsTests.EnsureWhizbangInitializedAsync_WhenTheApplicationSchemaStoodDown_RunsTheWMigrations_ThenThrowsNamingItAsync, WhizbangHostExtensionsTests.EnsureWhizbangInitializedAsync_WithAVerdictThatServes_ReturnsAsync}
+
+```csharp{title="A direct call on a stood-down host" description="The turnkey call reads the same Assess verdict as the hosted start and refuses on a stand-down" category="Implementation" difficulty="INTERMEDIATE" tags=["Data","Startup","RollingUpgrades"] tests=["StartupParityTests.TheTurnkeyCall_OnAStoodDownInstance_IsRefused_AndAppliesNothingAsync","StartupVerdictBindingTests.AStandDown_IsRefused_NamingTheReasonAsync","WhizbangHostExtensionsTests.EnsureWhizbangInitializedAsync_WhenTheApplicationSchemaStoodDown_RunsTheWMigrations_ThenThrowsNamingItAsync"]}
 try {
   await app.EnsureWhizbangInitializedAsync();
 } catch (SchemaStandDownException ex) {
-  // The schema is newer than this binary; nothing was applied. ex.Message says why.
+  // The instance stood down. ex.Message says why, and whether the W! migrations ran first.
   logger.LogWarning(ex, "Standing down: a newer release owns the schema");
   throw;
 }
