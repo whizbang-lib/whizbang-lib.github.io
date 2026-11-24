@@ -542,10 +542,12 @@ GROUP BY stream_id
 ORDER BY oldest;
 ```
 
-A row that waits a long time points at its stream's head: find the stream's earliest pending row
-(`SELECT message_id, instance_id, lease_expiry, attempts, error FROM wh_inbox_state WHERE stream_id = @stream AND
-processed_at IS NULL ORDER BY message_id LIMIT 1`). A head leased to a live peer is being worked there; a head that
-keeps failing has its own `error`, and the rows behind it wait until it is stored or concluded.
+A row that waits a long time points at its stream's head: list the stream's pending rows in arrival order
+(`SELECT s.message_id, s.instance_id, s.lease_expiry, s.attempts, s.error FROM wh_inbox_state s JOIN wh_inbox i ON
+i.message_id = s.message_id WHERE s.stream_id = @stream AND s.processed_at IS NULL ORDER BY i.arrival_position`). The
+head is the first of them in [receive order](../event-store/version-ordering#receive-order), its origin's order rather
+than its id. A head leased to a live peer is being worked there; a head that keeps failing has its own `error`, and the
+rows behind it wait until it is stored or concluded.
 
 ### An owner renews the leases it let run out {#an-owner-renews-the-leases-it-let-run-out}
 {verified: OwnerLeaseRenewalSqlTests.Claim_AHeldRowWhoseLeaseRanOut_OnAStreamItsRankOwns_IsRenewedAndOffered_WithoutAnAttemptAsync, OwnerLeaseRenewalSqlTests.Claim_ARenewedStream_IsLeasedInTheLedgerToTheRenewingInstanceAsync, OwnerLeaseRenewalSqlTests.Claim_EveryExpiredRowOfARenewedStream_IsRenewedAsync, OwnerLeaseRenewalSqlTests.Claim_AHeldRowWhoseLeaseIsLive_KeepsItsLeaseAsync, OwnerLeaseRenewalSqlTests.Claim_PastTheAcquisitionBound_TheRestOfItsExpiredRowsAreRenewed_NotChargedAsync, OwnerLeaseRenewalSqlTests.Claim_RenewsAtMostTheClaimWindow_OldestLeaseFirstAsync, OwnerLeaseRenewalSqlTests.Claim_WhenTheInstanceCountChanged_AndThePartitionFallsToALivePeer_LeavesTheRowToAcquisitionAsync, OwnerLeaseRenewalSqlTests.Claim_WhenThePartitionFallsToAPeer_ButTheHoldersLedgerLeaseIsLive_RenewsTheRowAsync, OwnerLeaseRenewalSqlTests.Claim_WhenALivePeerHoldsTheStream_LeavesTheRowAsync, OwnerLeaseRenewalSqlTests.Claim_WithStealingAllowed_TheRenewalStillDoesNotSteal_AcquisitionDoesAsBeforeAsync, ClaimWorkPlanShapeTests.ClaimWork_HeldRowsWhoseLeaseRanOut_AreRenewed_AndTheNextPollDoesNotPassOverThemAsync, ClaimWorkPlanShapeTests.ClaimWork_RenewingExpiredLeases_ReadsThemThroughTheLeaseOrderIndexAsync}

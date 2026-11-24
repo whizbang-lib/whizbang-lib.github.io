@@ -87,7 +87,7 @@ A rewind has two halves: **detection** (a SQL flag set when the late event lands
 
 ### Detection
 
-Detection lives in the `store_perspective_events` SQL function, which inserts newly-arriving perspective-event work items. For each event that was *newly* stored (not a duplicate), it compares the event's id against the perspective cursor's `last_event_id`:
+Detection lives in the `store_perspective_events` SQL function, which inserts newly-arriving perspective-event work items. For each event that was *newly* stored (not a duplicate), it compares the event's id against the perspective cursor's `last_event_id`. The received-event path below judges by origin order instead, and the cursor completion by version ([one order for a stream](#one-order-for-a-stream)):
 
 ```sql{title="Out-of-order detection" description="store_perspective_events flags RewindRequired when a newly-stored event is older than the cursor, keeping the earliest late event" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Rewind", "Detection"]}
 -- Out-of-order detection: if event_id is older than the cursor's last_event_id,
@@ -115,7 +115,10 @@ Two guarantees fall out of this:
 
 There is a second, belt-and-suspenders detection path in `complete_perspective_cursor_work` (the function that records a runner's completion). After marking the events a runner actually processed, it looks for any still-unprocessed perspective event with an id *below* the cursor — an event that slipped in during processing and was never applied — and flags RewindRequired for it too. That same completion function **clears** `rewind_trigger_event_id`, `rewind_flagged_at`, and `rewind_first_flagged_at` on a successful run, resetting the cursor so a repaired stream does not rewind in a loop.
 
-The **inbox emit chain** (`_emit_event_store_chain_for_inbox`, migration 100) declares identically for *received* events — the path every cross-service delivery and every stream-integrity backfill takes. This matters most for **reconciliation**: a backfilled event keeps its ORIGINAL event id, so the moment its work item is created the system already knows it slots below the cursor — while its freshly-stamped local `commit_sequence` sits *above* the cursor, which makes the straggler permanently invisible to any later runtime inversion comparison. Reconcile therefore **self-declares** the rewind at work-item creation; no heuristic detection is possible or needed.
+The **inbox emit chain** (`_emit_event_store_chain_for_inbox`, migration 100) declares the rewind for *received* events, the path every cross-service delivery and every stream-integrity backfill takes. This matters most for **reconciliation**: a backfilled event keeps its origin position, so the moment its work item is created the system already knows it slots below the cursor, while its freshly stamped local `commit_sequence` sits *above* the cursor, which makes the straggler invisible to any later runtime inversion comparison. Reconcile therefore **self-declares** the rewind at work-item creation; no heuristic detection is possible or needed.
+
+**The straggler is found by origin order** ([#2551](https://github.com/whizbang-lib/whizbang/issues/2551), migration 581). A replay moves a received event only within its own origin's slots, so a stored event is a straggler exactly when it comes before its origin's latest event at or below the cursor's version, by origin position. An id decides nothing: an event whose id sorts above the cursor's but whose origin position is below it is a straggler, and an event of another origin with a lower id is not. The earliest straggler, and the earlier of it and an existing trigger, are chosen by stream version. See [receive order](../event-store/version-ordering#receive-order).
+{verified: ReconcileRewindDeclarationSqlTests.InboxEmitChain_LateEventBelowCursor_DeclaresRewindOnTheCursorAsync, ReconcileRewindDeclarationSqlTests.InboxEmitChain_EventAboveCursor_DoesNotDeclareRewindAsync, ReconcileRewindDeclarationSqlTests.InboxEmitChain_AnotherOriginsEvent_WithALowerId_DoesNotDeclareRewindAsync}
 
 ### Execution
 
@@ -251,7 +254,7 @@ while (true) {
     var events = await ReadPolymorphicAsync(streamId, anchorEventId, eventTypes, ct);
     if (events.Count == 0) break;         // quiescent — caught up to HEAD-at-commit
 
-    foreach (var envelope in events.OrderByMessageId())
+    foreach (var envelope in ReplayEventOrder.Order(events))   // the replay order, never by id
         (updatedModel, _) = ApplyEvent(perspective, updatedModel, envelope.Payload);
 
     // Advance the anchor so the next read returns only newer events.
