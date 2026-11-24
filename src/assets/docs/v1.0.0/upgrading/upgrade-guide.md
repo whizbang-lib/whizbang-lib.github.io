@@ -858,9 +858,9 @@ These matter to services that run [stream integrity](../resilience/stream-integr
   shared registration. On Dapper, the maintainer (the maintenance sweep and its steps, and the table rewrite at
   startup), each perspective table's blue-green rebuild guard and the partition assigner now run on one elected
   instance instead of on every instance, and a claim presents the published partition map. When the holder dies, a
-  survivor takes the duty over once its lease lapses. Schema migration on Dapper is unchanged: every instance migrates
-  under the schema lock in turn, and no migrator is elected. `PartitionAssignerOptions.Enabled` is removed: the
-  assigner always runs, in every driver.
+  survivor takes the duty over once its lease lapses. Schema migration on Dapper is elected too
+  ([below](#dapper-migrator-election)). `PartitionAssignerOptions.Enabled` is removed: the assigner always runs, in
+  every driver.
 - **Who is affected:** Dapper services that watched the maintainer's work on every instance now see it on the one
   instance holding the `maintainer` role (the `roles` health component names it). Code or configuration that set the
   assigner's `Enabled`.
@@ -966,3 +966,22 @@ These matter to services that run [stream integrity](../resilience/stream-integr
 - **Who is affected:** nobody needs to change code. A handling whose first run happened before the upgrade and is
   redelivered after it starts the invoked event's stream once more, as before.
 - **What to do:** nothing. See [Derived stream ids](../extending/attributes/generatestreamid.md#derived-stream-ids).
+
+### The Dapper driver elects one schema migrator and reports Elect and Converge {#dapper-migrator-election}
+
+*[#2561](https://github.com/whizbang-lib/whizbang/issues/2561), [#2563](https://github.com/whizbang-lib/whizbang/issues/2563)*
+
+- **What changed:** on a rolling start, one Dapper instance applies the bootstrap closure, registers, wins the
+  migrator duty and migrates; every other instance registers, votes, waits on the migrator with its schema-ready gate
+  shut, and then serves without taking the schema lock or running a pass of its own. A waiter whose migrator dies
+  mid-migration votes for the duty and finishes the work. The election is shared runtime code (`MigratorElection`),
+  which the EF Core driver's generated initializer now calls too. On either driver every start checks the stored
+  perspective registry against what its build declares and reconciles it only when it differs, so a Dapper start on a
+  current schema no longer rewrites a registry that already matches. A Dapper start now reports Elect (voting, then
+  the outcome) instead of skipping it, enters Converge before it reconciles the managed schema objects, and reports
+  each committed migration file to `ISchemaInitializationObserver.OnSchemaStepCommittedAsync`.
+- **Who is affected:** Dapper hosts, which start faster on a rolling deploy (one pass, not one per instance), and
+  anything that watched their stage lines: Elect is no longer `skipped: no election could be held` on every start.
+- **What to do:** nothing. See [One migrator is elected](../data/dapper-integration.md#one-migrator),
+  [Dapper's stages](../operations/startup/startup-status.md#dapper-stages) and
+  [the registry check](../operations/infrastructure/migrations.md#registry-check).

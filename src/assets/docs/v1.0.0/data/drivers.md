@@ -200,9 +200,9 @@ Both Postgres drivers register role assignment and the elected
 [partition assigner](../fundamentals/work-coordinator/partition-assignment.md) through one shared registration, and a
 parity test fails if either stops doing so ([#2559](https://github.com/whizbang-lib/whizbang/issues/2559)). On
 Dapper, as on EF Core, the maintainer, each perspective table's blue-green rebuild guard and the partition assigner run
-on one elected instance, and a claim presents the published partition map. The one difference left is schema
-migration: the Dapper driver elects no migrator, and every instance migrates under the schema lock in turn
-([#2561](https://github.com/whizbang-lib/whizbang/issues/2561) tracks electing it). See
+on one elected instance, and a claim presents the published partition map. Schema migration is elected the same way
+on both drivers: one instance migrates, and the others wait for it and then serve
+([#2561](https://github.com/whizbang-lib/whizbang/issues/2561)). See
 [Dapper coordination](dapper-integration.md#coordination).
 
 ### Which schema the Dapper work coordinator uses {#dapper-coordinator-schema}

@@ -109,6 +109,12 @@ The rows about changes applied since this version are decided **twice**: once fo
 application's schema, each with its own verdict, and the instance serves only when both sides can
 ([two verdicts](#two-verdicts)).
 
+**One instance migrates, on either driver.** Where the verdict leaves something to migrate, the instances of a rolling
+start elect one migrator, and the others wait for it and then serve without a pass of their own. The EF Core and the
+Dapper drivers run the same election ([#2561](https://github.com/whizbang-lib/whizbang/issues/2561)); see
+[which instance migrates](../infrastructure/migrations#which-instance-migrates).
+{verified: DapperMigratorElectionTests.TwoInstancesStarting_OneMigrates_TheOtherWaitsForIt_ThenServesAsync, MigratorKeepaliveStartupTests.TwoReplicas_OnlyAnInstanceHoldingTheRoleRunsThePreLockPhasesAsync}
+
 ```csharp{title="The verdict" description="Decided once, before anything is changed, and read by every part of startup" category="Implementation" difficulty="INTERMEDIATE" tags=["Startup","RollingUpgrades"] tests=["AssessStartupStepTests.StandDownVerdict_FailsTheBlockingStep_WhichIsNotReadyWhileAliveAsync","AssessStartupStepTests.CurrentVerdict_CompletesWithTheReason_LikeServeAsync","StartupAssessorTests.AnyNewerRecorded_VerdictIsStandDownAsync","StartupAssessorTests.AnUpToDateSchema_IsCurrent_AndOneWithWorkPending_IsServeAsync"]}
 public enum StartupVerdict { Migrate, Serve, StandDown, Current }
 
@@ -587,9 +593,10 @@ that this version did not make, and every one can be reversed: rolling back pers
 library 1.0.0, application 2.0.0)
 ```
 
-**Who runs it.** Only the instance doing the schema work: on the EF Core driver the elected migrator, as the first of
-the [phases it runs before the schema lock](../infrastructure/migrations#pre-lock-phases), before the stored-form
-rewrite; on the Dapper driver, which holds no migrator election, the schema runner before its pass. Either way it runs under the
+**Who runs it.** Only the instance doing the schema work, the elected migrator on either driver
+([#2561](https://github.com/whizbang-lib/whizbang/issues/2561)): on the EF Core driver as the first of the
+[phases it runs before the schema lock](../infrastructure/migrations#pre-lock-phases), before the stored-form rewrite;
+on the Dapper driver before its pass. A waiter whose migrator finished runs neither. Either way it runs under the
 schema lock, so it is kept to one instance. On the EF Core driver it needs a connection of its own: a start that owes
 a rollback with no initialization connection string and no registered `NpgsqlDataSource` fails, naming the schema,
 rather than running the pass over the newer version's schema.

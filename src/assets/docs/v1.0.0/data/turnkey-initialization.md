@@ -224,9 +224,14 @@ make a second instance wait for the first one's whole initialization instead of 
 way through, and when the first is held mid-pass, neither finishes.
 {verified: SchemaInitializationBarrierTests.EntriesForAnotherHostSchemaOrDatabase_DoNotWaitAsync}
 
-## Multi-Instance Initialization
+## Multi-Instance Initialization {#multi-instance}
 
-When deploying multiple instances (pods) of the same service, Whizbang coordinates database initialization using PostgreSQL advisory locks to prevent concurrent schema modifications.
+When deploying multiple instances (pods) of the same service, Whizbang first elects one of them to migrate: on either
+driver, every instance votes for the `migrator` duty, the winner runs the schema pass, and the others wait for it and
+then serve without taking the schema lock ([which instance migrates](../operations/infrastructure/migrations#which-instance-migrates)).
+Underneath the election, a PostgreSQL advisory lock keeps schema changes to one instance at a time, whatever the duty
+says: it is what an instance that could not be staged, or a waiter that takes over from a migrator that died, migrates
+under. The steps below are that lock.
 
 ### How It Works
 
@@ -268,10 +273,11 @@ call it. `SchemaInitializationOptions` (blocking or not, `MigrationTimeout`, `In
 | Blocking | `NonBlockingSchemaInit`, background by default | The same option |
 | Wait for the database | The initializer's retry loop | `PostgresOptions` connection retry, then the initializer's retry loop |
 | Assess verdict | `EFCorePostgresStartupAssessor`, read once; the initializer and the generated pass share the answer | `DapperPostgresStartupAssessor`, read once; the initializer and the Dapper runner share the answer |
-| Schema already current | No bootstrap, election, stored-form rewrite or pass; registers, then Converge | No pass; registers, then Converge |
+| Schema already current | No bootstrap, election, stored-form rewrite or pass; registers, then Converge, which [checks the perspective registry](../operations/infrastructure/migrations#registry-check) | The same |
 | Schema newer than the binary | No runner runs; the gate stays closed | The same |
 | Lock | `pg_try_advisory_xact_lock` on the schema key, taken at the start of each step's own transaction | The same key, held transaction-scoped on a connection of its own while each migration file runs in its own transaction |
-| Register the instance | At the end of Preflight, after the bootstrap closure and before Elect ([why](../operations/infrastructure/migrations#which-instance-migrates)) | At start, before the lock is released |
+| Elect the migrator | `MigratorElection`: one instance migrates, the others wait and then serve | The same election ([#2561](https://github.com/whizbang-lib/whizbang/issues/2561)) |
+| Register the instance | At the end of Preflight, after the bootstrap closure and before Elect ([why](../operations/infrastructure/migrations#which-instance-migrates)) | The same; an instance that could not be staged registers after its pass |
 | Managed-object cleanup | This instance's id, `Whizbang:Schema:Reconcile`, the host's logger; never fatal | The same |
 | Schema-ready gate | Opened after the last runner | The same |
 | Workers | Started at their registered start point: schema ready, or Accept commands once the row records it | The same; both drivers keep instance rows (`RecordsInstanceTransitions`) |
@@ -279,8 +285,8 @@ call it. `SchemaInitializationOptions` (blocking or not, `MigrationTimeout`, `In
 | Once-per-fleet claim | The claim store when registered, the claim table otherwise | The same |
 
 The drivers still migrate with two engines: the EF Core driver generates its pass from the model, and the
-Dapper driver runs `PostgresSchemaInitializer`. They share the lock key, so instances of either driver starting
-together migrate one after the other.
+Dapper driver runs `PostgresSchemaInitializer`. They share the migrator election and the lock key, so when instances
+start together, one migrates while the others wait for it.
 
 ### The Assess verdict comes first, on both drivers {#assess-on-both-drivers}
 
