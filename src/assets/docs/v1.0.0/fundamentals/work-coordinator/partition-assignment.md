@@ -36,6 +36,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/570_WritesAreFencedByThePartitionEpoch.sql
   - src/Whizbang.Data.Postgres/Migrations/571_MovedPartitionsAreHandedOver.sql
   - src/Whizbang.Data.Postgres/Migrations/572_FailureReportsAreFenced.sql
+  - src/Whizbang.Data.Postgres/Migrations/577_PerspectiveWritesHoldTheirPartitionEpoch.sql
   - src/Whizbang.Core/Messaging/PartitionTenures.cs
   - src/Whizbang.Core/Workers/PartitionHandoverWorker.cs
   - src/Whizbang.Core/Perspectives/PartitionOwnershipLostException.cs
@@ -71,6 +72,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CoordinatorOwnershipNoticesTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CoordinatorNamesTheClaimedEpochTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveWritesAreFencedTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveWriteHoldSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TenureFillTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PartitionHandoverSqlTests.cs
   - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/PartitionTenuresTests.cs
@@ -455,12 +457,31 @@ as `HandlerBatchResult.Fenced`, not as a failure, so it is neither retried nor d
 report alike.
 {verified: CoordinatorOwnershipNoticesTests.AFencedWrite_IsCountedByKind_AndLoggedAsync, CoordinatorOwnershipNoticesTests.AFencedPerspectiveCompletion_IsCountedAsync, CoordinatorOwnershipNoticesTests.AFencedFlush_IsCountedAsync, CoordinatorOwnershipNoticesTests.AHandlerCommitUnderAStaleEpoch_IsReportedFenced_NotFailedAsync, DapperOwnershipNoticesTests.AFencedWrite_IsCountedByKind_AndAFencedHandlerCommitIsNotAFailureAsync}
 
-**Perspective rows are fenced too.** The set-based and write-behind sink reports a stale row
-`PerspectiveWriteStatus.Fenced` and writes the rest of the batch. The per-pair upsert throws
-`PartitionOwnershipLostException` before it writes anything. A [write-behind](../perspectives/write-modes#write-behind-flush)
-model whose flush is fenced is dropped, never written. A stream with no tenure in the ledger (written outside a claim)
-is written as before.
-{verified: PerspectiveWritesAreFencedTests.TheSink_FencesAWriteWhosePartitionMoved_AndWritesTheRestAsync, PerspectiveWritesAreFencedTests.TheSink_WhenEveryWriteIsCurrent_WritesThemAllAsync, PerspectiveWritesAreFencedTests.ThePerPairUpsert_OfAStreamWhosePartitionMoved_ThrowsBeforeWritingAsync, PerspectiveWritesAreFencedTests.AStreamWithNoTenure_IsWrittenAsBefore_EvenOnAContextWithoutAHostAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AFencedFlush_DropsTheModel_AndCompletesNothingAsync}
+**A write holds its epoch until it commits.** A check made before a write leaves a gap: a flip that commits between
+the check and the write (the deadline takeover of a stuck owner, the one case fencing is for) would let the stale write
+land. So in map mode a write holds its partition's ownership row **`FOR SHARE` at the claimed epoch, inside the write
+statement itself** (`wh_hold_partition_epoch(partition, epoch)`, migration 577 for perspective writes; the
+coordinator's fences are getting the same treatment). The flip's `UPDATE` of that row waits for the write to commit,
+so a flip can never commit while the write is open. A flip that committed first is seen when the lock re-reads the
+row, and the write raises SQLSTATE `WHF02` and lands nowhere. The cost is one primary-key probe and one row lock of
+`wh_partition_ownership` per row written, in map mode only.
+{verified: PerspectiveWriteHoldSqlTests.TheCurrentEpoch_IsHeldUntilTheWriteCommits_SoAFlipWaitsAsync, PerspectiveWriteHoldSqlTests.AnEpochThatMovedOn_RaisesTheFenceAsync, PerspectiveWriteHoldSqlTests.AWriteThatNamesNoEpoch_HoldsNothingAsync, PerspectiveWriteHoldSqlTests.TheHeldStream_IsTheStreamsIdAsync, PerspectiveWritesAreFencedTests.TheSink_AgainstAFlipThatCommitsWhileItWrites_WaitsForIt_AndIsFencedAsync, PerspectiveWritesAreFencedTests.ThePerPairUpsert_AgainstAFlipThatCommitsWhileItWrites_WaitsForIt_AndThrowsAsync}
+
+**Perspective rows are fenced too.** Every form of perspective write carries the hold in its own statement: an insert
+or upsert names its row through `wh_held_stream(id, partition, epoch)`, and an update or purge carries the call as a
+predicate of the rows it touches; the Entity Framework write holds the partition first, in its transaction. The
+set-based and write-behind sink isolates a row that raised `WHF02`, reports it `PerspectiveWriteStatus.Fenced`, and
+writes the rest of the batch. The per-pair upsert and the per-pair checked update throw
+`PartitionOwnershipLostException`. A [write-behind](../perspectives/write-modes#write-behind-flush) model whose flush
+is fenced is dropped, never written.
+{verified: PerspectiveWritesAreFencedTests.TheSink_FencesAWriteWhosePartitionMoved_AndWritesTheRestAsync, PerspectiveWritesAreFencedTests.TheSink_WhenEveryWriteIsCurrent_WritesThemAllAsync, PerspectiveWritesAreFencedTests.ThePerPairUpsert_OfAStreamWhosePartitionMoved_ThrowsBeforeWritingAsync, PerspectiveWritesAreFencedTests.EveryWriteForm_IsFencedInItsStatement_AndAStreamWithNoWorkInTheSameStatementIsWrittenAsync, PerspectiveWritesAreFencedTests.ThePerPairCheckedUpdate_OfAStreamWhosePartitionMoved_ThrowsAsync, PerspectiveWritesAreFencedTests.TheEntityFrameworkWrite_HoldsThePartitionFirst_AndAStaleOwnerThrows_ACurrentOneWritesAsync, PerspectiveWritesAreFencedTests.TheEntityFrameworkWrite_InATransaction_HoldsThePartitionUntilItCommitsAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AFencedFlush_DropsTheModel_AndCompletesNothingAsync}
+
+**A perspective write is fenced by the work in flight on its stream.** Its tenure is that of the perspective work this
+instance has fetched and not yet finished on the stream (`PartitionTenures.OfPerspectiveWrite`), not the stream's last
+claim. Once that work ends, the stream has no write tenure: a later write that applies no claimed work, such as a
+local rebuild, names no epoch and is written even if the partition has since moved. A stream with no tenure in the
+ledger (written outside a claim) is written as before.
+{verified: PartitionTenuresTests.AStreamsWriteTenure_IsItsPerspectiveWorkInFlight_AndEndsWithTheLastOfItAsync, PartitionTenuresTests.AClaimedStream_WithNoPerspectiveWorkFetched_HasNoWriteTenureAsync, PartitionTenuresTests.PerspectiveWorkDroppedPastCapacity_NoLongerHoldsItsStreamsWriteTenureAsync, PerspectiveWritesAreFencedTests.ALocalRebuild_AfterTheStreamsWorkEnded_IsWritten_ThoughItsPartitionMovedByDeadlineAsync, PerspectiveWritesAreFencedTests.AStreamWithNoTenure_IsWrittenAsBefore_EvenOnAContextWithoutAHostAsync}
 
 **The ledger is the coordinator's, not the worker's.** Work fetched before the partition moved is fenced although the
 worker that does it names no epoch: the coordinator reads the epoch from `PartitionTenures` and fills it in. A write
