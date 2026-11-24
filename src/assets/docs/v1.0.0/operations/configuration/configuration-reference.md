@@ -367,9 +367,9 @@ Bound by the Postgres driver, which holds every duty (`maintainer`, `migrator`, 
 Code-only (through `AddWhizbangRoleAssignment(o => ...)`): `Roles` (the duties the holder loop holds and the `roles` health component reports; a duty not listed is still held by assignment when asked for) and `RoleLeases` (a lease per duty; the migrator's default is 30 seconds).
 
 ### Whizbang:Database:PartitionAssigner → PartitionAssignerOptions {#partition-assigner}
-{verified: PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_BindsEveryAssignerKeyFromConfigurationAsync, PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_WithNoAssignerKeys_KeepsTheDefaultsAsync, PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_AHostsOwnConfigureOfTheAssigner_StillWinsAsync, PartitionAssignerRegistrationTests.TheRemovedEnabledKey_SetToFalse_TurnsNothingOffAsync}
+{verified: PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_BindsEveryAssignerKeyFromConfigurationAsync, PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_WithNoAssignerKeys_KeepsTheDefaultsAsync, PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_AHostsOwnConfigureOfTheAssigner_StillWinsAsync, PartitionAssignerRegistrationTests.TheRemovedEnabledKey_SetToFalse_TurnsNothingOffAsync, PartitionAssignerWorkerTests.Options_HandoverDeadline_DefaultsToThirtySeconds_AndANonPositiveOneIsRefusedAsync, PartitionAssignerWorkerTests.Options_OwnershipByMap_DefaultsOn_AndTheDefaultStillWaitsForEveryInstanceAsync}
 
-Bound by both Postgres drivers, which always run the elected partition assigner (#2558, #2559). Parsed by hand, without
+Bound by both Postgres drivers, which always run the elected partition assigner (#2557, #2558, #2559). Parsed by hand, without
 reflection; a key that is absent or does not parse keeps its default, and a host's own
 `Configure<PartitionAssignerOptions>` registered after the driver still has the last word. **Details:**
 [Partition assignment](../../fundamentals/work-coordinator/partition-assignment#configuration).
@@ -379,10 +379,10 @@ reflection; a key that is absent or does not parse keeps its default, and a host
 | `AssignmentLease` | `TimeSpan` | `00:01:30` | `Whizbang__Database__PartitionAssigner__AssignmentLease` | How long a published assignment holds without renewal. Must exceed 60 s, the slow heartbeat cadence |
 | `RepublishInterval` | `TimeSpan` | `00:05:00` | `Whizbang__Database__PartitionAssigner__RepublishInterval` | The backstop: the assigner republishes at least this often. Must be positive |
 | `SettleWindow` | `TimeSpan` | `00:00:05` | `Whizbang__Database__PartitionAssigner__SettleWindow` | How long a membership change is collected before one new partition map is published, so a rolling deploy moves a little per instance instead of reshuffling on every heartbeat. `00:00:00` publishes every change at once; negative is refused. See [the settle window](../../fundamentals/work-coordinator/partition-assignment#settle-window) |
+| `HandoverDeadline` | `TimeSpan` | `00:00:30` | `Whizbang__Database__PartitionAssigner__HandoverDeadline` | How long a partition the map moves away from a live owner may hand over before the assigner completes the move itself, judged on the database's clock. Must be positive. See [handover](../../fundamentals/work-coordinator/partition-assignment#handover) |
+| `OwnershipByMap` | `bool` | `true` | `Whizbang__Database__PartitionAssigner__OwnershipByMap` | Ask for the service's one-way [ownership-by-map switch](../../fundamentals/work-coordinator/partition-assignment#ownership-switch), which turns on once every live instance of the service supports it. `false` keeps the stored-owner rules while the switch is still off; it only stops the assigner asking, so a switch already on stays on |
 
-Code-only: `OwnershipByMap` (default `false`), which asks for the service's one-way
-[ownership-by-map switch](../../fundamentals/work-coordinator/partition-assignment#ownership-switch). `Enabled` is a
-[removed key](#removed-keys): the assigner always runs.
+`Enabled` is a [removed key](#removed-keys): the assigner always runs.
 
 ### Whizbang:Capabilities → CapabilityOptions {#capabilities-options}
 

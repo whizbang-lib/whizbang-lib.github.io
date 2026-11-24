@@ -898,19 +898,36 @@ These matter to services that run [stream integrity](../resilience/stream-integr
   [Two verdicts](../operations/startup/rolling-upgrades.md#two-verdicts) and
   [a restored database](../operations/startup/rolling-upgrades.md#restored-database).
 
-### Ownership by map, opt-in and off by default {#ownership-by-map}
+### Ownership by map is on by default, with handover and fencing {#ownership-by-map}
 
-*[#2554](https://github.com/whizbang-lib/whizbang/issues/2554), [#2555](https://github.com/whizbang-lib/whizbang/issues/2555)*
+*[#2554](https://github.com/whizbang-lib/whizbang/issues/2554), [#2555](https://github.com/whizbang-lib/whizbang/issues/2555), [#2556](https://github.com/whizbang-lib/whizbang/issues/2556), [#2557](https://github.com/whizbang-lib/whizbang/issues/2557)*
 
 - **What changed:** a partition ownership table (`wh_partition_ownership`, one row per partition) is written by the
   partition assigner with every map it publishes, and one predicate (`wh_i_own`) answers whether an instance may claim a
-  partition. With a per-service switch on, every claim path decides through that table alone: a stream's first writer
+  partition. With the per-service switch on, every claim path decides through that table alone: a stream's first writer
   is no longer pinned as its owner, new perspective work is leased by partition, a live stored owner no longer keeps a
-  stream the map has moved, and a claimer with no valid map claims nothing and waits instead of ranking itself. The
-  wake-up notification goes to the instance the map names for each stream's partition, with the switch off as well.
-  Every heartbeat records `partition_ownership_level` in the instance's registry metadata. Migrations 565 to 567.
-- **Who is affected:** nobody by default. The switch turns on only when `PartitionAssignerOptions.OwnershipByMap` is
-  set (default `false`) and every live instance of the service supports the mode, and it is one-way. It stays off by
-  default until the handover and fencing that make moving a busy partition safe are released.
-- **What to do:** nothing. Leave `OwnershipByMap` off unless you are trialling the mode. See
-  [Ownership by map](../fundamentals/work-coordinator/partition-assignment.md#ownership-by-map).
+  stream the map has moved, and a claimer with no valid map claims nothing and waits instead of ranking itself (counted
+  on `whizbang.work_coordinator.partition_map_unavailable` and warned once per streak). The wake-up notification goes to
+  the instance the map names for each stream's partition, with the switch off as well. Every heartbeat records
+  `partition_ownership_level` in the instance's registry metadata. A partition the map moves away from a live owner is
+  **handed over**: nobody claims it while the old owner finishes its in-flight streams, saves its write-behind models
+  (flush reason `handover`) and acknowledges, and it flips to the next owner at a raised epoch; past
+  `Whizbang:Database:PartitionAssigner:HandoverDeadline` (default 30 seconds) the assigner flips it itself. A stopping
+  instance hands its partitions over before it deregisters. Every write that commits a result names the partition epoch
+  its work was claimed under, and a write under an epoch that has moved on is **fenced**: it changes nothing and is
+  counted on `whizbang.work_coordinator.fenced_writes`. Migrations 565 to 567 and 570 to 572.
+- **Who is affected:** every service on the PostgreSQL drivers, once every live instance of it runs this release:
+  `PartitionAssignerOptions.OwnershipByMap` now defaults to `true` and binds from
+  `Whizbang:Database:PartitionAssigner:OwnershipByMap`, and the switch is one-way. During a rolling deploy the switch
+  waits for the last instance of the previous release to stop, so mixed releases keep the stored-owner rules.
+  Implementers of `IPartitionAssignmentStore` (breaking): `PublishAsync` takes the handover deadline, and
+  `CompleteExpiredHandoversAsync` is new. Implementers of `IWorkCoordinator` gain epoch-taking overloads of
+  `CompleteOutboxPublishedAsync` and `CompletePerspectiveAsync`, and `GetPartitionsHandingOverAsync`,
+  `AcknowledgeHandoverAsync` and `GetLeaveStatusAsync`, all with default implementations, so a custom coordinator
+  compiles and hands nothing over. `HandlerBatchResult` gains an optional `Fenced`.
+- **What to do:** nothing, for a host on the drivers' registrations. To keep the stored-owner rules, set
+  `Whizbang:Database:PartitionAssigner:OwnershipByMap` to `false` **before** the switch turns on: it only stops the
+  assigner asking, and a switch already on stays on. Watch `fenced_writes` during the first deploy; a trickle while
+  partitions move is expected. See [Ownership by map](../fundamentals/work-coordinator/partition-assignment.md#ownership-by-map),
+  [Handover](../fundamentals/work-coordinator/partition-assignment.md#handover) and
+  [Fencing](../fundamentals/work-coordinator/partition-assignment.md#fencing).
