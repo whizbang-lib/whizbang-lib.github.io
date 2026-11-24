@@ -593,9 +593,13 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ035 | Warning | [IHasStreamId Is Written Instead Of A Strong-ID Stream ID](whiz035.md) |
 | WHIZ036 | Error | [Stream ID Is Ambiguous](whiz036.md) |
 | WHIZ037 | Warning | [A Constructed Or Parsed Guid Flows Into An Id](whiz037.md) |
+| WHIZ038 | Warning | [WhizbangId Versions Narrowed](whiz038.md) |
+| WHIZ039 | Error | [WhizbangId AcceptAnyVersion With Versions](whiz039.md) |
 | WHIZ040 | Info | [User Service Discovered](whiz040.md) |
 | WHIZ041 | Info | [Abstract Class Skipped](whiz041.md) |
 | WHIZ042 | Retired | [No User Services Found](whiz042.md) (retired: never reported, ID never reused) |
+| WHIZ043 | Error | [WhizbangId Accepts No Version](whiz043.md) |
+| WHIZ044 | Error | [WhizbangId Versions Outside 1 To 8](whiz044.md) |
 | WHIZ050 | Retired | [Public API Missing Tests](whiz050.md) (retired: never reported, ID never reused) |
 | WHIZ051 | Retired | [Invalid Test Reference](whiz051.md) (retired: never reported, ID never reused) |
 | WHIZ052 | Retired | [Test Link Discovered](whiz052.md) (retired: never reported, ID never reused) |
