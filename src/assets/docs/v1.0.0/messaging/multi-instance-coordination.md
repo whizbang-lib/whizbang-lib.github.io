@@ -19,6 +19,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/029_ProcessWorkBatch.sql
   - src/Whizbang.Data.Postgres/Migrations/148_ActiveStreamLeases.sql
   - src/Whizbang.Data.Postgres/Migrations/255_LeaseRenewalIsScopedToTheHolder.sql
+  - src/Whizbang.Data.Postgres/Migrations/565_PartitionsAreOwnedByThePublishedMap.sql
+  - src/Whizbang.Data.Postgres/Migrations/566_ClaimsDecideThroughTheOwnershipTable.sql
+  - src/Whizbang.Data.Postgres/Migrations/567_StoresNameNoOwnerInMapMode.sql
   - src/Whizbang.Core/Workers/HeartbeatWorker.cs
   - src/Whizbang.Core/Workers/ClaimWorker.cs
 testReferences:
@@ -32,6 +35,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StoreInboxMessagesSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OpportunisticHeartbeatSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ListenLivenessSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/OwnershipByMapClaimSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/OwnershipByMapStoreSqlTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -41,11 +46,40 @@ lastMaintainedCommit: '01f07906'
 
 Multi-instance coordination ensures reliable, ordered message processing across multiple service instances. This document details the coordination mechanisms, decision points, and timing guarantees that enable distributed message processing.
 
+## Two ownership modes {#ownership-modes}
+{verified: OwnershipByMapClaimSqlTests.SwitchOff_TheStoredOwnerKeepsItsStream_AsBeforeAsync, OwnershipByMapStoreSqlTests.StoreOutbox_SwitchOff_PinsTheFirstWriter_AsBeforeAsync, OwnershipByMapClaimSqlTests.Perspective_TheMapMovesThePartition_TheNewOwnerClaimsTheStream_AndTheStoredOwnerNothingAsync, OwnershipByMapStoreSqlTests.StoreOutbox_InMapMode_RecordsTheStreamWithoutAnOwnerAsync, OwnershipByMapClaimSqlTests.Ledger_TheNewOwnersClaimNamesItAsync}
+
+Every stream id hashes to one of 10,000 partitions, and the elected partition assigner publishes a map of those
+partitions to the live instances that are eligible for work
+([Partition assignment](../fundamentals/work-coordinator/partition-assignment.md)). Who owns a stream that already has
+work in flight depends on a per-service switch
+([ownership by map](../fundamentals/work-coordinator/partition-assignment.md#ownership-by-map)):
+
+| | Ownership by map **off** (the default) | Ownership by map **on** |
+|---|---|---|
+| Authority | The stream ledger, `wh_active_streams.assigned_instance_id`: a live stored owner keeps its stream | The partition ownership table, `wh_partition_ownership`: the owner of the stream's partition, and nothing else |
+| First writer | Pinned as the stream's owner | Not an owner; the ledger records the stream with no owner |
+| A rebalance | Moves unowned work only; busy streams stay with their owner | Moves every stream of a moved partition |
+| No current map | A claimer ranks the live instances itself | A claimer claims nothing and waits |
+
+**`wh_partition_ownership`** has one row per partition: its owner, an epoch that rises each time the owner changes, and
+a state (`active`, or `handing_over`). The assigner writes it with every map it publishes, under its role epoch, in
+both modes, so it is ready when the switch flips. **`wh_active_streams`** stays in both modes. Off, it is the authority
+the scenarios below describe. On, it is an activity ledger: a claim names the instance that claimed the stream (its
+partition's owner) and keeps the stream's lease and last activity for cleanup, and nothing reads it to decide who may
+claim.
+
+The switch stays off until the handover and fencing that make moving a busy partition safe are released
+([#2556](https://github.com/whizbang-lib/whizbang/issues/2556), [#2557](https://github.com/whizbang-lib/whizbang/issues/2557)).
+**The scenarios on this page describe the default mode.** Where a scenario shows a partition chosen by
+`partition_number % count`, that is the fallback a claim uses when no map is published; with a published map, the
+claim takes the partitions the map gives it.
+
 ## Core Coordination Mechanisms
 
 ### 1. Cross-Instance Stream Ordering {#cross-instance-stream-ordering}
 
-**Rule**: A stream belongs to exactly one live instance at a time. When Instance A owns stream S (a live lease in `wh_active_streams`), Instance B cannot claim ANY messages from stream S — later messages included — until Instance A's ownership lapses.
+**Rule**: A stream belongs to exactly one live instance at a time. With ownership by map off, when Instance A owns stream S (a live lease in `wh_active_streams`), Instance B cannot claim ANY messages from stream S, later messages included, until Instance A's ownership lapses. With it on, only the owner of S's partition may claim S's messages, whatever the ledger says.
 
 {verified: ActiveStreamLeaseExpirySqlTests.ClaimOrphanedInbox_Steal_NeverTakesAStreamALiveSiblingOwns_EvenWithNoRowLeasedAsync, ActiveStreamLeaseExpirySqlTests.RenewLeases_ExtendsTheStreamLease_ForTheOwnersStreamsAsync}
 
@@ -79,10 +113,10 @@ sequenceDiagram
     DB->>DB: Delete M1, M2 (done)
     I1->>I1: I1 continues to own stream S<br/>and drains M3, M4 in order
 
-    Note over DB: If I1 dies: heartbeat + LISTEN stale →<br/>ownership released, I2 claims via modulo
+    Note over DB: If I1 dies: heartbeat + LISTEN stale →<br/>ownership released, I2 claims by its share
 
     I2->>DB: claim_work() (after I1 death)
-    DB->>DB: No live owner; partition modulo matches I2
+    DB->>DB: No live owner; S's partition is in I2's share
     DB-->>I2: Returns M3, M4 (in created_at order)
     Note over I2: ✅ Stream ordering preserved<br/>One owner at a time, FIFO within stream
 ```
@@ -92,7 +126,7 @@ sequenceDiagram
 | Stream / Earlier Message State | Later Messages Claimable by Another Instance? | Reason |
 |---|---|---|
 | Stream has a live owner (other instance) | ❌ No | Stream ownership gate (`wh_active_streams`) |
-| Stream unowned, no earlier scheduled retry | ✅ Yes (by the modulo-matching instance) | Message not claimed |
+| Stream unowned, no earlier scheduled retry | ✅ Yes (by the instance whose share holds the partition) | Message not claimed |
 | Owner dead (stale heartbeat, no LISTEN connection) | ✅ Yes | Ownership released, work orphaned |
 | Completed/deleted | ✅ Yes | Message finished |
 | Earlier message scheduled for retry | ❌ No | See [Scheduled Retry Blocking](#scheduled-retry-blocking) |
@@ -161,7 +195,7 @@ flowchart LR
 
 ### 3. New Instance Joining {#new-instance-joining}
 
-**Rule**: When a new instance joins, the modulo distribution for **unowned** work changes automatically. Streams already pinned to a live instance (`wh_active_streams`) stay with their owner — no stealing.
+**Rule**: When a new instance joins and is ready for work, the assigner's next map (published once membership has [settled](../fundamentals/work-coordinator/partition-assignment.md#settle-window)) gives it about 1/(N+1) of the partitions, taken evenly from the others; nothing else moves. With ownership by map off, streams already pinned to a live instance (`wh_active_streams`) stay with their owner (no stealing), so only **unowned** work moves. With it on, every stream of a moved partition moves with it.
 
 #### Sequence Diagram
 
@@ -199,15 +233,16 @@ sequenceDiagram
     Note over I1,I2: Both instances process their streams<br/>Distribution balances as new streams arrive
 ```
 
-**Stream Distribution Example** (unowned streams):
+**Stream Distribution Example** (unowned streams). The diagram above shows the modulo fallback, with no published map.
+With the published map, the joining instance's share is the one the map gives it: each staying member keeps its
+lowest-numbered partitions up to its quota, and the rest go to the newcomer.
 
-| Stream partition | Before (count=1) | After (count=2) | New Owner |
+| Stream partition | Before (one instance) | After (two instances, published map) | After (no map: modulo fallback) |
 |---|---|---|---|
-| partition % n = 0 | rank 0 (I1) | rank 0 (I1) | No change |
-| partition % n = 1 | rank 0 (I1) | rank 1 (I2) | Redistributed |
-| partition % n = 2 | rank 0 (I1) | rank 0 (I1) | No change |
-| partition % n = 3 | rank 0 (I1) | rank 1 (I2) | Redistributed |
-| ... | ... | ... | ... |
+| 0 to 4,999 | I1 | I1 (no change) | I1 for even partitions, I2 for odd |
+| 5,000 to 9,999 | I1 | I2 (moved) | I1 for even partitions, I2 for odd |
+
+{verified: PartitionMapTests.Rebalance_AJoin_TakesItsShareEvenlyFromEveryMember_AndMovesNothingElseAsync, PartitionMapTests.Initial_IsTheModuloOverTheMembers_SoTheFirstMapMovesNothingAsync}
 
 ### 4. Scheduled Retry Blocking {#scheduled-retry-blocking}
 
@@ -403,11 +438,14 @@ graph TD
 
 ### 9. Virtual Partition Assignment (Hash-Based) {#virtual-partition-assignment}
 
-**Rule**: For unowned work, instance ownership is calculated algorithmically: the stream's partition number modulo the live instance count must equal the instance's rank. No partition assignments table is needed.
+**Rule**: A stream's partition is computed from its id; which instance takes a partition is the published partition map's answer. The map is per-partition state: `wh_published_partition_assignment.partition_owners` (one entry per partition), and, for ownership by map, `wh_partition_ownership` (one row per partition). Without a published map, the claim falls back to arithmetic: the partition number modulo the live instance count must equal the instance's rank.
 
 **Formulas**:
 - `partition_number = abs(hashtext(stream_id::TEXT)) % partition_count` (`compute_partition`)
-- Claimable by instance when `partition_number % active_instance_count = instance_rank` (`calculate_instance_rank` assigns ranks via `ROW_NUMBER()` over live instances)
+- Claimable by instance when `wh_partition_in_share(partition_number, rank, count, owners)` holds: the map gives the partition to the member at the instance's rank, or, with no map, `partition_number % active_instance_count = instance_rank` (ranks by `ROW_NUMBER()` over the published members, or over the live instances when a claimer ranks itself)
+- With ownership by map on: claimable only when `wh_i_own(partition_number, instance)` answers an epoch
+
+The diagram shows the fallback, with no published map.
 
 #### Sequence Diagram
 
@@ -439,12 +477,12 @@ sequenceDiagram
 **Key Properties**:
 - **Deterministic**: Same stream always maps to the same partition
 - **Cheap**: Partition math is pure computation; rank is one indexed window query
-- **Sticky**: Once claimed, `wh_active_streams` pins the stream to its owner (rank churn can't split a stream)
-- **Automatic rebalancing**: Adding/removing instances changes the modulo distribution for unowned work
+- **Sticky** (ownership by map off): Once claimed, `wh_active_streams` pins the stream to its owner (rank churn can't split a stream)
+- **Small moves**: Adding or removing an instance changes the map incrementally, about 1/N of the partitions
 
 ### 10. Instance Transition - Stream Ownership Across Scaling {#instance-transition-stream-split}
 
-**Rule**: Streams never split across instances. Once a stream is pinned in `wh_active_streams`, ALL of its messages — including ones stored after a new instance joins — process on the owning instance. Ownership transitions only when the owner dies (or the stream goes idle and its pin is cleaned up).
+**Rule**: Streams never split across instances. With ownership by map off, once a stream is pinned in `wh_active_streams`, ALL of its messages, including ones stored after a new instance joins, process on the owning instance. Ownership transitions only when the owner dies, releases the stream's unstarted work, or the stream goes idle and its pin is cleaned up. With it on, a stream's messages process on its partition's owner, and the stream moves when the map moves its partition; the handover that makes that move safe for a stream mid-flight is coming with [#2557](https://github.com/whizbang-lib/whizbang/issues/2557).
 
 **Critical Guarantee**: A stream has at most one live owner at any moment, so per-stream FIFO order holds across scaling events.
 
@@ -493,11 +531,11 @@ sequenceDiagram
 - **Time-ordered processing**: M1 → M2 → M3 → M4 (by `created_at`)
 - **Single owner**: A stream cannot be processed by two instances concurrently
 - **Single-processing**: Each message claimed exactly once (within lease)
-- **No mid-stream theft**: The owner path in `claim_orphaned_*` ignores partition modulo for pinned streams, so rank churn cannot wedge or split a stream
+- **No mid-stream theft** (ownership by map off): The owner path in `claim_orphaned_*` ignores the partition share for pinned streams, so rank churn cannot wedge or split a stream
 
 ### 11. Instance Joining - Redistribution of Unowned Work {#instance-joining-hash-redistribution}
 
-**Rule**: When a new instance joins, `active_instance_count` increases and ranks recompute, changing the modulo distribution for **unowned** streams. Pinned streams stay with their owners; new streams spread across the larger pool.
+**Rule**: When a new instance joins, the next published map gives it its share, changing the distribution for **unowned** streams. With ownership by map off, pinned streams stay with their owners and new streams spread across the larger pool. The example uses the modulo fallback (no published map) for brevity; with a map, the newcomer's share is the [contiguous half](#new-instance-joining) the map gives it, and the pins behave the same.
 
 #### Sequence Diagram
 
@@ -542,7 +580,7 @@ sequenceDiagram
 
 **Key Points**:
 - ~50% of NEW streams land on the new instance when instance count doubles
-- Existing pinned streams keep their owner (no stealing from a live instance)
+- Existing pinned streams keep their owner (no stealing from a live instance) while ownership by map is off
 - Pins release when the owner dies or the stream is cleaned up after inactivity
 - The stream ownership gate ensures ordering across the transition
 
@@ -615,18 +653,24 @@ Higher counts enable finer-grained distribution:
    FROM wh_service_instances;
    ```
 
-2. **Check stream ownership and modulo distribution**:
+2. **Check stream ownership and the partition map**:
    ```sql
-   -- Is the stream pinned, and to whom?
+   -- Ownership by map off: is the stream pinned, and to whom?
    SELECT stream_id, assigned_instance_id, lease_expiry, last_activity_at
    FROM wh_active_streams
    WHERE stream_id = '<stream_id>';
 
-   -- For unowned streams: which rank should claim it?
-   SELECT
-     (abs(hashtext('<stream_id>'::TEXT)) % <partition_count>) AS partition_number,
-     (abs(hashtext('<stream_id>'::TEXT)) % <partition_count>) % <active_instance_count> AS expected_instance_rank;
-   -- Compare with calculate_instance_rank output for each instance
+   -- Which instance does the published map give the stream's partition to?
+   -- (A NULL map is an older assigner's: the member at partition % member count.)
+   SELECT p.partition_number,
+          pa.members[pa.partition_owners[p.partition_number + 1] + 1] AS map_owner
+   FROM wh_read_partition_assignment() pa,
+        (SELECT compute_partition('<stream_id>'::UUID) AS partition_number) p;
+
+   -- Ownership by map on: the partition's owner, its epoch and its state decide.
+   SELECT o.*
+   FROM wh_partition_ownership o
+   WHERE o.partition_number = compute_partition('<stream_id>'::UUID);
    ```
 
 3. **Check stream ordering**:
