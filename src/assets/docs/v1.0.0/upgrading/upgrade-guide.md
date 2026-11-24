@@ -883,7 +883,8 @@ These matter to services that run [stream integrity](../resilience/stream-integr
   both sides can. The incompatibility override and the lossy rollback switch can be scoped to one side with
   `Whizbang:Startup:Platform:OverrideIncompatibility`, `Whizbang:Startup:Application:OverrideIncompatibility`,
   `Whizbang:Startup:Platform:AllowLossyRollback` and `Whizbang:Startup:Application:AllowLossyRollback`; the shared keys
-  keep meaning both sides.
+  keep meaning both sides. An override in use logs one Error per overridden side, naming that side, its own key and
+  what still runs.
 - **Who is affected:** hosts that set the shared `Whizbang:Startup:OverrideIncompatibility` for an incompatibility that
   is the application's alone: the application's schema is now served as it is **and the W! migrations still run** (the
   verdict is `Serve` or `Migrate`, where it was `Current` with nothing applied). That is the per-side decision, not a
@@ -915,7 +916,8 @@ These matter to services that run [stream integrity](../resilience/stream-integr
   `Whizbang:Database:PartitionAssigner:HandoverDeadline` (default 30 seconds) the assigner flips it itself. A stopping
   instance hands its partitions over before it deregisters. Every write that commits a result names the partition epoch
   its work was claimed under, and a write under an epoch that has moved on is **fenced**: it changes nothing and is
-  counted on `whizbang.work_coordinator.fenced_writes`. Migrations 565 to 567 and 570 to 572.
+  counted on `whizbang.work_coordinator.fenced_writes`. A perspective write holds its partition's epoch inside its own
+  statement until it commits, so a flip waits for it (migration 577). Migrations 565 to 567, 570 to 572 and 577.
 - **Who is affected:** every service on the PostgreSQL drivers, once every live instance of it runs this release:
   `PartitionAssignerOptions.OwnershipByMap` now defaults to `true` and binds from
   `Whizbang:Database:PartitionAssigner:OwnershipByMap`, and the switch is one-way. During a rolling deploy the switch
@@ -944,12 +946,23 @@ These matter to services that run [stream integrity](../resilience/stream-integr
   the perspective read returns each event's version (`StreamEventData.Version`, carried onto the envelope's
   `LocalStreamVersion`). The drivers call two new functions, `fetch_inbox_batch_in_stream_order` and
   `get_stream_events_in_stream_order`; `fetch_inbox_batch` and `get_stream_events` keep their results for a caller
-  built before them. No worker or runner re-sorts a stream by id. Migrations 580 to 583.
+  built before them. `store_perspective_events` judges a late event by stream version (migration 578). The outbox
+  drains in emission order (migration 579): each row takes an emission position (`wh_outbox.emission_position`) as it
+  is stored, the claim, fetch, continuation and failure release follow it, `OutboxBatchRow.StreamPosition` carries it,
+  and the continuation cursor is `OutboxStreamCursor.LastPublishedPosition`, the last position published, not the
+  largest id. The drivers call `fetch_outbox_batch_in_stream_order` and
+  `wh_continue_outbox_streams_in_emission_order`; `fetch_outbox_batch` and `wh_continue_outbox_streams` keep their
+  results for a binary mid-rollout. No worker or runner re-sorts a stream by id. Migrations 573 to 576, 578 and 579.
 - **Who is affected (breaking):** code that calls `OrderByMessageId` from the public `MessageOrderingExtensions`, which
-  is removed. Code that reads `fetch_inbox_batch` or `get_stream_events` itself keeps working, in the same order as
-  before.
-- **What to do:** order a stream with `StreamOrder.InStreamOrder` (fetched inbox rows by `StreamPosition`, one stream's
-  envelopes by `LocalStreamVersion`), or keep the order the read returned. Streams already stored keep their versions;
+  is removed. A custom `IWorkCoordinator` that implements `ContinueOutboxStreamsAsync`. Code that reads
+  `fetch_inbox_batch`, `get_stream_events`, `fetch_outbox_batch` or `wh_continue_outbox_streams` itself keeps working,
+  in the same order as before.
+- **What to do:** order a stream with `StreamOrder.InStreamOrder` (fetched inbox and outbox rows by `StreamPosition`,
+  one stream's envelopes by `LocalStreamVersion`), or keep the order the read returned. A custom coordinator's
+  `ContinueOutboxStreamsAsync` continues a stream after `OutboxStreamCursor.LastPublishedPosition` and fills
+  `OutboxBatchRow.StreamPosition` on the rows it fetches; the drain publishes rows without one in the order they are
+  returned. Outbox rows already queued take their positions during the migration, in the order they were drained in
+  until now. Streams already stored keep their versions;
   a stream written after the upgrade by a producer still on the previous release is versioned in the order its batches
   are listed, and the inbox rows already queued keep the order they were dispatched in until now. See
   [Stream version ordering](../fundamentals/event-store/version-ordering.md) and the

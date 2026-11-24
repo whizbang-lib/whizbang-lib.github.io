@@ -693,10 +693,17 @@ application's schema as it is **and still runs the W! migrations**: the verdict 
 :::
 - **What it does not override.** The stand-down for a [newer version online](#cluster-wide-stand-down), which is not an
   incompatibility, and the refusal of a build whose own library version is missing or unreadable.
-- **It says so, loudly, at every start.** An Error from `StartupAssessmentSource` (EventId 3):
+- **It says so, loudly, at every start, naming the side.** Each overridden side logs its own Error from
+  `StartupAssessmentSource` (EventId 4), naming that side, its own key with the shared one beside it, the verdict it
+  would have had, its full reason, and what still runs:
+  - the W! side: `Running past the W! migrations incompatibility verdict because Whizbang:Startup:Platform:OverrideIncompatibility (or Whizbang:Startup:OverrideIncompatibility) is on: its verdict was StandDown: <reason>. This build serves that side as it is: nothing of the W! migrations is applied and no W! migration runs; the instance row records the override`;
+  - the application side: `Running past the application schema incompatibility verdict because Whizbang:Startup:Application:OverrideIncompatibility (or Whizbang:Startup:OverrideIncompatibility) is on: its verdict was StandDown: <reason>. This build serves that side as it is: the application schema is left as it is, and the W! migrations still run; the instance row records the override`.
+
+  A verdict judged as one, with no sides (an assessor that does not split them), keeps the shared message (EventId 3):
   `Running past an incompatibility verdict because Whizbang:Startup:OverrideIncompatibility is on: startup's verdict was StandDown: <the full reason>. This build serves a schema it did not create; nothing is applied and no migration runs, and the instance row records the override`.
-  The message is the same whichever key served which side: it names the shared key, and says that nothing is applied
-  even when only the application side was overridden and the W! migrations ran. The reason it carries names each side.
+  Before [#2553](https://github.com/whizbang-lib/whizbang/issues/2553) the shared message was logged for either side,
+  so an application-only override said no migration ran while the W! migrations did.
+  {verified: StartupAssessmentSourceTests.AnOverrideOfOneSide_IsLoggedForThatSide_WithItsOwnKeyAndWhatStillRunsAsync, StartupAssessmentSourceTests.AnOverriddenIncompatibility_IsLoggedLoudly_OncePerStart_WithTheVerdictAndItsFullReasonAsync}
 - **It is on the row.** The reason the verdict would have stood the instance down is written to
   `wh_service_instances.incompatibility_override` (migration 360) once the instance registers, so operators and peers
   can see it without reading logs. Every other instance's column is `NULL`.
