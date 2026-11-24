@@ -91,6 +91,6 @@ Do not suppress WHIZ029: it means an opt-in has no effect. Make the declarations
 ## Related
 
 - [WhizbangIds: Ids that are not UUIDv7](../../fundamentals/identity/whizbang-ids#accept-any-version)
-- [WHIZ037: WhizbangId Versions Narrowed](whiz037)
+- [WHIZ038: WhizbangId Versions Narrowed](whiz038)
 - [WHIZ024: Duplicate WhizbangId Type Name](whiz024)
 - [WHIZ021: WhizbangId Must Be Partial](whiz021)

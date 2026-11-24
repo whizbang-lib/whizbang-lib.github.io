@@ -263,6 +263,22 @@ public async Task<Result> HandleCreateOrderAsync(CreateOrderCommand command) {
 - Outbox only has one entry (from first execution)
 - If application logic fails to check for duplicates, that's an application bug, not a framework responsibility
 
+### Retries of a receptor's handling {#handling-retries}
+
+{verified: DispatcherEmissionIdentityTests.CascadeMessageAsync_RetryOfSameHandling_DerivesTheSameEventIdsAsync, DispatcherDerivedIdentityInHandlingTests.PublishAsync_InsideAHandling_ARetryPublishesUnderTheSameIdsAsync, DispatcherDerivedIdentityInHandlingTests.PublishAsync_GenerateStreamId_InsideAHandling_ARetryStartsTheSameStreamAsync, EFCoreOutboxEmissionDedupTests.StoreOutboxMessagesAsync_SameMessageStoredTwice_CountsTheSkippedRowByTypeAsync}
+
+The framework does deduplicate one case on its own: a receptor's handling that runs twice. An inbound message can be
+handled a second time when the first run's completion never committed or its lease lapsed. The events the receptor
+emits take ids [derived from the handling](../fundamentals/dispatcher/message-cascade#emission-identity), whether it
+**returns** them or **publishes them explicitly** with `PublishAsync` inside its body, so the second run produces the
+same ids and the outbox's primary key turns each copy into a counted no-op instead of a second publish. A
+`[GenerateStreamId]` event the retry emits also [starts the same stream](../extending/attributes/generatestreamid#derived-stream-ids)
+as the first run. Before [#2520](https://github.com/whizbang-lib/whizbang/issues/2520), an explicitly published event
+took a fresh id on each run and was published again to every subscriber.
+
+This covers retries of one handling only. A `PublishAsync` outside any receptor (an API endpoint, a background
+service) mints a fresh id each call, so code there still needs the application-side checks above.
+
 ### Outbox Processing Flow
 
 ```mermaid{caption="Outbox processing flow — after the application commits, ClaimWorker leases the row, the publish worker sends it to the transport, and complete_outbox_published deletes it." tests=["OutboxPublishWorkerTests.SingularPublish_HappyPath_RoutesToOutboxCompletionChannelAsync"]}

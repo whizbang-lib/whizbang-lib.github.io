@@ -20,6 +20,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/VersionedApplyTargetTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CrossPodStaleReadRegressionRaceTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveLateEventApplyTests.cs
+  - tests/Whizbang.Core.Unit.Perspectives.Tests/Perspectives/RunnerBase/RunnerBaseReplayTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRewindLoopTests.IdOrder.cs
 ---
 
 # Versioned Apply — Strict Cross-Pod Ordering
@@ -70,6 +72,20 @@ UUIDv7 from `TrackedGuid.New()` orders lexicographically by emission time, so "n
 
 **A rebuild's write is not ordered on the EventId.** A rebuild re-derives the row from every event of the stream, folded from an empty model in stream-version order, so its write carries the EventId of the stream's last event by version. When events were appended out of EventId order, that id sorts below the one the stored row records, and the EventId check refused the only write that could repair the row ([#1819](https://github.com/whizbang-lib/whizbang/issues/1819)). A rebuild's write to an opted-in model therefore takes the default CommitSequence guard, which passes because a rebuild records the highest CommitSequence it folded. Live apply and the rewind keep the EventId check, and the row-version check still refuses a stale read in every mode.
 
+**A rewind from a snapshot stamps the row at the higher of the snapshot's event and the replayed events.** A stream's
+event ids do not always rise with its versions: events a retried handling returns
+[derive their ids from that older handling](../dispatcher/message-cascade#emission-identity), so they can be stored
+after a newer event and carry lower ids. When the newer event holds the stream's highest id and a snapshot was taken
+there, a rewind for the later, lower-id events restored the snapshot, folded them and moved the cursor, but stamped
+its write with the highest id it had replayed after the snapshot. That sat below the id the row already recorded, the
+EventId guard refused the write, and the row kept the snapshot's state
+([#2519](https://github.com/whizbang-lib/whizbang/issues/2519)). The restored snapshot holds its event's fold, so the
+row the rewind writes is stamped at the higher of the snapshot's event and the replayed events: the write lands, and
+the row is the fold in stream order. Only the row's stamp takes the snapshot's event; the cursor keeps the replayed
+position. A rewind from the stream's start is stamped at the replayed events alone, as before. A row left behind by
+the earlier behavior is corrected by the next rewind of its stream, or by a [rebuild](rebuild) of the perspective.
+{verified: RunnerBaseReplayTests.AReplayFromASnapshotAtTheStreamsHighestId_StampsTheRowAtTheSnapshotsEventAsync, RunnerBaseReplayTests.AReplayFromASnapshotBelowTheEventsAfterIt_StampsTheRowAtTheHighestReplayedIdAsync, PerspectiveRewindLoopTests.OneService_ReturnedEventsDerivedBehindANewerEvent_WithASnapshotOnIt_ConvergeAfterOneRewindInStreamOrderAsync, PerspectiveRewindLoopTests.TwoServices_DerivedEventsBehindANewerEvent_WithASnapshotOnIt_ConvergeAfterOneRewindInProducerOrderAsync}
+
 A redelivered event (a transport redelivery, a consumer retry) is still applied once: the runner's idempotency filter drops an event the row already carries before it reaches the store. A stale cross-pod read is still refused by the row-version check.
 
 ## Behavior summary
@@ -79,6 +95,7 @@ A redelivered event (a transport redelivery, a consumer retry) is still applied 
 | Newer event applied later | Wins | Wins |
 | Stale event applied later (older EventId) | **Wins (overwrites the row)** | **Skipped** |
 | Write at the row's own EventId (a rewind's correction) | Wins | Wins |
+| Rewind from a snapshot at the stream's highest EventId, replaying lower-id events stored after it | Wins | **Wins** (stamped at the snapshot's event) |
 | Rebuild write whose last event (by version) has an older EventId | Wins | **Wins** (CommitSequence guard) |
 | Same event redelivered | Dropped by the runner's idempotency filter | Dropped by the runner's idempotency filter |
 | Null `metadata.CommitSequence` on both sides | Last-writer-wins (current contract) | Falls back to EventId comparison |

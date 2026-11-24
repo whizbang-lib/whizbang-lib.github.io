@@ -1,8 +1,8 @@
 ---
 title: "WhizbangIds: Strongly-Typed Identity Values"
 pageType: concept
-verifiedAgainstCommit: 0bc6065b
-verifiedDate: 2026-08-05
+verifiedAgainstCommit: 'bf8517ac'
+verifiedDate: 2026-11-23
 version: 1.0.0
 category: "Core Concepts"
 order: 24
@@ -10,7 +10,7 @@ description: >-
   Whizbang uses strongly-typed identity values based on UUIDv7 for all identifiers.
   Provides compile-time type safety, prevents ID mixing, and enables AOT-compatible
   dependency injection with source-generated value types and TrackedGuid metadata.
-tags: 'whizbang-ids, identity, uuidv7, tracked-guid, type-safety, value-objects'
+tags: 'whizbang-ids, identity, uuidv7, tracked-guid, type-safety, value-objects, time-ordering, guid-interception'
 codeReferences:
   - src/Whizbang.Core/ValueObjects/NameBasedGuid.cs
   - src/Whizbang.Core/IWhizbangId.cs
@@ -27,8 +27,15 @@ codeReferences:
   - src/Whizbang.Core/WhizbangIdAttribute.cs
   - src/Whizbang.Core/UuidVersions.cs
   - src/Whizbang.Core/SuppressGuidInterceptionAttribute.cs
+  - src/Whizbang.Core/SuppressGuidOrderingValidationAttribute.cs
+  - src/Whizbang.Core/Validation/GuidOrderingSuppressions.cs
+  - src/Whizbang.Generators/GuidOrderingSuppressionRegistryGenerator.cs
   - src/Whizbang.Core/Configuration/WhizbangOptions.cs
   - src/Whizbang.Core/Validation/GuidOrderingValidator.cs
+  - src/Whizbang.Core/Validation/GuidOrderingException.cs
+  - src/Whizbang.Core/Validation/FrameworkNonTimeOrderedIds.cs
+  - src/Whizbang.Core/Observability/GuidOrderingMetrics.cs
+  - src/Whizbang.Generators/NonTimeOrderedIdAnalyzer.cs
   - src/Whizbang.Generators/WhizbangIdGenerator.cs
   - src/Whizbang.Generators/GuidInterceptorGenerator.cs
   - src/Whizbang.Generators/GuidUsageAnalyzer.cs
@@ -51,12 +58,22 @@ testReferences:
   - tests/Whizbang.Core.Tests/ValueObjects/Uuid7IdProviderTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/IWhizbangIdProviderGenericTests.cs
   - tests/Whizbang.Core.Tests/Validation/GuidOrderingValidatorTests.cs
+  - tests/Whizbang.Core.Tests/Validation/GuidOrderingEntryPointValidationTests.cs
+  - tests/Whizbang.Core.Tests/Validation/GuidOrderingInMemoryAppendTests.cs
+  - tests/Whizbang.Core.Tests/Validation/FrameworkNonTimeOrderedIdsTests.cs
+  - tests/Whizbang.Core.Tests/Validation/GuidOrderingSuppressionTests.cs
+  - tests/Whizbang.Generators.Tests/GuidOrderingSuppressionRegistryGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/NonTimeOrderedIdAnalyzerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/GuidOrderingRefusalMatrixTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/GuidOrderingEntryPointGuardTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperGuidOrderingRefusalMatrixTests.cs
+  - tests/Whizbang.Generators.Tests/GuidInterceptorRuntimeTests.cs
   - tests/Whizbang.Generators.Tests/WhizbangIdGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/GuidInterceptorGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/ThirdPartyGuidInterceptionTests.cs
   - tests/Whizbang.Generators.Tests/GuidUsageAnalyzerTests.cs
   - tests/Whizbang.Migrate.Tests/Transformers/GuidToTrackedGuidTransformerTests.cs
-lastMaintainedCommit: '01f07906'
+lastMaintainedCommit: 'bf8517ac'
 ---
 
 # WhizbangIds: Strongly-Typed Identity Values
@@ -149,7 +166,7 @@ Console.WriteLine(loaded.SubMillisecondPrecision); // false (unknown source)
 Console.WriteLine(loaded.Metadata);            // Version7 | SourceExternal (inferred)
 ```
 
-**Key Point**: Only GUIDs created through `New()`, `NewMicrosoftV7()`, or `NewRandom()` (and interceptor-generated `FromIntercepted` calls) have **authoritative** metadata (`IsTracking = true` — defined as having a `SourceWhizbang`, `SourceMedo` or `SourceMicrosoft` flag). GUIDs loaded from external sources have **inferred** metadata based on version detection.
+**Key Point**: Only GUIDs created through `New()`, `NewMicrosoftV7()`, or `NewRandom()` have **authoritative** metadata (`IsTracking = true`, defined as having a `SourceWhizbang`, `SourceMedo` or `SourceMicrosoft` flag). GUIDs loaded from external sources have **inferred** metadata based on version detection.
 
 ### Debugging with TrackedGuid
 
@@ -343,32 +360,84 @@ Console.WriteLine(deserialized.OrderId.Metadata);   // Version7 | SourceExternal
 
 **Important**: Metadata is **not preserved** across serialization boundaries. After deserialization, `IsTracking` will be `false` and metadata is inferred from the GUID version.
 
-## TrackedGuid Interception (Opt-In)
+## Guid Interception (On by Default) {#guid-interception}
 
-Whizbang includes an optional compile-time interceptor that automatically wraps GUID creation calls with `TrackedGuid`, preserving metadata about the GUID source and version.
+Whizbang ships a compile-time interceptor that replaces `Guid.NewGuid()` and `Guid.CreateVersion7()` with
+`TrackedGuid.New()`, the framework's UUIDv7 generator. A `Guid.NewGuid()` written anywhere in your project therefore
+returns a time-ordered UUIDv7 with counter precision, so an id minted that way can be used as an event or message id
+without being refused by the [time-ordering checks](#time-ordering-checks).
 
-### Enabling Interception
+Interception is on by default. A project that never sets `WhizbangGuidInterceptionEnabled` gets it
+{verified: GuidInterceptorRuntimeTests.InterceptedNewGuid_WithTheDefaultConfiguration_ReturnsVersion7Async, GuidInterceptorGeneratorTests.Generator_NoOptionSet_InterceptsByDefaultAsync, GuidInterceptorGeneratorTests.Generator_DeclaredButUnsetInterceptionProperty_KeepsInterceptionOnAsync}.
 
-Add to your project file to enable automatic interception:
+### What is intercepted
 
-```xml{title="Enabling Interception" description="Add to your project file to enable automatic interception:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Enabling", "Interception"]}
+| Call written | Returns with interception on |
+|--------------|------------------------------|
+| `Guid.NewGuid()` | `TrackedGuid.New()`: a UUIDv7, strictly increasing within the process |
+| `Guid.CreateVersion7()` | `TrackedGuid.New()`: a UUIDv7 that also orders within a millisecond |
+
+The intercepted method still returns a `Guid`, so no calling code changes
+{verified: GuidInterceptorGeneratorTests.Generator_NewGuid_IsReplacedWithTrackedGuidNewAsync, GuidInterceptorGeneratorTests.Generator_CreateVersion7_IsReplacedWithTrackedGuidNewAsync, GuidInterceptorRuntimeTests.InterceptedCreateVersion7_ReturnsVersion7Async, GuidInterceptorRuntimeTests.InterceptedNewGuid_IsTheCounterPrecisionGenerator_StrictlyIncreasingAsync}.
+
+```csharp{title="An intercepted Guid.NewGuid() is a UUIDv7" description="With interception on (the default), Guid.NewGuid() returns TrackedGuid.New()" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Interception", "UUIDv7"] tests=["GuidInterceptorRuntimeTests.InterceptedNewGuid_WithTheDefaultConfiguration_ReturnsVersion7Async", "GuidInterceptorRuntimeTests.InterceptedNewGuid_IsTheCounterPrecisionGenerator_StrictlyIncreasingAsync"]}
+// Your code
+var id = Guid.NewGuid();
+
+// What runs (generated interceptor)
+// internal static Guid Intercept_...() => TrackedGuid.New();
+
+// id.Version == 7, and each call sorts after the one before it
+```
+
+Calls the interceptor does not touch:
+
+- Calls inside `Whizbang.*` namespaces; the framework mints its own ids
+  {verified: GuidInterceptorGeneratorTests.Generator_CallerInWhizbangNamespace_NotInterceptedAsync}.
+- `Guid.Parse`, `Guid.Empty` and constructors such as `new Guid(bytes)`
+  {verified: GuidInterceptorGeneratorTests.Generator_GuidParse_NotInterceptedAsync, GuidInterceptorGeneratorTests.Generator_GuidEmpty_NotInterceptedAsync}.
+  An interceptor cannot reach these, or a value read from the wire, so [WHIZ037](../../operations/diagnostics/whiz037)
+  warns when one of them flows into a message id, an event id or a `[StreamId]` member.
+- Third-party generators such as Marten's `CombGuidIdGeneration`, UUIDNext and Medo.Uuid7. They already return
+  time-ordered ids, and an interceptor cannot attach metadata to the `Guid` they return, so no interceptor is generated
+  for them
+  {verified: ThirdPartyGuidInterceptionTests.Generator_ThirdPartyCall_IsNotInterceptedAsync, ThirdPartyGuidInterceptionTests.Generator_ThirdPartyCall_CompilesWithInterceptionOnAsync, ThirdPartyGuidInterceptionTests.Generator_MixedWithSystemGuid_InterceptsOnlySystemGuidAsync}.
+
+### The interceptors namespace
+
+The generated interceptors live in the `Whizbang.Generators.Generated` namespace, which the C# compiler must be told to
+allow. The generator package's props adds it to `InterceptorsNamespaces` for every project that references the
+package, so a NuGet consumer has nothing to set. A project that references the generator as a project, rather than as a
+package, adds it itself:
+
+```xml{title="Allow the interceptors namespace" description="Only for a project that references the generator as a project; the NuGet package sets this for you" category="Configuration" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Interception", "MSBuild"] unverified="MSBuild property; the package's props sets it for consumers"}
 <PropertyGroup>
-  <WhizbangGuidInterceptionEnabled>true</WhizbangGuidInterceptionEnabled>
+  <InterceptorsNamespaces>$(InterceptorsNamespaces);Whizbang.Generators.Generated</InterceptorsNamespaces>
 </PropertyGroup>
 ```
 
-When enabled, the following calls are intercepted:
-- `Guid.NewGuid()` → `TrackedGuid` with `Version4 | SourceMicrosoft`
-- `Guid.CreateVersion7()` → `TrackedGuid` with `Version7 | SourceMicrosoft`
-- Third-party libraries (Marten, UUIDNext, Medo.Uuid7)
+### Turning interception off {#turning-interception-off}
 
-### How It Works
+**Turning interception off is strongly advised against.** Without it, every `Guid.NewGuid()` in your code is a random
+UUIDv4 again, and any of them that becomes an event or message id is refused by the
+[time-ordering checks](#time-ordering-checks) at runtime instead of being fixed at compile time. Keep a deliberate v4
+with `[SuppressGuidInterception]` at the one place that needs it instead.
 
-The `GuidInterceptorGenerator` uses C# 12 `[InterceptsLocation]` to replace GUID creation calls at compile-time.
+If you must, only the value `false` turns it off (in any case, with surrounding whitespace ignored); an unset, blank or
+unrecognized value leaves it on. With it off, no interceptor is generated and WHIZ058 is not reported
+{verified: GuidInterceptorGeneratorTests.IsInterceptionEnabled_OnlyFalseTurnsItOffAsync, GuidInterceptorGeneratorTests.Generator_InterceptionSetToFalse_GeneratesAndReportsNothingAsync, GuidInterceptorGeneratorTests.Generator_BlankInterceptionProperty_KeepsInterceptionOnAsync, GuidInterceptorRuntimeTests.InterceptionTurnedOff_ReturnsVersion4Async}.
+
+```xml{title="Turning interception off (strongly advised against)" description="Only false turns interception off; prefer [SuppressGuidInterception] where one v4 is needed" category="Configuration" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Interception", "MSBuild"] tests=["GuidInterceptorGeneratorTests.Generator_InterceptionSetToFalse_GeneratesAndReportsNothingAsync", "GuidInterceptorRuntimeTests.InterceptionTurnedOff_ReturnsVersion4Async"]}
+<PropertyGroup>
+  <!-- Strongly advised against: Guid.NewGuid() returns a random v4 again -->
+  <WhizbangGuidInterceptionEnabled>false</WhizbangGuidInterceptionEnabled>
+</PropertyGroup>
+```
 
 #### GuidMetadatas Flags {#guid-metadata}
 
-The `GuidMetadatas` flags enum (declared in `GuidMetadata.cs`) tracks both the UUID version and creation source:
+The `GuidMetadatas` flags enum (declared in `GuidMetadata.cs`) tracks both the UUID version and creation source of a
+`TrackedGuid`:
 
 ```csharp{title="GuidMetadatas Flags" description="The GuidMetadatas flags enum tracks both the UUID version and creation source:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "GuidMetadatas", "Flags"] tests=["GuidMetadataTests.GuidMetadata_Version4_IsBit0Async", "GuidMetadataTests.GuidMetadata_Version7_IsBit1Async", "GuidMetadataTests.GuidMetadata_SourceMedo_IsBit2Async", "GuidMetadataTests.GuidMetadata_SourceWhizbang_IsBit14Async", "GuidMetadataTests.GuidMetadata_SourceMicrosoft_IsBit3Async", "GuidMetadataTests.GuidMetadata_SourceExternal_IsBit5Async", "GuidMetadataTests.GuidMetadata_ThirdPartySources_HaveCorrectBitPositionsAsync", "GuidMetadataTests.GuidMetadata_UnderlyingType_IsUshortAsync", "GuidMetadataTests.GuidMetadata_HasFlagsAttribute_ReturnsTrueAsync"]}
 namespace Whizbang.Core.ValueObjects;
@@ -382,7 +451,7 @@ public enum GuidMetadatas : ushort {
   Version7 = 1 << 1,  // Time-ordered UUID - chronologically sortable
 
   // Creation Source (bits 2-6)
-  SourceMedo = 1 << 2,       // Medo.Uuid7 called directly (detected by interception)
+  SourceMedo = 1 << 2,       // Medo.Uuid7
   SourceMicrosoft = 1 << 3,  // Guid.NewGuid() / CreateVersion7()
   SourceParsed = 1 << 4,     // Parsed from string
   SourceExternal = 1 << 5,   // From database, API, deserialization
@@ -402,29 +471,6 @@ public enum GuidMetadatas : ushort {
 }
 ```
 
-**Usage**:
-
-```csharp{title="GuidMetadatas Flags (2)" description="GuidMetadatas Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "GuidMetadatas", "Flags"] tests=["TrackedGuidTests.TrackedGuid_FromIntercepted_PreservesExactMetadataAsync", "TrackedGuidTests.TrackedGuid_FromIntercepted_PreservesGuidValueAsync", "TrackedGuidTests.TrackedGuid_FromIntercepted_WithV4_IsNotTimeOrderedAsync"]}
-// Your code (with interception enabled)
-var id = Guid.NewGuid();
-
-// After interception (generated code — FromIntercepted is internal,
-// callable only by the generated interceptors)
-var id = TrackedGuid.FromIntercepted(
-    Guid.NewGuid(),
-    GuidMetadatas.Version4 | GuidMetadatas.SourceMicrosoft);
-
-// Check metadata flags
-bool isV7 = (id.Metadata & GuidMetadatas.Version7) != 0;
-bool fromWhizbang = (id.Metadata & GuidMetadatas.SourceWhizbang) != 0;  // TrackedGuid.New()
-bool fromMedo = (id.Metadata & GuidMetadatas.SourceMedo) != 0;          // consumer code calling Medo.Uuid7
-
-// Common combinations (internal helpers)
-// WHIZBANG_V7 = Version7 | SourceWhizbang
-// MICROSOFT_V7 = Version7 | SourceMicrosoft
-// EXTERNAL_V7 = Version7 | SourceExternal
-```
-
 **Why Track Sources?**
 
 Different GUID generators have different characteristics:
@@ -433,23 +479,23 @@ Different GUID generators have different characteristics:
 - **Microsoft v4**: Random, not time-ordered
 - **External**: Unknown precision and ordering guarantees
 
-Tracking the source helps you:
-- Validate time-ordering assumptions
-- Debug GUID generation issues
-- Enforce UUIDv7 usage policies
-- Understand precision limitations
+An intercepted call returns a plain `Guid`, so it carries no metadata; hold a `TrackedGuid` from `TrackedGuid.New()`
+where you want the source recorded.
 
 ### Suppressing Interception
 
-Use `[SuppressGuidInterception]` to opt-out of interception:
+Use `[SuppressGuidInterception]` to keep the original call where a random v4 is genuinely wanted. The suppressed call
+returns a v4, and [WHIZ059](../../operations/diagnostics/whiz059) records it
+{verified: GuidInterceptorRuntimeTests.SuppressedNewGuid_ReturnsVersion4Async}. Such an id must not become an event or
+message id: the time-ordering checks refuse it.
 
-```csharp{title="Suppressing Interception" description="Use [SuppressGuidInterception] to opt-out of interception:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Suppressing", "Interception"] tests=["GuidInterceptorGeneratorTests.Generator_SuppressOnMethod_NoInterceptionAsync", "GuidInterceptorGeneratorTests.Generator_SuppressOnClass_NoInterceptionAsync", "GuidInterceptorGeneratorTests.Generator_SuppressedCall_ReportsWHIZ059DiagnosticAsync"]}
+```csharp{title="Suppressing Interception" description="Use [SuppressGuidInterception] to keep a deliberate v4" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Suppressing", "Interception"] tests=["GuidInterceptorGeneratorTests.Generator_SuppressOnMethod_NoInterceptionAsync", "GuidInterceptorGeneratorTests.Generator_SuppressOnClass_NoInterceptionAsync", "GuidInterceptorGeneratorTests.Generator_SuppressedCall_ReportsWHIZ059DiagnosticAsync", "GuidInterceptorRuntimeTests.SuppressedNewGuid_ReturnsVersion4Async"]}
 using Whizbang.Core;
 
 public class LegacyService {
   [SuppressGuidInterception]
   public Guid CreateLegacyId() {
-    return Guid.NewGuid();  // Not intercepted
+    return Guid.NewGuid();  // Not intercepted: a random v4
   }
 }
 
@@ -460,11 +506,16 @@ public class TestFixtures {
 }
 ```
 
-### Runtime Validation
+A `#pragma warning disable WHIZ055` (or `WHIZ056`) region around a call also skips interception for that call, without
+reporting WHIZ059 {verified: GuidInterceptorGeneratorTests.Generator_PragmaDisableWhiz055_SuppressesInterceptionAsync}.
 
-Use `GuidOrderingValidator` to validate TrackedGuids at runtime:
+### Checking a TrackedGuid yourself
 
-```csharp{title="Runtime Validation" description="Use GuidOrderingValidator to validate TrackedGuids at runtime:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Runtime", "Validation"] tests=["GuidOrderingValidatorTests.ValidateForTimeOrdering_WithV4Guid_LogsWarningByDefaultAsync", "GuidOrderingValidatorTests.ValidateForTimeOrdering_WithV7Guid_PassesValidationAsync", "GuidOrderingValidatorTests.WhizbangOptions_HasCorrectDefaultsAsync"]}
+`GuidOrderingValidator.ValidateForTimeOrdering` checks one `TrackedGuid` against the same severity the entry points use
+(see [Time-ordering checks](#time-ordering-checks)). The framework already runs its checks at every entry point; call
+this only for an id of your own that you need to be time-ordered.
+
+```csharp{title="Checking a TrackedGuid" description="ValidateForTimeOrdering throws at Error and logs at Warning or Info" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Runtime", "Validation"] tests=["GuidOrderingValidatorTests.ValidateForTimeOrdering_WithV4Guid_LogsWarningAtWarningAsync", "GuidOrderingValidatorTests.ValidateForTimeOrdering_WithV7Guid_PassesValidationAsync", "GuidOrderingValidatorTests.ValidateForTimeOrdering_WithSeverityError_ThrowsExceptionAsync", "GuidOrderingValidatorTests.WhizbangOptions_HasCorrectDefaultsAsync"]}
 using Whizbang.Core.Configuration;
 using Whizbang.Core.Validation;
 
@@ -473,19 +524,17 @@ var options = new WhizbangOptions {
 };
 var validator = new GuidOrderingValidator(options, logger);
 
-// Validates that the GUID is time-ordered (v7)
+// Logs a warning if trackedGuid is not a UUIDv7; at Error (the default) it throws GuidOrderingException
 validator.ValidateForTimeOrdering(trackedGuid, "EventId");
-// Logs warning if v4 GUID is used where v7 is expected
 ```
 
-Configuration options:
-- `DisableGuidTracking` - Bypass all validation (default: `false`)
-- `GuidOrderingViolationSeverity` - `None`, `Info`, `Warning` (default), `Error`
+`DisableGuidTracking` bypasses `ValidateForTimeOrdering` only; it does not turn off the entry point checks.
 
 ### Diagnostics
 
-- **[WHIZ058](../../operations/diagnostics/whiz058.md)** - Info: GUID call intercepted
-- **[WHIZ059](../../operations/diagnostics/whiz059.md)** - Info: Interception suppressed
+- **[WHIZ058](../../operations/diagnostics/whiz058)** - Info: GUID call intercepted and replaced with `TrackedGuid.New()`
+- **[WHIZ059](../../operations/diagnostics/whiz059)** - Info: Interception suppressed
+- **[WHIZ037](../../operations/diagnostics/whiz037)** - Warning: a constructed or parsed Guid flows into an id
 
 ## GuidUsageAnalyzer: Roslyn Analyzer (WHIZ055-WHIZ056) {#analyzer}
 
@@ -523,6 +572,10 @@ var orderId = OrderId.New();
 
 **Impact**: B-tree indexes in PostgreSQL/SQL Server fragment over time, causing page splits and degraded performance.
 
+With [Guid interception](#guid-interception) on, the default, the call is replaced with `TrackedGuid.New()` at
+compile time, so the id is a UUIDv7 anyway. The warning stays so the code says what it gets: write `TrackedGuid.New()`
+or a `[WhizbangId]` type.
+
 ### WHIZ056: Guid.CreateVersion7() Usage
 
 **Severity**: Warning
@@ -558,7 +611,9 @@ for (int i = 0; i < 100; i++) {
 
 ### Suppressing Analyzer Warnings
 
-For **legitimate cases** where you need raw GUID operations:
+For **legitimate cases** where you need raw GUID operations. A `#pragma warning disable WHIZ055` (or `WHIZ056`)
+region also skips interception for the calls inside it, so they return their original values; the `SuppressMessage`
+attribute and `NoWarn` only hide the warning, and those calls are still intercepted:
 
 ```csharp{title="Suppressing Analyzer Warnings" description="For legitimate cases where you need raw GUID operations:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Suppressing", "Analyzer"] tests=["GuidUsageAnalyzerTests.Analyzer_WithPragmaSuppress_NoErrorAsync"]}
 // Suppress for specific line
@@ -702,10 +757,11 @@ Guid underlyingGuid = orderId.Value;
 
 ### Ids that are not UUIDv7 {#accept-any-version}
 
-Some identities are not UUIDv7 and never will be: name-derived ids (UUIDv5 or v8), ids derived from a hash, and
-v4 ids issued by an external identity provider. When you know which versions an id's values are made with, list them
-with [`Versions`](#accepted-versions) and keep the id strict. For ids issued outside your system, whose version you
-do not control, declare `AcceptAnyVersion = true`:
+Ids your application makes are UUIDv7: `New()` mints one, and the framework's derivations
+(`GeneratedStreamIdentity.Derive`, `EmissionIdentity.Derive`, `CompositeChildIdentity.ForChild`) all produce v7. Some
+values an id must hold are not: ids already in stored data from before the application used UUIDv7, and ids another
+system issues. When you know which versions those are, list them with [`Versions`](#accepted-versions) and keep the
+id strict. For ids issued outside your system, whose version you do not control, declare `AcceptAnyVersion = true`:
 
 ```csharp{title="Accepting any Guid version" description="An id that takes any non-empty Guid, such as one issued by an external identity provider" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "AcceptAnyVersion"] tests=["WhizbangIdVersionAcceptanceTests.AnyVersion_FromGuid_RoundTripsAsync", "WhizbangIdVersionAcceptanceTests.AnyVersion_New_StillProducesUuidV7Async", "WhizbangIdVersionAcceptanceTests.AnyVersion_EmptyGuid_IsRejectedByTheCheckedEntryPointsAsync", "WhizbangIdVersionAcceptanceTests.Strict_NonV7_IsRejectedByFromParseCastAndJsonAsync"]}
 using Whizbang.Core;
@@ -759,9 +815,10 @@ On an id declared with `AcceptAnyVersion = true`, values are no longer known to 
   returns a time read from bits that do not hold one.
 - Database indexes on that id lose the locality that time-ordered values give them.
 
-The framework's own ordering guarantees are unaffected: they rely on the message and event ids the framework mints.
-A stream id you supply is only hashed for partitioning and sorted for lock ordering, and neither depends on its
-version.
+The framework's own ordering guarantees are unaffected: they rely on event and message ids, which must be UUIDv7
+(see [Time-ordering checks](#time-ordering-checks)). A stream id you supply is only hashed for partitioning and sorted
+for lock ordering, and neither depends on its version; an `AcceptAnyVersion` stream id is never reported (see
+[Stream id versions](#stream-id-versions)).
 
 The default stays strict, so declare the option only on ids whose values come from outside. For ids your system
 creates, keep the default, so they stay UUIDv7 and sort by creation time.
@@ -775,53 +832,62 @@ others (UUIDv7, or their `Versions` list), whatever order the attributes are fou
 
 ### A list of accepted versions {#accepted-versions}
 
-Ids your system derives on purpose sit between the two rules. An id that is minted with `New()` in one place and
-derived without coordination from the same facts in another (every writer arrives at the same id with
-`NameBasedGuid.V5`) holds UUIDv7 and UUIDv5 values, and nothing else. `AcceptAnyVersion` would let it take a random v4
-minted by a browser, a raw hash poured into a Guid, or a value pasted from another kind of id. List the versions
-instead:
+`Versions` sits between the two rules, for an id that must also hold values the application did not make, from a
+source whose versions are known. Customers imported from a previous CRM keep their v4 ids, for example, while new ones
+are minted as v7. `AcceptAnyVersion` would let such an id take anything: a raw hash poured into a Guid, or a value
+pasted from another kind of id. List the versions instead:
 
-```csharp{title="Accepting a list of versions" description="An id that is minted (v7) or derived by name (v5), and refuses every other version" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "Versions"] tests=["WhizbangIdVersionAcceptanceTests.AllowList_AcceptedVersion_RoundTripsThroughEveryCheckedEntryPointAsync", "WhizbangIdVersionAcceptanceTests.AllowList_VersionNotInTheList_IsRejectedByEveryCheckedEntryPointAsync", "WhizbangIdVersionAcceptanceTests.AllowList_Refusal_NamesTheAcceptedVersionsAndTheOneReceivedAsync", "WhizbangIdVersionAcceptanceTests.AllowList_New_StillProducesUuidV7Async"]}
+```csharp{title="Accepting a list of versions" description="An id that is minted (v7) or imported from another system (v4), and refuses every other version" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "Versions"] tests=["WhizbangIdVersionAcceptanceTests.AllowList_AcceptedVersion_RoundTripsThroughEveryCheckedEntryPointAsync", "WhizbangIdVersionAcceptanceTests.AllowList_VersionNotInTheList_IsRejectedByEveryCheckedEntryPointAsync", "WhizbangIdVersionAcceptanceTests.AllowList_Refusal_NamesTheAcceptedVersionsAndTheOneReceivedAsync", "WhizbangIdVersionAcceptanceTests.AllowList_New_StillProducesUuidV7Async"]}
 using Whizbang.Core;
-using Whizbang.Core.ValueObjects;
 
-[WhizbangId(Versions = UuidVersions.V7 | UuidVersions.V5)]
-public readonly partial struct ConnectorId;
+// New customers are minted here; customers imported from the previous CRM keep their v4 ids.
+[WhizbangId(Versions = UuidVersions.V7 | UuidVersions.V4)]
+public readonly partial struct CustomerId;
 
-var minted = ConnectorId.New();                                       // v7: accepted
-var derived = ConnectorId.From(NameBasedGuid.V5(ns, "tenant-a/crm")); // v5: accepted
+var minted = CustomerId.New();                                                      // v7: accepted
+var imported = CustomerId.Parse("3f2504e0-4f89-41d3-9a0c-0305e82c3301");           // v4: accepted
 
-// A v4 from crypto.randomUUID(): throws ArgumentException
-// "ConnectorId requires UUIDv5 or UUIDv7 but received version 4"
-ConnectorId.Parse("3f2504e0-4f89-41d3-9a0c-0305e82c3301");
+// A v5 hash: throws ArgumentException
+// "CustomerId requires UUIDv4 or UUIDv7 (RFC 9562 variant) but received version 5, variant 9"
+CustomerId.Parse("886313e1-3b8a-5372-9b90-0c9aee199e5d");
 ```
+
+A value must have a listed version and the RFC 9562 variant (the top two bits of octet 8 are `10`). Random or hashed
+bytes carry a listed version nibble by chance far more often than they also carry the variant
+{verified: WhizbangIdVersionAcceptanceTests.AllowList_ListedVersionWithAnotherVariant_IsRejectedByEveryCheckedEntryPointAsync}.
 
 `UuidVersions` is a flags enum with one flag per RFC 9562 version, `V1` to `V8`. `Versions` defaults to `V7`, so an
 id that does not write it, or writes `Versions = UuidVersions.V7`, generates exactly the code it always has.
 
-| Way in | Default | `Versions = V7 \| V5` | `AcceptAnyVersion = true` |
+| Way in | Default | `Versions = V7 \| V4` | `AcceptAnyVersion = true` |
 |--------|---------|----------------------|---------------------------|
-| `From(Guid)`, `From(TrackedGuid)`, `Parse`, explicit cast, transport JSON reader, GraphQL scalar | v7 only | v7 or v5 | any non-empty |
+| `From(Guid)`, `From(TrackedGuid)`, `Parse`, explicit cast, transport JSON reader, GraphQL scalar | v7 only | v7 or v4, RFC variant | any non-empty |
 | `Guid.Empty` | refused | refused | refused |
 | Public constructor, `Value` initializer (load path) | not checked | not checked | not checked |
 | `New()` | v7 | v7 | v7 |
 
-Only v7 values are time-ordered: an accepted v5 has `IsTimeOrdered` `false`, `GetTimestamp()` returns no meaningful
-time, and comparisons involving it do not order by creation time ([What the option costs](#what-the-option-costs)
-applies to the non-v7 values).
+Only v7 values are time-ordered, so a value of another version costs what time-ordering gave. It has
+`IsTimeOrdered` `false`, `GetTimestamp()` returns no meaningful time, and `CompareTo` and the ordering operators no
+longer follow creation order ([What the option costs](#what-the-option-costs) applies to the non-v7 values). Used as a
+stream id, it also loses the index locality time-ordered values give a database: its rows land across the index
+rather than at its end. The framework's own ordering is unaffected, since it relies on the message and event ids it
+mints, and a stream id is only hashed for partitioning and sorted for lock ordering.
 
-Do not stamp version 7 over hashed bits to make a derived id pass the default rule: the timestamp bits would be
-meaningless, so `GetTimestamp()` would lie and ordering would be random. An honest v5 in the list is better.
+Do not stamp version 7 over hashed bits to make a value pass the default rule: the timestamp bits would be
+meaningless, so `GetTimestamp()` would lie and ordering would be random. An honest version in the list is better.
 
 The declarations of one id must agree:
 
 - When they list different versions, the id accepts the versions they have in common, whatever order the attributes
-  are found in, and [WHIZ037](../../operations/diagnostics/whiz037) is reported at each list that was narrowed. An
+  are found in, and [WHIZ038](../../operations/diagnostics/whiz038) is reported at each list that was narrowed. An
   omitted `Versions` counts as `V7`.
 - Writing `Versions` together with `AcceptAnyVersion = true` is the error
-  [WHIZ038](../../operations/diagnostics/whiz038).
-- An empty list (`UuidVersions.None`), or declarations with no version in common, is the error
   [WHIZ039](../../operations/diagnostics/whiz039).
+- An empty list (`UuidVersions.None`), or declarations with no version in common, is the error
+  [WHIZ043](../../operations/diagnostics/whiz043), reported at a declaration that wrote `Versions`. An ignored
+  `AcceptAnyVersion` opt-in is still [WHIZ029](../../operations/diagnostics/whiz029) then, naming the UUIDv7 fallback.
+- A bit that names no version, such as `(UuidVersions)1` or a bit above 8, is the error
+  [WHIZ044](../../operations/diagnostics/whiz044).
 
 ### Grandfathered values {#grandfathered-values}
 
@@ -831,36 +897,295 @@ application minted UUIDv7. Re-keying them means an upcaster for the stream and f
 id, and a rebuild of every affected perspective. Opening the type with `AcceptAnyVersion` drops the protection for
 every future value just to admit a few old ones.
 
-Instead, name them. Every generated id declares a partial method, `IsGrandfathered`, that the id type can implement:
+Instead, name them. A strict or allow-list id declares a partial method, `_isGrandfathered`, that the id type can
+implement:
 
-```csharp{title="Grandfathering a frozen set of values" description="A strict id that accepts a few seeded values that predate the UUIDv7 rule, and refuses every other non-v7 value" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "Grandfathered"] tests=["WhizbangIdGrandfatheredTests.Grandfathered_IsAcceptedByEveryCheckedEntryPointAsync", "WhizbangIdGrandfatheredTests.NotGrandfathered_IsStillRefusedAsync", "WhizbangIdGrandfatheredTests.EmptyGuid_IsRefusedWhateverTheHookSaysAsync"]}
+```csharp{title="Grandfathering a frozen set of values" description="A strict id that accepts a few seeded values that predate the UUIDv7 rule, and refuses every other non-v7 value" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "Grandfathered"] tests=["WhizbangIdGrandfatheredTests.Grandfathered_IsAcceptedByEveryCheckedEntryPointAsync", "WhizbangIdGrandfatheredTests.NotGrandfathered_IsStillRefusedByEveryCheckedEntryPointAsync", "WhizbangIdGrandfatheredTests.EmptyGuid_IsRefusedByEveryCheckedEntryPointWhateverTheHookSaysAsync"]}
 using System.Collections.Frozen;
 using Whizbang.Core;
 
 [WhizbangId]
 public readonly partial struct ProductCatalogId {
   // Seeded before ids were UUIDv7. Frozen: new values are always minted.
-  private static readonly FrozenSet<Guid> _grandfathered = new[] {
+  private static readonly FrozenSet<Guid> _grandfatheredValues = new[] {
     new Guid("3f2504e0-4f89-41d3-9a0c-0305e82c3301"),
     new Guid("6ba7b810-9dad-41d1-80b4-00c04fd430c8"),
   }.ToFrozenSet();
 
-  static partial void IsGrandfathered(Guid value, ref bool grandfathered) =>
-    grandfathered = _grandfathered.Contains(value);
+  // As declared: no accessibility modifier.
+  static partial void _isGrandfathered(Guid value, ref bool grandfathered) =>
+    grandfathered = _grandfatheredValues.Contains(value);
 }
 ```
 
 - `From`, `Parse`, the explicit cast, the transport JSON reader and the GraphQL scalar ask the hook when a value
   breaks the id's rule (UUIDv7, or its `Versions` list), and accept the value when the hook sets `grandfathered`.
   Every other value is still refused.
-- `Guid.Empty` is never grandfathered, whatever the hook says, and `New()` mints UUIDv7 as always.
-- An id that does not implement the hook behaves as before: the compiler removes the call.
+- The hook is never asked about `Guid.Empty`, which every checked entry point refuses whatever the hook would say,
+  and `New()` mints UUIDv7 as always {verified: WhizbangIdGrandfatheredTests.EmptyGuid_IsRefusedByEveryCheckedEntryPointWhateverTheHookSaysAsync}.
+- An id that does not implement the hook behaves as before: the compiler removes the call
+  {verified: WhizbangIdGrandfatheredTests.Unimplemented_TheCompilerRemovesTheHook_AndTheIdRefusesAsync}.
 - The hook runs for every value that breaks the rule, so keep it a set lookup: no I/O, no large computation.
-- It is a `void` method with a `ref` result because C# lets only a `void` partial method go unimplemented.
-- It composes with [`Versions`](#accepted-versions); on an `AcceptAnyVersion` id, which refuses only `Guid.Empty`,
-  it is never asked.
+- Implement it as declared, without an accessibility modifier: C# lets a partial method go unimplemented only when it
+  has none, and an implementation that adds one (`private`, which IDE0040 may suggest) is CS8799
+  {verified: WhizbangIdGrandfatheredTests.HookImplementedWithAModifier_IsCs8799Async}. Without one the method is
+  private, which is why its name is `_camelCase`. It is a `void` method with a `ref` result for the same reason.
+- It composes with [`Versions`](#accepted-versions). An `AcceptAnyVersion` id refuses only `Guid.Empty`, so it has no
+  hook: it declares none, and an implementation on one is a compile error (CS0759)
+  {verified: WhizbangIdGrandfatheredTests.AnyVersionId_DeclaresNoHook_AndImplementingOneIsCs0759Async}.
 
 Keep the list frozen, and track it down to zero as the old values are retired.
+
+## Time-ordering checks {#time-ordering-checks}
+
+Event and message ids must be UUIDv7. The framework checks each one where it enters, before any SQL runs, and refuses
+an id that is not a UUIDv7 with a `GuidOrderingException`.
+
+### Why event and message ids must be time-ordered {#why-time-ordered}
+
+The framework reads the time in these ids in several places, and a non-v7 id would put events in the wrong order:
+
+- **Version assignment** orders the events of one stream in a batch by `message_id` before numbering them.
+- **Apply order** breaks ties on `event_id` (`ORDER BY version, event_id`) when perspectives apply events.
+- **Replay** falls back to `event_id` order when nothing else orders two events.
+- **Deduplication** keys on `event_id`, so an id that is not unique in time collides with the wrong event.
+- **Lifecycle completions** (`wh_lifecycle_completions`) are partitioned by day using the timestamp in `event_id`. A
+  non-v7 id lands in the default partition, which is never dropped.
+
+A random UUIDv4 carries no time, and a UUIDv5 or v8 carries a hash, so any of these orders becomes arbitrary.
+
+### Where ids are checked {#time-ordering-entry-points}
+
+Every path that brings a new event or message id into the framework runs the check
+{verified: GuidOrderingEntryPointGuardTests.EveryEntryPointImplementation_RunsTheCheckOrForwardsToOneThatDoesAsync, GuidOrderingEntryPointGuardTests.TheValidator_HasCallersAtEveryNamedEntryPointAsync}:
+
+| Entry point | What is checked |
+|-------------|-----------------|
+| Work coordinator strategies (Immediate, Interval, Batch, Scoped, StreamAffinity) | Each message passed to `QueueOutboxMessage` and `QueueInboxMessage` |
+| EF Core and Dapper work coordinators | Every outbox and inbox write, including dead letters, handler commits and coalesce; an inbox write's stream id is reported (see [Stream id versions](#stream-id-versions)) |
+| Event store appends (EF Core, Dapper PostgreSQL, SQLite, in memory) | The envelope's message id, which becomes the event id; the stream id is reported (see [Stream id versions](#stream-id-versions)) |
+| Dispatcher | Ids a caller supplies: a cascade's source envelope, a composite's carried child ids, and an id a subclass passes to `CascadeToOutboxAsync` or `CascadeToEventStoreOnlyAsync` |
+| Transport receive | The strong id's JSON converter refuses a non-v7 id when the envelope is deserialized |
+
+A batch with one refused id writes none of its rows
+{verified: GuidOrderingRefusalMatrixTests.StoreOutbox_NonV7_IsRefusedAndStoresNothingAsync, GuidOrderingRefusalMatrixTests.StoreInbox_NonV7_IsRefusedAndStoresNothingAsync, GuidOrderingRefusalMatrixTests.StoreDeadLetters_NonV7_IsRefusedAndStoresNothingAsync, GuidOrderingRefusalMatrixTests.EventStoreAppend_NonV7_IsRefusedAndStoresNothingAsync, GuidOrderingRefusalMatrixTests.ABatchWithOneRefusedId_StoresNoneOfItsRowsAsync, DapperGuidOrderingRefusalMatrixTests.ABatchWithOneRefusedId_StoresNoneOfItsRowsAsync, GuidOrderingInMemoryAppendTests.Append_NonV7EventId_IsRefusedAndTheStreamStaysEmptyAsync}.
+
+Ids the framework mints itself (`MessageId.New()`, `TrackedGuid.New()`, and ids derived from a message id) are always
+UUIDv7 and are never refused.
+
+### GuidOrderingException {#guid-ordering-exception}
+
+The exception names the refused id, the message type, the entry point and the version it received, and exposes them as
+`Id`, `MessageType`, `EntryPoint` and `Version`
+{verified: GuidOrderingEntryPointValidationTests.ValidateMessageId_NonV7AtError_ThrowsNamingIdTypeEntryPointAndVersionAsync}:
+
+```text{title="GuidOrderingException message" description="The message for a v4 id refused at an outbox write" category="Diagnostics" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "GuidOrderingException"] unverified="message text read from GuidOrderingValidator"}
+EFCoreWorkCoordinator.OutboxWrite refused message id 3f2504e0-4f89-41d3-9a0c-0305e82c3301 for OrderPlaced: version 4, but event and message ids must be UUIDv7 (time-ordered). Mint it with TrackedGuid.New() or a [WhizbangId] type; GuidOrderingViolationSeverity can lower this to a warning.
+```
+
+The fix is to mint the id with `TrackedGuid.New()`, `MessageId.New()` or a `[WhizbangId]` type's `New()`. With
+[Guid interception](#guid-interception) on, the default, a `Guid.NewGuid()` already returns a UUIDv7.
+
+### Severity {#time-ordering-severity}
+
+`WhizbangOptions.GuidOrderingViolationSeverity` (configuration key `Whizbang:GuidOrderingViolationSeverity`) decides
+what happens to a non-v7 event or message id. The default is `Error`
+{verified: GuidOrderingEntryPointValidationTests.Default_SeverityIsError_AndTheStreamSeverityIsWarningAsync, GuidOrderingEntryPointValidationTests.ValidateMessageId_TheDefaultValidator_RefusesAV4Async}.
+
+| Severity | A non-v7 event or message id |
+|----------|------------------------------|
+| `Error` (default) | Refused with `GuidOrderingException` |
+| `Warning` | Accepted, logged once at Warning, and counted |
+| `Info` | Accepted, logged once at Information, and counted |
+| `None` | Accepted silently |
+
+Some rules hold at every severity:
+
+- **`Guid.Empty` is always refused**
+  {verified: GuidOrderingEntryPointValidationTests.ValidateMessageId_EmptyIsRefusedAtEverySeverityAsync}.
+- **One message type can opt out.** A type carrying `[SuppressGuidOrderingValidation]` has its non-v7 ids accepted
+  at `Error` and still logged and counted (see
+  [Suppressing the time-ordering check](#suppressing-the-time-ordering-check)).
+- **A UUIDv7 is always accepted silently**
+  {verified: GuidOrderingEntryPointValidationTests.ValidateMessageId_V7_IsAcceptedSilentlyAtEverySeverityAsync}.
+- **Transport receive stays strict.** The generated JSON converter for a strong id calls its checked `From`, so a
+  non-v7 id on the wire fails deserialization, and the broker dead-letters the message, whatever the severity.
+
+At `Warning` or `Info`, each distinct id is logged once and counted once in the `Whizbang.GuidOrdering` meter (see
+[Metrics: time-ordering checks](../../operations/observability/metrics#time-ordering-checks)), so the count is the
+number of offending ids and can be driven to zero. The memory of ids already reported is bounded at 100,000
+(`GuidOrderingValidator.MAX_REMEMBERED_IDS`); when it fills it is cleared, and an id may then be reported again
+{verified: GuidOrderingEntryPointValidationTests.ValidateMessageId_AtWarning_LogsAndCountsEachIdOnceAsync, GuidOrderingEntryPointValidationTests.ValidateMessageId_AtInfo_LogsAtInformationAsync, GuidOrderingEntryPointValidationTests.ValidateMessageId_AtNone_AcceptsSilentlyAsync, GuidOrderingEntryPointValidationTests.ValidateMessageId_TheOncePerIdMemoryIsBounded_AndForgetsWhenFullAsync}.
+
+To move an existing application onto the check, lower the severity to `Warning`, watch
+`whizbang.guid_ordering.non_v7_message_ids` until it stays at zero, then return to `Error`:
+
+```csharp{title="Finding non-v7 ids without refusing them" description="Lower the severity while you find and fix the code that mints non-v7 ids" category="Configuration" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "GuidOrdering", "Severity"] tests=["GuidOrderingEntryPointValidationTests.ValidateMessageId_AtWarning_LogsAndCountsEachIdOnceAsync", "GuidOrderingEntryPointValidationTests.Default_SeverityIsError_AndTheStreamSeverityIsWarningAsync"]}
+// Temporary: accept, log and count non-v7 event and message ids instead of refusing them.
+// The same as setting Whizbang:GuidOrderingViolationSeverity to Warning in configuration.
+services.Configure<WhizbangOptions>(options => {
+  options.GuidOrderingViolationSeverity = GuidOrderingSeverity.Warning;
+});
+```
+
+## Suppressing the time-ordering check {#suppressing-the-time-ordering-check}
+
+`[SuppressGuidOrderingValidation]` opts one message type out of the event and message id check. It is a deliberate,
+visible opt-out for ids whose source you cannot change, such as a legacy system that issues UUIDv4. It is not a way to
+hide mistakes: every id it lets through is still logged and counted, and the count names it.
+
+```csharp{title="Opting one message type out" description="A message type whose ids come from a system that cannot mint UUIDv7, and a method that parses them" category="Configuration" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "GuidOrdering", "Suppression"] tests=["GuidOrderingSuppressionTests.ValidateMessageId_ASuppressedTypeAtError_IsAcceptedLoggedAsAWarningAndCountedOnceAsync", "NonTimeOrderedIdAnalyzerTests.AMethodCarryingTheSuppression_IsQuiet_AndItsNeighborStillReportsAsync"]}
+// Ids come from a legacy system that issues UUIDv4 and cannot be changed
+[SuppressGuidOrderingValidation]
+public sealed record LegacyOrderImported(Guid OrderId) : IEvent;
+
+public static class LegacyImport {
+  [SuppressGuidOrderingValidation] // no WHIZ037 for the parse below
+  public static MessageId IdFor(string legacyId) => new(Guid.Parse(legacyId));
+}
+```
+
+### On a message type {#suppression-on-a-message-type}
+
+On a class, record, struct or record struct, every entry point that checks an event or message id (see
+[Where ids are checked](#time-ordering-entry-points)) treats a non-v7 id of exactly that type as if
+`GuidOrderingViolationSeverity` were at most `Warning`:
+
+| Configured severity | A non-v7 id of an attributed type |
+|---------------------|-----------------------------------|
+| `Error` (default) | Accepted, logged once as a warning that names the attribute, and counted with `suppressed=true` |
+| `Warning` | The same |
+| `Info` | Accepted, logged once at Information, and counted with `suppressed=true` |
+| `None` | Accepted silently and not counted, as for any other type |
+
+The attribute only lowers `Error`; it never raises a lower severity
+{verified: GuidOrderingSuppressionTests.ValidateMessageId_ASuppressedTypeAtError_IsAcceptedLoggedAsAWarningAndCountedOnceAsync, GuidOrderingSuppressionTests.ValidateMessageId_ASuppressedTypeByNameAtError_IsAcceptedAndLoggedAsync, GuidOrderingSuppressionTests.ValidateMessageId_ASuppressedTypeAtInfo_StaysAtInformationAsync, GuidOrderingSuppressionTests.ValidateMessageId_ASuppressedTypeAtNone_IsSilentAsync, GuidOrderingSuppressionTests.ValidateMessageId_AtNone_IsSilentAndUncountedWhetherSuppressedOrNotAsync, GuidOrderingSuppressionTests.ValidateMessageId_AnUnattributedTypeAtError_IsStillRefusedAsync, GuidOrderingSuppressionTests.InMemoryAppend_ASuppressedPayloadWithAV4_IsStoredAsync, GuidOrderingSuppressionTests.InMemoryAppend_AnUnattributedPayloadWithAV4_IsRefusedAsync}.
+The warning says why the id was accepted and what it costs:
+
+```text{title="Accepted because of the attribute" description="The warning logged once for a non-v7 id of a type carrying [SuppressGuidOrderingValidation]" category="Diagnostics" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "GuidOrdering", "Suppression"] unverified="message text read from GuidOrderingValidator"}
+EFCoreWorkCoordinator.OutboxWrite accepted message id 3f2504e0-4f89-41d3-9a0c-0305e82c3301 for LegacyOrderImported: version 4, not UUIDv7, because the type carries [SuppressGuidOrderingValidation]. Version assignment, apply order and replay read the time in event and message ids, so this type's ids are ordered by their bytes, not by when they were minted.
+```
+
+That cost is real: the type's ids are ordered by their bytes wherever version assignment, apply order and replay read
+the time in an id (see [Why event and message ids must be time-ordered](#why-time-ordered)). Use the attribute only for
+ids you cannot mint yourself.
+
+What the attribute never does:
+
+- **Let `Guid.Empty` through.** The empty id is refused at every severity, attribute or not
+  {verified: GuidOrderingSuppressionTests.ValidateMessageId_TheEmptyIdOfASuppressedType_IsRefusedAtEverySeverityAsync, GuidOrderingSuppressionTests.InMemoryAppend_ASuppressedPayloadWithTheEmptyId_IsRefusedAsync}.
+- **Apply to a derived type.** It is not inherited, so each type opts out on its own
+  {verified: GuidOrderingSuppressionTests.ADerivedTypeOfAnAttributedType_IsNotSuppressedAsync}.
+- **Change stream id reporting.** Stream ids follow `StreamIdOrderingViolationSeverity` (see
+  [Stream id versions](#stream-id-versions)), and their counter carries no `suppressed` tag
+  {verified: GuidOrderingSuppressionTests.ReportStreamId_TheStreamCount_CarriesNoSuppressedTagAsync}.
+- **Accept a non-v7 id on the wire.** `MessageId.From` and the strong id's JSON converter stay strict, so a non-v7 id
+  arriving at transport receive is still refused when the envelope is deserialized.
+
+A generic type that carries the attribute covers every construction of it
+{verified: GuidOrderingSuppressionTests.AnAttributedGenericType_IsSuppressedForEveryConstructionAsync}.
+
+### On a method {#suppression-on-a-method}
+
+On a method, or on a type for the code inside it, the attribute is a compile-time opt-out only:
+[WHIZ037](../../operations/diagnostics/whiz037) is not reported inside it, including in its lambdas and local
+functions. It changes nothing at run time; the ids that code produces are checked by their message type, as above
+{verified: NonTimeOrderedIdAnalyzerTests.AMethodCarryingTheSuppression_IsQuiet_AndItsNeighborStillReportsAsync, NonTimeOrderedIdAnalyzerTests.ATypeCarryingTheSuppression_IsQuietInEveryMemberAsync}.
+
+### How it is read {#suppression-registry}
+
+The source generator registers each attributed message type by its stored name in a generated module initializer, and
+the check looks the type up there (`GuidOrderingSuppressions`). No attribute is read by reflection, so the opt-out
+works under AOT, and a private nested type is honored too. A UUIDv7 passes the check before the lookup runs
+{verified: GuidOrderingSuppressionTests.AnAttributedType_IsRegisteredByTheGeneratedModuleInitializerAsync, GuidOrderingSuppressionTests.APrivateNestedAttributedType_IsRegisteredByNameAsync, GuidOrderingSuppressionRegistryGeneratorTests.Generator_RegistersEachAttributedTypeByItsStoredNameAsync, GuidOrderingSuppressionRegistryGeneratorTests.Generator_SkipsUnattributedDerivedAndMethodTargetsAsync}.
+
+To see what the opt-outs let through, watch `whizbang.guid_ordering.non_v7_message_ids` with `suppressed=true` (see
+[Metrics: time-ordering checks](../../operations/observability/metrics#time-ordering-checks)).
+
+## Stream id versions {#stream-id-versions}
+
+A stream id's version affects only index locality. The framework hashes a stream id for partitioning and lock order,
+and sorts it to get a total order, but never reads it for time or for position in the stream; position comes from the
+event version. A UUIDv7 stream id keeps related rows close together in the indexes, and another version spreads them
+out, which costs some index efficiency and nothing else.
+
+So a stream id that is not a UUIDv7 is **reported, not refused**. `WhizbangOptions.StreamIdOrderingViolationSeverity`
+(configuration key `Whizbang:StreamIdOrderingViolationSeverity`) defaults to `Warning`: each such stream id is logged
+once and counted in `whizbang.guid_ordering.non_v7_stream_ids`. Raise it to `Error` to refuse non-v7 stream ids, or set
+`Info` or `None` to quiet the report
+{verified: GuidOrderingEntryPointValidationTests.ReportStreamId_NonV7AtTheDefault_IsAcceptedLoggedOnceAndCountedAsync, GuidOrderingEntryPointValidationTests.ReportStreamId_RaisedToError_IsRefusedAsync, GuidOrderingEntryPointValidationTests.ReportStreamId_AtInfo_LogsAtInformationAsync, GuidOrderingEntryPointValidationTests.ReportStreamId_AtNone_IsSilentAsync, GuidOrderingRefusalMatrixTests.EventStoreAppend_NonV7StreamId_IsStoredByDefault_AndRefusedAtErrorAsync}.
+
+```csharp{title="Strict stream ids" description="Refuse stream ids that are not UUIDv7" category="Configuration" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "StreamId", "Severity"] tests=["GuidOrderingEntryPointValidationTests.ReportStreamId_RaisedToError_IsRefusedAsync", "GuidOrderingInMemoryAppendTests.Append_NonV7StreamId_RaisedToError_IsRefusedAsync"]}
+services.Configure<WhizbangOptions>(options => {
+  options.StreamIdOrderingViolationSeverity = GuidOrderingSeverity.Error;
+});
+```
+
+Stream ids that are never reported:
+
+- A stream id whose strong id type is declared with [`[WhizbangId(AcceptAnyVersion = true)]`](#accept-any-version):
+  you declared that its values come from outside and are not UUIDv7
+  {verified: GuidOrderingEntryPointValidationTests.ReportStreamId_AnIdTypeThatAcceptsAnyVersion_IsNeverReportedAsync, GuidOrderingEntryPointValidationTests.ReportStreamId_AStrictIdType_IsReportedAsync}.
+- A UUIDv7, and `Guid.Empty`, which is refused separately as a missing stream id
+  {verified: GuidOrderingEntryPointValidationTests.ReportStreamId_V7AndEmpty_AreNeverReportedAsync}.
+
+Stream ids are reported at event store appends, on the dispatcher's outbox path, and at the inbox.
+
+A stream id that reaches a service only through its inbox, from a remote producer, is reported too. The EF Core and
+Dapper inbox writes (entry points `EFCoreWorkCoordinator.InboxWrite` and `DapperWorkCoordinator.InboxWrite`) carry the
+message type only as its stored name, so they resolve that name to the type through the names the generated JSON
+contexts register, the same lookup inbox deserialization makes, with no reflection. The type's stream id type then
+comes from the generated stream id extractors, so the same rules apply as everywhere else:
+
+- A non-v7 stream id is stored, logged once per stream with the stream id, the message type name and the entry point,
+  and counted in `whizbang.guid_ordering.non_v7_stream_ids`.
+- At `StreamIdOrderingViolationSeverity = Error` the inbox write is refused before any SQL runs, so nothing of the
+  batch is stored.
+- A stream id declared with `[WhizbangId(AcceptAnyVersion = true)]` is never reported.
+- A stored name that does not resolve to a type is reported, not skipped.
+- A UUIDv7 or an empty stream id returns before the name is looked up.
+
+{verified: EFCoreInboxStreamIdReportTests.NonV7StreamId_ByDefault_IsStoredReportedOnceAndCountedAsync, EFCoreInboxStreamIdReportTests.NonV7StreamId_AtError_IsRefusedAndNothingOfTheBatchIsStoredAsync, EFCoreInboxStreamIdReportTests.AnyVersionStrongStreamId_IsStoredAndNeverReportedAsync, EFCoreInboxStreamIdReportTests.UnresolvableMessageType_IsReportedNotSkippedAsync, DapperInboxStreamIdReportTests.NonV7StreamId_ByDefault_IsStoredReportedOnceAndCountedAsync, DapperInboxStreamIdReportTests.NonV7StreamId_AtError_IsRefusedAndNothingOfTheBatchIsStoredAsync, DapperInboxStreamIdReportTests.AnyVersionStrongStreamId_IsStoredAndNeverReportedAsync, DapperInboxStreamIdReportTests.UnresolvableMessageType_IsReportedNotSkippedAsync, GuidOrderingStreamIdByNameTests.V7AndEmpty_AreNeverReportedByNameAsync, GuidOrderingStreamIdByNameTests.UnresolvableName_IsRefusedAtErrorAsync}
+
+A service that raised stream ids to `Error` therefore now also refuses such messages at the inbox.
+
+## Framework ids that are not time-ordered {#framework-ids-that-are-not-time-ordered}
+
+A few ids the framework mints are deliberately not UUIDv7: they are derived from a name or a hash so that the same input
+always gives the same id. `FrameworkNonTimeOrderedIds.All` lists every such site, with its version, what the id is used
+as, and why it is safe. None of them is ever used as an event or message id, so nothing that reads id time order sees
+them. A test pins each entry's value, and a source guard test fails when a new non-v7 minting site appears
+without an entry
+{verified: FrameworkNonTimeOrderedIdsTests.NoEntry_IsAnEventOrMessageIdAsync, FrameworkNonTimeOrderedIdsTests.IntegrityDeliveryId_IsAVersion8IdOfTypeAndPayload_NotAMessageIdAsync, FrameworkNonTimeOrderedIdsTests.AuditRecordId_IsTheVersion5IdOfTheAuditedEvent_APayloadFieldAsync, FrameworkNonTimeOrderedIdsTests.ChunkRequestId_IsTheVersion5IdOfTheChunk_APayloadFieldAsync, FrameworkNonTimeOrderedIdsTests.DeadlineScheduleId_IsARawHashOfSagaAndDeadline_AScheduleIdAsync, GuidOrderingEntryPointGuardTests.EveryNonTimeOrderedMintingSite_IsOnTheListAsync}.
+
+Each entry's use is one of `NotAMessageId` (a payload field, a key of another table, a storage key), `StreamId` (see
+[Stream id versions](#stream-id-versions)) or `HashKey` (bytes computed for hashing or comparison, never stored as an
+identity). A raw hash's version is arbitrary and is listed as 0.
+
+| Site | Version | Use | Why it is safe |
+|------|---------|-----|----------------|
+| `IntegrityDeliveryId.For` | 8 | NotAMessageId | The id of a deferred integrity delivery, derived from its type and payload so one delivery is recorded once. It never reaches the inbox, outbox or event store; the drain orders by `queued_at` and uses the id only as a tie-break and the dedup key. |
+| `PerspectiveRebuildRequestHandler._runIdFor` | 0 (hash) | NotAMessageId | A multi-stream rebuild run id inside the command payload, derived so a redelivered command finds its run. The command's own message id is minted. |
+| `SagaDeadlineScheduler.DeadlineScheduleId` | 0 (hash) | NotAMessageId | A schedule id, derived from the saga stream and the deadline name so re-arming moves the deadline. Occurrences are published with minted message ids. |
+| `AuditLedger.RecordIdFor` | 5 | NotAMessageId | The `EventAudited.Id` payload field, derived from the audited event so the same record derived again is the same record. The audit message's own message id is minted. |
+| `AuditLedger.StreamFor` | 5 | StreamId | The tenant's audit ledger stream; one stream per tenant. |
+| `SystemCommands.ChunkRequestId` | 5 | NotAMessageId | A payload request id of one chunk of a split rebuild request, derived so the same request splits the same way. |
+| `RedeliveryPump.AnswerSessionFor` | 5 | StreamId | The broker session and bundle stream of a stream-spanning repair answer; derived so every page agrees. |
+| `CollectiveOrdering.StreamIdFor` | 8 | StreamId | The stream of a collective ordering key; one stream per key. |
+| `SagaItemStreams.Of` | 5 | StreamId | A saga item's stream, derived from the saga and the item. |
+| `NameBasedGuid.V5` | 5 | NotAMessageId | The name-based generator itself; every caller is listed by its own site. |
+| `TrackedGuid.NewRandom` | 4 | NotAMessageId | An explicit request for a random v4. A v4 passed to an event or message id entry point is refused there. |
+| `TrackedCompletion.TrackingId` | 4 | NotAMessageId | An in-memory handle of a completion being tracked; never stored. |
+| `EFCoreWorkCoordinator._instanceId` | 4 | NotAMessageId | A service instance id, not a message id. |
+| `EFCorePostgresPerspectiveStore._defaultMetadata` | 4 | NotAMessageId | The placeholder last-applied event id of a row written outside a perspective run. The idempotency filter compares it for equality only, never for order, and a random v4 equals no event. |
+| `EFCorePostgresPerspectiveStore._convertPartitionKeyToGuid` | 0 (hash) | HashKey | An MD5 partition key of a perspective row. |
+| `DapperPostgresPerspectiveStore._convertPartitionKeyToGuid` | 0 (hash) | HashKey | An MD5 partition key of a perspective row. |
+| `RouteNormalizer.RouteId` | 0 (hash) | HashKey | A SHA-256 of a normalized route, used as its identity in trace storage. |
+| `IntegrityDigestMath.SingleMissingEventId` | 0 (hash) | HashKey | The XOR of two digests' id lanes. When exactly one event is missing it is that event's id, looked up for presence; otherwise it is only compared. |
+| `InMemoryMessageBodyStore.UploadAsync` | 4 | NotAMessageId | A storage key of an offloaded message body. |
+| `AzureBlobMessageBodyStore.UploadAsync` | 4 | NotAMessageId | A blob name of an offloaded message body. |
+
+Moving the framework's own stream ids (the four `StreamId` rows) to UUIDv7, for index locality, is an open item.
 
 ## Strongly-Typed ID Providers
 

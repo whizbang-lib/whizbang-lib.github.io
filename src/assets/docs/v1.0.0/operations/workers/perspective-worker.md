@@ -404,6 +404,8 @@ A drain apply runs under its lease. When the lease runs out, or the worker is st
 
 The affinity gate belongs to the apply, not to the consumer: it stays held until the abandoned apply ends (completes, fails or is canceled). A second consumer for the same stream and perspective waits for it and then finds the events already processed, so an event is never applied twice. While it waits, the hold reads as path `drain-abandoned`, and the watchdog above names a hung one. Stopping the worker waits for every abandoned apply to end, so a stopped worker holds no gate. A gate that is held is also never removed when the cursor cache evicts its stream.
 
+A set-based drain batch runs under one lease for the batch. When it runs out, a pair of the batch that had already ended keeps its own outcome (its result reported, or its own failure), and only the pairs still in flight are failed on the lease and re-issued. See [A batch that outlives its lease](../../fundamentals/perspectives/write-modes#the-batch). {verified: PerspectiveWorkerDrainModeTests.SetBasedDrain_APairWithAResultWhenItsBatchsLeaseRanOut_IsReportedWithItsResultAsync, PerspectiveWorkerDrainModeTests.SetBasedDrain_APairThatFailedBeforeItsBatchsLeaseRanOut_IsReportedWithItsOwnFailureAsync}
+
 ---
 
 ## Configuration {#configuration}

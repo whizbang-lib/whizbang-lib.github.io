@@ -1841,22 +1841,50 @@ alike, whichever side cut.
 
 ### A cut waits for the seal {#a-cut-waits-for-the-seal}
 
-{verified: CutsCarryTheirDigestSqlTests.Truncate_OfHistoryAboveTheSeal_WaitsForIt_WhenTheGateIsOn_AndProceedsWhenItIsOffAsync, CutsCarryTheirDigestSqlTests.Truncate_OfReceivedHistory_WaitsForTheConsumersSeal_WhenItAuditsThatOriginAsync, CutsCarryTheirDigestSqlTests.Truncate_OfLocalHistory_WaitsForEveryConsumersReportedSeal_OnlyWhenThatSettingIsOnAsync}
+{verified: CutsCarryTheirDigestSqlTests.Truncate_OfHistoryAboveTheSeal_WaitsForIt_WhenTheGateIsOn_AndProceedsWhenItIsOffAsync, CutsCarryTheirDigestSqlTests.Truncate_OfReceivedHistory_WaitsForTheConsumersSeal_WhenItAuditsThatOriginAsync, CutsCarryTheirDigestSqlTests.Truncate_OfLocalHistory_WaitsForEveryConsumersReportedSeal_OnlyWhenThatSettingIsOnAsync, CutOfUnpositionedReceivedHistorySqlTests.Truncate_OfReceivedHistoryWithNoOriginSequence_IsNotHeld_EvenWithNothingSealedAsync, CutOfUnpositionedReceivedHistorySqlTests.ArchiveWhole_OfReceivedHistoryWithNoOriginSequence_IsNotHeld_AndTheOriginsAnswerStaysAsync, CutOfUnpositionedReceivedHistorySqlTests.Truncate_OfReceivedHistoryWithAPositionAboveTheSeal_IsStillHeldAsync, CutOfUnpositionedReceivedHistorySqlTests.Truncate_OfLocalHistoryTheStamperHasNotSequenced_IsStillHeldAsync, CutOfUnauditedOriginSqlTests.Archive_OfAPositionedEventFromAnOriginThisServiceNeverAudits_IsNotHeldByItsSealAtZeroAsync, CutOfUnauditedOriginSqlTests.Archive_OfAPositionedEventFromAnAuditedOrigin_IsStillHeldByItsSealAsync, CutOfUnauditedOriginSqlTests.Archive_OfAPositionedEventFromAKnownOriginWithNoRequestAddress_IsNotHeldAsync, CutOfUnauditedOriginSqlTests.Archive_FromAnUnauditedOrigin_StillWaitsForItsLanesSealedFrontierAsync}
 
 A cut removes only history this service has sealed. Asked for above the seal, it removes nothing and returns
 `awaiting_seal`; the end-of-life step asks again on its next cycle, as it does after any refusal.
 
 - Every event the cut would remove sits below the sealed frontier of its lane.
-- A received event also sits below this service's verified seal for its origin, when it audits that origin.
+- A received event also sits below this service's verified seal for its origin, when it audits that origin: the origin
+  is a known origin (its checkpoint reached this service) with a request address. A seal for any other origin has no
+  path to advance and holds no cut ([a seal nothing audits](#a-seal-nothing-audits), migration 560, #2544).
 - With `Whizbang:StreamIntegrity:Sealing:CutWaitsForConsumers` on (off by default), a local event also sits below the
   lowest seal a consumer reported in the last 7 days. A consumer reports its seal with every windowed type-level audit
   request, recorded in `wh_integrity_consumer_seals`.
+- A received event with no origin position (its origin's commit sequence was never recorded) never holds a cut. The
+  digest counts it only in the open window, so no seal ever covers it, and the cut carries it into the open window's
+  removed row, so the origin's answer does not change (migration 557, #2529).
 
 | Choice | Reason | Verified |
 |---|---|---|
 | The gate follows `Sealing:Enabled`: the maintenance cycle writes it to the store (`integrity_cut_waits_for_seal`) every cycle, and the store rewrites it only when it changes. | Nothing is sealed while sealing is off, so a cut that waited would wait forever. A host without stream integrity writes nothing and its cuts never wait. | {verified: MaintenanceWorkerEpochClosureTests.SealingOn_ACutWaitsForTheSeal_AndForConsumersOnlyWhenAskedAsync, MaintenanceWorkerEpochClosureTests.SealingOff_ACutNeverWaits_AndNothingIsClosedAsync, MaintenanceWorkerEpochClosureTests.NoIntegrityOptionsRegistered_WritesNoCutGateAsync} |
 | A purge never waits. | It is an operator's decision, made in the operator's transaction; what it removes is carried all the same, and the open window's answer keeps it through the removed rows. | {verified: CutsCarryTheirDigestSqlTests.TypeAnswer_IsTheSameBeforeAndAfterACut_SealedOrOpenAsync} |
+| A received event with no origin position never holds a cut. | No sealed epoch can ever cover it, so waiting for the seal meant waiting forever, and every stream holding one could never be archived or truncated. What the cut removes is carried into the open window's removed row, which the open window adds back, so the answer stays the same. | {verified: CutOfUnpositionedReceivedHistorySqlTests.Truncate_OfReceivedHistoryWithNoOriginSequence_IsNotHeld_EvenWithNothingSealedAsync, CutOfUnpositionedReceivedHistorySqlTests.ArchiveWhole_OfReceivedHistoryWithNoOriginSequence_IsNotHeld_AndTheOriginsAnswerStaysAsync} |
+| A seal counts only for an origin this service audits. | The audit asks only the origins whose checkpoints reached this service with a request address, so a seal for any other origin never advances, and a cut that waited for it waited forever. The lane's sealed frontier still holds the cut, so it removes only history whose part of this service's digest is fixed. Once the origin's checkpoints arrive, its seal holds cuts again. | {verified: CutOfUnauditedOriginSqlTests.Archive_OfAPositionedEventFromAnOriginThisServiceNeverAudits_IsNotHeldByItsSealAtZeroAsync, CutOfUnauditedOriginSqlTests.Archive_OfAPositionedEventFromAnAuditedOrigin_IsStillHeldByItsSealAsync, CutOfUnauditedOriginSqlTests.Archive_FromAnUnauditedOrigin_StillWaitsForItsLanesSealedFrontierAsync} |
+| A local event the stamper has not sequenced yet still waits. | The stamper will give it a position, and the local answer leaves it out until then, so cutting it first would change that answer. | {verified: CutOfUnpositionedReceivedHistorySqlTests.Truncate_OfLocalHistoryTheStamperHasNotSequenced_IsStillHeldAsync} |
 | Waiting for consumers is a setting, off by default. | It guarantees every consumer verified the history while the origin could still resend it, at the cost of making this service's cuts wait for its slowest consumer. Only reports from the last 7 days count, so a consumer that stopped asking holds nothing back for long. | {verified: CutsCarryTheirDigestSqlTests.Truncate_OfLocalHistory_WaitsForEveryConsumersReportedSeal_OnlyWhenThatSettingIsOnAsync, CutsCarryTheirDigestCoordinatorTests.AWindowedTypeAsk_RecordsTheConsumersSeal_OnTheOriginAsync} |
+
+#### A seal nothing audits {#a-seal-nothing-audits}
+
+{verified: CutOfUnauditedOriginSqlTests.UnauditedSeals_NameEachOriginWithASealThatNothingAudits_AndNotTheAuditedOnesAsync, CutOfUnauditedOriginSqlTests.Step_WarnsNamingEachUnauditedOrigin_AndGaugesHowManyThereAreAsync, CutOfUnauditedOriginSqlTests.ThePostgresDriver_RegistersTheUnauditedSealReportStepAsync}
+
+A seal row (`wh_integrity_seals`) advances only through this service's audit of its origin, and the audit asks only the
+origins in `wh_integrity_known_origins` that announced a request address. An origin whose checkpoints never reach this
+service, for example because it does not publish them to this consumer, still sends its events, so this service holds
+positioned history from it and may hold a seal row for it that will never move.
+
+Since migration 560 (#2544) such a seal holds no cut (above), and the maintenance cycle names it:
+`UnauditedSealReportStep` reads `wh_integrity_unaudited_seals()`, logs a Warning per origin ("Integrity seal vs origin
+... cannot advance: this service does not audit that origin"), and publishes the count on
+`whizbang.stream_integrity.unaudited_seals`. The fix is on the route: once the origin's checkpoints reach this service,
+it is audited, its seal advances, and the gauge falls.
+
+```sql{title="Seals nothing audits" description="Seal rows whose origin this service does not audit" category="Operations" difficulty="INTERMEDIATE" tags=["Stream Integrity", "Sql", "Diagnostics"]}
+SELECT origin_service_id, sealed_through, updated_at, known
+FROM wh_integrity_unaudited_seals();
+```
 
 ### Carried detail rests, then rolls off {#carried-detail-rests-then-rolls-off}
 
@@ -3417,6 +3445,8 @@ slot, are deferred while the service is busy or cooling down, and are forced thr
 | Asking for subscription backfill windows (`SubscriptionBackfillWorker`) | The maintainer | Yes, see [paced backfill](#paced-backfill) |
 | Re-checking stale ledger rows (`IntegrityLedgerRecheckWorker`) | The maintainer | Yes, see [idle ledger re-check](#idle-ledger-recheck) |
 | Correcting events stored under an origin that does not own their type (`MisattributedOriginCorrectionStep`) | The maintainer, in the maintenance cycle | Yes, see [an origin that does not own the type](#misattributed-origin-correction) |
+| Asking origins for missing origin positions (`OriginPositionFillStep`) | The maintainer, in the maintenance cycle | Yes, see [filling missing origin positions](#filling-missing-origin-positions) |
+| Naming seals for origins this service does not audit (`UnauditedSealReportStep`) | The maintainer, in the maintenance cycle | Yes, see [a seal nothing audits](#a-seal-nothing-audits) |
 | Publishing continuity checkpoints (`IntegrityCheckpointWorker`) | The maintainer | **No**, see [checkpoints are not gated](#checkpoints-are-not-idle-gated) |
 | Storing a redelivery bundle's events | Whichever instance receives the bundle | No: that is ordinary event storage |
 
@@ -4504,9 +4534,109 @@ are indicative; the change-row counts are exact and asserted.
   an event it already holds: only a redelivery from the origin carries it, and a redelivery that brings one already
   adopts it into the stored row (which leaves the held set through the triggers). A separate backfill would have to
   ask the origin for every held event, which is what redelivery adoption already does for the events that matter.
+  *Superseded by #2544:* redelivery is asked only for buckets a comparison found short, and a window the held events
+  leave undecided is never short, so those events were never redelivered and their windows never decided. The
+  consumer now asks for the positions alone; see [filling missing origin positions](#filling-missing-origin-positions).
 - **No "held rows left" metric.** The held set drains as redeliveries adopt sequences, and the totals already count it
   per origin and type (`wh_unsequenced_digest_totals.event_count`), so a separate gauge would report a number that is
-  one query away and would add a scan of its own to produce.
+  one query away and would add a scan of its own to produce. *Superseded by #2544:* the position fill publishes that
+  number per origin as `origin_positions_unfilled`, read from those same totals, so it adds no scan.
+
+#### Filling missing origin positions {#filling-missing-origin-positions}
+
+{verified: OriginPositionFillE2ETests.UnpositionedHistory_HoldsTheSealAndTheCut_UntilTheFillAsksTheOrigin_ThenTheAuditConfirmsAndTheCutProceedsAsync, OriginPositionFillE2ETests.AnEventTheOriginNoLongerHolds_IsAnsweredUnknown_AndNeverAskedAgainAsync, OriginPositionFillSqlTests.Ask_WalksOneOriginInBoundedBatches_AndRestartsTheLapOnlyAfterThePauseAsync, OriginPositionFillSqlTests.Ask_ServesTheOriginServedLeastRecently_AndLeavesOutUnknownAnswersAsync, OriginPositionFillSqlTests.Ask_OnALargeStore_ReadsOnlyItsBatchOfTheHeldIndexAsync, OriginPositionFillSqlTests.PositionsOf_AnswersStamped_Unstamped_Archived_AndUnknownAsync, OriginPositionFillSqlTests.Fill_FillsOnlyNullPositions_AndNeverOverwritesAsync, OriginPositionFillSqlTests.Fill_RefoldsTheSealedEpochAFilledEventFallsIn_AndTheHeldFoldLetsItGoAsync, OriginPositionFillSqlTests.Fill_RecordsUnknownAnswers_AndTheAskNeverReturnsThemAgainAsync, OriginPositionFillSqlTests.Fill_ThatChangesAStreamsOriginOrder_RewindsItsPerspectivesFromTheStartAsync, OriginPositionFillSqlTests.Step_AsksEachOriginInBoundedBatches_CountsAndLogsEachAsync, ReceivedStreamOrderTests.FillChangesTheOrder_AFillThatMovesTheEventPastAnother_ChangesTheOrderAsync}
+
+An origin's outbox can publish an event before its commit-order stamper reaches it. The receiver then stores the event
+with its origin but no origin position (`origin_commit_sequence` NULL). Such an event is in no audit window. When an
+audit window holds some events the consumer has only in that form, the window can be neither confirmed nor called short
+(the `Undecided` verdict above), and with every window capped, a large unpositioned history leaves the first window
+undecided on every audit: the seal for that origin never advances, the type-level comparison mismatches on every pass,
+and with [the cut gate](#a-cut-waits-for-the-seal) on, every stream holding a positioned event from that origin waits
+for a seal that never comes.
+
+Only the origin knows the position, so the consumer asks for it (#2544, migration 561):
+
+```mermaid{caption="The consumer asks for the positions it lacks; the origin answers from its store; the fill writes only missing positions." tests=["OriginPositionFillE2ETests.UnpositionedHistory_HoldsTheSealAndTheCut_UntilTheFillAsksTheOrigin_ThenTheAuditConfirmsAndTheCutProceedsAsync"]}
+sequenceDiagram
+  participant C as Consumer (maintenance cycle)
+  participant O as Origin (integrity delivery drain)
+  C->>C: wh_origin_position_ask: next batch of one origin's held rows
+  C->>O: RequestOriginPositions (event ids), on the origin's announced address
+  O->>O: wh_origin_positions_of: store, else archive table
+  O->>C: OriginPositionsAnswer (positions, not yet stamped, unknown)
+  C->>C: wh_fill_origin_positions: fill NULL only, refold sealed epochs, rewind reordered streams
+```
+
+1. **The walk.** Each maintenance cycle (idle-gated, on the maintainer) takes up to `MaxBatchesPerCycle` batches of
+   `BatchSize` held rows. A batch is one origin's next rows after its durable cursor in
+   `idx_event_store_unsequenced_received`, the origin served least recently first, so one origin's long history never
+   starves another. A walk that reaches the end pauses for `LapPause` before it starts over.
+2. **The request.** Each batch goes to its origin as `RequestOriginPositions`, directed at the address the origin's
+   checkpoint announced, like a manifest request. An origin this service does not audit is not asked; its rows wait for
+   the next lap. Both messages are [integrity deliveries](#integrity-deliveries-are-queued): they run on the
+   maintainer's drain.
+3. **The answer.** The origin looks each id up in its own store (`wh_origin_positions_of`): its commit sequence; *not
+   stamped yet* while its stamper has not reached the event; the commit sequence its archive table kept when the store no
+   longer holds the event; or *unknown* (it never wrote the event, or no longer holds it with a sequence).
+4. **The fill.** In one transaction the consumer locks the streams the fill touches, fills only positions that are still
+   NULL (through the [redelivery reconcile's batch call](#redelivery-reconciles-run-as-a-batch), which refolds each
+   sealed epoch that now holds a filled event once), records the unknown ids in `wh_origin_position_unknown` so they are
+   never asked again, and rewinds the streams whose order the fill changed. A not-yet answer changes nothing: the event is
+   asked again on the next lap. One Information line per batch on each side says what it did.
+
+What the fill keeps consistent:
+
+- **The digests.** A filled event leaves the held set, so the [held fold](#the-held-fold-is-maintained-as-rows-change)
+  drops it from the open window's held count through its triggers, and it joins its positioned window: an open epoch by
+  its rows, a sealed epoch by the refold. Its stream digest, keyed by lane and not by position, does not change.
+- **The order a perspective applied.** An unpositioned event replays among its origin's events by its id. When the
+  position puts it elsewhere (`ReceivedStreamOrder.FillChangesTheOrder`, the replay's own rule applied to the order
+  before and after the fill), every perspective of the stream is rewound from its start, as a
+  [re-sequence](../operations/infrastructure/resequencing-received-streams) rewinds it. A fill that leaves the order as
+  it was rewinds nothing.
+- **Never an overwrite.** A position already recorded is kept, whatever an answer says, and an answer fills only events
+  this service holds from the answering origin.
+
+| Setting (`Whizbang:StreamIntegrity:OriginPositionFill:`) | Default | Meaning |
+| --- | --- | --- |
+| `Enabled` | `true` | Ask and fill. On by default; the walk costs nothing when nothing is held |
+| `BatchSize` | `500` | Held rows one request names |
+| `MaxBatchesPerCycle` | `10` | Requests one maintenance cycle sends |
+| `LapPause` | `00:30:00` | The wait before a finished walk starts over |
+
+| Instrument | Kind | Meaning |
+| --- | --- | --- |
+| `whizbang.stream_integrity.origin_positions_unfilled` | Gauge, per `origin_service_id` | Digest-eligible events still held without a position, from the maintained totals; falls as fills land |
+| `whizbang.stream_integrity.origin_positions_requested` | Counter, per `origin` | Events named in requests |
+| `whizbang.stream_integrity.origin_positions_filled` | Counter, per `origin` | Positions filled |
+| `whizbang.stream_integrity.origin_positions_not_filled` | Counter, per `origin` and `answer` | `not_yet_stamped` (asked again) or `unknown` (not asked again) |
+| `whizbang.stream_integrity.origin_position_rewinds` | Counter | Perspective cursors rewound because a fill changed a stream's order |
+
+Why each choice:
+
+- **Positions, not redelivery.** A redelivery ships whole events and is asked only for a bucket a comparison found
+  short. A window the held events leave undecided is never short, so it was never asked for, and shipping event bodies
+  to learn one number each would cost far more on both sides. The request names ids and the answer carries numbers.
+- **The existing exchange.** The request and answer travel as every directed integrity message does (the announced
+  address, the integrity time to live, the maintainer's delivery drain), so no new route or transport is involved.
+- **Bounded per cycle, and paused per lap.** The walk reads only its batch of the held index (measured: 103
+  event-store rows read for a batch of 100 over 20,000 held rows). The maintenance cycle that runs it is idle-gated, so a
+  bulk import defers it, and an origin that has not stamped yet is asked once per lap, not once per cycle.
+- **Unknown stops the asking.** An event the origin cannot place stays unpositioned. Asking for it every lap would cost
+  a request forever and fill nothing. Its window may stay undecided; the
+  [full-history compare](#full-history-compare) still decides the stream, and with [the cut gate](#a-cut-waits-for-the-seal)
+  an unpositioned event never holds a cut.
+- **Independent of the repair mode.** Filling a position records what the origin already says about an event this
+  service holds; it changes no event's content and redelivers nothing, so it runs under `ReportOnly` too.
+- **On by default.** The stuck seal it clears holds archiving and truncation for every stream it touches, and a service
+  that configures nothing should not have to discover that.
+
+To watch a fill on a receiver, the per-origin count still waiting and the events the origin could not place:
+
+```sql{title="Origin positions still to fill" description="Per origin, the events held without a position, and those the origin answered unknown" category="Operations" difficulty="INTERMEDIATE" tags=["Stream Integrity", "Sql", "Diagnostics"]}
+SELECT origin_service_id, unfilled FROM wh_origin_positions_unfilled();
+SELECT origin_service_id, count(*) AS unknown_to_origin FROM wh_origin_position_unknown GROUP BY 1;
+```
 
 #### Events this service authored {#pre-stamp-history-first-hop}
 
@@ -5503,7 +5633,7 @@ the pair guard, #2362) and the re-checks' counters (`epochs_rechecked`, `check_d
 | `seal_lowered` (counter) | `reason` | Seals this service lowered for an origin, by the reason the origin's answer gives (`IntegrityManifest.HistoryMovedReason`): `rule_change` when the origin's eligibility rules changed after the generation this service knew, `rewrite` when its history was rewritten under the same rules, `unknown` when an origin on an older release gives no reason. |
 | `redelivered_then_reaped` (counter) | none | Deficit buckets a redelivery answer filled that a later comparison found short again: one turn of the resync loop, where what repair delivered is lost again, usually to this service's own cleanup. Counted once per answer from the ledger (`counted_short_at`, migration 493); a bucket the answer could not change (unhealable) is not counted. Target 0. |
 | `carried_compactions` (counter) | `kind` | Cuts that removed events and carried their digest: `truncate` (a prefix truncate) or `archive`. |
-| `whizbang.maintenance.eligible_not_yet_deleted` | `task`, `capped` | Streams due for a cut (`truncate` or `archive`) that the seal gate holds: this service's seal, or a consumer's when `Sealing:CutWaitsForConsumers` is on. The truncator records a stream when its cut answers `awaiting_seal` and forgets it on any other answer (`wh_integrity_cuts_awaiting_seal`, migration 494); the maintainer duty's holder counts it per task, each count stopping at 100,000 index entries. |
+| `whizbang.maintenance.eligible_not_yet_deleted` | `task`, `capped` | Streams due for a cut (`truncate` or `archive`) that the seal gate holds: this service's seal, or a consumer's when `Sealing:CutWaitsForConsumers` is on. The truncator, and the end-of-life step for a whole-stream archive (#2529), record a stream when its cut answers `awaiting_seal` and forget it on any other answer (`wh_integrity_cuts_awaiting_seal`, migration 494); the maintainer duty's holder counts it per task, each count stopping at 100,000 index entries. |
 
 The coverage and the per-lane gauges, the generation and the carried buckets come from one read,
 `wh_integrity_seal_reading` (migrations 490 and 492): one row per lane of the epoch frontier, one pass over the seal

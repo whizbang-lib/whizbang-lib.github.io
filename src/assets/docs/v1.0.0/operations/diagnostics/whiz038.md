@@ -1,13 +1,14 @@
 ---
-title: 'WHIZ038: WhizbangId AcceptAnyVersion With Versions'
+title: 'WHIZ038: WhizbangId Versions Narrowed'
 pageType: troubleshooting
 verifiedAgainstCommit: 'b865cd6b'
 verifiedDate: 2026-11-21
 description: >-
-  Error when one [WhizbangId] writes both AcceptAnyVersion = true and Versions, which contradict each other.
+  Warning when the [WhizbangId] declarations for one strongly-typed id list different Versions. The id accepts the
+  versions they have in common, whatever order the attributes are found in.
 version: 1.0.0
 category: Diagnostics
-severity: Error
+severity: Warning
 tags:
   - diagnostics
   - whizbang-id
@@ -24,48 +25,69 @@ testReferences:
 lastMaintainedCommit: 'b865cd6b'
 ---
 
-# WHIZ038: WhizbangId AcceptAnyVersion With Versions
+# WHIZ038: WhizbangId Versions Narrowed
 
-**Severity**: Error
+**Severity**: Warning
 **Category**: Source Generation / Identity
 
 ## Description
 
-[`AcceptAnyVersion = true`](../../fundamentals/identity/whizbang-ids#accept-any-version) makes an id accept any
-non-empty Guid; [`Versions`](../../fundamentals/identity/whizbang-ids#accepted-versions) lists the UUID versions it
-accepts. A `[WhizbangId]` that writes both says two different things, so the generator refuses it. `AcceptAnyVersion
-= false` next to `Versions` is the default and is not reported.
+The `WhizbangIdGenerator` collects every `[WhizbangId]` in the project, whether it is on a struct, a property or a
+constructor parameter, and generates each id once. When the attributes for one id list different
+[`Versions`](../../fundamentals/identity/whizbang-ids#accepted-versions) (an attribute that does not write `Versions`
+lists `UuidVersions.V7`), the id accepts only the versions every one of them lists: the strictest common set, whatever
+order the attributes are found in. WHIZ038 is reported at each attribute whose list was narrowed, naming the versions
+the id accepts.
 
 ## Diagnostic Message
 
 ```
-This [WhizbangId] for '{IdType}' writes both AcceptAnyVersion = true and Versions. Write Versions to list the accepted versions, or AcceptAnyVersion = true to accept any non-empty Guid, not both.
+The Versions on this [WhizbangId] are narrowed: the [WhizbangId] declarations for '{IdType}' list different versions, so the id accepts the ones they have in common, {Versions}. List the same Versions on every [WhizbangId] for this id.
 ```
 
 ## How to Fix
 
-Keep one. List the versions when you know how the id's values are made (minted, derived by name); keep
-`AcceptAnyVersion = true` only for ids issued outside your system, whose version you do not control.
+List the same `Versions` on every `[WhizbangId]` for the id. Usually the id should be declared once, on the struct,
+and the property and parameter attributes are not needed.
 
 ### Before (causes WHIZ038)
 
-```csharp{title="An attribute that writes both" description="AcceptAnyVersion = true and Versions on the same attribute contradict each other." framework="NET10" category="Diagnostics" difficulty="INTERMEDIATE" tags=["diagnostics", "whizbang-id", "versions", "error"] testFile="WhizbangIdVersionsTests.cs" testMethod="AcceptAnyVersionAndVersions_ReportWhiz038AtTheAttributeAsync" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/WhizbangIdVersionsTests.cs" tests=["WhizbangIdVersionsTests.AcceptAnyVersionAndVersions_ReportWhiz038AtTheAttributeAsync"]}
+```csharp{title="Two declarations that list different versions" description="The struct lists v7 and v5 and a property's attribute keeps the default, so the id accepts v7 only and WHIZ038 points at the narrowed list." framework="NET10" category="Diagnostics" difficulty="INTERMEDIATE" tags=["diagnostics", "whizbang-id", "versions", "warning"] testFile="WhizbangIdVersionsTests.cs" testMethod="RoutesThatDisagree_TakeTheCommonVersionsAndReportWhiz038AtTheNarrowedListAsync" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/WhizbangIdVersionsTests.cs" tests=["WhizbangIdVersionsTests.RoutesThatDisagree_TakeTheCommonVersionsAndReportWhiz038AtTheNarrowedListAsync"]}
 using Whizbang.Core;
 
 namespace MyApp.Domain;
 
-[WhizbangId(AcceptAnyVersion = true, Versions = UuidVersions.V5)]  // WHIZ038
+[WhizbangId(Versions = UuidVersions.V7 | UuidVersions.V5)]  // WHIZ038: narrowed to UUIDv7
 public readonly partial struct ProductId;
+
+public class CreateProduct {
+  [WhizbangId]  // lists UUIDv7 only
+  public ProductId Id { get; set; }
+}
 ```
 
-### After
+### After (no warning)
 
-```csharp{title="A list of versions alone" description="The attribute lists the accepted versions and does not set AcceptAnyVersion, so no error is reported." framework="NET10" category="Diagnostics" difficulty="INTERMEDIATE" tags=["diagnostics", "whizbang-id", "versions"] testFile="WhizbangIdVersionsTests.cs" testMethod="AcceptAnyVersionFalseWithVersions_ReportsNoWhiz038Async" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/WhizbangIdVersionsTests.cs" tests=["WhizbangIdVersionsTests.AcceptAnyVersionFalseWithVersions_ReportsNoWhiz038Async"]}
+```csharp{title="Declarations that list the same versions" description="Every [WhizbangId] for the id lists the same versions, so the id accepts v7 or v5 and no warning is reported." framework="NET10" category="Diagnostics" difficulty="INTERMEDIATE" tags=["diagnostics", "whizbang-id", "versions", "info"] testFile="WhizbangIdVersionsTests.cs" testMethod="RoutesThatAgreeOnVersions_ReportNothingAsync" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/WhizbangIdVersionsTests.cs" tests=["WhizbangIdVersionsTests.RoutesThatAgreeOnVersions_ReportNothingAsync"]}
+using Whizbang.Core;
+
+namespace MyApp.Domain;
+
 [WhizbangId(Versions = UuidVersions.V7 | UuidVersions.V5)]
 public readonly partial struct ProductId;
+
+public class CreateProduct {
+  [WhizbangId(Versions = UuidVersions.V5 | UuidVersions.V7)]
+  public ProductId Id { get; set; }
+}
 ```
+
+## Suppressing
+
+Do not suppress WHIZ038: it means a listed version is refused at runtime. Make the declarations agree instead.
 
 ## Related
 
 - [WhizbangIds: A list of accepted versions](../../fundamentals/identity/whizbang-ids#accepted-versions)
-- [WhizbangIds: Ids that are not UUIDv7](../../fundamentals/identity/whizbang-ids#accept-any-version)
+- [WHIZ029: WhizbangId AcceptAnyVersion Disagrees](whiz029)
+- [WHIZ043: WhizbangId Accepts No Version](whiz043)

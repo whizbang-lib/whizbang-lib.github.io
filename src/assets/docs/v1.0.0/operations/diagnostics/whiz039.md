@@ -1,11 +1,10 @@
 ---
-title: 'WHIZ039: WhizbangId Accepts No Version'
+title: 'WHIZ039: WhizbangId AcceptAnyVersion With Versions'
 pageType: troubleshooting
 verifiedAgainstCommit: 'b865cd6b'
 verifiedDate: 2026-11-21
 description: >-
-  Error when a strongly-typed id accepts no UUID version: its Versions list is empty, or its [WhizbangId]
-  declarations list no version in common.
+  Error when one [WhizbangId] writes both AcceptAnyVersion = true and Versions, which contradict each other.
 version: 1.0.0
 category: Diagnostics
 severity: Error
@@ -25,60 +24,48 @@ testReferences:
 lastMaintainedCommit: 'b865cd6b'
 ---
 
-# WHIZ039: WhizbangId Accepts No Version
+# WHIZ039: WhizbangId AcceptAnyVersion With Versions
 
 **Severity**: Error
 **Category**: Source Generation / Identity
 
 ## Description
 
-A strongly-typed id must accept at least one UUID version through `From`, `Parse`, the explicit cast, JSON and the
-GraphQL scalar. WHIZ039 is reported when it would accept none:
-
-- its [`Versions`](../../fundamentals/identity/whizbang-ids#accepted-versions) list is empty (`UuidVersions.None`),
-  or holds no version 1 to 8; or
-- the `[WhizbangId]` declarations for it (the struct, a property, a parameter) list no version in common, for
-  example `V5` on the struct and the default `V7` on a property.
+[`AcceptAnyVersion = true`](../../fundamentals/identity/whizbang-ids#accept-any-version) makes an id accept any
+non-empty Guid; [`Versions`](../../fundamentals/identity/whizbang-ids#accepted-versions) lists the UUID versions it
+accepts. A `[WhizbangId]` that writes both says two different things, so the generator refuses it. `AcceptAnyVersion
+= false` next to `Versions` is the default and is not reported.
 
 ## Diagnostic Message
 
 ```
-'{IdType}' accepts no UUID version: {Reason}. List at least one version in Versions, the same on every [WhizbangId] for this id.
+This [WhizbangId] for '{IdType}' writes both AcceptAnyVersion = true and Versions. Write Versions to list the accepted versions, or AcceptAnyVersion = true to accept any non-empty Guid, not both.
 ```
 
 ## How to Fix
 
-List at least one version, and list the same versions on every `[WhizbangId]` for the id.
+Keep one. List the versions when you know how the id's values are made (minted, derived by name); keep
+`AcceptAnyVersion = true` only for ids issued outside your system, whose version you do not control.
 
 ### Before (causes WHIZ039)
 
-```csharp{title="Declarations with no version in common" description="The struct lists v5 only and a property's attribute keeps the default v7, so no version is accepted by both." framework="NET10" category="Diagnostics" difficulty="INTERMEDIATE" tags=["diagnostics", "whizbang-id", "versions", "error"] testFile="WhizbangIdVersionsTests.cs" testMethod="RoutesWithNoVersionInCommon_ReportWhiz039Async" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/WhizbangIdVersionsTests.cs" tests=["WhizbangIdVersionsTests.RoutesWithNoVersionInCommon_ReportWhiz039Async"]}
+```csharp{title="An attribute that writes both" description="AcceptAnyVersion = true and Versions on the same attribute contradict each other." framework="NET10" category="Diagnostics" difficulty="INTERMEDIATE" tags=["diagnostics", "whizbang-id", "versions", "error"] testFile="WhizbangIdVersionsTests.cs" testMethod="AcceptAnyVersionAndVersions_ReportWhiz039AtTheAttributeAsync" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/WhizbangIdVersionsTests.cs" tests=["WhizbangIdVersionsTests.AcceptAnyVersionAndVersions_ReportWhiz039AtTheAttributeAsync"]}
 using Whizbang.Core;
 
 namespace MyApp.Domain;
 
-[WhizbangId(Versions = UuidVersions.V5)]  // WHIZ039: nothing in common with the property's v7
+[WhizbangId(AcceptAnyVersion = true, Versions = UuidVersions.V5)]  // WHIZ039
 public readonly partial struct ProductId;
-
-public class CreateProduct {
-  [WhizbangId]
-  public ProductId Id { get; set; }
-}
 ```
 
 ### After
 
-```csharp{title="One declaration with a non-empty list" description="The id is declared once, on the struct, with versions to accept, so WHIZ039 is not reported." framework="NET10" category="Diagnostics" difficulty="INTERMEDIATE" tags=["diagnostics", "whizbang-id", "versions"] testFile="WhizbangIdVersionsTests.cs" testMethod="ExplicitType_WithAllowList_ChecksTheListedVersionsAsync" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/WhizbangIdVersionsTests.cs" tests=["WhizbangIdVersionsTests.ExplicitType_WithAllowList_ChecksTheListedVersionsAsync"]}
+```csharp{title="A list of versions alone" description="The attribute lists the accepted versions and does not set AcceptAnyVersion, so no error is reported." framework="NET10" category="Diagnostics" difficulty="INTERMEDIATE" tags=["diagnostics", "whizbang-id", "versions"] testFile="WhizbangIdVersionsTests.cs" testMethod="AcceptAnyVersionFalseWithVersions_ReportsNoWhiz039Async" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/WhizbangIdVersionsTests.cs" tests=["WhizbangIdVersionsTests.AcceptAnyVersionFalseWithVersions_ReportsNoWhiz039Async"]}
 [WhizbangId(Versions = UuidVersions.V7 | UuidVersions.V5)]
 public readonly partial struct ProductId;
-
-public class CreateProduct {
-  public ProductId Id { get; set; }  // the struct's declaration is enough
-}
 ```
 
 ## Related
 
 - [WhizbangIds: A list of accepted versions](../../fundamentals/identity/whizbang-ids#accepted-versions)
-- [WHIZ037: WhizbangId Versions Narrowed](whiz037)
-- [WHIZ038: WhizbangId AcceptAnyVersion With Versions](whiz038)
+- [WhizbangIds: Ids that are not UUIDv7](../../fundamentals/identity/whizbang-ids#accept-any-version)

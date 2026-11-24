@@ -1,11 +1,12 @@
 ---
 title: 'WHIZ055: Guid.NewGuid() Usage'
 pageType: troubleshooting
-verifiedAgainstCommit: 9a416b5b
-verifiedDate: 2026-10-17
+verifiedAgainstCommit: '7b794a96'
+verifiedDate: 2026-11-23
 description: >-
   Warning diagnostic for each call to Guid.NewGuid(), which creates a random UUIDv4 that is not time-ordered.
-  Use TrackedGuid.New() or a [WhizbangId] type to get a time-ordered UUIDv7 instead.
+  With Guid interception on (the default) the call is replaced with TrackedGuid.New(); write TrackedGuid.New() or a
+  [WhizbangId] type so the code says what it gets.
 version: 1.0.0
 category: Diagnostics
 severity: Warning
@@ -25,6 +26,7 @@ testReferences:
   - tests/Whizbang.Generators.Tests/GuidUsageAnalyzerTests.cs
   - tests/Whizbang.Generators.Tests/GuidUsageAnalyzerCoverageTests.cs
   - tests/Whizbang.Generators.Tests/GuidInterceptorGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/GuidInterceptorRuntimeTests.cs
 lastMaintainedCommit: '9a416b5b'
 ---
 
@@ -43,6 +45,19 @@ events, messages and read models keyed by ids, and time-ordered ids keep those k
 `[WhizbangId]` type such as `OrderId` uses `TrackedGuid.New()` internally and adds a strong type on top. See
 [WhizbangIds](../../fundamentals/identity/whizbang-ids) for both.
 
+### With Guid interception on (the default)
+
+[Guid interception](../../fundamentals/identity/whizbang-ids#guid-interception) is on by default, and it replaces each
+`Guid.NewGuid()` with `TrackedGuid.New()` at compile time, so the call returns a UUIDv7 at runtime
+{verified: GuidInterceptorRuntimeTests.InterceptedNewGuid_WithTheDefaultConfiguration_ReturnsVersion7Async}. WHIZ055 is
+still reported, because the source then says something different from what runs: write `TrackedGuid.New()` or a
+`[WhizbangId]` type so the code says what it gets.
+
+`WhizbangGuidInterceptionEnabled=false` turns interception off, which is **strongly advised against**: every
+`Guid.NewGuid()` is then a random v4 again, and one that becomes an event or message id is refused at runtime by the
+[time-ordering checks](../../fundamentals/identity/whizbang-ids#time-ordering-checks). To keep one deliberate v4, use
+`[SuppressGuidInterception]` (see [WHIZ059](whiz059)).
+
 ### When it fires, and when it does not
 
 - It fires once per **invocation written as a member access** that binds to `System.Guid.NewGuid`, for example
@@ -56,7 +71,7 @@ events, messages and read models keyed by ids, and time-ordered ids keep those k
 ## Diagnostic Message
 
 ```text{title="WHIZ055 message" description="The descriptor's message; it has no placeholders" category="Diagnostics" difficulty="BEGINNER" tags=["WHIZ055", "Guid", "Diagnostics"] unverified="message text read from the descriptor"}
-Use TrackedGuid.New() or a [WhizbangId] type instead of Guid.NewGuid(). UUIDv4 is not time-ordered.
+Use TrackedGuid.New() or a [WhizbangId] type instead of Guid.NewGuid(). UUIDv4 is not time-ordered; with interception on (the default) this call is replaced with TrackedGuid.New().
 ```
 
 ## Common Causes
@@ -98,7 +113,8 @@ public class MyService {
 ```
 
 If you need a random UUIDv4 on purpose, `TrackedGuid.NewRandom()` creates one and records that it is a version 4
-value, so later code can tell it is not time-ordered.
+value, so later code can tell it is not time-ordered. A v4 must not become an event or message id: the
+[time-ordering checks](../../fundamentals/identity/whizbang-ids#time-ordering-checks) refuse it.
 
 ## Suppressing
 
@@ -121,9 +137,9 @@ public class MyService {
 dotnet_diagnostic.WHIZ055.severity = none
 ```
 
-**The pragma also affects Guid interception.** When `WhizbangGuidInterceptionEnabled` is on, the
+**The pragma also affects Guid interception.** With interception on (the default), the
 `GuidInterceptorGenerator` skips any `Guid.NewGuid()` or `Guid.CreateVersion7()` call that sits inside an active
-`#pragma warning disable WHIZ055` (or `WHIZ056`) region, so that call is not wrapped as a `TrackedGuid`. `.editorconfig`
+`#pragma warning disable WHIZ055` (or `WHIZ056`) region, so that call is not replaced and returns a random v4. `.editorconfig`
 and `NoWarn` only change the warning; they do not stop interception. To skip interception explicitly, use
 `[SuppressGuidInterception]` (see [WHIZ059](whiz059)). {verified: GuidInterceptorGeneratorTests.Generator_PragmaDisableWhiz055_SuppressesInterceptionAsync}
 
@@ -132,6 +148,7 @@ and `NoWarn` only change the warning; they do not stop interception. To skip int
 - [WHIZ056: Guid.CreateVersion7() Usage](whiz056)
 - [WHIZ057: Raw Guid Parameter (retired)](whiz057)
 - [WHIZ058: GUID Call Intercepted](whiz058)
+- [WHIZ037: A Constructed Or Parsed Guid Flows Into An Id](whiz037)
 - [WHIZ059: GUID Interception Suppressed](whiz059)
 - [WhizbangIds and TrackedGuid](../../fundamentals/identity/whizbang-ids)
 - [GuidUsageAnalyzer](../../fundamentals/identity/whizbang-ids#analyzer)
