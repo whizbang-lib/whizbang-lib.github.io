@@ -515,6 +515,26 @@ name's brackets, so a generic name is no longer cut inside its type arguments. S
 earlier release stored with versions.
 {verified: TypeNameWireFormTests.Format_CarriesNoVersionAtAnyDepthAsync, TypeNameWireFormTests.Format_IsWhatTheStringNormalizerMakesOfEveryRenderingAsync, TypeNameWireFormTests.Parse_DelegatesToTheNormalizer_ForEveryRenderingAsync}
 
+### Each form is read once per type {#names-read-once-per-type}
+
+The runtime keeps a type's name, full name and namespace in a cache it holds weakly, so any garbage collection can drop
+them and the next read allocates again, and it builds the assembly-qualified name afresh on every read. The stored form
+is written on every outbox and inbox write, and the namespace is read on every PreOutbox stage once owned domains are
+configured, so those reads allocated on every message.
+
+`TypeNameFormatter` now reads a type's names the first time any form is asked for and keeps them with the type. Every
+form answers from that entry: `Format`, `FormatClrTypeName`, `TryFormatClrTypeName`, `FormatOrDisplay`,
+`AssemblyQualifiedName` and its variants, `DisplayName`, `SimpleName`, `ForLog` and `NamespaceOf`. After the first read
+of a type, none of them allocates, even after a collection. The output and the exceptions are unchanged. The entry
+holds the type weakly, so a collectible type still unloads, and nothing is read by reflection. The inbox's fallback
+event classification (`EventTypeMatchingHelper.IsEventType`), the perspective type lookup and the generated
+`[WhizbangTrace]` route read names through the same entries.
+{verified: TypeNameFormatterCachingTests.EveryForm_AfterTheFirstRead_AllocatesNothingEvenAfterACollectionAsync, TypeNameFormatterCachingTests.EveryForm_OfANamedType_IsWhatTheTypesOwnNamesGiveAsync, TypeNameFormatterCachingTests.TheStoredForm_IsUnversioned_AndTheAssemblyQualifiedForm_IsVersionedAsync, TypeNameFormatterCachingTests.AGenericParameter_KeepsEveryFormsRefusalAndFallbackAsync, TypeNameFormatterCachingTests.IsEventType_MatchesEveryFormAsBefore_AndReadsNoNameAfterACollectionAsync, TypeNameLookupAllocationTests.NamespaceOf_AfterCollections_AllocatesNothingAsync, TypeNameLookupAllocationTests.NamespaceOf_IsTheTypesOwnNamespace_EveryTimeAsync}
+
+Names that only a log line or a trace uses are read only when it is on: the library checks the log level, or that a
+listener is attached, before it reads them, and the repository rule
+[WHIZ610](../../operations/diagnostics/whiz610.md) fails the build when it does not.
+
 ## One source of type names {#one-source-of-type-names}
 
 `TypeFormatter`, `TypeNameFormatter`, `EventTypeMatchingHelper` and `MultiPassMessageTypeBinder` are the library's
@@ -532,3 +552,4 @@ helper produces which form is on the contributor page [Type names in library cod
 - [TypeMatcher](type-matching.md) - Matching formatted type strings
 - [Perspectives](../perspectives/perspectives.md) - Message associations using formatted types
 - [Migration Tracking](../../operations/infrastructure/migrations.md) - Settings-gated data migrations (e.g. CLR type-name normalization)
+- [WHIZ610](../../operations/diagnostics/whiz610.md) - Type names read only when a log or a trace needs them

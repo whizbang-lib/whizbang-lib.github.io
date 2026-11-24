@@ -114,6 +114,16 @@ them off, because tests, tools, samples and benchmarks name types to describe th
 
 {verified: CompositeChildIdentityBanListTests.TheBanList_ForbidsTheRawDerivation_AndTheVersionedTypeNamesAsync}
 
+**WHIZ610** comes from `EagerLogTypeNameAnalyzer` in the same assembly. A name read through the naming authorities
+for a log call at `Information` or below, or for an activity's name, must sit behind an `IsEnabled` or `HasListeners`
+check, so a per-message path reads no name it does not use. It also applies to `src/` only. See
+[WHIZ610](../v1.0.0/operations/diagnostics/whiz610.md).
+
+`TypeNameFormatter` reads each form of a type's name once and keeps it with the type, so a name the code needs
+whatever the log level costs one lookup after the first read, even after a garbage collection (see
+[Each form is read once per type](../v1.0.0/fundamentals/identity/type-formatting.md#names-read-once-per-type)).
+A new form added to `TypeNameFormatter` answers from the same per-type entry rather than reading `System.Type` again.
+
 ## Making an exception {#making-an-exception}
 
 An exception is made where it is used, with its reason, and only through `[SuppressMessage]` with a non-empty
@@ -134,6 +144,7 @@ helpers, such as an analyzer assembly that does not reference the generators' sh
 ## Related
 
 - [WHIZ607](../v1.0.0/operations/diagnostics/whiz607.md) and [WHIZ608](../v1.0.0/operations/diagnostics/whiz608.md)
+- [WHIZ610](../v1.0.0/operations/diagnostics/whiz610.md)
 - [Repository Checks and Diagnostic IDs](repository-checks.md)
 - [TypeFormatter and TypeNameFormatter](../v1.0.0/fundamentals/identity/type-formatting.md)
 - [Normalizing type names](../v1.0.0/operations/infrastructure/migrations.md#normalizing-type-names)
