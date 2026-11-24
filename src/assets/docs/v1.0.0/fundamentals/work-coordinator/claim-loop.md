@@ -129,7 +129,7 @@ permit is in memory, so the next claim is held the moment the permit closes.
 
 `ClaimWorker` is an `IReleasesHeldWork`: step 4 of the run-control path. Once no claim is in hand, it names the
 inbox and perspective streams of its **last claim** that the drain channels report as not in flight, and calls
-`IWorkCoordinator.ReleaseUnstartedLeasesAsync` on them, the same release a [stuck instance](#a-stuck-instance-releases-what-it-has-not-started)
+`IWorkCoordinator.ReleaseUnstartedLeasesAsync` on them, the same release a [stuck instance](#releasing-unstarted-work)
 makes. A peer takes those streams over at once instead of after their leases lapse. A stream a drain has begun is
 finished here, never released under it, and before any claim there is nothing to release.
 {verified: ClaimWorkerRunPermitTests.ReleaseHeldWork_ReleasesTheLastClaimsStreamsThatNoDrainHasStartedAsync, ClaimWorkerRunPermitTests.ReleaseHeldWork_BeforeAnyClaim_ReleasesNothingAsync}
