@@ -208,6 +208,7 @@ Removed keys the library declares:
 | `Whizbang:Database:RoleAssignment:Enabled` | Nothing. Every duty is a role assignment and there is no other way to hold one (#2044). See [every duty is a role assignment](../startup/capabilities-and-duties#role-assignment-the-default) |
 | `Whizbang:Database:RoleAssignment:HoldLegacySessionLock` | Nothing. The legacy-lock bridge is gone; an older release's duty is seen through the holding it records. See [a rolling deploy from a release that held duties by session lock](../startup/capabilities-and-duties#legacy-holder) |
 | `Whizbang:Database:Stamper:AdvisoryLockKey` | Nothing. The commit-order stamper takes no lock of its own; it leads through the `commit-stamper` role. See [Commit sequence](../../fundamentals/work-coordinator/commit-sequence#leadership) |
+| `Whizbang:Database:PartitionAssigner:Enabled` | Nothing. The partition assigner always runs, in every driver (#2559); the key changes nothing. See [Partition assigner](#partition-assigner) |
 | `Whizbang:StandbyWatcher:RequesterLivenessWindow` | `Whizbang:Workers:Heartbeat:IntervalSeconds`: the standby watcher keeps no window of its own; [the liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule) judges the requester by the window it declares from its heartbeat cadence. See [Rolling Upgrades](../startup/rolling-upgrades#the-standby-handshake) |
 
 ## Registrations two assemblies share are reported at startup {#registration-collisions}
@@ -228,13 +229,14 @@ DbContext), the latest registration is used and startup logs a warning naming th
 | `Whizbang:Database` | `WhizbangNotificationOptions` | Automatic (Postgres driver) |
 | `Whizbang:Database:Stamper` | `CommitOrderStamperOptions` | Automatic (Postgres driver) |
 | `Whizbang:Database:RoleAssignment` | `RoleAssignmentOptions` | Automatic (Postgres driver) |
+| `Whizbang:Database:PartitionAssigner` | `PartitionAssignerOptions` | Automatic (both Postgres drivers); see [Partition assigner](#partition-assigner) |
 | `Whizbang:Capabilities` | `CapabilityOptions` | Automatic (registered by every capability provider, both Postgres drivers among them); see [Capabilities](#capabilities-options) |
 | `Whizbang:WorkCoordinatorGate` | `WorkCoordinatorGateOptions` | Automatic (worker pipeline); a Postgres driver's `MaxInFlightCommands` fills `MaxConcurrent` when the section leaves it unset |
 | `Whizbang:ServiceName` (falls back to `ServiceName`) | — (string) | Automatic |
 | `Whizbang:ShowBanner` | — (bool) | Automatic |
 | `Whizbang:Application:Version`, `Whizbang:Application:DeployNumber` | none (read once, when the application version is first resolved) | Automatic (worker pipeline); see [Application version](#application-version) |
-| `Whizbang:Startup:OverrideIncompatibility` | none (read once, by the Assess verdict) | Automatic (both Postgres drivers); see [Incompatibility override](#incompatibility-override) |
-| `Whizbang:Startup:AllowLossyRollback` | none (read once, by the Assess verdict) | Automatic (both Postgres drivers); see [Lossy rollback](#lossy-rollback) |
+| `Whizbang:Startup:OverrideIncompatibility`, `Whizbang:Startup:Platform:OverrideIncompatibility`, `Whizbang:Startup:Application:OverrideIncompatibility` | none (read once, by the Assess verdict) | Automatic (both Postgres drivers); see [Incompatibility override](#incompatibility-override) |
+| `Whizbang:Startup:AllowLossyRollback`, `Whizbang:Startup:Platform:AllowLossyRollback`, `Whizbang:Startup:Application:AllowLossyRollback` | none (read once, by the Assess verdict) | Automatic (both Postgres drivers); see [Lossy rollback](#lossy-rollback) |
 | `ConnectionStrings:*` | — (strings, naming conventions below) | Automatic |
 | `ConnectionPool:*` | — (generated DbContext registration) | Automatic |
 | `Whizbang:BodyOffload` | `MessageBodyOffloadOptions` (every key) | Automatic (`AddWhizbangBodyOffload()`, which every provider helper calls) |
@@ -364,6 +366,24 @@ Bound by the Postgres driver, which holds every duty (`maintainer`, `migrator`, 
 
 Code-only (through `AddWhizbangRoleAssignment(o => ...)`): `Roles` (the duties the holder loop holds and the `roles` health component reports; a duty not listed is still held by assignment when asked for) and `RoleLeases` (a lease per duty; the migrator's default is 30 seconds).
 
+### Whizbang:Database:PartitionAssigner → PartitionAssignerOptions {#partition-assigner}
+{verified: PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_BindsEveryAssignerKeyFromConfigurationAsync, PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_WithNoAssignerKeys_KeepsTheDefaultsAsync, PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_AHostsOwnConfigureOfTheAssigner_StillWinsAsync, PartitionAssignerRegistrationTests.TheRemovedEnabledKey_SetToFalse_TurnsNothingOffAsync}
+
+Bound by both Postgres drivers, which always run the elected partition assigner (#2558, #2559). Parsed by hand, without
+reflection; a key that is absent or does not parse keeps its default, and a host's own
+`Configure<PartitionAssignerOptions>` registered after the driver still has the last word. **Details:**
+[Partition assignment](../../fundamentals/work-coordinator/partition-assignment#configuration).
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `AssignmentLease` | `TimeSpan` | `00:01:30` | `Whizbang__Database__PartitionAssigner__AssignmentLease` | How long a published assignment holds without renewal. Must exceed 60 s, the slow heartbeat cadence |
+| `RepublishInterval` | `TimeSpan` | `00:05:00` | `Whizbang__Database__PartitionAssigner__RepublishInterval` | The backstop: the assigner republishes at least this often. Must be positive |
+| `SettleWindow` | `TimeSpan` | `00:00:05` | `Whizbang__Database__PartitionAssigner__SettleWindow` | How long a membership change is collected before one new partition map is published, so a rolling deploy moves a little per instance instead of reshuffling on every heartbeat. `00:00:00` publishes every change at once; negative is refused. See [the settle window](../../fundamentals/work-coordinator/partition-assignment#settle-window) |
+
+Code-only: `OwnershipByMap` (default `false`), which asks for the service's one-way
+[ownership-by-map switch](../../fundamentals/work-coordinator/partition-assignment#ownership-switch). `Enabled` is a
+[removed key](#removed-keys): the assigner always runs.
+
 ### Whizbang:Capabilities → CapabilityOptions {#capabilities-options}
 
 Bound when any capability provider registers (both Postgres drivers do), so the library probes the external capabilities it can use at startup and provisions the ones a feature in force requires. **Details:** [Capabilities](../infrastructure/capabilities.md#configuration). {verified: CapabilityServiceCollectionExtensionsTests.ProbeOnStartup_DefaultsToTrue_WithoutConfigurationAsync, CapabilityServiceCollectionExtensionsTests.ProbeOnStartup_BindsFromConfigurationAsync, CapabilityServiceCollectionExtensionsTests.AutoProvision_DefaultsToTrue_AndBindsFromConfigurationAsync, CapabilityAutoProvisionTests.Capability_OverridesProviderAndGlobalAsync}
@@ -417,17 +437,23 @@ being recorded as unknown. A blank `Version` is no override.
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
-| `Whizbang:Startup:OverrideIncompatibility` | `bool` | `false` | `Whizbang__Startup__OverrideIncompatibility` | Lets an instance start when Assess would stand it down for an incompatibility (the schema newer than its build, or a change it cannot reverse applied since its version). It starts as `Current`, applies nothing and runs no migration; it logs at Error on every start and records the override on its instance row. It never lifts the stand-down for a newer version online. See [the incompatibility override](../startup/rolling-upgrades#the-incompatibility-override) |
+| `Whizbang:Startup:OverrideIncompatibility` | `bool` | `false` | `Whizbang__Startup__OverrideIncompatibility` | Lets an instance start when Assess would stand it down for an incompatibility (the schema newer than its build, or a change it cannot reverse applied since its version), on each side whose own key below is unset. Serving the W! migrations as they are starts the instance as `Current`: it applies nothing and runs no migration. Serving the application's schema as it is still runs the W! migrations. It logs at Error on every start and records the override on its instance row. It never lifts the stand-down for a newer version online. See [the incompatibility override](../startup/rolling-upgrades#the-incompatibility-override) |
+| `Whizbang:Startup:Platform:OverrideIncompatibility` | `bool` | unset (the shared key decides) | `Whizbang__Startup__Platform__OverrideIncompatibility` | The override for the W! migrations alone. `false` refuses even when the shared key is on. See [two verdicts](../startup/rolling-upgrades#two-verdicts) |
+| `Whizbang:Startup:Application:OverrideIncompatibility` | `bool` | unset (the shared key decides) | `Whizbang__Startup__Application__OverrideIncompatibility` | The override for the application's schema alone: it is served as it is while the W! migrations are still judged and run on their own. `false` refuses even when the shared key is on |
 
 Only `true` turns it on. A value that is not a boolean fails startup naming the key, rather than being read as off.
-It is an emergency setting: turn it off once the incompatible build is gone.
+It is an emergency setting: turn it off once the incompatible build is gone. A side's own key, when it is set, wins over
+the shared key for that side, either way.
+{verified: UpgradeOrderTests.TheOverrides_AreScopedPerSide_AndTheSharedKeysStillMeanBothAsync, UpgradeOrderTests.EachSide_KnowsItsOwnOverrides_AndItsOwnKeyAsync}
 {verified: UpgradeOrderTests.TheOverride_IsOffUnlessTheHostTurnsItOnAsync, UpgradeOrderTests.AnOverrideThatIsNotABoolean_IsRefusedLoudly_NeverReadAsOffAsync, RollbackGateTests.TheOverride_LetsAnIncompatibleInstanceServe_WithoutAMigration_AndCarriesTheFullReasonAsync, RollbackGateTests.TheOverride_NeverOverridesANewerVersionOnlineAsync}
 
 ### Lossy rollback {#lossy-rollback}
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
-| `Whizbang:Startup:AllowLossyRollback` | `bool` | `false` | `Whizbang__Startup__AllowLossyRollback` | Lets an older version roll back changes a newer version applied whose reversal discards data the newer version wrote (dropping a perspective table it created, rows included). Off, such a rollback stands down with an error naming each change. It never lets an irreversible change be rolled back. See [rolling back](../startup/rolling-upgrades#rolling-back) |
+| `Whizbang:Startup:AllowLossyRollback` | `bool` | `false` | `Whizbang__Startup__AllowLossyRollback` | Lets an older version roll back changes a newer version applied whose reversal discards data the newer version wrote (dropping a perspective table it created, rows included), on each side whose own key below is unset. Off, such a rollback stands down with an error naming each change. It never lets an irreversible change be rolled back. See [rolling back](../startup/rolling-upgrades#rolling-back) |
+| `Whizbang:Startup:Platform:AllowLossyRollback` | `bool` | unset (the shared key decides) | `Whizbang__Startup__Platform__AllowLossyRollback` | The lossy setting for a rollback of the W! migrations alone |
+| `Whizbang:Startup:Application:AllowLossyRollback` | `bool` | unset (the shared key decides) | `Whizbang__Startup__Application__AllowLossyRollback` | The lossy setting for a rollback of the application's schema alone |
 
 Only `true` turns it on. A value that is not a boolean fails startup naming the key, rather than being read as off.
 Set it for the rollback that needs it, then turn it off: left on, every later rollback across such a change discards
