@@ -1,19 +1,22 @@
 ---
 title: Sequence Integrity
 pageType: concept
-verifiedDate: 2026-11-23
+verifiedDate: 2026-11-24
 order: 10
 description: >-
   Whether the outbox publishes an event at once or holds it until the
   commit-order stamper has given it its position, decided per event at the
   origin. Three modes (None, Bounded, UntilStamped), set per dispatch, on the
   event type or by configuration; the default holds each event up to one
-  second. A held event holds its stream behind it, the stamp releases it at
-  once, and a gauge reports how long the oldest held event has waited.
-tags: 'sequence integrity, commit sequence, stamper, outbox, ordering, origin position, hold, bounded'
+  second. An ambient scope sets it for everything dispatched inside, and what a
+  receptor produces inherits its parent's explicit setting, as priority does. A
+  held event holds its stream behind it, the stamp releases it at once, and a
+  gauge reports how long the oldest held event has waited.
+tags: 'sequence integrity, commit sequence, stamper, outbox, ordering, origin position, hold, bounded, ambient scope, inheritance'
 codeReferences:
   - src/Whizbang.Core/Messaging/SequenceIntegrity.cs
   - src/Whizbang.Core/Messaging/SequenceIntegrityPolicy.cs
+  - src/Whizbang.Core/Messaging/SequenceIntegrityContext.cs
   - src/Whizbang.Core/Attributes/SequenceIntegrityAttribute.cs
   - src/Whizbang.Core/Dispatch/DispatchOptions.cs
   - src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs
@@ -27,6 +30,8 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/SequenceIntegrityPolicyTests.cs
   - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/DispatcherSequenceIntegrityTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/SequenceIntegrityContextTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/DispatcherSequenceIntegrityInheritanceTests.cs
   - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatch/DispatchOptionsSequenceIntegrityTests.cs
   - tests/Whizbang.Generators.Tests/MessageTypeCatalogGeneratorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SequenceIntegritySqlTests.cs
@@ -67,17 +72,19 @@ neither is an event that is only stored and never sent.
 
 ## Where it is set {#precedence}
 
-{verified: SequenceIntegrityPolicyTests.TheDispatchsSetting_BeatsTheTypeAndTheDefaultAsync, SequenceIntegrityPolicyTests.TheTypesAttribute_BeatsTheConfiguredDefaultAsync, SequenceIntegrityPolicyTests.TheConfiguredDefault_AppliesToATypeThatDeclaresNoneAsync, SequenceIntegrityPolicyTests.OutOfTheBox_AnEventIsHeldBoundedForOneSecondAsync, DispatcherSequenceIntegrityTests.Publish_TheConfiguredDefault_TheTypesAttribute_AndTheDispatch_InOrderOfPrecedenceAsync}
+{verified: SequenceIntegrityPolicyTests.TheDispatchsSetting_BeatsTheTypeAndTheDefaultAsync, SequenceIntegrityPolicyTests.TheAmbientScope_BeatsTheTypeAndTheDefault_AndTheDispatchBeatsTheScopeAsync, SequenceIntegrityPolicyTests.TheAmbientHoldTime_SitsBetweenTheDispatchsAndTheTypesAsync, SequenceIntegrityPolicyTests.TheTypesAttribute_BeatsTheConfiguredDefaultAsync, SequenceIntegrityPolicyTests.TheConfiguredDefault_AppliesToATypeThatDeclaresNoneAsync, SequenceIntegrityPolicyTests.OutOfTheBox_AnEventIsHeldBoundedForOneSecondAsync, DispatcherSequenceIntegrityTests.Publish_TheConfiguredDefault_TheTypesAttribute_AndTheDispatch_InOrderOfPrecedenceAsync}
 
 The most specific setting wins:
 
 1. **The dispatch**, for an event whose need depends on the call (`DispatchOptions.WithSequenceIntegrity`).
-2. **The event type**, with `[SequenceIntegrity]`.
-3. **The configured default**, `Whizbang:Core:SequenceIntegrity`.
-4. **Out of the box**: `Bounded`, holding up to 1 second.
+2. **The ambient scope, or the setting inherited from the parent dispatch**, for a whole flow
+   ([below](#ambient-scope)).
+3. **The event type**, with `[SequenceIntegrity]`.
+4. **The configured default**, `Whizbang:Core:SequenceIntegrity`.
+5. **Out of the box**: `Bounded`, holding up to 1 second.
 
 The hold time of a `Bounded` hold follows the same order on its own: the dispatch's hold time, else
-the one the type's attribute names, else `Whizbang:Core:SequenceHoldTime`. So a dispatch can shorten
+the scope's, else the one the type's attribute names, else `Whizbang:Core:SequenceHoldTime`. So a dispatch can shorten
 the hold of a type that sets `Bounded` without naming the mode again.
 
 ### Per dispatch {#per-dispatch}
@@ -132,6 +139,80 @@ Or `Whizbang__Core__SequenceIntegrity` and `Whizbang__Core__SequenceHoldTime` as
 variables. Both are in the [configuration reference](../../operations/configuration/configuration-reference#whizbangcoreoptions).
 Setting the default to `None` restores the behavior from before sequence integrity, for every type
 that does not ask for more.
+
+### For a whole flow: the ambient scope and inheritance {#ambient-scope}
+
+{verified: SequenceIntegrityContextTests.Enter_SetsTheModeAndHoldTime_AndDisposingClearsThemAsync, SequenceIntegrityContextTests.NestedScope_ReplacesTheOuterOne_AndDisposingRestoresItAsync, SequenceIntegrityContextTests.NestedScope_WithNoHoldTime_KeepsTheOuterHoldTimeAsync, SequenceIntegrityContextTests.TheScope_FlowsIntoWorkItStartsAsync, DispatcherSequenceIntegrityInheritanceTests.Publish_InsideTheScope_TakesTheScopesSettingAsync, DispatcherSequenceIntegrityInheritanceTests.Publish_AfterANestedScopeIsDisposed_TakesTheOuterOneAsync, DispatcherSequenceIntegrityInheritanceTests.Publish_ItsOwnSetting_BeatsTheScopeAsync}
+
+A per-dispatch setting covers one call, and an attribute covers every use of a type. Neither says
+"this one flow is live": the same event type can be raised by an interactive request, where it must go
+out at once, and by a bulk import, where the hold is right. Sequence integrity follows the same
+pattern as [message priority](message-priority#hooks) for this, in two pieces.
+
+**The ambient scope.** `SequenceIntegrityContext.Enter` sets a mode, and optionally a hold time, for
+every dispatch inside the scope that does not set one itself. It is the counterpart of
+`PriorityContext.Enter`: it flows with the async context into the work a handler starts, and disposing
+it restores what was there before, so a nested scope replaces the outer one only until it ends.
+
+```csharp{title="Set sequence integrity for a whole flow" description="Every dispatch inside the scope that names no setting itself takes the scope's" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging","Sequence Integrity"] tests=["DispatcherSequenceIntegrityInheritanceTests.Publish_InsideTheScope_TakesTheScopesSettingAsync","DispatcherSequenceIntegrityInheritanceTests.Publish_AfterANestedScopeIsDisposed_TakesTheOuterOneAsync","DispatcherSequenceIntegrityInheritanceTests.Publish_ItsOwnSetting_BeatsTheScopeAsync","SequenceIntegrityContextTests.NestedScope_WithNoHoldTime_KeepsTheOuterHoldTimeAsync"]}
+// An interactive request: publish what this flow produces at once.
+using (SequenceIntegrityContext.Enter(SequenceIntegrity.None)) {
+    await dispatcher.SendAsync(new CreateItem(itemId));
+
+    // A dispatch's own setting still wins over the scope.
+    await dispatcher.PublishAsync(
+        new LedgerPosted(ledgerId),
+        new DispatchOptions().WithSequenceIntegrity(SequenceIntegrity.UntilStamped));
+}
+
+// A bounded hold with its own deadline. A nested scope that names no hold time keeps this one.
+using (SequenceIntegrityContext.Enter(SequenceIntegrity.Bounded, TimeSpan.FromMilliseconds(250))) {
+    await dispatcher.PublishManyAsync(importedEvents);
+}
+```
+
+A negative hold time is refused. A scope that names no hold time takes the enclosing scope's, else
+the type's or the configured one: the hold time comes from the most specific level that names one.
+
+**Inheritance.** What a receptor produces inherits its parent dispatch's setting when the parent's
+was **explicit**: set on the parent's `DispatchOptions`, or by an ambient scope around it. This covers
+an event the receptor returns, a further event that event's own receptor cascades (a chain of any
+length), and anything the receptor dispatches while it handles the parent. A priority declared on a
+parent passes to its children the same way. The dispatcher runs the parent's handling inside a scope
+carrying the parent's explicit setting, so inheritance is the ambient scope again, not a second
+mechanism.
+
+{verified: DispatcherSequenceIntegrityInheritanceTests.Cascade_InheritsItsParentsExplicitSettingAsync, DispatcherSequenceIntegrityInheritanceTests.Cascade_InheritsItsParentsHoldTimeAsync, DispatcherSequenceIntegrityInheritanceTests.Cascade_AChainOfTwo_InheritsTheRootsExplicitSettingAsync, DispatcherSequenceIntegrityInheritanceTests.Cascade_InheritsTheAmbientScopeAsync, DispatcherSequenceIntegrityInheritanceTests.ADispatchMadeWhileHandling_InheritsTheParentsExplicitSettingAsync, DispatcherSequenceIntegrityInheritanceTests.ADispatchMadeWhileHandling_ItsOwnSettingWinsOverTheParentsAsync, DispatcherSequenceIntegrityInheritanceTests.Cascade_FromALocalInvoke_InheritsItsExplicitSettingAsync, DispatcherSequenceIntegrityInheritanceTests.Cascade_FromALocalInvokeWithReceipt_InheritsItsExplicitSettingAsync, DispatcherSequenceIntegrityInheritanceTests.Cascade_FromABatch_InheritsTheBatchsExplicitSettingAsync, DispatcherSequenceIntegrityInheritanceTests.Cascade_WithNothingExplicit_TakesTheTypesAttributeAndTheDefaultAsync, DispatcherSequenceIntegrityInheritanceTests.Cascade_OnceTheParentsDispatchReturns_NoLongerInheritsAsync, DispatcherSequenceIntegrityInheritanceTests.ACommand_IsNeverHeld_InsideAScopeOrUnderAnExplicitSettingAsync}
+
+```csharp{title="A cascade inherits its parent's explicit setting" description="The command is never held, but the event its receptor returns, and that event's own cascades, take the command's setting" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging","Sequence Integrity","Cascade"] tests=["DispatcherSequenceIntegrityInheritanceTests.Cascade_InheritsItsParentsExplicitSettingAsync","DispatcherSequenceIntegrityInheritanceTests.Cascade_AChainOfTwo_InheritsTheRootsExplicitSettingAsync","DispatcherSequenceIntegrityInheritanceTests.ADispatchMadeWhileHandling_ItsOwnSettingWinsOverTheParentsAsync","DispatcherSequenceIntegrityInheritanceTests.Cascade_WithNothingExplicit_TakesTheTypesAttributeAndTheDefaultAsync"]}
+public class CreateItemReceptor : IReceptor<CreateItem, ItemInitialized> {
+    public ValueTask<ItemInitialized> HandleAsync(CreateItem command, CancellationToken ct = default) =>
+        ValueTask.FromResult(new ItemInitialized(command.ItemId));
+}
+
+// The interactive path: ItemInitialized, and whatever its own receptors cascade, go out at once.
+await dispatcher.SendAsync(
+    new CreateItem(itemId),
+    new DispatchOptions().WithSequenceIntegrity(SequenceIntegrity.None));
+
+// The bulk path sets nothing, so ItemInitialized keeps its type's setting or the configured default.
+await dispatcher.SendAsync(new CreateItem(itemId));
+```
+
+The rules, which match priority's:
+
+- **Only an explicit setting is inherited.** When the parent set nothing, its children resolve exactly
+  as before: their own type's attribute, then configuration, then `Bounded`.
+- **A child's own setting wins.** A receptor that dispatches with its own `WithSequenceIntegrity`
+  overrides what it inherited, and that setting is in turn what its own cascades inherit.
+- **A command is still never held.** It passes the setting on to what its receptor produces; it
+  carries no commit sequence to wait for itself.
+- **Inheritance covers the parent's handling only.** Once the parent's dispatch returns, the next
+  dispatch starts from nothing again.
+- **It stays in this service.** The setting is decided at the origin and is not written onto the
+  wire, so a message handled by another service's inbox (or by this service's inbox after transport)
+  starts from that service's own rules. Priority, which consumers also order by, is the one carried
+  across. Set the scope or the options in the service that publishes the events that need it.
 
 ## How the hold works {#how-the-hold-works}
 
@@ -207,3 +288,5 @@ first held row in that order is the oldest one.
   exchange, is separate work.
 - **It is not decided at the receiver.** A receiver cannot ask an origin to wait; the origin knows
   what its events need.
+- **It is not inherited across services.** A [scope or a parent's setting](#ambient-scope) passes to
+  what the handling produces in the same service, never to a message after it crosses the transport.
