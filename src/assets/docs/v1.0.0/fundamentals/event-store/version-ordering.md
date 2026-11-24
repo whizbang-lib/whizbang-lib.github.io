@@ -17,10 +17,13 @@ codeReferences:
   - src/Whizbang.Core/Workers/SlidingWindowOutboxBatchStrategy.cs
   - src/Whizbang.Core/Workers/CoalescingOutboxBatchStrategy.cs
   - src/Whizbang.Core/Workers/SlidingWindowInboxBatchStrategy.cs
-  - src/Whizbang.Data.Postgres/Migrations/580_StreamsAreVersionedInEmissionOrder.sql
-  - src/Whizbang.Data.Postgres/Migrations/581_ReceivedStreamsAreVersionedInReceiveOrder.sql
-  - src/Whizbang.Data.Postgres/Migrations/582_StreamReadsFollowStreamOrder.sql
-  - src/Whizbang.Data.Postgres/Migrations/583_LiveReadsCarryTheirStreamOrder.sql
+  - src/Whizbang.Data.Postgres/Migrations/573_StreamsAreVersionedInEmissionOrder.sql
+  - src/Whizbang.Data.Postgres/Migrations/574_ReceivedStreamsAreVersionedInReceiveOrder.sql
+  - src/Whizbang.Data.Postgres/Migrations/575_StreamReadsFollowStreamOrder.sql
+  - src/Whizbang.Data.Postgres/Migrations/576_LiveReadsCarryTheirStreamOrder.sql
+  - src/Whizbang.Data.Postgres/Migrations/578_StoredPerspectiveWorkJudgesLatenessByStreamOrder.sql
+  - src/Whizbang.Data.Postgres/Migrations/579_TheOutboxDrainsInEmissionOrder.sql
+  - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EmissionOrderVersioningSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceiveOrderVersioningSqlTests.cs
@@ -34,6 +37,10 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDrainWorkerGapTests.cs
   - tests/Whizbang.Core.Unit.Workers.Tests/Workers/PerspectiveWorkerOrderingTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ReconcileRewindDeclarationSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/OutboxEmissionOrderTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RecoveredWorkReentrySqlTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerStreamRunTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperOutboxStreamContinuationTests.cs
 ---
 
 # Stream version ordering
@@ -54,6 +61,8 @@ flowchart LR
     V -->|stream_position| I[Inbox drain<br/>InboxBatchRow.StreamPosition]
     A[Commands<br/>wh_inbox.arrival_position] -->|stream_position| I
     V -->|out_version| W[Perspective drain<br/>LocalStreamVersion]
+    P -->|wh_outbox.emission_position| D[Outbox drain<br/>OutboxBatchRow.StreamPosition]
+    D --> S
     I --> S[StreamOrder.InStreamOrder]
     W --> S
 ```
@@ -63,17 +72,17 @@ flowchart LR
 | Storing a batch the producer wrote | The event's place in the batch | [Emission order](#emission-order) |
 | Storing a received stream | The origin's commit sequence, dealt into arrival slots | [Receive order](#receive-order) |
 | The perspective reads | The stored version | [Reads](#reads) |
-| The inbox fetch and the workers | The position each row or envelope carries | [Dispatch order](#dispatch-order) |
+| The inbox and outbox fetches, and the workers | The position each row or envelope carries | [Dispatch order](#dispatch-order) |
 
 ## Emission order {#emission-order}
 {verified: EmissionOrderVersioningSqlTests.Store_ACauseAndItsDerivedEffectInOneBatch_TheCauseTakesTheLowerVersionAsync, EmissionOrderVersioningSqlTests.CommitHandlerResult_ACauseAndItsDerivedEffect_TheCauseTakesTheLowerVersionAsync, EmissionOrderVersioningSqlTests.EmitChain_EventsListedAgainstTheirIdOrder_AreVersionedInTheOrderListedAsync, EmissionOrderVersioningSqlTests.EmitChain_AnIdListedTwice_KeepsItsFirstPositionAsync, SlidingWindowOutboxBatchStrategyTests.AppendAsync_SameStream_SingleBatchKeepsTheOrderAppendedAsync, CoalescingOutboxBatchStrategyTests.WithinAFlush_MessagesAreGroupedByStream_EachInTheOrderAppendedAsync, StreamSealingSqlTests.OutboxBatch_EventsAfterATerminalEvent_AreDeadLettered_AndTheOnesBeforeItAreStoredAsync}
 
 A batch of events stored together is versioned **in the order the producer emitted them**: each event's position in
-the batch it is stored in (migration 580).
+the batch it is stored in (migration 573).
 
 - **The producer keeps the batch in emission order.** Each outbox strategy flushes a stream's messages in the order
   they were appended, and none sorts them by id. The outbox follows emission order end to end: what is stored, and what
-  is published, is the order the stream was written in.
+  is published, is the order the stream was written in ([the outbox drain](#outbox-dispatch-order)).
 - **The store numbers by position.** `store_outbox_messages` takes each element's position in the array it is handed
   (`WITH ORDINALITY`) once, at its entry, and `_emit_event_store_chain` numbers each stream by that position. An id
   listed twice keeps its first position. `commit_handler_result` stores through `store_outbox_messages`, so a
@@ -92,7 +101,7 @@ inserted more than one event.
 ## Receive order {#receive-order}
 {verified: ReceiveOrderVersioningSqlTests.OneClaim_AnOriginsEvents_AreVersionedByTheOriginsSequence_NotByIdAsync, ReceiveOrderVersioningSqlTests.AnUnpositionedEvent_TakesTheReplaysPlace_AmongItsOriginsPositionedEventsAsync, ReceiveOrderVersioningSqlTests.TwoOrigins_KeepTheirArrivalSlots_EachDealtInItsOwnOrderAsync, ReceiveOrderVersioningSqlTests.AnOriginsEarlierEvent_HeldElsewhere_HoldsBackTheLaterOne_WhateverTheIdsAsync, ReceiveOrderVersioningSqlTests.ALaterArrivalHeldElsewhere_DoesNotHoldBackAnEarlierArrivalOfAnotherOriginAsync, ReceiveOrderVersioningSqlTests.OverManyArrangements_TheStoredOrderIsTheReplaysOrder_SoTheTwoDefinitionsCannotDriftAsync}
 
-A stream a service receives from other services is versioned **in its origin's order** (migration 581), the same order
+A stream a service receives from other services is versioned **in its origin's order** (migration 574), the same order
 a replay folds a received stream in, so the store and the replay agree:
 
 1. **Each origin's events in the origin's order:** the commit sequence each event carries from the service that wrote
@@ -119,14 +128,23 @@ fails when the stored order differs from the order the replay (`ReplayEventOrder
 ## Reads {#reads}
 {verified: StreamOrderNeverByIdGuardTests.NoStoreReceiveOrReplayFunction_OrdersAStreamById_InItsLatestDefinitionAsync, StreamOrderNeverByIdGuardTests.TheGuard_FlagsEachWayOfOrderingAStreamById_AndPassesPositionalOrdersAsync, PerspectiveWorkerOrderingTests.GroupAndDedupe_GivenShuffledEventsForOneStream_ReturnsTheGroupInVersionOrder_NotByIdAsync}
 
-The perspective reads return a stream's events **by version** (migration 582):
+The perspective reads return a stream's events **by version** (migration 575):
 
 | Read | Order |
 |---|---|
 | `get_stream_events`, `wh_collective_sink_queue` | Commit sequence, then version. The version breaks the tie the commit sequence leaves for the unstamped events the reads admit past the stamp cutoff, where the id used to |
 | `fetch_events_by_ids`, `fetch_pending_perspective_events`, `claim_and_fetch_pending_perspective_events` | Version |
 
-Only the `ORDER BY` changed, and each key is a column of a row already in hand, so the sort costs what it did. A guard
+Only the `ORDER BY` changed, and each key is a column of a row already in hand, so the sort costs what it did.
+
+**Stored perspective work is judged late by version too** (migration 578). `store_perspective_events`, the perspective
+work store, flags a cursor for rewind when a newly stored event is behind the cursor's last applied event **by stream
+version**, and keeps the earliest trigger by version. It compared ids before, so an event emitted earlier whose id
+sorted later was applied out of order with no replay, and one emitted later whose id sorted earlier forced a needless
+replay. The check is two primary-key probes of `wh_event_store` per newly stored event.
+{verified: RecoveredWorkReentrySqlTests.ARecoveredPerspectiveEvent_BehindItsCursorInStreamOrder_ThoughItsIdSortsAfter_FlagsTheRewindAsync, RecoveredWorkReentrySqlTests.ARecoveredPerspectiveEvent_AheadOfItsCursorInStreamOrder_ThoughItsIdSortsBefore_IsNotARewindAsync, RecoveredWorkReentrySqlTests.ARecoveredPerspectiveEvent_BehindItsCursor_FlagsTheCursorForRewindAsync}
+
+A guard
 test reads the latest definition of every store, receive and replay function in the migrations, and fails on one that
 orders a stream by id.
 
@@ -134,7 +152,7 @@ orders a stream by id.
 {verified: FetchInboxBatchStreamOrderSqlTests.ReceivedEvents_AreFetchedInTheirStoredOrder_WithTheirStreamPositionAsync, FetchInboxBatchStreamOrderSqlTests.Commands_AreFetchedInTheOrderTheyArrived_NotByIdAsync, FetchInboxBatchStreamOrderSqlTests.AStreamsEventsAndCommands_EachKindKeepsItsOrder_InTheArrivalSlotsItHoldsAsync, FetchInboxBatchStreamOrderSqlTests.GetStreamEvents_CarriesEachEventsVersion_InStreamOrderAsync, StreamOrderTests.InboxRows_AreOrderedByTheirStreamPosition_NotByIdAsync, StreamOrderTests.InboxRows_WithoutAPosition_KeepTheFetchsOrder_AfterThePositionedOnesAsync, StreamOrderTests.Events_AreOrderedByTheirVersion_NotByIdAsync, InboxDrainWorkerGapTests.ExecuteAsync_AStreamsRows_AreDispatchedByTheirStreamPosition_NeverByIdAsync}
 
 The live paths hand a stream on in the same order, and the rank travels with each item, so no worker has to work it
-out again (migration 583).
+out again (migration 576).
 
 **The inbox fetch ranks a stream by kind.** `fetch_inbox_batch_in_stream_order` ranks a stream's **received events by
 their stored version** and its **commands by their arrival**, and deals each kind into the arrival slots it holds. It
@@ -160,8 +178,33 @@ perspective drain applies a stream by the version each event carries.
 keep their results, now read through the new functions in the same order, for a caller built before them. The
 drivers call the new ones.
 
+### The outbox drains in emission order {#outbox-dispatch-order}
+{verified: OutboxEmissionOrderTests.AStreamsRows_AreFetchedInEmissionOrder_WithTheirPositions_ThoughTheirIdsSortOtherwiseAsync, OutboxEmissionOrderTests.TheContinuation_ResumesAfterTheLastPositionPublished_NotTheLargestIdAsync, OutboxEmissionOrderTests.AFailure_ReleasesTheRestOfItsRun_InEmissionOrderAsync, StreamOrderTests.OutboxRows_AreOrderedByTheirEmissionPosition_NotByIdAsync, OutboxDrainWorkerStreamRunTests.AStream_IsPublishedInEmissionOrder_AndContinuedFromItsLastPosition_WhateverItsIdsAsync, OutboxDrainWorkerStreamRunTests.ABulkTransportReportingResultsOutOfOrder_StillContinuesFromTheStreamsLastRowAsync, DapperOutboxStreamContinuationTests.ContinueOutboxStreamsAsync_LeasesAndReturnsTheRunAfterTheCursorAsync}
+
+Each outbox row takes an **emission position** as it is stored (migration 579): `wh_outbox.emission_position`, from the
+sequence `wh_outbox_emission_seq`. `store_outbox_messages` reserves one per element in the order the producer listed
+them, before its inserts (which still run in lock order), so the rows one call writes, which share their `created_at`,
+are no longer ordered by id. Everything that walks a stream's outbox rows follows that position, through
+`idx_outbox_stream_emission`:
+
+- **The claim's run** (`claim_orphaned_outbox`) leases a stream's next rows in emission order.
+- **The fetch**, `fetch_outbox_batch_in_stream_order`, returns them in that order with each row's position, which the
+  drivers read into `OutboxBatchRow.StreamPosition`.
+- **The continuation**, `wh_continue_outbox_streams_in_emission_order`, leases a stream's next page after its cursor,
+  `OutboxStreamCursor.LastPublishedPosition`: the position of the last row the drain published, not the largest id.
+- **A failure** releases the rows after the failed one in emission order (`process_outbox_failures`, and
+  `flush_completions`).
+
+Rows are still locked in the canonical (stream, created time, id) order, the order every writer of the outbox takes
+them in, so the change adds no deadlock. The old `fetch_outbox_batch` and `wh_continue_outbox_streams` keep their
+results for a binary built before this one, mid-rollout; the drivers call the new ones. Rows already queued take their
+positions once, during the migration, in the order they had been drained in until then. A custom `IWorkCoordinator`
+that implements `ContinueOutboxStreamsAsync` continues a stream after `OutboxStreamCursor.LastPublishedPosition` and
+fills `OutboxBatchRow.StreamPosition` on the rows it fetches; the drain publishes rows without one in the order they
+are returned.
+
 **Every worker orders through `StreamOrder`.** `StreamOrder.InStreamOrder` orders fetched inbox rows by
-`StreamPosition`, or one stream's envelopes by `LocalStreamVersion`. Both are stable: an item with no position keeps
+`StreamPosition`, fetched outbox rows by their `StreamPosition`, or one stream's envelopes by `LocalStreamVersion`. Both are stable: an item with no position keeps
 the order the read returned it in, after the positioned ones. The inbox and perspective drains, the runners and the
 batch strategies take that order or the order the read returned; none re-sorts a stream by message id. A source guard
 (`StreamOrderSourceGuardTests`) reads every worker, runner, the messaging layer and every driver, and fails on any sort

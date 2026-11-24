@@ -27,10 +27,12 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Collective/CollectiveReplayApplier.cs
   - src/Whizbang.Data.EFCore.Postgres/BaseUpsertStrategy.cs
   - src/Whizbang.Data.Postgres/Migrations/038_GetStreamEvents.sql
-  - src/Whizbang.Data.Postgres/Migrations/580_StreamsAreVersionedInEmissionOrder.sql
-  - src/Whizbang.Data.Postgres/Migrations/581_ReceivedStreamsAreVersionedInReceiveOrder.sql
-  - src/Whizbang.Data.Postgres/Migrations/582_StreamReadsFollowStreamOrder.sql
-  - src/Whizbang.Data.Postgres/Migrations/583_LiveReadsCarryTheirStreamOrder.sql
+  - src/Whizbang.Data.Postgres/Migrations/573_StreamsAreVersionedInEmissionOrder.sql
+  - src/Whizbang.Data.Postgres/Migrations/574_ReceivedStreamsAreVersionedInReceiveOrder.sql
+  - src/Whizbang.Data.Postgres/Migrations/575_StreamReadsFollowStreamOrder.sql
+  - src/Whizbang.Data.Postgres/Migrations/576_LiveReadsCarryTheirStreamOrder.sql
+  - src/Whizbang.Data.Postgres/Migrations/579_TheOutboxDrainsInEmissionOrder.sql
+  - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
 testReferences:
   - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/StreamOrderTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/StreamOrderSourceGuardTests.cs
@@ -78,13 +80,14 @@ store had already decided. Now the store decides the position once and the posit
 | A fetched inbox row | `InboxBatchRow.StreamPosition` | `fetch_inbox_batch_in_stream_order`: a received event's stored version, a command's arrival (`wh_inbox.arrival_position`), each kind dealt into the arrival slots it holds ([dispatch order](/v1.0.0/fundamentals/event-store/version-ordering#dispatch-order)) |
 | An event read for a perspective | `MessageEnvelope<T>.LocalStreamVersion` | `get_stream_events_in_stream_order` returns each event's version, carried as `StreamEventData.Version` |
 | A message the producer appends | Its place in the batch | The outbox strategies flush a stream in the order its messages were appended |
+| A fetched outbox row | `OutboxBatchRow.StreamPosition` | `wh_outbox.emission_position`, reserved per element as the batch is stored; the drain continues after `OutboxStreamCursor.LastPublishedPosition` ([the outbox drain](/v1.0.0/fundamentals/event-store/version-ordering#outbox-dispatch-order)) |
 
 ## Where the rule is enforced {#enforced}
 
 {verified: StreamOrderTests.InboxRows_AreOrderedByTheirStreamPosition_NotByIdAsync, StreamOrderTests.InboxRows_WithoutAPosition_KeepTheFetchsOrder_AfterThePositionedOnesAsync, StreamOrderTests.Events_AreOrderedByTheirVersion_NotByIdAsync, InboxDrainWorkerGapTests.ExecuteAsync_AStreamsRows_AreDispatchedByTheirStreamPosition_NeverByIdAsync, PerspectiveWorkerOrderingTests.GroupAndDedupe_GivenShuffledEventsForOneStream_ReturnsTheGroupInVersionOrder_NotByIdAsync, SlidingWindowOutboxBatchStrategyTests.AppendAsync_SameStream_SingleBatchKeepsTheOrderAppendedAsync, CoalescingOutboxBatchStrategyTests.WithinAFlush_MessagesAreGroupedByStream_EachInTheOrderAppendedAsync, SlidingWindowInboxBatchStrategyTests.AppendAsync_OutOfOrderArrivals_FlushedInTheOrderTheyArrivedAsync}
 
-- **`StreamOrder` is the one ordering.** `StreamOrder.InStreamOrder` orders fetched inbox rows by `StreamPosition`, and
-  one stream's envelopes by `LocalStreamVersion`. Both are stable: an item without a position keeps the order the read
+- **`StreamOrder` is the one ordering.** `StreamOrder.InStreamOrder` orders fetched inbox and outbox rows by their
+  `StreamPosition`, and one stream's envelopes by `LocalStreamVersion`. Both are stable: an item without a position keeps the order the read
   returned it in, after the positioned ones. It replaces `MessageOrderingExtensions.OrderByMessageId`, which is
   removed.
 - **The batch strategies keep the order they were given.** The outbox strategies flush each stream in the order its
@@ -95,7 +98,8 @@ store had already decided. Now the store decides the position once and the posit
 - **The perspective drain and the runners** apply a stream by the version each event carries. A rebuild and a rewind
   fold the stream they read in the replay order (`ReplayEventOrder`: stream version, then commit sequence, then each
   origin's events in origin order within its slots), which is the order the stream was written in.
-- **The outbox publishes in emission order**, the order the stream's messages were stored in.
+- **The outbox drain publishes in emission order**: it claims, fetches, continues and releases a stream by each row's
+  emission position, and its continuation cursor is the last position it published, never the largest id.
 
 **The guard.** `StreamOrderSourceGuardTests` reads the source of every worker, runner, the messaging layer and every
 driver, and fails on any sort keyed on an id, any comparison of ids, or any use of the retired helper, outside the
@@ -112,7 +116,7 @@ store, the reads and the replay so they cannot disagree:
 | Case | What decides | Where |
 |---|---|---|
 | An event with no version and no commit sequence (an unstamped event in a replay batch) | The batch falls back to id order, because a partial mix would interleave two orderings | `ReplayEventOrder`, `LastInReplayOrder` |
-| A received event with no origin position (a fan-out child, a redelivery that lost it) | It goes before the first of its origin's positioned events whose id sorts after its own | `_emit_event_store_chain_for_inbox` (migration 581), `ReplayEventOrder` |
+| A received event with no origin position (a fan-out child, a redelivery that lost it) | It goes before the first of its origin's positioned events whose id sorts after its own | `_emit_event_store_chain_for_inbox` (migration 574), `ReplayEventOrder` |
 | An anchor or checkpoint the stream does not hold (a read after, or between, events of another stream) | The anchor has no position in the stream, so the read compares by id, as the PostgreSQL stores read it | `InMemoryEventStore` ([#2379](https://github.com/whizbang-lib/whizbang/issues/2379), [#2381](https://github.com/whizbang-lib/whizbang/issues/2381)) |
 | Collectives of different streams in one replay | They share no stream position: each is placed by its commit sequence, and an unstamped one by its id ([#2449](https://github.com/whizbang-lib/whizbang/issues/2449)) | `CollectiveReplayApplier`, `CollectiveReplayStart` |
 

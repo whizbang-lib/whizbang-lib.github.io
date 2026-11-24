@@ -40,6 +40,14 @@ unit of work, and writes it to the next stage in that order. One drain task hand
 time, so a stream's rows are never reordered. The inbox drain is the only source of inbox work:
 disabling it (`Whizbang:Workers:InboxDrain:Enabled`) stops inbox dispatch.
 
+**In order means by position, never by id** ([#2551](https://github.com/whizbang-lib/whizbang/issues/2551)). Each
+fetched row carries its stream position (`InboxBatchRow.StreamPosition`, `OutboxBatchRow.StreamPosition`), and the
+drains hand a stream on by it through `StreamOrder` ([dispatch order](../event-store/version-ordering#dispatch-order)).
+The outbox drain also **continues a stream from a position**: after it publishes a stream's rows, it asks for the rows
+after the position of the last one it published (`OutboxStreamCursor.LastPublishedPosition`), not after the largest
+message id, so a stream whose ids sort out of emission order is neither skipped nor published twice.
+{verified: OutboxDrainWorkerStreamRunTests.AStream_IsPublishedInEmissionOrder_AndContinuedFromItsLastPosition_WhateverItsIdsAsync, OutboxEmissionOrderTests.TheContinuation_ResumesAfterTheLastPositionPublished_NotTheLargestIdAsync, InboxDrainWorkerGapTests.ExecuteAsync_AStreamsRows_AreDispatchedByTheirStreamPosition_NeverByIdAsync}
+
 ## Sliding window {#sliding-window}
 
 Stream signals are batched before the drain fetches. When a stream id arrives, the drain waits up to

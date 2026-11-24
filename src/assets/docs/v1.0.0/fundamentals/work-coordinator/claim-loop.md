@@ -760,8 +760,9 @@ What the claim and the drain do now:
 2. **The drain continues a stream from its lease.** After a drain cycle publishes a stream's rows
    without a failure, `IWorkCoordinator.ContinueOutboxStreamsAsync` leases that stream's next page
    (`OutboxDrainWorkerOptions.MaxPerStream`) under the lease it already holds and returns only the
-   rows after the last one published, so a row whose completion has not landed is never published
-   twice. Up to `MaxContinuationRounds` rounds run per drain cycle; past that the claim cycle carries
+   rows after the last one published, by emission position (`OutboxStreamCursor.LastPublishedPosition`,
+   [#2551](https://github.com/whizbang-lib/whizbang/issues/2551)), so a row whose completion has not landed is never
+   published twice. Up to `MaxContinuationRounds` rounds run per drain cycle; past that the claim cycle carries
    the stream on, so a few long streams cannot hold the drain while other streams wait.
 3. **A failure stops its stream.** When a row fails to publish, nothing behind it on its stream is
    published in that cycle, the stream is not continued, and `process_outbox_failures` releases the
@@ -785,9 +786,12 @@ from the drain.
 Every new access path is priced by the batch, never the backlog. A run is one range scan per chosen
 stream on `idx_outbox_stream_run` (`stream_id, created_at, message_id`, partial on pending unpublished
 rows), whose key order is the run's order, so the `LIMIT` stops it inside the index; the continuation
-and the failure release read the same way. The index replaces `idx_outbox_stream_unpublished` (same
-predicate and leading key, so the store's emptiness probe is still one descent), and the outbox keeps
-its index count.
+and the failure release read the same way. That index replaced `idx_outbox_stream_unpublished` (same
+predicate and leading key, so the store's emptiness probe is still one descent). Since migration 579 the run, the
+continuation and the failure release walk a stream in its rows'
+[emission position](../event-store/version-ordering#outbox-dispatch-order) instead, through
+`idx_outbox_stream_emission` (`stream_id, emission_position`, with the same predicate), one range scan per stream as
+before.
 
 Measured on a container (`OutboxStreamRunDrainMeasurementTests`), one instance at a window of 25
 draining 44 interleaved streams:
