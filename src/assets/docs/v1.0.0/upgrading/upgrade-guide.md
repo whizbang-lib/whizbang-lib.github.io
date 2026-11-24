@@ -830,3 +830,87 @@ These matter to services that run [stream integrity](../resilience/stream-integr
   than on the previous version for a handling redelivered across the deploy.
 - **What to do:** nothing. See
   [Every dispatch path inside a handling derives](../fundamentals/dispatcher/message-cascade.md#every-dispatch-path-derives).
+
+### The partition map moves about 1/N of the partitions, after membership settles {#incremental-partition-map}
+
+*[#2558](https://github.com/whizbang-lib/whizbang/issues/2558)*
+
+- **What changed:** the published partition assignment carries an explicit map of the 10,000 partitions to its
+  members, and every claim reads it. A join takes about 1/(N+1) of the partitions evenly from the others, a leave
+  spreads its share evenly over the rest, and nothing else moves; before, every join or leave moved nearly all
+  partitions. Membership changes are collected for a settle window
+  (`Whizbang:Database:PartitionAssigner:SettleWindow`, default 5 seconds) before one map is published, and an instance
+  is given partitions only once its startup reports ready. `AssignmentLease` and `RepublishInterval` now bind from the
+  same section. Migrations 564 and 566.
+- **Who is affected (breaking for implementers):** code that implements `IPartitionAssignmentStore`, or calls
+  `PartitionAssigner.Evaluate` itself. Hosts on the drivers' registrations change nothing. During a rolling deploy,
+  instances of the previous release publish without a map, and the claims then rank by modulo exactly as before.
+- **What to do:** an `IPartitionAssignmentStore` takes a `PartitionMap` in `PublishAsync` where it took the member list
+  (`map.Members` is that list), and implements `OpenOwnershipByMapAsync`. A call to `PartitionAssigner.Evaluate` passes
+  how long the membership has been unsettled (`unsettledFor`) before the options. See
+  [The incremental map](../fundamentals/work-coordinator/partition-assignment.md#incremental-map).
+
+### The Dapper driver elects its duties and runs the partition assigner; `Enabled` is removed {#dapper-coordination}
+
+*[#2559](https://github.com/whizbang-lib/whizbang/issues/2559)*
+
+- **What changed:** both Postgres drivers register role assignment and the elected partition assigner through one
+  shared registration. On Dapper, the maintainer (the maintenance sweep and its steps, and the table rewrite at
+  startup), each perspective table's blue-green rebuild guard and the partition assigner now run on one elected
+  instance instead of on every instance, and a claim presents the published partition map. When the holder dies, a
+  survivor takes the duty over once its lease lapses. Schema migration on Dapper is unchanged: every instance migrates
+  under the schema lock in turn, and no migrator is elected. `PartitionAssignerOptions.Enabled` is removed: the
+  assigner always runs, in every driver.
+- **Who is affected:** Dapper services that watched the maintainer's work on every instance now see it on the one
+  instance holding the `maintainer` role (the `roles` health component names it). Code or configuration that set the
+  assigner's `Enabled`.
+- **What to do:** nothing in code for Dapper. Delete any `options.Enabled = ...` line from a
+  `Configure<PartitionAssignerOptions>` call, and the `Whizbang:Database:PartitionAssigner:Enabled` key from
+  configuration: it is reported once at startup as a removed key and changes nothing (it fails the start only when
+  unknown keys are set to throw). See [Dapper coordination](../data/dapper-integration.md#coordination).
+
+### The rollback gate judges by content, with one verdict for W! and one for the application {#two-verdicts}
+
+*[#2553](https://github.com/whizbang-lib/whizbang/issues/2553)*
+
+- **What changed:** a schema change the ledger records counts as applied since this version only when this build does
+  not make the same change (the same name with the same content hash); a change this build defines identically is
+  current, whatever version applied it. A database restored from another environment, whose ledger records a
+  SemVer-higher application version, now migrates or serves instead of standing down forever. Stored-form and
+  temporal-form conversions record a content hash too (migration 568); one recorded before that is identified by its
+  name. The W! migrations and the application's schema are then judged apart, each with its own verdict, reason and log
+  line: the W! migrations run first, an application stand-down never blocks them, and the instance serves only when
+  both sides can. The incompatibility override and the lossy rollback switch can be scoped to one side with
+  `Whizbang:Startup:Platform:OverrideIncompatibility`, `Whizbang:Startup:Application:OverrideIncompatibility`,
+  `Whizbang:Startup:Platform:AllowLossyRollback` and `Whizbang:Startup:Application:AllowLossyRollback`; the shared keys
+  keep meaning both sides.
+- **Who is affected:** hosts that set the shared `Whizbang:Startup:OverrideIncompatibility` for an incompatibility that
+  is the application's alone: the application's schema is now served as it is **and the W! migrations still run** (the
+  verdict is `Serve` or `Migrate`, where it was `Current` with nothing applied). That is the per-side decision, not a
+  regression. Code that calls `EnsureWhizbangInitializedAsync` on an instance whose application schema stood down: it
+  now applies the W! migrations, then throws `SchemaStandDownException` naming the side and its reason. Code that builds
+  an `EFCorePostgresStartupAssessor`, a `SchemaRollbackRequest`, or calls `UpgradeOrder.AppliedSince` itself.
+- **What to do:** nothing, for a host on the drivers' registrations. Code that builds an
+  `EFCorePostgresStartupAssessor` passes a `SchemaGateOverrides` (`UpgradeOrder.ReadOverrides(configuration)`) in
+  place of the two booleans. Code that builds a `SchemaRollbackRequest` passes the `RollbackPlan` in place of
+  `AllowLossy`, and what this build defines (an `IReadOnlyDictionary<string, string>` of ledger name to content hash).
+  `UpgradeOrder.AppliedSince` takes that dictionary too (`null` judges by version alone). See
+  [Two verdicts](../operations/startup/rolling-upgrades.md#two-verdicts) and
+  [a restored database](../operations/startup/rolling-upgrades.md#restored-database).
+
+### Ownership by map, opt-in and off by default {#ownership-by-map}
+
+*[#2554](https://github.com/whizbang-lib/whizbang/issues/2554), [#2555](https://github.com/whizbang-lib/whizbang/issues/2555)*
+
+- **What changed:** a partition ownership table (`wh_partition_ownership`, one row per partition) is written by the
+  partition assigner with every map it publishes, and one predicate (`wh_i_own`) answers whether an instance may claim a
+  partition. With a per-service switch on, every claim path decides through that table alone: a stream's first writer
+  is no longer pinned as its owner, new perspective work is leased by partition, a live stored owner no longer keeps a
+  stream the map has moved, and a claimer with no valid map claims nothing and waits instead of ranking itself. The
+  wake-up notification goes to the instance the map names for each stream's partition, with the switch off as well.
+  Every heartbeat records `partition_ownership_level` in the instance's registry metadata. Migrations 565 to 567.
+- **Who is affected:** nobody by default. The switch turns on only when `PartitionAssignerOptions.OwnershipByMap` is
+  set (default `false`) and every live instance of the service supports the mode, and it is one-way. It stays off by
+  default until the handover and fencing that make moving a busy partition safe are released.
+- **What to do:** nothing. Leave `OwnershipByMap` off unless you are trialling the mode. See
+  [Ownership by map](../fundamentals/work-coordinator/partition-assignment.md#ownership-by-map).
