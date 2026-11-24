@@ -132,8 +132,8 @@ CREATE INDEX IF NOT EXISTS idx_outbox_lease_expiry ON wh_outbox (lease_expiry) W
 - **destination**: Transport destination (topic/exchange) the message publishes to
 - **status**: `MessageProcessingStatus` flags bitmask (Stored = 1, Published = 4, Failed = 32768)
 - **instance_id** / **lease_expiry**: Which worker claimed this message, and until when
-- **partition_number**: Consistent hashing for work distribution
-- **created_at**: Order-of-creation timestamp — claim eligibility ordering uses `created_at` (inbox uses `received_at`); the drain fetch orders each stream by `commit_sequence` (NULLS LAST) with `message_id` (UUIDv7) as the unstamped fallback
+- **partition_number**: The stream's partition (`abs(hashtext(stream_id::TEXT)) % 10000`), which the published [partition map](../fundamentals/work-coordinator/partition-assignment.md) assigns to an instance
+- **created_at**: Order-of-creation timestamp; claim eligibility ordering uses `created_at` (inbox uses `received_at`); a stream is published in the order its messages were emitted, never by `message_id` ([emission order](../fundamentals/event-store/version-ordering.md#emission-order))
 
 ### IWorkCoordinator Operations
 
@@ -300,7 +300,7 @@ ORDER BY created_at;
 **Benefits**:
 - ✅ **Parallel processing**: Multiple workers can process different streams
 - ✅ **Fault tolerance**: If worker crashes, lease expires and message is reclaimed
-- ✅ **Load balancing**: Work distributed via consistent hashing (partition_number) + stream pinning
+- ✅ **Load balancing**: Work distributed by partition (`partition_number`), each partition owned by one instance through the published [partition map](../fundamentals/work-coordinator/partition-assignment.md)
 
 ### Configuration
 
@@ -319,7 +319,7 @@ services.Configure<ClaimWorkerOptions>(options => {
 - `PollingMaxIntervalMilliseconds`: Adaptive backoff cap on consecutive empty polls (10 s)
 - `NotifyHealthyPollingIntervalMilliseconds`: Relaxed safety-net cadence while LISTEN/NOTIFY is verified healthy (5 s)
 - `LeaseSeconds`: How long a lease lasts (300 s = 5 minutes)
-- `PartitionCount`: Total partitions for consistent hashing (10,000)
+- `PartitionCount`: Total partitions a stream id is hashed into (10,000); the partition map then assigns partitions to instances
 
 ---
 
@@ -386,7 +386,7 @@ SELECT * FROM wh_dead_letters WHERE source_table = 'wh_outbox';
 - ✅ Use **UUIDv7** for MessageId — `TrackedGuid.New()` (time-ordered, avoids index fragmentation)
 - ✅ Set **reasonable lease duration** (5 minutes default)
 - ✅ **Monitor dead letters** (rows land in `wh_dead_letters` after `MaxOutboxAttempts`, default 10)
-- ✅ Use **consistent hashing** (partition_number) for work distribution
+- ✅ Let the **partition map** (partition_number) distribute the work
 - ✅ **Log all publishes** (correlation ID, message type, destination)
 - ✅ **Rely on built-in retries** (lease release + reclaim, scheduled retry backoff, max attempts)
 - ✅ **Published rows clean themselves up** (deleted at completion in production; debug mode retains them)
