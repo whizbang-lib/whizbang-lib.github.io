@@ -4745,7 +4745,7 @@ association rows name, every type when it has none, and always the trigger itsel
 | Case | What the rewind does |
 | --- | --- |
 | The trigger has a body | Nothing changes: it is its own floor |
-| The trigger was reaped, and a later event the perspective reads was not | The rewind starts at that later event. Snapshots below it are kept; those at or above it are deleted, as for any trigger |
+| The trigger was reaped, and a later event the perspective reads was not | The rewind starts at that later event. Snapshots below it are kept; those at or above it are deleted, as for any trigger. The replay restores the snapshot below the floor and refolds from there: **the best state available, not a full refold of the reaped history** (see below) |
 | Nothing at or after the trigger that the perspective reads has a body | The rewind is **skipped**: the cursor is not flagged, no snapshot is deleted and nothing is queued |
 
 A skipped rewind is counted on `whizbang.stream_integrity.origin_position_rewinds_skipped` and logged once per answer at
@@ -4758,10 +4758,21 @@ Why this choice:
   slot, whatever is queued. The fold the perspective holds already includes it, in the order it was applied; the
   snapshot the reap kept as the fold's floor is the best state there is, and deleting it would leave nothing to rebuild
   from.
-- **A floor that moves up still replays what it can.** Events after the floor that still have bodies are refolded in
-  their new order, from the snapshot below the floor.
+- **A floor that moves up still replays what it can, and no more.** Events after the floor that still have bodies are
+  refolded in their new order, from the snapshot below the floor. That snapshot was folded in the old order for the
+  reaped slots, and nothing can change that now, so the result is the best state available, not a full refold of the
+  reaped history: the reaped events stay folded in the order they were first applied.
 - **One rule for every caller.** The floor is applied inside `_wh_rewind_perspectives_from`, so any caller of the rewind
   gets it; the fill also reads the floor itself, before the rewind, only to report what it skipped.
+- **What a database already holds is repaired once.** Migration 600 runs `_wh_repair_unreplayable_rewinds` once per
+  database (the `rewind_reap_floor_repaired` setting records that it ran and what it did). Every cursor already flagged
+  to rewind from a trigger with no floor has its flag, trigger and flag times cleared, since that rewind can never
+  complete and a worker starting in [Blocking mode](../fundamentals/perspectives/rewind#startup-modes) would wait on it;
+  one whose floor is above its trigger is moved to the floor and the floor queued. The queued rows of those cursors whose
+  event has no body are deleted. The migration raises a NOTICE with the three counts. It reads the cursor table once (the
+  same pass the startup scan makes), then touches only the flagged cursors' rows by key, so it is safe on a large store.
+  Its reversal restores nothing: putting a rewind that cannot complete back would bring back the stall.
+  {verified: OriginPositionFillSqlTests.Repair_MovesAReapedTriggerToItsFloor_ClearsOneWithNone_LeavesTheRest_AndRunsOnceAsync, ReapedBodyBatchIsolationTests.Migration600_ClearsARewindThatCanNeverComplete_AndABlockingStartupIsNotHeldAsync}
 - **The re-sequence tool needs no floor.** [Re-sequencing a received stream](../operations/infrastructure/resequencing-received-streams)
   leaves streams that hold ephemeral events alone, and a Sourced event's body is never reaped.
 

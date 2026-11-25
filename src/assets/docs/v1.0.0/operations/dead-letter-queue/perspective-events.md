@@ -63,12 +63,13 @@ DeserializeStreamEvents(survivors)
 
 ## A row whose event has no body {#a-row-whose-event-has-no-body}
 
-A row whose event the drain's read returns without a body (an ephemeral body the reap deleted) goes the same way
-(#2591): each lease of it records one failure, with `MessageFailureReason.EventBodyMissing` and an error naming the
-perspective, the stream and the event, so it is backed off and, once its failures pass `MaxPerspectiveEventAttempts`,
-moved here like any other poison row. The rest of the batch it was leased with is applied. See
-[unreadable stored events](../workers/perspective-worker#unreadable-stored-events).
-{verified: ReapedBodyBatchIsolationTests.AReapedStreamSharingABatch_FailsOnlyItself_IsRetriedBoundedly_AndIsDeadLetteredAsync}
+A row whose event the drain's read returns without a body is moved here with `MessageFailureReason.EventBodyMissing` and
+an error naming the perspective, the stream and the event (#2591); the rest of the batch it was leased with is applied.
+When the event is **ephemeral**, its body was reaped past its retention and never comes back, so the row is moved **on
+first sight**, with no failures counted first. When it is **not**, its absence means something else is wrong: each lease
+records one failure, logged at Error, and the row is moved once its failures pass `MaxPerspectiveEventAttempts`, like
+any other poison row. See [unreadable stored events](../workers/perspective-worker#unreadable-stored-events).
+{verified: ReapedBodyBatchIsolationTests.AReapedStreamSharingABatch_FailsOnlyItself_AndIsDeadLetteredOnFirstSightAsync, ReapedBodyBatchIsolationTests.AStreamMissingASourcedBody_FailsOnlyItself_IsRetriedBoundedly_AndIsDeadLetteredAtErrorAsync}
 
 ## How attempts are counted
 

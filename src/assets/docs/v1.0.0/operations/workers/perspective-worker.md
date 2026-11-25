@@ -799,17 +799,17 @@ whose stored event cannot be read is failed, not retried silently:
 - **One Warning per pass,** `PerspectiveWorker` EventId 78, gives the number of rows failed and the first one's
   event id, type and exception.
 
-A row the **drain's read returns without its event** is failed the same way, before anything is parsed (#2591). The
-read (`get_stream_events_in_stream_order`) returns a row whose body the reap has deleted (an
-[ephemeral](../../fundamentals/events/ephemeral-events#reap-gates) event past its retention) with a NULL body; both
-drivers return it as a row named unreadable (`StreamEventData.UnreadableReason`) instead of failing the read. The
-worker then:
+A row the **drain's read returns without its event's body** is taken out of the batch alone, before anything is
+parsed (#2591). The read (`get_stream_events_in_stream_order`) returns such a row with a NULL body; both drivers return
+it as a row named unreadable (`StreamEventData.UnreadableReason`) instead of failing the read, and say which of two
+cases it is, from the event's flags:
 
-- **fails that row alone** through the failure channel with `MessageFailureReason.EventBodyMissing` and an error naming
-  the perspective, the stream, the event and its version, so the database records the failure and backs the retry
-  off, and the pre-apply dead-letter filter moves the row once its failures pass `MaxPerspectiveEventAttempts`;
-- **logs one Warning per row,** `PerspectiveWorker` EventId 84, naming the same and the failures recorded before;
-- **applies every other row of the batch,** of every stream, in the same pass.
+| The event | Reason | What the worker does |
+|---|---|---|
+| Ephemeral: its body was [reaped](../../fundamentals/events/ephemeral-events#reap-gates) past its retention | `BODY_REAPED` | **Dead-letters the row on first sight**, with `MessageFailureReason.EventBodyMissing` and an error naming the perspective, the stream, the event and its version; no retry is spent on a body that never comes back. One Warning, `PerspectiveWorker` EventId 84, and the dead-letter record (EventId 1901, at the level `DeadLetterLogging` configures, as for every dead letter). With no dead-letter store registered, or a move that fails, the row is failed for the bounded retry instead, with a Warning (EventId 86) that says why |
+| Not ephemeral: its body should never have been deleted | `BODY_MISSING` | **Fails the row for the bounded retry** through the failure channel, with `MessageFailureReason.EventBodyMissing` and the same error, so the database backs the retry off and the pre-apply dead-letter filter moves the row once its failures pass `MaxPerspectiveEventAttempts`. Logged at **Error** (EventId 85): nothing in the framework deletes a Sourced body, so something else is wrong |
+
+Either way, **every other row of the batch is applied,** of every stream, in the same pass.
 
 Before, the read cast the NULL body and threw `InvalidCastException`, so the worker lost the whole batch
 (EventId 68, [a failure that is not the database's](../../fundamentals/workers/transient-database-failures)), released it and leased it again with the same row in it. Nothing was recorded
@@ -827,7 +827,8 @@ event that an instance able to read it is about to apply. It stays leased as bef
 | The read throws for every row | The batch read once, then each row once; every row is failed and nothing is applied | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_ReadThrowsForEveryRow_FailsEveryRowAsync} |
 | The store skips a row it cannot read | That row is failed (`SerializationError`); EventId 78 at Warning | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_StoreSkipsARowItCannotRead_FailsThatRowAsync} |
 | The row's event type is not registered here | Not failed; left for an instance that can read it | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_RowOfATypeThisServiceDoesNotKnow_IsNotFailedAsync} |
-| The row's event has no body (reaped), in a batch with healthy streams | The healthy streams are applied; that row is failed (`EventBodyMissing`), EventId 84 at Warning, retried with backoff and dead-lettered past `MaxPerspectiveEventAttempts` | {verified: ReapedBodyBatchIsolationTests.AReapedStreamSharingABatch_FailsOnlyItself_IsRetriedBoundedly_AndIsDeadLetteredAsync, PerspectiveWorkerUnreadableFetchedRowTests.AnUnreadableRow_IsFailedAlone_ByName_AndTheRestKeepTheirOrderAsync, ReapedBodyStreamReadTests.GetStreamEvents_OverABatchHoldingAStreamWhoseBodiesWereReaped_ReadsEveryRow_AndThrowsNothingAsync, DapperWorkCoordinatorWithDataTests.GetStreamEventsAsync_AnEventWhoseBodyWasReaped_IsReadAsUnreadable_NextToAReadableOneAsync} |
+| The row's ephemeral event has no body (reaped), in a batch with healthy streams | The healthy streams are applied; that row is dead-lettered on first sight (`EventBodyMissing`), EventId 84 at Warning | {verified: PerspectiveWorkerUnreadableFetchedRowTests.AReapedRow_IsDeadLetteredOnFirstSight_AndTheRestKeepTheirOrderAsync, PerspectiveWorkerUnreadableFetchedRowTests.AReapedRowThatCannotBeDeadLettered_IsFailedForRetryInsteadAsync, ReapedBodyBatchIsolationTests.AReapedStreamSharingABatch_FailsOnlyItself_AndIsDeadLetteredOnFirstSightAsync, ReapedBodyBatchIsolationTests.AStreamMissingASourcedBody_FailsOnlyItself_IsRetriedBoundedly_AndIsDeadLetteredAtErrorAsync, ReapedBodyStreamReadTests.GetStreamEvents_OverABatchHoldingAStreamWhoseBodiesWereReaped_ReadsEveryRow_AndThrowsNothingAsync, DapperWorkCoordinatorWithDataTests.GetStreamEventsAsync_AnEventWhoseBodyWasReaped_IsReadAsUnreadable_NextToAReadableOneAsync} |
+| The row's Sourced event has no body | That row is failed (`EventBodyMissing`), EventId 85 at Error, retried with backoff and dead-lettered past `MaxPerspectiveEventAttempts`; the rest of the batch is applied | {verified: ReapedBodyBatchIsolationTests.AStreamMissingASourcedBody_FailsOnlyItself_IsRetriedBoundedly_AndIsDeadLetteredAtErrorAsync, PerspectiveWorkerUnreadableFetchedRowTests.ASourcedRowWithoutItsBody_IsFailedForRetryAlone_ByName_AtError_AndTheRestKeepTheirOrderAsync} |
 
 Before, a read that threw dropped the whole fetch with an Error line (`Drain mode: DeserializeStreamEvents threw`),
 and a row the store skipped had no event and nothing recorded. Either way the rows' leases lapsed, they were claimed

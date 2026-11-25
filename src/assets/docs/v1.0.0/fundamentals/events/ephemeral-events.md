@@ -308,11 +308,11 @@ the event store's rows alone can still name it. Two rules keep that from stallin
 - **A rewind never reaches below the reap floor.** A rewind starts at the first event at or after its trigger that
   still has a body and that the perspective reads, and one with none is skipped, leaving the cursor and the snapshot
   the reap kept as it was. See [the reap floor](../perspectives/rewind#reap-floor).
-- **A queued row whose body is gone fails only itself.** The perspective drain reads it as unreadable, fails it with
-  `MessageFailureReason.EventBodyMissing`, retries it a bounded number of times and dead-letters it, and applies the
-  rest of the batch. See [unreadable stored events](../../operations/workers/perspective-worker#unreadable-stored-events).
+- **A queued row whose body was reaped fails only itself.** The perspective drain reads it as unreadable and
+  dead-letters it on first sight with `MessageFailureReason.EventBodyMissing` (the body never comes back, so no retry
+  is spent), and applies the rest of the batch. See [unreadable stored events](../../operations/workers/perspective-worker#unreadable-stored-events).
 
-{verified: OriginPositionFillSqlTests.Fill_ThatReordersAStreamWhoseBodiesWereAllReaped_QueuesNoReplay_AndLeavesTheCursorAndItsSnapshotAsync, ReapedBodyBatchIsolationTests.AReapedStreamSharingABatch_FailsOnlyItself_IsRetriedBoundedly_AndIsDeadLetteredAsync}
+{verified: OriginPositionFillSqlTests.Fill_ThatReordersAStreamWhoseBodiesWereAllReaped_QueuesNoReplay_AndLeavesTheCursorAndItsSnapshotAsync, ReapedBodyBatchIsolationTests.AReapedStreamSharingABatch_FailsOnlyItself_AndIsDeadLetteredOnFirstSightAsync, ReapedBodyBatchIsolationTests.AStreamMissingASourcedBody_FailsOnlyItself_IsRetriedBoundedly_AndIsDeadLetteredAtErrorAsync}
 
 ### The reap scans start at the oldest body {#the-reap-scans-start-at-the-oldest-body}
 

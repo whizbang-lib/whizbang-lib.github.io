@@ -128,7 +128,9 @@ and a path that decides from those rows alone (the [origin-position fill](../../
 is one) can name a trigger whose body is gone. `_wh_rewind_perspectives_from` therefore starts each rewind at the
 **reap floor** (#2591, migration 600): the first event at or after the trigger that still has a body and that the
 perspective reads. When there is none, the rewind is skipped: the cursor is not flagged, its snapshots stay, and
-nothing is queued. See [the reap floor](../../resilience/stream-integrity#a-rewind-never-reaches-below-the-reap-floor)
+nothing is queued. When the floor is above the trigger, the replay starts from the snapshot below the floor. That is the
+best state available, not a full refold of the reaped history: the reaped events stay folded in the order they were
+first applied, because their bodies are gone. See [the reap floor](../../resilience/stream-integrity#a-rewind-never-reaches-below-the-reap-floor)
 for the cases and the counter, and [unreadable stored events](../../operations/workers/perspective-worker#unreadable-stored-events)
 for what the worker does with a row queued without its body by any other path.
 {verified: OriginPositionFillSqlTests.Fill_ThatReordersAStreamWhoseBodiesWereAllReaped_QueuesNoReplay_AndLeavesTheCursorAndItsSnapshotAsync, OriginPositionFillSqlTests.Fill_ThatReordersAStreamWhoseEarliestBodiesWereReaped_RewindsFromTheFirstEventWithABodyAsync, OriginPositionFillSqlTests.Rewind_FromAReapedTrigger_WithNothingReadableAfterIt_FlagsDeletesAndQueuesNothingAsync}
