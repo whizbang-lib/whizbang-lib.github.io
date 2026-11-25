@@ -231,6 +231,12 @@ What still holds:
 - **The reap deletes only what the destruction hooks were given.** When reading the batch for the destruction hooks
   fails, the reap is given an empty set and nothing is reaped that cycle, rather than every eligible body. The
   PostDestruction hooks fire only after a maintenance call that returned.
+- **Only a floor snapshot covers an ephemeral body for the reap.** The reap's snapshot coverage gate counts a
+  stream's floor, never its [tip snapshot](../../fundamentals/events/ephemeral-events#the-tip-snapshot) (migration 620,
+  on top of 534's rule that a snapshot covers only once its own event is past its grace window). The reap-driven
+  snapshot targets and the destruction batch read the same condition, so all three agree on what is covered. See
+  [when the body is deleted](../../fundamentals/events/ephemeral-events#reap-gates).
+  {verified: TipSnapshotSqlTests.Reap_BodiesBelowATipWhoseEventIsPastItsGrace_AreHeldAsync, TipSnapshotSqlTests.Reap_TheSameSnapshotAsAFloor_CoversTheBodiesBelowItAsync, TipSnapshotSqlTests.PairsNeedingSnapshot_APairCoveredOnlyByATip_IsATargetAsync, TipSnapshotSqlTests.AboutToReap_BodiesCoveredOnlyByATip_AreNotOfferedAsync}
 - **A step you register is isolated the same way,** each step on its own ([maintenance steps](../../fundamentals/workers/maintenance-steps)).
 
 Why: before #2174 a task that threw ended the cycle, and inside the call a task that raised rolled back every other

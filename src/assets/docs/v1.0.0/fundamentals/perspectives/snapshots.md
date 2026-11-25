@@ -175,7 +175,8 @@ if (!hasSnapshots) {
 
 ### PruneOldSnapshotsAsync
 
-Deletes old snapshots, keeping only the most recent N per stream/perspective. Called after each new snapshot creation to bound storage growth.
+Deletes old snapshots, keeping only the most recent N per stream/perspective. Called after each new snapshot creation to bound storage growth. It counts floors alone: a [tip snapshot](../events/ephemeral-events#the-tip-snapshot) is never one of the N, and a tip at or below the newest floor is removed.
+{verified: TipSnapshotStoreTests.Prune_CountsFloorsAlone_AndRemovesATipAtOrBelowTheNewestFloorAsync, TipSnapshotStoreTests.Prune_RemovesATipAtOrBelowAFloorWrittenAboveItAsync}
 
 ```csharp{title="PruneOldSnapshotsAsync" description="Prune old snapshots to control storage" category="Usage" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Snapshots", "Pruning"] tests=["EFCorePerspectiveSnapshotStoreTests.PruneOldSnapshotsAsync_KeepsNewestAsync"]}
 // Keep the 5 most recent snapshots, delete the rest
@@ -190,6 +191,19 @@ Removes all snapshots for a stream/perspective pair. Used during **perspective r
 // During perspective rebuild, invalidate all existing snapshots
 await snapshotStore.DeleteAllSnapshotsAsync(orderId, "OrderPerspective");
 ```
+
+### Tip snapshot methods {#tip-snapshot-methods}
+
+A perspective that applies both ephemeral and durable events keeps a [tip snapshot](../events/ephemeral-events#the-tip-snapshot) beside its floor. Three members serve it, and each has a default that keeps no tips, so a custom store leaves such a perspective with its floor alone, as before:
+
+| Member | What it does | Default |
+|---|---|---|
+| `CreateTipSnapshotAsync` | Writes the stream's tip, replacing its previous tip. A tip is kept only above the newest floor and never takes the place of a floor written at the same event. | Stores nothing. |
+| `GetFloorSnapshotAsync` | The floor a rewind or the reap-boundary bootstrap restores from, selected among floors alone, never a tip. | `GetSnapshotFloorAsync`. |
+| `DeleteTipSnapshotFromAsync` | Removes the tip when it sits at or above a late event, or when the store cannot place the tip or the event in the stream. | Removes nothing. |
+
+`PerspectiveSnapshotFloor.IsTip` is true for a tip and false for a floor.
+{verified: TipSnapshotStoreTests.ATip_ReplacesThePreviousTip_AndLeavesTheFloorAsync, TipSnapshotStoreTests.ATip_AtOrBelowTheNewestFloor_IsNotKept_AndNeverDemotesTheFloorAsync, TipSnapshotStoreTests.TheFloorLookup_NeverReturnsATip_WhileTheRewindsLookupDoesAsync, TipSnapshotStoreTests.ALateEvent_RemovesATipAtOrAboveIt_AndKeepsOneBelowIt_AndEveryFloorAsync, DapperTipSnapshotStoreTests.ATip_ReplacesThePreviousTip_AndLeavesTheFloorAsync, DapperTipSnapshotStoreTests.TheFloorLookup_NeverReturnsATip_WhileTheRewindsLookupDoesAsync}
 
 ## PerspectiveSnapshotOptions
 
@@ -452,10 +466,11 @@ A bootstrap says what it did. `IPerspectiveRunner.TryBootstrapSnapshotAsync` ret
 {verified: SnapshotBootstrapOutcomeTests.Bootstrap_OfALiveRow_WritesTheSnapshot_AndReportsWrittenAsync, SnapshotBootstrapOutcomeTests.Bootstrap_OfAMissingRow_WritesNothing_ReportsRowMissing_AndLogsItAsync, SnapshotBootstrapOutcomeTests.Bootstrap_WithSnapshotsDisabled_WritesNothing_AndReportsSnapshotsOffAsync, SnapshotBootstrapOutcomeTests.TryBootstrap_OnARunnerThatImplementsOnlyBootstrap_RunsIt_AndReportsNotReportedAsync, ReapBoundarySnapshotRunnerTests.ABootstrap_WhoseSnapshotBelowCannotBeRead_IsRefused_AndWritesNothingAsync}
 
 The maintenance cycle calls `TryBootstrapSnapshotThroughAsync`, which takes the snapshot as of the reap boundary rather
-than at the cursor (see [the reap-boundary snapshot](../events/ephemeral-events#the-reap-boundary-snapshot)). It reports
-the same outcomes, and `Refused` only there; a runner that does not implement it bootstraps at the cursor through
+than at the cursor (see [the reap-boundary snapshot](../events/ephemeral-events#the-reap-boundary-snapshot)). It folds
+from the floor below the boundary, never from a [tip](../events/ephemeral-events#the-tip-snapshot), so the floor never
+depends on a tip. It reports the same outcomes, and `Refused` only there; a runner that does not implement it bootstraps at the cursor through
 `TryBootstrapSnapshotAsync`.
-{verified: SnapshotBootstrapOutcomeTests.TryBootstrapThrough_OnARunnerThatCannotFoldToABoundary_BootstrapsAtTheCursorAsync}
+{verified: SnapshotBootstrapOutcomeTests.TryBootstrapThrough_OnARunnerThatCannotFoldToABoundary_BootstrapsAtTheCursorAsync, TipSnapshotRunnerTests.ABootstrapThroughTheBoundary_FoldsFromTheFloor_NotFromATipBelowTheBoundaryAsync}
 
 **Why the outcome exists.** A bootstrap that found no row used to return exactly as one that wrote a snapshot. The maintenance cycle then logged a snapshot for a stream that had none, and selected the same stream again on every cycle, while the ephemeral bodies the snapshot was meant to cover were held indefinitely. The cycle now logs a written snapshot only when one was written, and a missing row as a missing row.
 {verified: MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_ASnapshotWritten_IsLoggedAsWrittenAsync, MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_AStreamWithNoRow_IsNotLoggedAsASnapshot_ButAsAMissingRowAsync, MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_ABootstrapThatWroteNothing_IsNotLoggedAsASnapshotAsync}
@@ -465,7 +480,7 @@ the same outcomes, and `Refused` only there; a runner that does not implement it
 A rewind restores from the latest snapshot placed *before* its late event in the stream (by stream version), so a snapshot is a floor only for a late event placed after it. A bootstrap the `PerspectiveWorker` takes snapshots the row as it is now, at the cursor's last event, and serves only a late event placed after the cursor. For an ephemeral perspective, whose earlier bodies are reaped once a snapshot covers them, a late event placed before every snapshot is dropped and logged rather than replayed (see [runtime guards](../events/ephemeral-events#runtime-guards)).
 {verified: SnapshotSelectionFollowsStreamOrderTests.AReapDrivenSnapshotAtTheTip_IsAFloorOnlyForALateEventAfterItAsync}
 
-The bootstrap the maintenance cycle takes before a reap sits lower: at the reap boundary, the last body it is about to reap. The model as of that position is folded from the snapshot below it over the bodies still stored, so a late event placed below the cursor but above the boundary still finds a floor. A row with collectives is folded with the collectives placed before the boundary. The boundary snapshot then holds the stream's one slot: a live or rewind snapshot at the tip fills the slot only when it is empty, and a snapshot covers bodies for the reap only once its own event is past its grace window. See [the reap-boundary snapshot](../events/ephemeral-events#the-reap-boundary-snapshot).
+The bootstrap the maintenance cycle takes before a reap sits lower: at the reap boundary, the last body it is about to reap. The model as of that position is folded from the snapshot below it over the bodies still stored, so a late event placed below the cursor but above the boundary still finds a floor. A row with collectives is folded with the collectives placed before the boundary. The boundary snapshot then holds the stream's one slot: for a perspective that applies only ephemeral events, a live or rewind snapshot at the tip fills the slot only when it is empty; for one that also applies durable events, the live and rewind cadences write its [tip snapshot](../events/ephemeral-events#the-tip-snapshot) and the floor still moves only by the bootstrap. A snapshot covers bodies for the reap only once its own event is past its grace window. See [the reap-boundary snapshot](../events/ephemeral-events#the-reap-boundary-snapshot).
 {verified: ReapBoundarySnapshotRunnerTests.ALateEventBelowTheCursorAndAboveTheBoundary_RewindsFromTheBoundarySnapshot_AfterTheBodiesBelowAreReapedAsync}
 
 ### Ephemeral perspectives {#ephemeral-perspectives}
@@ -475,13 +490,15 @@ Whether a perspective snapshots is decided by what it **consumes**:
 | The perspective applies | Snapshots |
 |---|---|
 | Only durable events | `SnapshotEveryNEvents`, keeping `MaxSnapshotsPerStream`. |
-| Durable and ephemeral events | `EphemeralSnapshotEveryNEvents`, keeping `EphemeralMaxSnapshotsPerStream`. |
+| Durable and ephemeral events | `EphemeralSnapshotEveryNEvents`, keeping `EphemeralMaxSnapshotsPerStream`, plus one [tip snapshot](../events/ephemeral-events#the-tip-snapshot). |
 | Only ephemeral events | **None**, unless the perspective is marked `[KeepEphemeralRewindFloor]`, which takes the ephemeral cadence. |
 
-The ephemeral cadence fills the stream's one slot only while it is empty. Once the slot holds a snapshot, only the
+For a perspective that applies only ephemeral events, the ephemeral cadence fills the stream's one slot only while it
+is empty. Once the slot holds a snapshot, only the
 [reap-boundary bootstrap](../events/ephemeral-events#the-reap-boundary-snapshot) replaces it, so the floor moves only to
-a point the grace window has closed on.
-{verified: ReapBoundarySnapshotRunnerTests.ALiveSnapshot_FillsAnEmptySlotAsync, ReapBoundarySnapshotRunnerTests.ALiveSnapshot_DoesNotReplaceTheBoundarySnapshot_SoALateEventBelowTheTipStillFindsItsFloorAsync}
+a point the grace window has closed on. For a perspective that also applies durable events, the cadence writes its
+[tip snapshot](../events/ephemeral-events#the-tip-snapshot) instead; the floor still moves only by the bootstrap.
+{verified: ReapBoundarySnapshotRunnerTests.ALiveSnapshot_FillsAnEmptySlotAsync, ReapBoundarySnapshotRunnerTests.ALiveSnapshot_DoesNotReplaceTheBoundarySnapshot_SoALateEventBelowTheTipStillFindsItsFloorAsync, TipSnapshotRunnerTests.ALiveSnapshot_IsWrittenAsTheTip_AndTheBoundaryFloorStaysAsync}
 
 The rule, and the reason for each row, are on the ephemeral events page: [snapshots follow what a read model consumes](../events/ephemeral-events#snapshots-follow-what-a-read-model-consumes).
 {verified: EphemeralRewindFloorRunnerTests.ALiveRun_OfAPerspectiveThatKeepsNoFloor_WritesNoSnapshotAsync, EphemeralRewindFloorRunnerTests.ALiveRun_OfAPerspectiveThatOptsIn_WritesItsSnapshotAsync, EphemeralRewindFloorRunnerTests.ABootstrap_OfAPerspectiveThatKeepsNoFloor_WritesNothing_AndReportsSnapshotsOffAsync}
@@ -489,7 +506,7 @@ The rule, and the reason for each row, are on the ephemeral events page: [snapsh
 ### Snapshots of a purged row {#purged-row}
 
 When a perspective purges its row (`ApplyResult.Purge()`), the maintenance cycle removes that perspective's cursor and **every** snapshot for the stream, once the stream has no work pending for the perspective and the perspective's table holds no row for it. They describe state that no longer exists. Other perspectives' cursors and snapshots on the same stream are untouched, and the purge marker stays, so the row stays purged.
-{verified: PurgedRowEphemeralHistorySqlTests.Maintenance_APurgedRowsCursorAndSnapshots_AreRemoved_AndOtherPerspectivesKeepTheirsAsync, PurgedRowEphemeralHistorySqlTests.Maintenance_ALiveRowWithAStaleMarker_KeepsItsCursorAndSnapshotsAsync}
+{verified: PurgedRowEphemeralHistorySqlTests.Maintenance_APurgedRowsCursorAndSnapshots_AreRemoved_AndOtherPerspectivesKeepTheirsAsync, PurgedRowEphemeralHistorySqlTests.Maintenance_ALiveRowWithAStaleMarker_KeepsItsCursorAndSnapshotsAsync, PurgedRowEphemeralHistorySqlTests.Maintenance_APurgedRowsTipSnapshot_IsRemovedWithItsFloorsAsync}
 
 The purge also covers the row's ephemeral bodies at or before the purge event, so the reaper does not wait for a snapshot of them; bodies after it stay gated.
 
@@ -500,11 +517,13 @@ This differs from an eviction (next section), which keeps the latest snapshot: a
 When [row retention](row-retention) evicts a perspective row (a row TTL, a row cap or a stream-group
 cascade), the row's snapshots are not all discarded with it. For each perspective that folds the
 model, the eviction keeps the **latest** snapshot of that stream (the one a rewind would restore: the
-highest stream version) and deletes the older ones, and it deletes the perspective's cursor for the
+highest stream version) and deletes the older ones; for a perspective that keeps a
+[tip snapshot](../events/ephemeral-events#the-tip-snapshot), it keeps the latest floor and the latest tip, each on its
+own, so the row never keeps a tip alone, and it deletes the perspective's cursor for the
 stream. The next event on the stream then rebuilds the whole row by restoring that snapshot and
 replaying the events after it. Snapshots of other perspectives on the same stream are untouched. See
 [What an eviction removes](row-retention#what-an-eviction-removes).
-{verified: EvictionCompanionCleanupSqlTests.Cascade_RemovesTheEvictedRowsCursors_KeepsItsLatestSnapshot_LeavesTheRestAsync, EvictionCompanionCleanupSqlTests.Eviction_KeepsTheSnapshotARewindCanPlace_NotANewerVersionlessOneAsync, EvictedRowRebuildTests.CappedPerspective_EvictedRowWithSnapshot_RestoresTheSnapshotAndReplaysTheTailAsync}
+{verified: EvictionCompanionCleanupSqlTests.Cascade_RemovesTheEvictedRowsCursors_KeepsItsLatestSnapshot_LeavesTheRestAsync, EvictionCompanionCleanupSqlTests.Eviction_KeepsTheSnapshotARewindCanPlace_NotANewerVersionlessOneAsync, EvictedRowRebuildTests.CappedPerspective_EvictedRowWithSnapshot_RestoresTheSnapshotAndReplaysTheTailAsync, EvictionCompanionCleanupSqlTests.Eviction_KeepsTheLatestFloor_AndTheTipAboveIt_NotTheTipAloneAsync}
 
 ## Implementation
 
