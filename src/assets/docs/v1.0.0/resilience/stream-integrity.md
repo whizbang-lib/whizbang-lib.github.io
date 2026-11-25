@@ -5132,9 +5132,8 @@ such a row names no service in any of the three, it was written here: re-attribu
 redelivery bundle cannot give it an origin (it is counted as refused). A first hop that names this service is a
 disagreement or a refusal, as before.
 
-Rows moved before this rule (migration 594) are left as they are. They hold no cut, their owner's "unknown" answer is
-recorded once and never asked again, and nothing in the store tells them reliably from events received before their
-origin stamped them.
+Rows moved before this rule (migration 594) are returned to the local lane by a one-off maintenance step: see
+[events written here are returned](#events-written-here-returned).
 
 **Options.**
 
@@ -5147,6 +5146,50 @@ origin stamped them.
 
 All bound from `Whizbang:StreamIntegrity`; a bound below 1 fails at host start naming the key
 {verified: StreamIntegrityOptionsValidatorTests.Validate_AReattributionBoundBelowOne_FailsNamingTheKeyAsync}.
+
+#### Events written here are returned {#events-written-here-returned}
+
+{verified: WrittenHereOriginRestorationSqlTests.Restore_AReactionAndAReturn_GoBackToTheLocalLane_AndAReceivedEventStaysAsync, WrittenHereOriginRestorationSqlTests.Restore_CleansTheBookkeepingTheRowsPolluted_AndNoOtherAsync, WrittenHereOriginRestorationSqlTests.Restore_ARowItCannotProve_IsLeftAndCountedAsAmbiguousAsync, WrittenHereOriginRestorationSqlTests.Restore_ReturnsTheSealedEpochItLeft_ToTheStoreAsync, WrittenHereOriginRestorationSqlTests.Step_RestoresInBoundedBatches_LogsAndCountsEach_AndResumesFromItsCursorAsync}
+
+Before the rule above, two kinds of event a service wrote were stored under another service's origin:
+
+| Shape | How it got there | What it cost |
+| --- | --- | --- |
+| A reaction | Re-attribution moved a reaction of a type another service owns to that owner, with no origin position | The owner answered "unknown" for its position, and the event kept the owner's windows undecided |
+| A return | The service's own event, carried back in another service's redelivery bundle, adopted that bundle's origin | The local lane counted it short and the other origin's lane long |
+
+A one-off maintenance step, `written-here-origin-restoration` (migration 599), returns them. It walks the event store
+once by commit sequence, up to the highest commit sequence the store held when it began, in batches of
+`ReattributionBatchSize` rows and at most `MaxReattributionBatchesPerPass` batches per maintenance cycle, under the
+maintainer duty and idle-gated. Each batch is its own transaction under a durable compare-and-swap cursor, so a restart
+resumes and a second instance waits.
+
+**The proof.** A row recorded under another origin whose first hop names **this** service was written here: a received
+event's first hop is its writer's. The first hop's service is read as above (the row, its route, its staged full form),
+and compared with this service's name, trimmed and without case. The store does not record its own name, which is why
+this is a maintenance step that knows it rather than part of the migration. Without a service name the step is skipped.
+
+**What a returned row takes with it.** Its origin and origin position are cleared, and in the same transaction:
+
+- its digest leaves its origin's bucket and joins the local lane's, through the [one digest fold](#one-digest-fold);
+- the sealed epochs it left and joined are refolded by the store's own triggers ([what keeps a seal true](#what-keeps-a-seal-true)),
+  which also advance the origin generation for a local rewrite;
+- its origin's recorded "unknown" answer goes, and it leaves its origin's held set, so the windows it kept undecided can
+  be decided;
+- both lanes' repair-ledger buckets it touched, per stream and the type lane, start their ladder afresh.
+
+Nothing is deleted.
+
+**What it leaves.** A row the evidence does not prove. An unpositioned row whose origin disowned it, or whose first hop
+names no service anywhere, is counted as ambiguous (a Warning per origin and batch, and
+`whizbang.stream_integrity.written_here_restoration_ambiguous`). The second kind is a slim row with nothing staged and
+no route: under the Slim form nothing is distilled, and a route ages out after `route_idle_days`, so a genuinely
+received slim row looks the same. Positioned rows with no evidence are ordinary received history and are not counted.
+
+Each restoration is logged at Warning per origin and counted on `whizbang.stream_integrity.written_here_origins_restored`,
+tagged `shape` (`reaction` or `return`). Running it again changes nothing: a returned row has no origin and is never a
+candidate. A different service name walks again from the start. `ReattributionEnabled` set to `false` turns it off with
+the other attribution passes.
 
 ### An origin that does not own the type {#an-origin-that-does-not-own-the-type}
 
