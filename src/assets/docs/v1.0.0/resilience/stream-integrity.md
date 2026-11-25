@@ -3986,7 +3986,7 @@ What it reports: `whizbang.stream_integrity.compare_streams_covered` (streams th
 `compare_slices` (runs), `compare_passes_completed` and `compare_pass_runs` (a histogram of the runs one pass took).
 
 #### Each check has its own schedule {#integrity-check-schedules}
-{verified: IntegritySweepSchedulingTests.Start_WithBothChecksOn_RegistersOneScheduleEach_OnItsOwnCronAsync, IntegritySweepSchedulingTests.Start_WithTheDefaults_RegistersNothing_SoNeitherCheckRunsAsync, IntegritySweepSchedulingTests.Start_WithOnlyTheSealRecheckOn_RegistersOnlyItsScheduleAsync, IntegritySweepSchedulingTests.SweepReceptor_RunsTheCheckTheOccurrenceNamesAsync, IntegritySweepSchedulingTests.SweepReceptor_AnOccurrenceNamingNoCheck_RunsTheFullHistoryCompareAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_LeavesACheckToItsSchedule_OnceTheScheduleIsRegisteredAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_RunsEachCheckWhoseScheduleIsNotRegistered_AndOnlyThatOneAsync}
+{verified: IntegritySweepSchedulingTests.Start_WithBothChecksOn_RegistersOneScheduleEach_OnItsOwnCronAsync, IntegritySweepSchedulingTests.Start_WithTheDefaults_RegistersNothing_SoNeitherCheckRunsAsync, IntegritySweepSchedulingTests.Start_WithOnlyTheSealRecheckOn_RegistersOnlyItsScheduleAsync, IntegritySweepSchedulingTests.SweepReceptor_RunsTheCheckTheOccurrenceNamesAsync, IntegritySweepSchedulingTests.SweepReceptor_AnOccurrenceNamingNoCheck_RunsTheFullHistoryCompareAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_LeavesACheckToItsSchedule_OnceTheScheduleIsRegisteredAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_RunsEachCheckWhoseScheduleIsNotRegistered_AndOnlyThatOneAsync, IntegritySweepScheduleRemovalTests.Start_ACheckThatWantsNoSchedule_CancelsItsStoredSchedule_AndLogsTheRemovalAsync, IntegritySweepScheduleRemovalTests.Start_WithNoStoredSchedule_CancelsQuietlyAsync, IntegritySweepScheduleRemovalTests.Start_WhenARemovalFails_LogsWhatFailed_AndCarriesOnAsync}
 
 Each enabled check registers its own schedule on the temporal engine: the full-history compare under the key
 `wh-integrity-sweep` (the key the sweep always had) and the re-check under `wh-seal-recheck`. Each occurrence names its
@@ -3994,8 +3994,16 @@ check (`ScheduledIntegritySweep.Check`); an occurrence scheduled before #2353 na
 compare. The default minute `0` is replaced by a stable per-service splay (FNV-1a of the service name), so a fleet
 sharing one database server does not run in unison. On a host without the temporal engine, or whose registration
 failed, each enabled check runs on every `FullSweepEveryNthAudit`-th audit cycle instead (default 7); once a check's
-schedule is registered, the counter stands down for that check only. A schedule left behind for a check that was turned
-off runs nothing.
+schedule is registered, the counter stands down for that check only.
+
+A check that is off, or on with an empty `Schedule`, has no schedule: at every start the scheduler cancels the one
+stored under its key (`IScheduleManager.CancelByKeyAsync`, #2586) and logs an Information line when one was actually
+canceled. Without this, a schedule registered while the check was on a cron kept firing after the check was turned off
+(a no-op) or after its `Schedule` was cleared (the check then ran on that schedule and on the every-Nth-audit counter
+both). Canceling a key with no active schedule does nothing and logs nothing. A host without the temporal engine has
+nothing stored to cancel. A cancel that fails is logged as a warning naming the key, and the start goes on; an
+occurrence of a check that is off still runs nothing, so a schedule left behind that way is harmless until the next
+start removes it.
 
 **Why one schedule per check.** The re-check is local and bounded by its lookback; the compare asks every origin for
 everything. Sharing one cron would tie the cheaper check to the costlier one's timing.
@@ -5124,9 +5132,8 @@ such a row names no service in any of the three, it was written here: re-attribu
 redelivery bundle cannot give it an origin (it is counted as refused). A first hop that names this service is a
 disagreement or a refusal, as before.
 
-Rows moved before this rule (migration 594) are left as they are. They hold no cut, their owner's "unknown" answer is
-recorded once and never asked again, and nothing in the store tells them reliably from events received before their
-origin stamped them.
+Rows moved before this rule (migration 594) are returned to the local lane by a one-off maintenance step: see
+[events written here are returned](#events-written-here-returned).
 
 **Options.**
 
@@ -5139,6 +5146,50 @@ origin stamped them.
 
 All bound from `Whizbang:StreamIntegrity`; a bound below 1 fails at host start naming the key
 {verified: StreamIntegrityOptionsValidatorTests.Validate_AReattributionBoundBelowOne_FailsNamingTheKeyAsync}.
+
+#### Events written here are returned {#events-written-here-returned}
+
+{verified: WrittenHereOriginRestorationSqlTests.Restore_AReactionAndAReturn_GoBackToTheLocalLane_AndAReceivedEventStaysAsync, WrittenHereOriginRestorationSqlTests.Restore_CleansTheBookkeepingTheRowsPolluted_AndNoOtherAsync, WrittenHereOriginRestorationSqlTests.Restore_ARowItCannotProve_IsLeftAndCountedAsAmbiguousAsync, WrittenHereOriginRestorationSqlTests.Restore_ReturnsTheSealedEpochItLeft_ToTheStoreAsync, WrittenHereOriginRestorationSqlTests.Step_RestoresInBoundedBatches_LogsAndCountsEach_AndResumesFromItsCursorAsync}
+
+Before the rule above, two kinds of event a service wrote were stored under another service's origin:
+
+| Shape | How it got there | What it cost |
+| --- | --- | --- |
+| A reaction | Re-attribution moved a reaction of a type another service owns to that owner, with no origin position | The owner answered "unknown" for its position, and the event kept the owner's windows undecided |
+| A return | The service's own event, carried back in another service's redelivery bundle, adopted that bundle's origin | The local lane counted it short and the other origin's lane long |
+
+A one-off maintenance step, `written-here-origin-restoration` (migration 599), returns them. It walks the event store
+once by commit sequence, up to the highest commit sequence the store held when it began, in batches of
+`ReattributionBatchSize` rows and at most `MaxReattributionBatchesPerPass` batches per maintenance cycle, under the
+maintainer duty and idle-gated. Each batch is its own transaction under a durable compare-and-swap cursor, so a restart
+resumes and a second instance waits.
+
+**The proof.** A row recorded under another origin whose first hop names **this** service was written here: a received
+event's first hop is its writer's. The first hop's service is read as above (the row, its route, its staged full form),
+and compared with this service's name, trimmed and without case. The store does not record its own name, which is why
+this is a maintenance step that knows it rather than part of the migration. Without a service name the step is skipped.
+
+**What a returned row takes with it.** Its origin and origin position are cleared, and in the same transaction:
+
+- its digest leaves its origin's bucket and joins the local lane's, through the [one digest fold](#one-digest-fold);
+- the sealed epochs it left and joined are refolded by the store's own triggers ([what keeps a seal true](#what-keeps-a-seal-true)),
+  which also advance the origin generation for a local rewrite;
+- its origin's recorded "unknown" answer goes, and it leaves its origin's held set, so the windows it kept undecided can
+  be decided;
+- both lanes' repair-ledger buckets it touched, per stream and the type lane, start their ladder afresh.
+
+Nothing is deleted.
+
+**What it leaves.** A row the evidence does not prove. An unpositioned row whose origin disowned it, or whose first hop
+names no service anywhere, is counted as ambiguous (a Warning per origin and batch, and
+`whizbang.stream_integrity.written_here_restoration_ambiguous`). The second kind is a slim row with nothing staged and
+no route: under the Slim form nothing is distilled, and a route ages out after `route_idle_days`, so a genuinely
+received slim row looks the same. Positioned rows with no evidence are ordinary received history and are not counted.
+
+Each restoration is logged at Warning per origin and counted on `whizbang.stream_integrity.written_here_origins_restored`,
+tagged `shape` (`reaction` or `return`). Running it again changes nothing: a returned row has no origin and is never a
+candidate. A different service name walks again from the start. `ReattributionEnabled` set to `false` turns it off with
+the other attribution passes.
 
 ### An origin that does not own the type {#an-origin-that-does-not-own-the-type}
 
