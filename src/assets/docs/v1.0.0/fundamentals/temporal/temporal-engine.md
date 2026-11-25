@@ -17,12 +17,14 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Notifications/PgScheduleClaimer.cs
   - src/Whizbang.Data.Postgres/Notifications/PgScheduleDuePollSource.cs
   - src/Whizbang.Data.Postgres/Migrations/068_ClaimDueSchedules.sql
+  - src/Whizbang.Data.Postgres/Migrations/579_TheOutboxDrainsInEmissionOrder.sql
   - src/Whizbang.Data.Postgres/Migrations/598_SchedulesWithNoLiveOwnerAreClaimed.sql
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Temporal/ScheduleWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Temporal/ScheduleWorkerOverdueTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TemporalScheduleClaimSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TemporalScheduleOwnerlessClaimSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/OwnershipByMapClaimSqlTests.Schedules.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgScheduleClaimerIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgScheduleDuePollSourceIntegrationTests.cs
 ---
@@ -52,8 +54,16 @@ early.
 
 ## Which instance fires a schedule {#which-instance-fires-a-schedule}
 
-Schedules ride the same stream ownership as the rest of the work: a schedule on a stream pinned to an instance is
-that instance's to fire. A schedule is also claimable by **any** instance when no live instance holds its stream:
+Schedules ride the same ownership as the rest of the work, and the service's
+[ownership-by-map switch](/v1.0.0/fundamentals/work-coordinator/partition-assignment#ownership-by-map) decides which
+rule applies.
+
+**Ownership by map (the default once every live instance supports it).** A schedule fires on the instance that owns
+its partition in the published map (the schedule's `partition_number`), whatever its stream's stored owner says, and
+whether or not the stream has been written to. Another instance never fires it.
+
+**The legacy mode (the switch off).** A schedule on a stream pinned to an instance is that instance's to fire. It is
+also claimable by **any** live instance when no live instance holds its stream:
 
 | The schedule's stream | Who fires it |
 |---|---|
@@ -63,20 +73,23 @@ that instance's to fire. A schedule is also claimable by **any** instance when n
 | Has no active-stream row, or one with no assigned instance | Any instance |
 | None (a schedule created without a stream) | Any instance |
 
-The first occurrence a schedule emits is usually the first write to its stream, and that write pins the stream to the
-instance that fired it, which owns it from then on. Which instance fires matters only for spreading the work: the
-row lock (`FOR UPDATE SKIP LOCKED`) and the advance in the same transaction keep every fire exactly-once whichever
-instance claims it. A second instance that reaches the row while it is locked skips it, and one that reaches it after
-the commit finds it no longer due.
+The first occurrence a schedule emits is usually the first write to its stream, and in the legacy mode that write
+pins the stream to the instance that fired it, which owns it from then on. Which instance fires matters only for
+spreading the work: the row lock (`FOR UPDATE SKIP LOCKED`) and the advance in the same transaction keep every fire
+exactly-once whichever instance claims it. A second instance that reaches the row while it is locked skips it, and one
+that reaches it after the commit finds it no longer due.
 
-The claim, the timer's next-fire-time query and the due-schedule poll all apply this one rule
-(`wh_schedule_owner_admits`), so an instance is woken for every schedule it may claim and for no other.
+The claim, the timer's next-fire-time query and the due-schedule poll all apply the same switch and the same rule
+(`wh_i_own` in map mode, `wh_schedule_owner_admits` otherwise), so an instance is woken for every schedule it may
+claim and for no other.
 
 :::note
-Before migration 598 a schedule was claimable only through its stream's pin. A schedule created on a fresh stream
+Before migration 598 a schedule in the legacy mode was claimable only through its stream's pin. A schedule created on a fresh stream
 (the framework's own integrity schedules use a control stream nothing else writes to) was therefore seen by no
-instance and never fired, and neither did one whose stream's owner had died. A schedule stuck that way fires once on
-the first pass after the upgrade: its missed occurrences coalesce under the default misfire policy.
+instance and never fired, and neither did one whose stream's owner had died. In map mode the claim already fired it,
+but the timer and the due poll still looked for the stream's pin and never woke for it, so it fired only on the
+backstop. A schedule stuck this way fires once on the first pass after the upgrade: its missed occurrences coalesce
+under the default misfire policy.
 :::
 
 ## A schedule that does not fire is reported {#a-schedule-that-does-not-fire-is-reported}
@@ -98,7 +111,7 @@ counted; a schedule due within the bound is being fired and is not counted eithe
 Every instance reads the same table, so each reports the same overdue set. Setting the option to `0` or less turns
 the check off.
 
-**What an overdue schedule usually means:** the instance its stream is pinned to is live but not firing (its worker
+**What an overdue schedule usually means:** the instance that owns it (its partition's owner in map mode, its stream's pin otherwise) is live but not firing (its worker
 is disabled with `Whizbang:Temporal:Enabled=false`, or its run permit is closed), or the database refuses the claim
 (the warning from the drain loop names the error).
 
@@ -116,4 +129,4 @@ A custom provider implements `IScheduleClaimer`: `ClaimDueSchedulesAsync`, `GetN
 `GetOverdueSchedulesAsync`, which returns `ScheduleOverdueReading.None` when nothing is overdue and `null` when it
 cannot read.
 
-{verified: TemporalScheduleOwnerlessClaimSqlTests.DueSchedule_OnAStreamNothingHasWritten_FiresOnce_AndPinsItsStreamToTheClaimerAsync, TemporalScheduleOwnerlessClaimSqlTests.DueSchedule_WhoseStreamIsPinnedToAnotherLiveInstance_IsLeftToThatInstanceAsync, TemporalScheduleOwnerlessClaimSqlTests.OwnerlessSchedule_ClaimedConcurrently_FiresExactlyOnceAsync, PgScheduleClaimerIntegrationTests.ACronScheduleCreatedOnAFreshStream_FiresOnceAcrossTwoInstancesAsync, ScheduleWorkerOverdueTests.CheckOverdue_AScheduleOverdueBeyondTheBound_WarnsOnce_AndPublishesItAsync, ScheduleWorkerOverdueTests.CheckOverdue_AnUnknownReading_LeavesTheGaugesEmptyAsync}
+{verified: OwnershipByMapClaimSqlTests.InMapMode_AScheduleWithNoLedgerRow_FiresOnItsPartitionsOwnerOnlyAsync, OwnershipByMapClaimSqlTests.InMapMode_TheNextFireTime_IsTheOwnedPartitionsSchedule_WithNoLedgerRowAsync, OwnershipByMapClaimSqlTests.InMapMode_TheDuePoll_RingsForTheOwnedPartitionsSchedule_WithNoLedgerRowAsync, TemporalScheduleOwnerlessClaimSqlTests.DueSchedule_OnAStreamNothingHasWritten_FiresOnce_AndPinsItsStreamToTheClaimerAsync, TemporalScheduleOwnerlessClaimSqlTests.DueSchedule_WhoseStreamIsPinnedToAnotherLiveInstance_IsLeftToThatInstanceAsync, TemporalScheduleOwnerlessClaimSqlTests.OwnerlessSchedule_ClaimedConcurrently_FiresExactlyOnceAsync, PgScheduleClaimerIntegrationTests.ACronScheduleCreatedOnAFreshStream_FiresOnceAcrossTwoInstancesAsync, ScheduleWorkerOverdueTests.CheckOverdue_AScheduleOverdueBeyondTheBound_WarnsOnce_AndPublishesItAsync, ScheduleWorkerOverdueTests.CheckOverdue_AnUnknownReading_LeavesTheGaugesEmptyAsync}

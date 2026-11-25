@@ -1003,10 +1003,11 @@ These matter to services that run [stream integrity](../resilience/stream-integr
 
 *[#2575](https://github.com/whizbang-lib/whizbang/issues/2575)*
 
-- **What changed:** the temporal engine claims a due schedule on any instance when no live instance holds its stream
-  (no active-stream row, an unassigned one, or an owner the liveness rule calls dead). Before, a schedule fired only
-  through its stream's pin, so one created on a fresh stream, such as the framework's integrity schedules, never
-  fired. Each drain pass also reports Active schedules overdue beyond `Whizbang:Temporal:OverdueWarningMilliseconds`
+- **What changed:** with ownership by map off, the temporal engine claims a due schedule on any instance when no live
+  instance holds its stream (no active-stream row, an unassigned one, or an owner the liveness rule calls dead).
+  Before, a schedule fired only through its stream's pin, so one created on a fresh stream, such as the framework's
+  integrity schedules, never fired. In map mode the claim already followed the partition's owner; the precise wake
+  and the due poll now follow it too, instead of the stream's pin, which map mode never writes. Each drain pass also reports Active schedules overdue beyond `Whizbang:Temporal:OverdueWarningMilliseconds`
   with a warning and two gauges on the `Whizbang.Temporal` meter. `IScheduleClaimer` gains `GetOverdueSchedulesAsync`.
 - **Who is affected:** a host with a schedule that had stopped firing this way: it fires once on the first pass after
   the upgrade, its missed window coalesced under the default misfire policy. A custom `IScheduleClaimer`
