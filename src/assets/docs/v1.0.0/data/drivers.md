@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperCoordinatorSchema.cs
+  - src/Whizbang.Data.Postgres/Notifications/PostgresCoordinationRegistration.cs
   - src/Whizbang.Data.Dapper.Postgres/PostgresSchemaInitializer.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.RetentionSweeps.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.TableMaintenance.cs
@@ -37,6 +38,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresDriverExtensionsTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperWorkCoordinatorNamedSchemaTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperCoordinatorSchemaTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperCoordinationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/DriverCoordinationParityTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMaintenanceStepNamedSchemaTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperNamedSchemaRegistrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkCoordinatorDriverParityTests.cs
@@ -188,6 +191,19 @@ The InMemory driver rides on the **EF Core InMemory provider** - it is not a sta
 ## Dapper-Based Alternative
 
 For services that prefer raw-SQL persistence, the `Whizbang.Data.Dapper.Postgres` package registers Whizbang's PostgreSQL stores (event store, work coordinator, request/response store, sequence provider) via `AddWhizbangPostgres(...)` instead of the EF Core chain. See [Dapper Integration](dapper-integration.md).
+
+### Coordination is shared by both drivers {#shared-coordination}
+
+{verified: DriverCoordinationParityTests.EveryPieceOfTheSharedCoordination_IsRegisteredAlikeByBothDriversAsync, DriverCoordinationParityTests.BothDrivers_ResolveTheSameElectorDutyLoopAndAssignerAsync, DapperCoordinationTests.TwoInstances_ExactlyOneHoldsTheMaintainerRole_AndOnlyItDoesTheMaintainersWorkAsync, DapperCoordinationTests.TwoInstances_OneIsElectedAssigner_AndTheOthersClaimPresentsItsMapAsync}
+
+Both Postgres drivers register role assignment and the elected
+[partition assigner](../fundamentals/work-coordinator/partition-assignment.md) through one shared registration, and a
+parity test fails if either stops doing so ([#2559](https://github.com/whizbang-lib/whizbang/issues/2559)). On
+Dapper, as on EF Core, the maintainer, each perspective table's blue-green rebuild guard and the partition assigner run
+on one elected instance, and a claim presents the published partition map. Schema migration is elected the same way
+on both drivers: one instance migrates, and the others wait for it and then serve
+([#2561](https://github.com/whizbang-lib/whizbang/issues/2561)). See
+[Dapper coordination](dapper-integration.md#coordination).
 
 ### Which schema the Dapper work coordinator uses {#dapper-coordinator-schema}
 

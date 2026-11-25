@@ -581,10 +581,10 @@ which holds folded models in memory across drains and writes each one later. See
 | `whizbang.perspective.write_behind.bytes` | ObservableGauge (By) | Bytes the held models take, measured as their serialized size |
 | `whizbang.perspective.write_behind.lookups` | Counter\<long\> | Write-behind pairs prepared on a held model (`hit`) or a database read (`miss`); the hit rate is hits over both. Tags: `perspective_name`, `result` |
 | `whizbang.perspective.write_behind.flush_lag` | ms | Time from a model's first held batch to its flush. Tag: `reason` |
-| `whizbang.perspective.write_behind.forced_flushes` | Counter\<long\> | Held models flushed before their interval. Tag: `reason` (`sync`, `bypass`, `bounds`, `batches`, `requested`, `rebuild`, `stop`) |
-| `whizbang.perspective.write_behind.dropped` | Counter\<long\> | Held models dropped unwritten because their rows' lease ran out; they replay from their checkpoints |
+| `whizbang.perspective.write_behind.forced_flushes` | Counter\<long\> | Held models flushed before their interval. Tag: `reason` (`sync`, `bypass`, `bounds`, `batches`, `requested`, `rebuild`, `stop`, `handover`) |
+| `whizbang.perspective.write_behind.dropped` | Counter\<long\> | Held models dropped unwritten: their rows' lease ran out, or their flush was [fenced](../../fundamentals/work-coordinator/partition-assignment#fencing) because their partition's ownership moved on. They replay from their checkpoints |
 
-{verified: PerspectiveWorkerDrainModeTests.WriteBehind_AHotStreamsBatches_AreHeld_ThenWrittenOnceWhenTheIntervalElapsesAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ASyncWaitOnAHeldEvent_FlushesItsModelAtOnceAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AModelThatOutlivesItsLease_IsDropped_NeverWrittenAsync}
+{verified: PerspectiveWorkerDrainModeTests.WriteBehind_AHotStreamsBatches_AreHeld_ThenWrittenOnceWhenTheIntervalElapsesAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ASyncWaitOnAHeldEvent_FlushesItsModelAtOnceAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AModelThatOutlivesItsLease_IsDropped_NeverWrittenAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AHandover_SavesTheModelsOfTheMovedStreams_AndKeepsTheOthersHeldAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AFencedFlush_DropsTheModel_AndCompletesNothingAsync}
 
 ### Batch Composition Histograms
 
@@ -623,6 +623,22 @@ The `process_batch.*` (`duration`, `calls`, `errors`), `batch.*` (`outbox_messag
 | `whizbang.work_coordinator.outbox.emission_deduplicated` | Counter\<long\> | Outbox rows skipped because the same message id was already stored: the republishes a retry would have produced; tagged by `message_type`. Recorded by the EF Core coordinator (the Dapper coordinator deduplicates through the same primary key but does not count). Sustained non-zero points at the completion path, see [Emission identity](/v1.0.0/fundamentals/dispatcher/message-cascade#emission-identity) |
 
 {verified: WorkCoordinatorMetricsTests.WCMetrics_OutboxEmissionDeduplicated_CountsPerMessageTypeAsync, EFCoreOutboxEmissionDedupTests.StoreOutboxMessagesAsync_SameMessageStoredTwice_CountsTheSkippedRowByTypeAsync}
+
+### Partition ownership {#work-coordinator-ownership}
+
+Recorded by both PostgreSQL work coordinators when the service [owns partitions by map](../../fundamentals/work-coordinator/partition-assignment#ownership-by-map).
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.work_coordinator.fenced_writes` | Counter\<long\> | Writes that landed nowhere because the partition's ownership moved on since the work was claimed ([fencing](../../fundamentals/work-coordinator/partition-assignment#fencing)); the work stays for the current owner. Tag: `kind`, what was fenced: `outbox_completion`, `perspective_event_completion`, `perspective_cursor`, `handler_commit`, `perspective_write`, or a failure as `<category>_failure` (such as `outbox_failure`). Each is also logged at Debug |
+| `whizbang.work_coordinator.partition_map_unavailable` | Counter\<long\> | Claims that claimed nothing because no valid partition map is published (none yet, or one naming an instance that is no longer live past its lease). The first claim of a streak is also logged at Warning; the next warning comes only after a claim has found a map again |
+
+A steady trickle of `fenced_writes` during a rolling deploy is a handover doing its job: a write the old owner made after
+its partition moved. A rate that keeps up with traffic outside a deploy says an instance keeps working partitions it no
+longer owns, usually one that misses its handover deadline. Any sustained `partition_map_unavailable` is a service with
+no claims at all: look at the partition assigner's election and its liveness.
+
+{verified: CoordinatorOwnershipNoticesTests.AFencedWrite_IsCountedByKind_AndLoggedAsync, CoordinatorOwnershipNoticesTests.AFencedPerspectiveCompletion_IsCountedAsync, CoordinatorOwnershipNoticesTests.AFencedFlush_IsCountedAsync, CoordinatorOwnershipNoticesTests.AClaimWithNoValidMap_IsCounted_AndWarnedOncePerStreakAsync, DapperOwnershipNoticesTests.AFencedWrite_IsCountedByKind_AndAFencedHandlerCommitIsNotAFailureAsync, DapperOwnershipNoticesTests.AClaimWithNoValidMap_IsCounted_AndWarnedOncePerStreakAsync, PerspectiveWritesAreFencedTests.TheFence_InsideTheWritesTransaction_OnAHostWithoutMetricsOrLogging_StillFencesAsync}
 
 ### Batch store failures {#batch-store-failures}
 

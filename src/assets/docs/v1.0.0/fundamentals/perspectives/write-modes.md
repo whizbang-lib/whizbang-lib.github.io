@@ -468,8 +468,9 @@ A model is flushed when its interval elapses. It is flushed early (a **forced** 
 | `requested` | `PerspectiveWorker.FlushWriteBehindAsync` was called |
 | `rebuild` | A [rebuild](rebuild) of the model's perspective is starting: a rebuild of every stream flushes every model of the perspective, a rebuild of named streams flushes those streams' models ([#2533](https://github.com/whizbang-lib/whizbang/issues/2533)) |
 | `stop` | The worker is stopping: every held model is flushed before the detached stages are waited for |
+| `handover` | The model's partition is being [handed over](../work-coordinator/partition-assignment#handover) to another instance: the models of the moving partition's streams are saved before this instance acknowledges, and the others stay held ([#2557](https://github.com/whizbang-lib/whizbang/issues/2557)) |
 
-{verified: PerspectiveWorkerDrainModeTests.WriteBehind_ASyncWaitOnAHeldEvent_FlushesItsModelAtOnceAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ClaimedWorkForAHeldStream_FlushesTheModelFirstAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ANewModelThatDoesNotFit_IsWrittenAtOnce_AndAnOverBoundCacheFlushesItsOldestAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AModelAtItsBatchCap_IsFlushedAfterTheBatchThatReachesItAsync, PerspectiveWorkerDrainModeTests.WriteBehind_TheWorkerStopping_FlushesEveryHeldModelAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ARebuildOfAHeldStream_FlushesItsModelBeforeTheRebuildReadsItsRowAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ARebuildOfEveryStream_FlushesEveryModelOfThePerspectiveBeforeItReadsARowAsync}
+{verified: PerspectiveWorkerDrainModeTests.WriteBehind_ASyncWaitOnAHeldEvent_FlushesItsModelAtOnceAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ClaimedWorkForAHeldStream_FlushesTheModelFirstAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ANewModelThatDoesNotFit_IsWrittenAtOnce_AndAnOverBoundCacheFlushesItsOldestAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AModelAtItsBatchCap_IsFlushedAfterTheBatchThatReachesItAsync, PerspectiveWorkerDrainModeTests.WriteBehind_TheWorkerStopping_FlushesEveryHeldModelAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ARebuildOfAHeldStream_FlushesItsModelBeforeTheRebuildReadsItsRowAsync, PerspectiveWorkerDrainModeTests.WriteBehind_ARebuildOfEveryStream_FlushesEveryModelOfThePerspectiveBeforeItReadsARowAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AHandover_SavesTheModelsOfTheMovedStreams_AndKeepsTheOthersHeldAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AHandover_OnAWorkerThatHoldsNothing_DoesNothingAsync}
 
 **A model whose lease ran out is dropped, never written.** A held model's rows are leased to this instance only for the
 lease less its grace, counted from its first held batch. Past that, the stream may already be another instance's, so
@@ -477,6 +478,15 @@ the model is dropped unwritten, logged at Warning and counted on `whizbang.persp
 replay from the checkpoint wherever the stream is claimed next. A flush that had to wait for the stream's gate checks
 again once it has it.
 {verified: PerspectiveWorkerDrainModeTests.WriteBehind_AModelThatOutlivesItsLease_IsDropped_NeverWrittenAsync, PerspectiveWriteBehindCacheTests.AModelPastTheLease_IsExpired_NotFlushedAsync}
+
+**A fenced model is dropped, never written.** With [ownership by map](../work-coordinator/partition-assignment#ownership-by-map)
+on, a flush carries the partition epoch its model's work was claimed under. When the partition has moved on since (a
+handover the assigner completed past its deadline, while this instance was stuck or cut off), the merged write is
+[fenced](../work-coordinator/partition-assignment#fencing): the model is dropped unwritten, logged at Debug, and
+counted on `whizbang.perspective.write_behind.dropped` (and as a `perspective_write` on
+`whizbang.work_coordinator.fenced_writes`). Its held batches are not completed, so the partition's current owner
+replays them ([#2556](https://github.com/whizbang-lib/whizbang/issues/2556)).
+{verified: PerspectiveWorkerDrainModeTests.WriteBehind_AFencedFlush_DropsTheModel_AndCompletesNothingAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AFencedFlush_OnAWorkerWithoutMetrics_StillDropsTheModelAsync}
 
 ### Writers outside the runner {#write-behind-outside-writers}
 
@@ -517,12 +527,14 @@ On the `Whizbang.Perspectives` meter (see the [metrics reference](../../operatio
 | `whizbang.perspective.write_behind.bytes` | ObservableGauge (By) | Bytes the held models take |
 | `whizbang.perspective.write_behind.lookups` | Counter\<long\> | Write-behind pairs prepared on a held model (`result` = `hit`) or a database read (`miss`); the hit rate is hits over both. Tags: `perspective_name`, `result` |
 | `whizbang.perspective.write_behind.flush_lag` | Histogram\<double\> (ms) | Time from a model's first held batch to its flush. Tag: `reason` |
-| `whizbang.perspective.write_behind.forced_flushes` | Counter\<long\> | Models flushed before their interval. Tag: `reason` (`sync`, `bypass`, `bounds`, `batches`, `requested`, `rebuild`, `stop`) |
-| `whizbang.perspective.write_behind.dropped` | Counter\<long\> | Models dropped unwritten because their lease ran out |
+| `whizbang.perspective.write_behind.forced_flushes` | Counter\<long\> | Models flushed before their interval. Tag: `reason` (`sync`, `bypass`, `bounds`, `batches`, `requested`, `rebuild`, `stop`, `handover`) |
+| `whizbang.perspective.write_behind.dropped` | Counter\<long\> | Models dropped unwritten: their lease ran out, or their flush was fenced |
 
-A low hit rate says the perspective's streams are not hot enough for write-behind to pay. Any `dropped` says a held
-model could not be flushed within its lease (its flush failed, or waited too long for its stream), and its batches
-replayed from their checkpoint; the worker's Warning names the perspective and the stream.
+A low hit rate says the perspective's streams are not hot enough for write-behind to pay. A `dropped` with the
+worker's Warning says a held model could not be flushed within its lease (its flush failed, or waited too long for its
+stream), and its batches replayed from their checkpoint; the Warning names the perspective and the stream. A `dropped`
+with only a Debug line is a fenced flush: the model's partition had already moved to another instance, which replays
+its batches.
 {verified: PerspectiveWorkerDrainModeTests.WriteBehind_AHotStreamsBatches_AreHeld_ThenWrittenOnceWhenTheIntervalElapsesAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AModelThatOutlivesItsLease_IsDropped_NeverWrittenAsync}
 
 ### Measurement {#write-behind-measurement}

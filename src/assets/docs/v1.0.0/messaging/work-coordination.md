@@ -8,9 +8,10 @@ category: "Messaging"
 order: 10
 description: >-
   Foundation of Whizbang's distributed message processing architecture
-  covering lease-based coordination, virtual partition distribution via
-  consistent hashing, stream ordering guarantees, and orphaned work recovery.
-tags: 'work-coordination, lease-based, partitioning, consistent-hashing, stream-ordering, distributed-systems, claim-work'
+  covering lease-based coordination, virtual partitions hashed from stream ids
+  and spread by the published partition map, stream ordering guarantees, and
+  orphaned work recovery.
+tags: 'work-coordination, lease-based, partitioning, partition-map, stream-ordering, distributed-systems, claim-work'
 codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinatorStrategy.cs
@@ -20,9 +21,13 @@ codeReferences:
   - src/Whizbang.Core/Workers/LeaseRenewalWorker.cs
   - src/Whizbang.Data.Postgres/Migrations/029_ProcessWorkBatch.sql
   - src/Whizbang.Data.Postgres/Migrations/255_LeaseRenewalIsScopedToTheHolder.sql
+  - src/Whizbang.Data.Postgres/Migrations/564_ThePublishedAssignmentCarriesThePartitionMap.sql
+  - src/Whizbang.Data.Postgres/Migrations/565_PartitionsAreOwnedByThePublishedMap.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreClaimWorkTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/OwnershipByMapClaimSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PartitionMapClaimSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreRecordHeartbeatTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/HeartbeatWorkerTests.cs
@@ -54,18 +59,25 @@ Messages are claimed using time-limited leases to prevent duplicate processing a
 
 ### Virtual Partition Distribution
 
-Work is distributed across instances by consistent hashing of stream ids into partitions. One elected instance publishes which live instance owns which partition (`wh_published_partition_assignment`, see [Partition assignment](../fundamentals/work-coordinator/partition-assignment.md)); claimers read it, and fall back to ranking the live instances themselves when it is missing or stale.
+Each stream id hashes to one of a fixed set of partitions, and the partitions are spread across instances by an
+explicit map. This is not consistent hashing: the hash from stream to partition never changes, and what moves when
+instances join or leave is the map from partition to instance. One elected instance publishes that map
+(`wh_published_partition_assignment`, see [Partition assignment](../fundamentals/work-coordinator/partition-assignment.md))
+and changes it [incrementally](../fundamentals/work-coordinator/partition-assignment.md#incremental-map), so a join or
+leave moves about 1/N of the partitions.
 
 **How It Works:**
 1. Each message's `stream_id` is hashed to determine its partition number (0-9999 by default): `abs(hashtext(stream_id::TEXT)) % partition_count` (the `compute_partition` function)
-2. Each live instance gets a rank: its position in the published assignment's member list, or, without a current assignment, its position among the live `wh_service_instances` rows ordered by id
-3. Unowned or orphaned work is claimable when `partition_number % active_instance_count = instance_rank`
-4. Streams pin to the instance that first stores work for them (`wh_active_streams.assigned_instance_id`, first-write-wins); ownership is reassigned only when the owning instance dies
+2. The published map gives each partition to one member, its live instances that are eligible for work. Without a map (an earlier release's assigner), partition `p` goes to the member at rank `p % member count`; without a current assignment, a claimer ranks the live `wh_service_instances` rows itself, ordered by id
+3. Unowned or orphaned work is claimable by the instance whose share holds its partition (`wh_partition_in_share`)
+4. Who owns a stream with work in flight depends on the service's [ownership mode](../fundamentals/work-coordinator/partition-assignment.md#ownership-modes):
+   - **Off:** streams pin to the instance that first stores work for them (`wh_active_streams.assigned_instance_id`, first-write-wins); ownership is reassigned only when the owning instance dies, or when it releases unstarted work
+   - **On (the default):** the stream belongs to its partition's owner in `wh_partition_ownership`, and nothing else decides; a stream follows its partition when the map moves it
 
 **Benefits:**
-- **Fair Distribution**: Work evenly distributed via consistent hashing
-- **Sticky Assignment**: Same stream always maps to same instance (until the owner dies)
-- **Automatic Rebalancing**: Adding/removing instances redistributes unowned partitions via the modulo formula
+- **Fair Distribution**: The map is balanced within one partition per instance
+- **Small Moves**: A join or leave moves about 1/N of the partitions, after membership has [settled](../fundamentals/work-coordinator/partition-assignment.md#settle-window)
+- **Sticky Assignment** (ownership by map off): a stream stays with the instance that owns it until that instance dies
 - **Fault Tolerance**: Failed instances release messages via lease expiry and stale-instance cleanup
 
 ### Stream Ordering Guarantees
@@ -149,9 +161,14 @@ sequenceDiagram
 - Includes deduplication tracking via `wh_message_deduplication`
 - Done when handler commit succeeds (`commit_handler_result`/`commit_handler_batch` stamps or deletes the row)
 
-**`wh_active_streams`** - Stream ownership pinning
-- One row per active stream; `assigned_instance_id` pins the stream to an instance (first-write-wins)
-- Ownership reassigned only when the owning instance dies
+**`wh_active_streams`** - The stream ledger
+- One row per active stream, with its partition, lease and last activity
+- With ownership by map off, `assigned_instance_id` pins the stream to an instance (first-write-wins), and ownership is reassigned only when the owning instance dies
+- With ownership by map on, it is an activity ledger: a store records the stream with no owner, a claim names the instance that claimed it (its partition's owner), and nothing reads it to decide who may claim
+
+**`wh_partition_ownership`** - Partition ownership
+- One row per partition (10,000): owner, epoch and state, written by the partition assigner with every map it publishes
+- The only authority for who may claim a stream once the service's [ownership-by-map switch](../fundamentals/work-coordinator/partition-assignment.md#ownership-switch) is on
 
 **`wh_message_deduplication`** - Inbox deduplication
 - Records inbox message IDs seen (purged past the retention window, default 30 days)
@@ -195,7 +212,7 @@ sequenceDiagram
 
     CW->>DB: claim_work()
     DB->>DB: Claim orphaned/unowned work
-    DB->>DB: Apply modulo distribution + stream pinning
+    DB->>DB: Apply the partition map + stream ownership
     DB->>DB: Order within streams
     DB-->>CW: Claimed stream ids (bodies NULL)
     CW->>DW: distribute via drain channels
@@ -256,9 +273,10 @@ Instances that stop heartbeating are automatically detected and cleaned up:
 ### Partition Stability
 
 Partition ownership is stable across instance scaling:
-- **Stream Pinning**: `wh_active_streams` pins each stream to the instance that first stored work for it
-- **Active Instances**: Pinned streams are NOT reassigned from live instances
-- **Modulo Distribution**: Unowned/orphaned work distributes by `partition_number % active_instance_count = instance_rank` as instances join/leave
+- **Small Moves**: The published map changes incrementally, so a join or leave moves about 1/N of the partitions and nothing else
+- **Stream Pinning** (ownership by map off): `wh_active_streams` pins each stream to the instance that first stored work for it, and pinned streams are NOT reassigned from live instances
+- **Map Ownership** (ownership by map on): a stream belongs to its partition's owner, and follows the partition when the map moves it
+- **Fallback**: Without a published map, unowned/orphaned work distributes by `partition_number % active_instance_count = instance_rank` as instances join/leave
 
 ### Idempotency
 
@@ -324,7 +342,7 @@ The functions use optimized queries:
 ### Scalability
 
 Horizontal scaling through partition distribution:
-- Add instances → unowned work redistributes via the modulo formula
+- Add instances → the map gives the new instance about 1/(N+1) of the partitions, taken evenly from the others
 - Remove instances → their streams and leases release on stale-instance cleanup
 - No manual coordination required
 
@@ -402,7 +420,7 @@ Choose lease duration based on maximum processing time:
 Higher partition counts enable finer-grained distribution:
 - Default: 10,000 partitions (works well for most scenarios)
 - More partitions = more even distribution across instances
-- Purely algorithmic (`compute_partition`), so there is no per-partition state to track
+- The hash is purely algorithmic (`compute_partition`); the per-partition state is the published map and, for ownership by map, one `wh_partition_ownership` row per partition
 
 ## Troubleshooting
 
@@ -410,7 +428,7 @@ Higher partition counts enable finer-grained distribution:
 
 **Check:**
 - Instance is heartbeating (`HeartbeatWorker` running, `wh_service_instances.last_heartbeat_at` fresh)
-- Stream ownership (`wh_active_streams.assigned_instance_id` — is the stream pinned to a live instance?)
+- Stream ownership: with ownership by map off, `wh_active_streams.assigned_instance_id` (is the stream pinned to a live instance?); with it on, the partition's owner in `wh_partition_ownership` (`SELECT * FROM wh_partition_ownership WHERE partition_number = compute_partition('<stream id>');`)
 - Stream ordering (is an earlier message blocking this message?)
 - Lease status (is message already claimed by another instance?)
 
@@ -425,8 +443,9 @@ Higher partition counts enable finer-grained distribution:
 
 **Check:**
 - Instance is actually stale (heartbeat past the 30-second cutoff, no live LISTEN connection, and, for a direct instance, no held alive-lock: `SELECT * FROM wh_direct_alive_lock_holders();`). See [the liveness rule](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule)
-- Active instance count in `wh_service_instances` (algorithmic redistribution)
-- Modulo distribution formula: `partition_number % active_instance_count = instance_rank`
+- The published assignment and its map (`SELECT * FROM wh_read_partition_assignment();`): a change waits out the [settle window](../fundamentals/work-coordinator/partition-assignment.md#settle-window) before it is published
+- With ownership by map off, a live stored owner keeps its streams; only unowned work redistributes
+- Without a map, the fallback formula: `partition_number % active_instance_count = instance_rank`
 
 ### Out-of-Order Processing
 

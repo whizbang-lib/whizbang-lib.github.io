@@ -3848,6 +3848,72 @@ flowchart LR
 lane already sealed and make its folds meaningless. Before #2353 the width had no configuration path at all, only the
 `wh_settings` row.
 
+##### What keeps a seal true {#what-keeps-a-seal-true}
+{verified: SealedEpochLateWriteSqlTests.ABackfilledEvent_StoredByTheInboxChainInsideASealedEpoch_RefoldsItAsync, SealedEpochLateWriteSqlTests.ADirectInsert_IntoASealedEpochOfAReceivedLane_RefoldsItAsync, SealedEpochLateWriteSqlTests.AReattribution_MovingAPositionedEventBetweenLanes_RefoldsTheSealedEpochsOfBothAsync, SealedEpochLateWriteSqlTests.APositionWrittenByAnUpdate_IntoASealedEpoch_RefoldsItAsync, SealedEpochLateWriteSqlTests.AnEventMovedIntoASealedLocalEpoch_RefoldsIt_AndAdvancesTheOriginGenerationAsync, SealedEpochLateWriteSqlTests.AChangeThatLeavesTheFoldAsItWas_RewritesNothing_AndBumpsNothingAsync, SealedEpochLateWriteSqlTests.AnIneligibleEvent_IntoASealedEpoch_IsNotRecordedAsATouchAsync, SealedEpochLateWriteSqlTests.AnExplicitRefoldAfterTheChange_LeavesNothingForTheCommitAsync, SealedEpochLateWriteSqlTests.ATouchedEpochTheFrontierFellBelow_IsLeftForClosureAsync, SealedEpochLateWriteSqlTests.TwoTransactions_StoringIntoOneSealedEpoch_LeaveItsFoldCountingBothAsync, SealedEpochLateWriteSqlTests.ARefoldAtCommit_HoldsTheEpochsLockUntilItsTransactionEndsAsync}
+
+Answers and audits trust a sealed epoch's fold without re-reading the events behind it, so the fold must change
+whenever the events it covers do. Before #2572 each path that wrote into sealed history had to remember to refold what
+it touched, and the receive path did not: a backfill or redelivery answer arriving after its epoch was sealed was stored
+at its origin's position, inside the sealed range, and the fold stayed short of the store. The windowed audit against
+that origin then mismatched on every pass, the drill-down found the live rows equal and opened nothing, and the seal
+never advanced past the first such epoch.
+
+Since migration 592 the event store does it, whichever path writes:
+
+- **Every write records the sealed epochs it changes.** An insert into `wh_event_store` is read once per statement (its
+  transition table): each digest-eligible row with a position records the epoch it falls in, if that epoch is at or
+  below its lane's frontier. An update of `origin_service_id` or `origin_commit_sequence` records both the epoch the row
+  left and the one it joined. A row that inherited a superseding slot also records the slot's epoch. The record is one
+  row per transaction, lane and epoch in `wh_sealed_epoch_touches`.
+- **The commit refolds each recorded epoch once.** A deferred trigger folds them at commit, in lane and epoch order,
+  each under its own advisory lock, and rewrites an epoch only when its fold differs from the store. A refold of this
+  service's own lane moves its [origin generation](#origin-generation), so its consumers lower their seals as far as
+  the rewrite reached.
+- **A path that refolds what it changed costs nothing extra.** Folding an epoch clears its record for the transaction,
+  so the reconcile, adoption, origin correction, re-attribution, position fill and restore, which refold explicitly,
+  leave the commit nothing to do.
+
+| Write path | What it writes into sealed history |
+|---|---|
+| Receive (inbox emit chain): live, redelivered, backfill and bulk backfill answers | A new event at its origin's position. Refolded by the store since 592; it was not before |
+| Redelivery reconcile and the [position fill](#filling-missing-origin-positions) | An origin or origin position filled on a held event. Refolded by the path, and by the store if it missed one |
+| Origin adoption, correction and [re-attribution](#re-attribution) | An event moved between lanes. Refolded by the path, and by the store if it missed one |
+| Restore of an archived stream | Events back at their positions. Refolded by the path; the store finds the fold unchanged when the cut carried them |
+| Any direct `INSERT` or origin `UPDATE` | Whatever it writes. Refolded by the store |
+
+| Choice | Why |
+|---|---|
+| The store refolds, not each path. | A path written later cannot forget the refold: the least resistant way to write an event is also the one that keeps the seal true. |
+| At commit, not at the end of the statement. | A path that writes in several statements (a restore takes back what its cut carried after inserting the events) is folded once, in its final state. |
+| Only when the fold differs. | A write that leaves the fold as it was rewrites nothing and moves no generation. |
+| A lock per epoch. | Two transactions writing into one sealed epoch fold one after the other, so the later fold counts the earlier one's event. |
+| The insert side reads the statement, not each row. | An outbox emit's rows carry no position yet and a received event positioned in an open epoch touches nothing sealed, so the ordinary write pays one scan of the rows it already wrote and nothing else. |
+
+An epoch above its lane's frontier is not sealed: closure folds it when it closes. One window remains: an event that
+commits into the very epoch a concurrent closure pass is closing, after that pass read the epoch, is not in its fold.
+The [seal re-check](#seal-re-check) is the backstop for it.
+
+##### Healing epochs that drifted {#healing-epochs-that-drifted}
+{verified: SealedEpochLateWriteSqlTests.TheUpgradeHeal_QueuesEverySealedReceivedEpochOnce_AndNoLocalOneAsync, SealedEpochLateWriteSqlTests.TheHeal_RefoldsADriftedEpoch_LeavesAnUndriftedOne_AndDrainsTheQueueAsync, SealedEpochLateWriteSqlTests.TheHeal_TakesTheLowestEpochsFirst_WithinItsBudgetAsync, SealedEpochLateWriteSqlTests.TheHeal_DropsAQueuedEpochItsLaneNoLongerSealsAsync, SealedEpochLateWriteSqlTests.Closing_HealsTheQueue_WithTheConfiguredBudget_BesideTheEpochsItClosesAsync}
+
+A database upgraded with drift already in its received lanes heals it once, with nothing to turn on (migration 593):
+
+- the upgrade queues every sealed epoch of every received lane in `wh_digest_epoch_heal_queue`, once per database
+  (`integrity_epoch_heal_queued` in `wh_settings`), empty epochs included;
+- each maintenance closure pass then re-checks the lowest queued epochs, at most `integrity_epoch_heal_per_cycle`
+  (default 8), and refolds those whose fold differs from the store;
+- `integrity_epoch_heal_refolded` counts the refolds, and the queue is empty when the heal is done.
+
+| Choice | Why |
+|---|---|
+| A queue drained by the closure pass, not a refold during the upgrade. | One fold per sealed epoch grows with history; spread over maintenance cycles it never holds a startup. |
+| Not the seal re-check. | It is off by default, reaches only epochs sealed within its lookback (the drift sits in the oldest epochs), and skips an epoch holding a recent arrival. |
+| Lowest epochs first. | A seal advances only as far as its first drifted epoch, so healing the low ones first frees seals soonest. |
+| Received lanes only. | The fault was on the receive path. Every path that rewrites this service's own lane refolds and moves the generation, and a local refold here would make consumers re-verify history with no fault to show for it. |
+| Its own budget. | A closure backlog never starves the heal, and the heal never takes the closures' share. |
+
+The heal runs where sealing runs: with `Sealing:Enabled` off, nothing drains the queue.
+
 #### The seal re-check {#seal-re-check}
 {verified: IntegrityCheckOptionsTests.SealRecheck_IsOffByDefault_WithTheDocumentedLimitsAsync, SealRecheckRotationSqlTests.Closing_RecordsWhenEachEpochWasSealed_EmptyEpochsIncludedAsync, SealRecheckRotationSqlTests.Recheck_ResumesPastWhatItChecked_NeverRestartingAtTheFirstEpochAsync, SealRecheckRotationSqlTests.VerifyDigestEpochs_RotatesThroughTheEpochs_InsteadOfRestartingAtZeroAsync, SealRecheckRotationSqlTests.Recheck_LeavesEpochsSealedBeforeTheLookbackAloneAsync, SealRecheckRotationSqlTests.Recheck_ChecksAnEpochAtMostOncePerInterval_ThenAgainAsync, SealRecheckRotationSqlTests.Recheck_ADriftedEpoch_IsRefoldedOrOnlyReported_AsAskedAsync, SealRecheckRotationSqlTests.Recheck_AnEpochWithAnUnsettledArrival_IsSkippedAndStaysFirstAsync, SealRecheckRotationSqlTests.TheBackfill_RecordsEpochsSealedBeforeTheRecordExisted_AtTheirFoldTimeAsync}
 
@@ -3864,6 +3930,12 @@ Each sealed epoch, empty epochs included, records when it was sealed and when it
 (`wh_digest_epoch_seals`, migration 450). A run takes the epochs sealed within the lookback that are due, never
 re-checked first and then least recently re-checked, up to its cap. An epoch holding an arrival younger than the settle
 window is skipped whole, as closure skips it, and stays first in line.
+
+Since #2572 every write into a sealed epoch refolds it ([What keeps a seal true](#what-keeps-a-seal-true)), and the
+drift that came before it is healed once without the re-check ([Healing epochs that drifted](#healing-epochs-that-drifted)),
+so on a current database a drifted epoch the re-check finds means a write the store did not see: a change made with
+its triggers disabled, or the closure window described there. A re-check limited to its lookback never reaches an
+epoch sealed before it; set `Lookback` past the oldest seal for a one-off pass over all of them.
 
 **Why a record per epoch, not a cursor.** Before #2353 `verify_digest_epochs` walked every lane from epoch 0 on every
 call and stopped at its cap, so past 10,000 epochs the later ones were never re-checked and every run paid again for
@@ -4544,7 +4616,7 @@ are indicative; the change-row counts are exact and asserted.
 
 #### Filling missing origin positions {#filling-missing-origin-positions}
 
-{verified: OriginPositionFillE2ETests.UnpositionedHistory_HoldsTheSealAndTheCut_UntilTheFillAsksTheOrigin_ThenTheAuditConfirmsAndTheCutProceedsAsync, OriginPositionFillE2ETests.AnEventTheOriginNoLongerHolds_IsAnsweredUnknown_AndNeverAskedAgainAsync, OriginPositionFillSqlTests.Ask_WalksOneOriginInBoundedBatches_AndRestartsTheLapOnlyAfterThePauseAsync, OriginPositionFillSqlTests.Ask_ServesTheOriginServedLeastRecently_AndLeavesOutUnknownAnswersAsync, OriginPositionFillSqlTests.Ask_OnALargeStore_ReadsOnlyItsBatchOfTheHeldIndexAsync, OriginPositionFillSqlTests.PositionsOf_AnswersStamped_Unstamped_Archived_AndUnknownAsync, OriginPositionFillSqlTests.Fill_FillsOnlyNullPositions_AndNeverOverwritesAsync, OriginPositionFillSqlTests.Fill_RefoldsTheSealedEpochAFilledEventFallsIn_AndTheHeldFoldLetsItGoAsync, OriginPositionFillSqlTests.Fill_RecordsUnknownAnswers_AndTheAskNeverReturnsThemAgainAsync, OriginPositionFillSqlTests.Fill_ThatChangesAStreamsOriginOrder_RewindsItsPerspectivesFromTheStartAsync, OriginPositionFillSqlTests.Step_AsksEachOriginInBoundedBatches_CountsAndLogsEachAsync, ReceivedStreamOrderTests.FillChangesTheOrder_AFillThatMovesTheEventPastAnother_ChangesTheOrderAsync}
+{verified: OriginPositionFillE2ETests.UnpositionedHistory_HoldsTheSealAndTheCut_UntilTheFillAsksTheOrigin_ThenTheAuditConfirmsAndTheCutProceedsAsync, OriginPositionFillE2ETests.AnEventTheOriginNoLongerHolds_IsAnsweredUnknown_AndNeverAskedAgainAsync, OriginPositionFillSqlTests.Ask_WalksOneOriginInBoundedBatches_AndRestartsTheLapOnlyAfterThePauseAsync, OriginPositionFillSqlTests.Ask_ServesTheOriginServedLeastRecently_AndLeavesOutUnknownAnswersAsync, OriginPositionFillSqlTests.Ask_OnALargeStore_ReadsOnlyItsBatchOfTheHeldIndexAsync, OriginPositionFillSqlTests.PositionsOf_AnswersStamped_Unstamped_Archived_AndUnknownAsync, OriginPositionFillSqlTests.Fill_FillsOnlyNullPositions_AndNeverOverwritesAsync, OriginPositionFillSqlTests.Fill_RefoldsTheSealedEpochAFilledEventFallsIn_AndTheHeldFoldLetsItGoAsync, OriginPositionFillSqlTests.Fill_RecordsUnknownAnswers_AndTheAskNeverReturnsThemAgainAsync, OriginPositionFillSqlTests.Fill_ThatChangesAStreamsOriginOrder_RewindsItsPerspectivesFromTheStartAsync, OriginPositionFillSqlTests.Fill_ThatReordersTheStream_ButNotAPerspectivesOwnEvents_LeavesThatPerspectiveAndItsSnapshotAsync, OriginPositionFillSqlTests.Fill_ThatKeepsTheStreamsOrder_ButReordersAPerspectivesOwnEvents_RewindsThatPerspectiveAsync, OriginPositionFillSqlTests.Fill_RewindsFromTheFirstChangedVersion_KeepingTheSnapshotsBelowItAsync, OriginPositionFillSqlTests.Fill_RewindsALaggingCursorFromTheFirstChangedVersion_KeepingItsEarlierSnapshotAsync, OriginPositionFillSqlTests.Fill_MergingWithAFlagAlreadySet_KeepsTheLowerTrigger_AndCountsOnlyNewlyFlaggedCursorsAsync, OriginPositionFillSqlTests.FillReaders_NameEachCursorsAssociatedTypes_AndNoneForAPerspectiveWithoutAssociationsAsync, OriginPositionFillSqlTests.Step_AsksEachOriginInBoundedBatches_CountsAndLogsEachAsync, ReceivedStreamOrderTests.FillChangesTheOrder_AFillThatMovesTheEventPastAnother_ChangesTheOrderAsync, ReceivedStreamOrderTests.FirstSlotTheFillChanges_OverEveryArrangement_FillAndTypeSubset_IsWhereThePerspectivesReplayFirstDiffersAsync}
 
 An origin's outbox can publish an event before its commit-order stamper reaches it. The receiver then stores the event
 with its origin but no origin position (`origin_commit_sequence` NULL). Such an event is in no audit window. When an
@@ -4564,7 +4636,7 @@ sequenceDiagram
   C->>O: RequestOriginPositions (event ids), on the origin's announced address
   O->>O: wh_origin_positions_of: store, else archive table
   O->>C: OriginPositionsAnswer (positions, not yet stamped, unknown)
-  C->>C: wh_fill_origin_positions: fill NULL only, refold sealed epochs, rewind reordered streams
+  C->>C: wh_fill_origin_positions: fill NULL only, refold sealed epochs, rewind each reordered perspective
 ```
 
 1. **The walk.** Each maintenance cycle (idle-gated, on the maintainer) takes up to `MaxBatchesPerCycle` batches of
@@ -4581,7 +4653,7 @@ sequenceDiagram
 4. **The fill.** In one transaction the consumer locks the streams the fill touches, fills only positions that are still
    NULL (through the [redelivery reconcile's batch call](#redelivery-reconciles-run-as-a-batch), which refolds each
    sealed epoch that now holds a filled event once), records the unknown ids in `wh_origin_position_unknown` so they are
-   never asked again, and rewinds the streams whose order the fill changed. A not-yet answer changes nothing: the event is
+   never asked again, and rewinds each perspective whose own replay order the fill changed. A not-yet answer changes nothing: the event is
    asked again on the next lap. One Information line per batch on each side says what it did.
 
 What the fill keeps consistent:
@@ -4589,11 +4661,18 @@ What the fill keeps consistent:
 - **The digests.** A filled event leaves the held set, so the [held fold](#the-held-fold-is-maintained-as-rows-change)
   drops it from the open window's held count through its triggers, and it joins its positioned window: an open epoch by
   its rows, a sealed epoch by the refold. Its stream digest, keyed by lane and not by position, does not change.
-- **The order a perspective applied.** An unpositioned event replays among its origin's events by its id. When the
-  position puts it elsewhere (`ReceivedStreamOrder.FillChangesTheOrder`, the replay's own rule applied to the order
-  before and after the fill), every perspective of the stream is rewound from its start, as a
-  [re-sequence](../operations/infrastructure/resequencing-received-streams) rewinds it. A fill that leaves the order as
-  it was rewinds nothing.
+- **The order a perspective applied.** An unpositioned event replays among its origin's events by its id, and the
+  position can put it elsewhere. The decision is made per perspective, never per stream (#2571, migration 590): a
+  perspective replays only the event types it handles, and the id merge is not stable under taking a subset, so a fill
+  can reorder a whole stream while one perspective's events keep their order, or keep the stream's order while one
+  perspective's events change theirs. For each cursor of the stream (the collective sink's excepted), the origin's
+  events of the types its perspective's association rows name (all of the origin's events when it has none, the
+  conservative answer) are compared before and after the fill by the replay's own rule
+  (`ReceivedStreamOrder.FirstSlotTheFillChanges`). When they differ, the cursor is rewound from the first version whose
+  slot changed: only that perspective's snapshots at that version or above (or with no version) are deleted, since
+  the slots below it fold the same events either way, the cursor is flagged with that trigger and its replay frontier
+  cleared, and the trigger is queued. A cursor already flagged from a lower version keeps its trigger. A perspective
+  whose own order is unchanged is left alone, so the replay a fill causes is only what its order needs.
 - **Never an overwrite.** A position already recorded is kept, whatever an answer says, and an answer fills only events
   this service holds from the answering origin.
 
@@ -4610,7 +4689,7 @@ What the fill keeps consistent:
 | `whizbang.stream_integrity.origin_positions_requested` | Counter, per `origin` | Events named in requests |
 | `whizbang.stream_integrity.origin_positions_filled` | Counter, per `origin` | Positions filled |
 | `whizbang.stream_integrity.origin_positions_not_filled` | Counter, per `origin` and `answer` | `not_yet_stamped` (asked again) or `unknown` (not asked again) |
-| `whizbang.stream_integrity.origin_position_rewinds` | Counter | Perspective cursors rewound because a fill changed a stream's order |
+| `whizbang.stream_integrity.origin_position_rewinds` | Counter | Perspective cursors newly flagged to rewind because a fill changed their own replay order; a cursor already flagged is not counted again |
 
 Why each choice:
 
@@ -4648,15 +4727,18 @@ then holds events it received from this service, filed in its local lane as if i
 redelivery names itself as their origin. Adopting that origin would stamp it on events this service wrote.
 Nothing is lost if that happens, but the origin then alarms on a surplus it can never repair.
 
-So before an empty origin is filled, the receiver reads the stored event's hops (the `Hops` of
-`wh_event_body.metadata`) and compares the first hop's service with the bundle's origin service, the service
-on the bundle's own publish hop (`RedeliveryReconciler.OriginServiceNameOf`).
+So before an empty origin is filled, the receiver reads the stored event's first hop and compares its service with
+the bundle's origin service, the service on the bundle's own publish hop (`RedeliveryReconciler.OriginServiceNameOf`).
+The first hop's service is read wherever the event keeps it: the stored row's hops (the `Hops` of
+`wh_event_body.metadata`), else the event's route, else its staged full form (see
+[events written here stay local](#events-written-here-stay-local)).
 
 | The stored event's first hop | Result |
 | --- | --- |
 | Names the bundle's origin service, in any case (`OrdersService` matches `ordersservice`) | Adopts the origin, as above. |
 | Names another service (this one, or a third), in any case | Refused: the event keeps its empty origin, its digest stays in the local lane, and it is counted as refused. |
-| Carries no service identity (the [slim stored form](../messaging/message-envelopes#stored-form) leaves it out, or it names `Unknown`) | Adopts, so that history still converges. |
+| Names `Unknown`, or carries no service identity in a row from before the [slim stored form](../messaging/message-envelopes#stored-form) | Adopts, so that history still converges. |
+| A slim row (it carries a route id) whose first hop names no service in the row, its route or its staged form | Refused: it was written here (#2573). |
 | No hops, or no stored body | Adopts, for the same reason. |
 | The bundle names no service (its envelope has no hop, a blank name, or `Unknown` in any case) | Adopts: there is nothing to compare. |
 
@@ -5012,12 +5094,39 @@ learned later.
 
 | The row | What happens | Counted on |
 | --- | --- | --- |
-| The owner is known, and the stored first hop names the owner, names no service, or is absent | The row takes the owner as its origin (the origin's commit sequence stays empty; a later redelivery from the owner fills it, see [history received before origins were recorded](#pre-stamp-history)). Its digest leaves the local lane for the owner's lane, sealed local epochs over it are refolded (advancing the [origin generation](#origin-generation), so consumers re-verify instead of alarming), and the owner's repair-ledger buckets it lands in, per stream and the type lane, have their unhealable and exhausted marks cleared and their attempts and pending answer reset. | `origins_reattributed` |
+| The owner is known, and the first hop names the owner, names no service, or is absent (a slim row whose first hop names no service anywhere is the exception below) | The row takes the owner as its origin (the origin's commit sequence stays empty; a later redelivery from the owner fills it, see [history received before origins were recorded](#pre-stamp-history)). Its digest leaves the local lane for the owner's lane, sealed local epochs over it are refolded (advancing the [origin generation](#origin-generation), so consumers re-verify instead of alarming), and the owner's repair-ledger buckets it lands in, per stream and the type lane, have their unhealable and exhausted marks cleared and their attempts and pending answer reset. | `origins_reattributed` |
 | The owner is known, but the first hop names a third service | **Ownership is primary, the first hop only a cross-check:** the row is left as it was, and the batch logs a Warning with the count for an operator to inspect. | `reattribution_hop_disagreements` |
 | No owner is known (or the domain is contested) | Left as it was, and out of the local lane logically because the lane follows ownership. Each such type is logged once. It moves when an owner announces the domain. | `origins_unattributed` |
 
 Rows of types this service owns are never touched. An ephemeral or at-most-once row takes its owner as origin
 without touching any digest, because it folds into none.
+
+#### Events written here stay local {#events-written-here-stay-local}
+
+{verified: EventsWrittenHereStayLocalSqlTests.Reattribute_AnEventWrittenHere_WhoseSlimRowRecordsNoService_StaysLocalAsync, EventsWrittenHereStayLocalSqlTests.Reattribute_AnEventWrittenHere_WhoseStagedFormNamesThisService_IsLeftAsync, EventsWrittenHereStayLocalSqlTests.Reattribute_AnEventWrittenHere_WhoseRouteNamesThisService_IsLeftAsync, EventsWrittenHereStayLocalSqlTests.Reattribute_HistoryWhoseRouteNamesTheOwner_TakesTheOwnerAsync, EventsWrittenHereStayLocalSqlTests.Adopt_AnEventWrittenHere_WhoseSlimRowRecordsNoService_IsRefusedAsync, EventsWrittenHereStayLocalSqlTests.Batch_AnEventWrittenHere_WhoseSlimRowRecordsNoService_IsRefusedAsync, EventsWrittenHereStayLocalSqlTests.FirstHopService_ForASlimRow_ReadsTheStagedForm_ThenTheRouteAsync}
+
+A service does not only write events of the types it owns. A receptor's reaction to a received event (a "succeeded"
+event, with an id derived from the event it answers) is often of a type in the domain of the service that sent the
+trigger, and it is written here, as a local event with no origin. Re-attribution and the
+[redelivery reconcile](#pre-stamp-history-first-hop) must leave such an event local, or the owner is named as the
+origin of an event it never wrote: it answers "unknown" when asked for the event's position, and the event can never be
+placed in the owner's lane.
+
+The first hop is what tells the two apart, and the [slim stored form](../messaging/message-envelopes#stored-form)
+keeps no service on it. So the first hop's service is read wherever the event keeps it:
+
+1. the stored row's first hop (a full row, or a row written before the slim form);
+2. else the event's route (`wh_routes`, by the route id the row carries), which keeps each hop's service;
+3. else the staged full form (`wh_event_metadata_staging`), until maintenance distills it into the route.
+
+A row that carries a route id was written after origins were recorded, so a received copy of it carries its origin. If
+such a row names no service in any of the three, it was written here: re-attribution leaves it in the local lane, and a
+redelivery bundle cannot give it an origin (it is counted as refused). A first hop that names this service is a
+disagreement or a refusal, as before.
+
+Rows moved before this rule (migration 594) are left as they are. They hold no cut, their owner's "unknown" answer is
+recorded once and never asked again, and nothing in the store tells them reliably from events received before their
+origin stamped them.
 
 **Options.**
 

@@ -143,6 +143,20 @@ event's own id** (`GeneratedStreamIdentity.Derive`, [#2520](https://github.com/w
   redelivered handling sends its commands on the streams its first run started. These positions are separate from the
   handling's event ordinals, so sending a command never changes the ids of the events the handling returns or
   publishes. Outside a handling, a command's stream is minted fresh, as before.
+- **An event invoked locally inside a handling** derives its stream from the handling too
+  ([#2552](https://github.com/whizbang-lib/whizbang/issues/2552)). The void `LocalInvokeAsync` builds no envelope, so
+  the event has no id to derive from; its stream derives from the handling as a sent command's does, on ordinals the
+  handling keeps for invoked events. Invoking such an event therefore changes neither the streams of the commands the
+  handling sends nor the ids of the events and commands it emits, and a redelivered handling starts the same stream.
+  The same instance invoked twice keeps its stream. Outside a receptor each invoked event still mints a fresh stream,
+  with no added allocation on the void path. Before, a locally invoked event minted a fresh stream even inside a
+  handling, so a redelivery started a second stream that nothing else referred to.
+  {verified: DispatcherDerivedIdentityInHandlingTests.LocalInvokeAsync_GenerateStreamIdEvent_InsideAHandling_ARedeliveryStartsTheSameStreamAsync, DispatcherDerivedIdentityInHandlingTests.LocalInvokeAsync_GenerateStreamIdEvent_TheSameInstanceTwice_KeepsItsStreamAsync, DispatcherDerivedIdentityInHandlingTests.LocalInvokeAsync_GenerateStreamIdEvent_OutsideAHandling_MintsOncePerInstanceAsync, DispatcherDerivedIdentityInHandlingTests.LocalInvokeAsync_GenerateStreamIdEvent_DoesNotShiftTheHandlingsOtherIdsAsync, DispatcherLocalInvokeGeneratedStreamAllocationTests.LocalInvokeAsync_Void_GenerateStreamIdEvent_OutsideAHandling_GeneratingTheStreamAllocatesNothingAsync}
+- **A published event's local receptors see the published stream.** One publish gives a `[GenerateStreamId]` event one
+  stream everywhere it goes: the stored copy, the delivery receipt and the local receptors all see the stream derived
+  from the event's id. Before, in a host with the envelope registry (any host built with `AddWhizbang`), the local
+  receptors were handed a second, freshly minted stream ([#2552](https://github.com/whizbang-lib/whizbang/issues/2552)).
+  {verified: DispatcherDerivedIdentityInHandlingTests.PublishAsync_GenerateStreamIdEventWithALocalReceptor_TheReceptorSeesTheStreamDerivedFromThePublishedIdAsync, DispatcherDerivedIdentityInHandlingTests.PublishAsync_GenerateStreamIdEventWithALocalReceptor_OutsideAHandling_TheReceptorSeesThePublishedStreamAsync}
 - **One message, one stream.** Every envelope a send builds for a message (the local run's, the stored copy's) names
   the same stream, inside or outside a handling ([#2539](https://github.com/whizbang-lib/whizbang/issues/2539)).
   Sending the same instance again keeps that stream; a new instance starts a new one

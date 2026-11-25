@@ -118,6 +118,8 @@ A stream's events are numbered by `version` (the sequence `GetLastSequenceAsync`
 | `InMemoryEventStore` | version 1 |
 | The Sqlite store | version 1 |
 
+A version is the event's position in its stream and never follows its id: a batch stored together is numbered in the order it was emitted, and a received stream in its origin's order ([version ordering](../event-store/version-ordering)).
+
 A stream with no events reports `-1` from `GetLastSequenceAsync`. After three appends to a new stream it reports `3`, and `ReadAsync(streamId, fromSequence: 3)` returns the third event; `fromSequence: 0` or `1` reads the whole stream.
 
 {verified: EventStoreContractTests.AppendAsync_ANewStream_StartsAtVersionOneAsync, EventStoreContractTests.GetLastSequenceAsync_AfterAppends_ShouldReturnCorrectSequenceAsync, EventStoreContractTests.GetLastSequenceAsync_EmptyStream_ShouldReturnMinusOneAsync, SchemaInitializationTests.EnsureWhizbangDatabaseInitialized_ADatabaseAlreadyPast267_StillApplies267_AndANewStreamStartsAtOneAsync}
@@ -144,7 +146,7 @@ The receiver still stores the stream in the producer's order, whichever claim co
 - **Held-back rows follow the head.** They stay leased but are not stored, and a later claim stores them once the head is in the store. A stream's head never waits.
 - **An event is only handed to receptors once it is stored.** An event waiting behind its head is not dispatched. Dispatch completes an inbox row and removes it, so dispatching a waiting event would lose it from the store. Commands, and rows that have no stream, are not held.
 
-Order means message id, which is also what versions are numbered by. An event that fans out of a composite gets an id built from the composite's id and its position, so the children sort in the producer's order even though they carry no origin commit sequence.
+Order means the origin's order: each origin's events by the commit sequence they carry, dealt into the arrival slots that origin holds, which is also what the stored versions follow ([receive order](../event-store/version-ordering#receive-order), [#2551](https://github.com/whizbang-lib/whizbang/issues/2551)). An event that carries no origin position, such as one that fans out of a composite, goes before the first of its origin's positioned events whose id sorts after its own, as a replay places it.
 
 | Situation | What happens | Verified |
 |---|---|---|

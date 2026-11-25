@@ -296,7 +296,8 @@ so a second rebuild started while the first replays would destroy the first one'
 therefore holds its table's **duty**, `perspective-rebuild:<table>` (for example `perspective-rebuild:wh_per_order`),
 from before it creates the shadow until the swap is done. The duty is won through the service's duty elector, the same
 role assignment every exclusive duty uses (see [capabilities and duties](../../operations/startup/capabilities-and-duties)),
-so it holds across every instance of the service, and a keepalive renews its lease for as long as the rebuild runs.
+so it holds across every instance of the service, on the EF Core and the Dapper driver alike, and a keepalive renews its
+lease for as long as the rebuild runs. {verified: DapperCoordinationTests.TheRebuildGuardsDuty_IsHeldByOneInstanceAtATimeAsync}
 The bare table name is enough: the role assignments are kept in the service's own schema.
 
 | When the rebuild asks for the duty | What happens, and why |
@@ -305,7 +306,7 @@ The bare table name is enough: the role assignments are kept in the service's ow
 | another instance holds it | the rebuild fails at once, touching nothing, with `another blue-green rebuild of wh_per_order is in flight` in `RebuildResult.Error`, as any rebuild that cannot start fails: run it again once the other has finished |
 | this instance is already rebuilding the table | the same failure, before anything is voted for: an elector grants a duty this instance already holds again, so the duty alone cannot keep two rebuilds on one instance apart |
 | the elector cannot answer, this instance is evicted, or it is paused, standing down or stopping | the rebuild fails closed, naming the refusal and its detail: the elector cannot confirm that no other instance is rebuilding the table |
-| no elector is registered | the rebuild runs, guarded on this instance alone, and the host logs once that this is so: with no elector there is no fleet to coordinate with |
+| no elector is registered | the rebuild runs, guarded on this instance alone, and the host logs once that this is so: with no elector there is no fleet to coordinate with. Both Postgres drivers register the elector ([#2559](https://github.com/whizbang-lib/whizbang/issues/2559)), so this is a host composed without one |
 
 It is a duty and not an advisory lock on purpose: a session lock held across the many transactions of a rebuild can,
 behind a transaction-mode connection pooler, be taken on one server backend and released on another, and the framework

@@ -113,7 +113,7 @@ providers for Postgres (`DapperPostgresSequenceProvider`) and SQLite
 router** decides which partition a given stream key lands in. The built-in
 `HashPartitionRouter` (`src/Whizbang.Core/Partitioning/HashPartitionRouter.cs`)
 implements `IPartitionRouter.SelectPartition(streamKey, partitionCount, context)`
-using **consistent hashing**:
+with a **stable hash, modulo the partition count** (not consistent hashing: changing the count moves most keys):
 
 - Hashes the stream key with **FNV-1a** (a fast, non-cryptographic hash).
 - Maps to a partition with `Math.Abs(hash % partitionCount)`.
@@ -153,7 +153,7 @@ policyEngine.AddPolicy(
         .UseTopic("orders")                        // logical topic
         .UseStreamId($"order-{orderId}")           // ordering boundary (a string)
         .WithPartitions(16)                        // 16 shards
-        .UsePartitionRouter<HashPartitionRouter>() // consistent-hash routing
+        .UsePartitionRouter<HashPartitionRouter>() // FNV-1a hash, modulo the partition count
 );
 ```
 
