@@ -4544,7 +4544,7 @@ are indicative; the change-row counts are exact and asserted.
 
 #### Filling missing origin positions {#filling-missing-origin-positions}
 
-{verified: OriginPositionFillE2ETests.UnpositionedHistory_HoldsTheSealAndTheCut_UntilTheFillAsksTheOrigin_ThenTheAuditConfirmsAndTheCutProceedsAsync, OriginPositionFillE2ETests.AnEventTheOriginNoLongerHolds_IsAnsweredUnknown_AndNeverAskedAgainAsync, OriginPositionFillSqlTests.Ask_WalksOneOriginInBoundedBatches_AndRestartsTheLapOnlyAfterThePauseAsync, OriginPositionFillSqlTests.Ask_ServesTheOriginServedLeastRecently_AndLeavesOutUnknownAnswersAsync, OriginPositionFillSqlTests.Ask_OnALargeStore_ReadsOnlyItsBatchOfTheHeldIndexAsync, OriginPositionFillSqlTests.PositionsOf_AnswersStamped_Unstamped_Archived_AndUnknownAsync, OriginPositionFillSqlTests.Fill_FillsOnlyNullPositions_AndNeverOverwritesAsync, OriginPositionFillSqlTests.Fill_RefoldsTheSealedEpochAFilledEventFallsIn_AndTheHeldFoldLetsItGoAsync, OriginPositionFillSqlTests.Fill_RecordsUnknownAnswers_AndTheAskNeverReturnsThemAgainAsync, OriginPositionFillSqlTests.Fill_ThatChangesAStreamsOriginOrder_RewindsItsPerspectivesFromTheStartAsync, OriginPositionFillSqlTests.Step_AsksEachOriginInBoundedBatches_CountsAndLogsEachAsync, ReceivedStreamOrderTests.FillChangesTheOrder_AFillThatMovesTheEventPastAnother_ChangesTheOrderAsync}
+{verified: OriginPositionFillE2ETests.UnpositionedHistory_HoldsTheSealAndTheCut_UntilTheFillAsksTheOrigin_ThenTheAuditConfirmsAndTheCutProceedsAsync, OriginPositionFillE2ETests.AnEventTheOriginNoLongerHolds_IsAnsweredUnknown_AndNeverAskedAgainAsync, OriginPositionFillSqlTests.Ask_WalksOneOriginInBoundedBatches_AndRestartsTheLapOnlyAfterThePauseAsync, OriginPositionFillSqlTests.Ask_ServesTheOriginServedLeastRecently_AndLeavesOutUnknownAnswersAsync, OriginPositionFillSqlTests.Ask_OnALargeStore_ReadsOnlyItsBatchOfTheHeldIndexAsync, OriginPositionFillSqlTests.PositionsOf_AnswersStamped_Unstamped_Archived_AndUnknownAsync, OriginPositionFillSqlTests.Fill_FillsOnlyNullPositions_AndNeverOverwritesAsync, OriginPositionFillSqlTests.Fill_RefoldsTheSealedEpochAFilledEventFallsIn_AndTheHeldFoldLetsItGoAsync, OriginPositionFillSqlTests.Fill_RecordsUnknownAnswers_AndTheAskNeverReturnsThemAgainAsync, OriginPositionFillSqlTests.Fill_ThatChangesAStreamsOriginOrder_RewindsItsPerspectivesFromTheStartAsync, OriginPositionFillSqlTests.Fill_ThatReordersTheStream_ButNotAPerspectivesOwnEvents_LeavesThatPerspectiveAndItsSnapshotAsync, OriginPositionFillSqlTests.Fill_ThatKeepsTheStreamsOrder_ButReordersAPerspectivesOwnEvents_RewindsThatPerspectiveAsync, OriginPositionFillSqlTests.Fill_RewindsFromTheFirstChangedVersion_KeepingTheSnapshotsBelowItAsync, OriginPositionFillSqlTests.Fill_RewindsALaggingCursorFromTheFirstChangedVersion_KeepingItsEarlierSnapshotAsync, OriginPositionFillSqlTests.Fill_MergingWithAFlagAlreadySet_KeepsTheLowerTrigger_AndCountsOnlyNewlyFlaggedCursorsAsync, OriginPositionFillSqlTests.FillReaders_NameEachCursorsAssociatedTypes_AndNoneForAPerspectiveWithoutAssociationsAsync, OriginPositionFillSqlTests.Step_AsksEachOriginInBoundedBatches_CountsAndLogsEachAsync, ReceivedStreamOrderTests.FillChangesTheOrder_AFillThatMovesTheEventPastAnother_ChangesTheOrderAsync, ReceivedStreamOrderTests.FirstSlotTheFillChanges_OverEveryArrangement_FillAndTypeSubset_IsWhereThePerspectivesReplayFirstDiffersAsync}
 
 An origin's outbox can publish an event before its commit-order stamper reaches it. The receiver then stores the event
 with its origin but no origin position (`origin_commit_sequence` NULL). Such an event is in no audit window. When an
@@ -4564,7 +4564,7 @@ sequenceDiagram
   C->>O: RequestOriginPositions (event ids), on the origin's announced address
   O->>O: wh_origin_positions_of: store, else archive table
   O->>C: OriginPositionsAnswer (positions, not yet stamped, unknown)
-  C->>C: wh_fill_origin_positions: fill NULL only, refold sealed epochs, rewind reordered streams
+  C->>C: wh_fill_origin_positions: fill NULL only, refold sealed epochs, rewind each reordered perspective
 ```
 
 1. **The walk.** Each maintenance cycle (idle-gated, on the maintainer) takes up to `MaxBatchesPerCycle` batches of
@@ -4581,7 +4581,7 @@ sequenceDiagram
 4. **The fill.** In one transaction the consumer locks the streams the fill touches, fills only positions that are still
    NULL (through the [redelivery reconcile's batch call](#redelivery-reconciles-run-as-a-batch), which refolds each
    sealed epoch that now holds a filled event once), records the unknown ids in `wh_origin_position_unknown` so they are
-   never asked again, and rewinds the streams whose order the fill changed. A not-yet answer changes nothing: the event is
+   never asked again, and rewinds each perspective whose own replay order the fill changed. A not-yet answer changes nothing: the event is
    asked again on the next lap. One Information line per batch on each side says what it did.
 
 What the fill keeps consistent:
@@ -4589,11 +4589,18 @@ What the fill keeps consistent:
 - **The digests.** A filled event leaves the held set, so the [held fold](#the-held-fold-is-maintained-as-rows-change)
   drops it from the open window's held count through its triggers, and it joins its positioned window: an open epoch by
   its rows, a sealed epoch by the refold. Its stream digest, keyed by lane and not by position, does not change.
-- **The order a perspective applied.** An unpositioned event replays among its origin's events by its id. When the
-  position puts it elsewhere (`ReceivedStreamOrder.FillChangesTheOrder`, the replay's own rule applied to the order
-  before and after the fill), every perspective of the stream is rewound from its start, as a
-  [re-sequence](../operations/infrastructure/resequencing-received-streams) rewinds it. A fill that leaves the order as
-  it was rewinds nothing.
+- **The order a perspective applied.** An unpositioned event replays among its origin's events by its id, and the
+  position can put it elsewhere. The decision is made per perspective, never per stream (#2571, migration 590): a
+  perspective replays only the event types it handles, and the id merge is not stable under taking a subset, so a fill
+  can reorder a whole stream while one perspective's events keep their order, or keep the stream's order while one
+  perspective's events change theirs. For each cursor of the stream (the collective sink's excepted), the origin's
+  events of the types its perspective's association rows name (all of the origin's events when it has none, the
+  conservative answer) are compared before and after the fill by the replay's own rule
+  (`ReceivedStreamOrder.FirstSlotTheFillChanges`). When they differ, the cursor is rewound from the first version whose
+  slot changed: only that perspective's snapshots at that version or above (or with no version) are deleted, since
+  the slots below it fold the same events either way, the cursor is flagged with that trigger and its replay frontier
+  cleared, and the trigger is queued. A cursor already flagged from a lower version keeps its trigger. A perspective
+  whose own order is unchanged is left alone, so the replay a fill causes is only what its order needs.
 - **Never an overwrite.** A position already recorded is kept, whatever an answer says, and an answer fills only events
   this service holds from the answering origin.
 
@@ -4610,7 +4617,7 @@ What the fill keeps consistent:
 | `whizbang.stream_integrity.origin_positions_requested` | Counter, per `origin` | Events named in requests |
 | `whizbang.stream_integrity.origin_positions_filled` | Counter, per `origin` | Positions filled |
 | `whizbang.stream_integrity.origin_positions_not_filled` | Counter, per `origin` and `answer` | `not_yet_stamped` (asked again) or `unknown` (not asked again) |
-| `whizbang.stream_integrity.origin_position_rewinds` | Counter | Perspective cursors rewound because a fill changed a stream's order |
+| `whizbang.stream_integrity.origin_position_rewinds` | Counter | Perspective cursors newly flagged to rewind because a fill changed their own replay order; a cursor already flagged is not counted again |
 
 Why each choice:
 
