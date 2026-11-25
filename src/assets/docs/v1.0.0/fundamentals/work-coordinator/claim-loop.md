@@ -12,7 +12,9 @@ description: >-
   fetch, why a claim runs only the statements that can find work, how a claim
   keeps the queue tables' planner statistics
   true, how a claim ranks only the peers that are alive and eligible for work,
-  why a caller that is not eligible claims nothing, how an owner renews the
+  why a caller that is not eligible claims nothing, how a claim decides by
+  the published partition map and, with ownership by map on, waits rather
+  than ranking itself, how an owner renews the
   inbox leases it let run out, why the perspective drain's calls are priced
   by their batch rather than the backlog or the applied history, why the
   per-stream walk stops at its row bound at every depth,
@@ -127,7 +129,7 @@ permit is in memory, so the next claim is held the moment the permit closes.
 
 `ClaimWorker` is an `IReleasesHeldWork`: step 4 of the run-control path. Once no claim is in hand, it names the
 inbox and perspective streams of its **last claim** that the drain channels report as not in flight, and calls
-`IWorkCoordinator.ReleaseUnstartedLeasesAsync` on them, the same release a [stuck instance](#a-stuck-instance-releases-what-it-has-not-started)
+`IWorkCoordinator.ReleaseUnstartedLeasesAsync` on them, the same release a [stuck instance](#releasing-unstarted-work)
 makes. A peer takes those streams over at once instead of after their leases lapse. A stream a drain has begun is
 finished here, never released under it, and before any claim there is nothing to release.
 {verified: ClaimWorkerRunPermitTests.ReleaseHeldWork_ReleasesTheLastClaimsStreamsThatNoDrainHasStartedAsync, ClaimWorkerRunPermitTests.ReleaseHeldWork_BeforeAnyClaim_ReleasesNothingAsync}
@@ -200,6 +202,10 @@ Three sources can release the wake semaphore:
 Wake is idempotent: multiple producers calling `RequestImmediatePoll()` between ticks coalesce into one wake (semaphore capacity = 1).
 
 ## RAISE NOTICE in-band signaling
+
+With [ownership by map](partition-assignment.md#ownership-by-map) on, a claim that finds no valid map raises
+`whizbang.partition_map_unavailable=true` and returns nothing (see
+[With ownership by map on](#claims-in-map-mode)). It is a diagnostic: neither coordinator acts on it.
 
 When `claim_work` returns a full batch (more eligible work than `p_max_streams`), it `RAISE NOTICE 'whizbang.has_more=true'`. This survives pgbouncer (it's a protocol message, not session state). It is a hint only: it also fires when the instance merely *holds* a full batch, so re-claiming on it would turn a re-offer into a spin, and the claim loop does not act on it.
 
@@ -536,10 +542,12 @@ GROUP BY stream_id
 ORDER BY oldest;
 ```
 
-A row that waits a long time points at its stream's head: find the stream's earliest pending row
-(`SELECT message_id, instance_id, lease_expiry, attempts, error FROM wh_inbox_state WHERE stream_id = @stream AND
-processed_at IS NULL ORDER BY message_id LIMIT 1`). A head leased to a live peer is being worked there; a head that
-keeps failing has its own `error`, and the rows behind it wait until it is stored or concluded.
+A row that waits a long time points at its stream's head: list the stream's pending rows in arrival order
+(`SELECT s.message_id, s.instance_id, s.lease_expiry, s.attempts, s.error FROM wh_inbox_state s JOIN wh_inbox i ON
+i.message_id = s.message_id WHERE s.stream_id = @stream AND s.processed_at IS NULL ORDER BY i.arrival_position`). The
+head is the first of them in [receive order](../event-store/version-ordering#receive-order), its origin's order rather
+than its id. A head leased to a live peer is being worked there; a head that keeps failing has its own `error`, and the
+rows behind it wait until it is stored or concluded.
 
 ### An owner renews the leases it let run out {#an-owner-renews-the-leases-it-let-run-out}
 {verified: OwnerLeaseRenewalSqlTests.Claim_AHeldRowWhoseLeaseRanOut_OnAStreamItsRankOwns_IsRenewedAndOffered_WithoutAnAttemptAsync, OwnerLeaseRenewalSqlTests.Claim_ARenewedStream_IsLeasedInTheLedgerToTheRenewingInstanceAsync, OwnerLeaseRenewalSqlTests.Claim_EveryExpiredRowOfARenewedStream_IsRenewedAsync, OwnerLeaseRenewalSqlTests.Claim_AHeldRowWhoseLeaseIsLive_KeepsItsLeaseAsync, OwnerLeaseRenewalSqlTests.Claim_PastTheAcquisitionBound_TheRestOfItsExpiredRowsAreRenewed_NotChargedAsync, OwnerLeaseRenewalSqlTests.Claim_RenewsAtMostTheClaimWindow_OldestLeaseFirstAsync, OwnerLeaseRenewalSqlTests.Claim_WhenTheInstanceCountChanged_AndThePartitionFallsToALivePeer_LeavesTheRowToAcquisitionAsync, OwnerLeaseRenewalSqlTests.Claim_WhenThePartitionFallsToAPeer_ButTheHoldersLedgerLeaseIsLive_RenewsTheRowAsync, OwnerLeaseRenewalSqlTests.Claim_WhenALivePeerHoldsTheStream_LeavesTheRowAsync, OwnerLeaseRenewalSqlTests.Claim_WithStealingAllowed_TheRenewalStillDoesNotSteal_AcquisitionDoesAsBeforeAsync, ClaimWorkPlanShapeTests.ClaimWork_HeldRowsWhoseLeaseRanOut_AreRenewed_AndTheNextPollDoesNotPassOverThemAsync, ClaimWorkPlanShapeTests.ClaimWork_RenewingExpiredLeases_ReadsThemThroughTheLeaseOrderIndexAsync}
@@ -556,8 +564,14 @@ reads this instance's pending rows whose lease ran out, oldest lease first, at m
 batches), and renews each one whose stream the instance still owns under **acquisition's rule, without stealing**:
 
 - the stream's ledger lease is this instance's and live, **or**
-- the row's partition falls to this instance's rank (`partition_number % live instances = rank`) **and** no live peer
-  holds the stream in the ledger.
+- the row's partition is in this instance's share (`wh_partition_in_share`: the published map's member for the
+  partition, or `partition_number % live instances = rank` when no map is presented) **and** no live peer holds the
+  stream in the ledger.
+
+With [ownership by map](partition-assignment.md#ownership-by-map) on, the rule is the ownership table alone: a row is
+renewed only on a partition this instance owns (`wh_i_own`), so the holder of a lease on a partition that moved away
+does not renew it.
+{verified: PartitionMapClaimSqlTests.ClaimWork_HeldInboxLeases_AreRenewedOnlyOnPartitionsTheMapGivesItAsync, OwnershipByMapClaimSqlTests.Inbox_AnExpiredLeaseOnAPartitionThatMovedAway_IsNotRenewedByItsHolderAsync}
 
 A renewed row keeps its attempt count and records no failure: it waited, it did not fail. Its stream joins the claim's
 one ledger pass, so a stream whose rows the instance holds under a live lease is its stream in the ledger and no peer's
@@ -746,8 +760,9 @@ What the claim and the drain do now:
 2. **The drain continues a stream from its lease.** After a drain cycle publishes a stream's rows
    without a failure, `IWorkCoordinator.ContinueOutboxStreamsAsync` leases that stream's next page
    (`OutboxDrainWorkerOptions.MaxPerStream`) under the lease it already holds and returns only the
-   rows after the last one published, so a row whose completion has not landed is never published
-   twice. Up to `MaxContinuationRounds` rounds run per drain cycle; past that the claim cycle carries
+   rows after the last one published, by emission position (`OutboxStreamCursor.LastPublishedPosition`,
+   [#2551](https://github.com/whizbang-lib/whizbang/issues/2551)), so a row whose completion has not landed is never
+   published twice. Up to `MaxContinuationRounds` rounds run per drain cycle; past that the claim cycle carries
    the stream on, so a few long streams cannot hold the drain while other streams wait.
 3. **A failure stops its stream.** When a row fails to publish, nothing behind it on its stream is
    published in that cycle, the stream is not continued, and `process_outbox_failures` releases the
@@ -771,9 +786,12 @@ from the drain.
 Every new access path is priced by the batch, never the backlog. A run is one range scan per chosen
 stream on `idx_outbox_stream_run` (`stream_id, created_at, message_id`, partial on pending unpublished
 rows), whose key order is the run's order, so the `LIMIT` stops it inside the index; the continuation
-and the failure release read the same way. The index replaces `idx_outbox_stream_unpublished` (same
-predicate and leading key, so the store's emptiness probe is still one descent), and the outbox keeps
-its index count.
+and the failure release read the same way. That index replaced `idx_outbox_stream_unpublished` (same
+predicate and leading key, so the store's emptiness probe is still one descent). Since migration 579 the run, the
+continuation and the failure release walk a stream in its rows'
+[emission position](../event-store/version-ordering#outbox-dispatch-order) instead, through
+`idx_outbox_stream_emission` (`stream_id, emission_position`, with the same predicate), one range scan per stream as
+before.
 
 Measured on a container (`OutboxStreamRunDrainMeasurementTests`), one instance at a window of 25
 draining 44 interleaved streams:
@@ -814,9 +832,14 @@ Latency never **grows** the window. Fast claims are the normal case, and growth 
 ## Work stealing after two empty own-residue claims
 {verified: BoundedAcquisitionRewriteSqlTests.ClaimOrphanedInbox_IdleRank_TakesAnotherResiduesRowsOnlyWhenStealingIsAllowedAsync, ClaimWorkerAcquisitionBoundsTests.Claim_StealsOnlyAfterTwoConsecutiveEmptyInboxClaimsAsync, ClaimWorkerAcquisitionBoundsTests.Claim_StopsStealingOnceOwnWorkReturnsAsync}
 
-Unowned rows are assigned to instances by residue: `partition_number % active_instance_count = rank`. When one rank's instance is alive but not progressing, its residue of the unowned backlog has no eligible acquirer while a healthy instance sits idle beside it. `p_allow_steal` (from `ClaimWorkRequest.AllowSteal`) lets an instance whose own residue is empty take unowned rows of **any** residue.
+Unowned rows are assigned to instances by share: the partitions the published map gives each member, or the residue
+`partition_number % active_instance_count = rank` when no map is presented. When one rank's instance is alive but not progressing, its residue of the unowned backlog has no eligible acquirer while a healthy instance sits idle beside it. `p_allow_steal` (from `ClaimWorkRequest.AllowSteal`) lets an instance whose own residue is empty take unowned rows of **any** residue.
 
 Stealing is a last resort, never a first move. The worker sets `AllowSteal` only after its own inbox claims have come back empty **twice running** (`STEAL_AFTER_EMPTY_CLAIMS = 2`) and clears it the moment its own work returns, so under normal load the residues stay disjoint and ownership stays stable. The store enforces the rule that matters for safety: stealing applies to **unowned** rows only, and never to a stream another live instance is mid-drain on. A stream in which another instance holds a live row lease is skipped whatever the flag says, because taking its next row would interleave one stream across two instances and break per-stream order. The check is a row-level probe on the steal path only, so the normal path pays nothing for it. {verified: BoundedAcquisitionRewriteSqlTests.ClaimOrphanedInbox_Steal_SkipsAStreamAnotherInstanceIsMidDrainAsync}
+
+With [ownership by map](partition-assignment.md#ownership-by-map) on, the inbox never steals: `AllowSteal` changes
+nothing, and a claim never takes a partition this instance does not own.
+{verified: OwnershipByMapClaimSqlTests.Inbox_StealingNeverTakesAPartitionThisInstanceDoesNotOwnAsync}
 
 Permission is decided per cycle: the rows a stealer leaves behind in a stream still belong to their residue, and the stealer takes more only while its own residue keeps coming back empty. {verified: BoundedAcquisitionRewriteSqlTests.ClaimOrphanedInbox_IdleRank_TakesAnotherResiduesRowsOnlyWhenStealingIsAllowedAsync}
 
@@ -838,14 +861,17 @@ The worker logs `Inbox acquisition paused` (EventId 22) and `Inbox acquisition r
 
 The budget's headroom is also what becomes `MaxAcquireRows` while the budget governs (above), so a collapse of the budget bounds rows, not streams, and can no longer turn into one row per cycle.
 
-## A stuck instance releases what it has not started
+## A stuck instance releases what it has not started {#releasing-unstarted-work}
 {verified: ClaimWorkerAcquisitionBoundsTests.RepeatedReoffer_ReleasesOnlyTheStreamsNotInFlight_OncePerStreakAsync, ClaimWorkerAcquisitionBoundsTests.RepeatedReoffer_DoesNotReleaseBeforeTheStreakAsync, ClaimWorkerAcquisitionBoundsTests.ProductiveClaim_ResetsTheReleaseStreak_SoALaterStuckRunReleasesAgainAsync, ClaimWorkerAcquisitionBoundsTests.RepeatedReoffer_StoreWithoutTheRelease_KeepsClaimingAsync, BoundedAcquisitionRewriteSqlTests.ReleaseUnstartedLeases_ReturnsOnlyTheNamedStreamsRefundsTheAttemptAndOpensThemToSiblingsAsync, BoundedAcquisitionRewriteSqlTests.ReleaseUnstartedLeases_NeverTouchesAnotherInstancesLeasesAsync}
 
 Siblings cannot take work from a heartbeating instance; that is what [liveness](/v1.0.0/fundamentals/workers/instance-liveness) protects. The other side of that rule is a livelock: an instance whose consumers are stuck holds leased rows that nothing drains, and from outside it is indistinguishable from an idle service (modest CPU, no errors, no restarts) while the backlog it holds cannot move. The instance itself has to let go of what it is not working on.
 
 `ClaimCycleReport` already tracks **re-offers**: a claim that returns exactly the previous claim's work set is not progress. When the same work set has been re-offered for **eight consecutive cycles** (`RELEASE_UNSTARTED_AFTER_REPEATS = 8`), the worker calls `IWorkCoordinator.ReleaseUnstartedLeasesAsync(instanceId, inboxStreamIds, perspectiveStreamIds)`, naming only the streams the drain channels report as **not in flight**. Streams a consumer is actively processing are never named, and emission is untouched, so anything that *is* draining keeps flowing. One release per streak; the streak resets on any productive claim, so a later stuck run releases again. The result, `UnstartedLeaseRelease(InboxReleased, PerspectiveReleased)`, is logged with the streak length and the stream counts.
 
-The store side is `release_unstarted_leases(p_instance_id, p_inbox_stream_ids, p_perspective_stream_ids)` (migration 145). For rows leased to the calling instance in the named streams and not yet processed it refunds the optimistic attempt the claim charged (`attempts = GREATEST(attempts - 1, 0)`, since the rows never reached a receptor), clears `instance_id` and `lease_expiry`, and ends the instance's ownership of those streams in `wh_active_streams` so the unowned path opens to siblings. Two invariants:
+The store side is `release_unstarted_leases(p_instance_id, p_inbox_stream_ids, p_perspective_stream_ids)` (migration 145). For rows leased to the calling instance in the named streams and not yet processed it refunds the optimistic attempt the claim charged (`attempts = GREATEST(attempts - 1, 0)`, since the rows never reached a receptor), clears `instance_id` and `lease_expiry`, and clears the stored owner of those streams in `wh_active_streams` (`assigned_instance_id` and `lease_expiry`, migration 559), as deregistration already does. A released stream then goes to the instance its partition is [assigned to](/v1.0.0/fundamentals/work-coordinator/partition-assignment), which may be the releaser itself. Before migration 559 the release kept the stored owner, so a released perspective stream went straight back to the instance that released it, because perspective acquisition lets the stored owner claim whatever its lease says. Nothing takes perspective work out of turn: the release never hands a stream to an instance its partition is not assigned to.
+{verified: ReleasedStreamFollowsItsAssignmentSqlTests.AReleasedPerspectiveStream_IsClaimedNextByTheLiveInstanceItsPartitionIsAssignedToAsync, ReleasedStreamFollowsItsAssignmentSqlTests.AReleasedPerspectiveStreamWhosePartitionIsAssignedToTheReleaser_ComesBackToItAsync, ReleasedStreamFollowsItsAssignmentSqlTests.AReleaseLeavesAStreamItDoesNotNameWithItsOwnerAsync}
+
+Two invariants:
 
 - **The instance calls it on itself.** Nothing is ever taken from a heartbeating instance by anyone else; the function only touches rows whose `instance_id` is the caller's, so a sibling's leases are never affected.
 - **A store without the function is not an error.** The default `IWorkCoordinator` implementation throws `NotImplementedException`; the worker logs that the rows stay leased to this instance until they lapse (the previous behavior) and keeps claiming. Both shipped drivers, EF Core and Dapper, implement it; on a halt the [run-control path](#release-on-halt) logs the failure of a store without it and the halt goes on.
@@ -853,7 +879,14 @@ The store side is `release_unstarted_leases(p_instance_id, p_inbox_stream_ids, p
 ## Ranking: who counts as alive {#ranking-who-counts-as-alive}
 {verified: AliveLockLivenessSqlTests.Rank_ADirectPeerOnTheSlowCadenceHoldingItsLock_IsCountedAsync, AliveLockLivenessSqlTests.Rank_ADirectPeerWhoseLockIsReleased_IsCountedOutAtOnceAsync, AliveLockLivenessSqlTests.Rank_APooledPeerPastTheCutoff_IsCountedOutWhateverLockItsSessionHoldsAsync, AliveLockLivenessSqlTests.Rank_APooledPeerWithAFreshHeartbeat_IsCountedAsync, AliveLockLivenessSqlTests.Rank_ARowWithNoRecordedMode_IsJudgedAsPooledAsync}
 
-Unowned work is claimed by rank: `partition_number % active_instance_count = rank`. A claim that presents the partition assigner's current assignment takes its rank from it (see [Partition assignment](partition-assignment.md)). Otherwise `claim_work` ranks itself among the peers it counts as alive and eligible for work. Since migration 317 it counts them alive by asking [the liveness rule](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule) every reader shares, where it used to apply a fixed 30 s cutoff of its own:
+This section is how a claim decides with [ownership by map](partition-assignment.md#ownership-by-map) off (a service that opted out, or one whose switch is not on yet);
+see [below](#claims-in-map-mode) for the other mode. Unowned work is claimed by share. Every claim tests a partition
+through one predicate, `wh_partition_in_share(partition, rank, count, owners)` (migration 564): with a map, the
+partition is the claimer's when the map gives it to the member at the claimer's rank; without one, when
+`partition_number % active_instance_count = rank`. A claim that presents the partition assigner's current assignment
+takes its rank and the map from it (see [Partition assignment](partition-assignment.md#incremental-map)); a presented
+version that is stale, or an assignment that leaves the claimer out, ranks by the residue instead. Otherwise
+`claim_work` ranks itself among the peers it counts as alive and eligible for work. Since migration 317 it counts them alive by asking [the liveness rule](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule) every reader shares, where it used to apply a fixed 30 s cutoff of its own:
 
 - a peer recorded as `direct` whose alive-lock is held is alive whatever the age of its heartbeat (up to the definitive-dead cutoff), so a direct instance beating on the 60 s slow cadence is never counted out between beats;
 - a direct peer without its lock is alive for one beat (30 s) past its last heartbeat;
@@ -862,6 +895,28 @@ Unowned work is claimed by rank: `partition_number % active_instance_count = ran
 
 When a direct instance loses its lock, the next claim of any peer judges it by one beat, so it is ranked out at once and the shares re-spread on that claim.
 {verified: LivenessRuleReadersSqlTests.Rank_ADirectPeerThatLostItsLock_IsNotCountedPastOneBeatAsync, LivenessRuleReadersSqlTests.Rank_ADirectPeerWithoutItsLock_IsCountedInsideOneBeatAsync, LivenessRuleReadersSqlTests.Rank_APeerInsideItsOwnWindow_IsCountedPastTheOldThirtySecondCutoffAsync}
+
+{verified: PartitionMapClaimSqlTests.PartitionInShare_WithAMap_IsTheMapsAnswer_AndWithoutOne_TheResidueAsync, PartitionMapClaimSqlTests.ClaimWork_WithAMapButAStaleVersion_RanksItselfByTheResidueAsync, PartitionMapClaimSqlTests.ClaimWork_WithAMapThatLeavesItOut_RanksItselfByTheResidueAsync, ClaimsReadThePartitionMapGuardTests.EveryClaimFunction_TestsItsPartitionsThroughTheMapPredicateAsync}
+
+### With ownership by map on {#claims-in-map-mode}
+{verified: OwnershipByMapClaimSqlTests.WithNoValidMap_NothingIsClaimed_AndTheClaimSaysSoAsync, OwnershipByMapClaimSqlTests.AnAssignerLapse_DoesNotStallClaims_WhileTheMapsMembersAreLiveAsync, OwnershipByMapClaimSqlTests.AClaimerOutsideTheMap_ClaimsNothing_InAnyQueueAsync, OwnershipByMapClaimSqlTests.Perspective_TheMapMovesThePartition_TheNewOwnerClaimsTheStream_AndTheStoredOwnerNothingAsync, OwnershipByMapClaimSqlTests.Outbox_TheMapMovesThePartition_TheNewOwnerClaimsTheStream_AndTheStoredOwnerNothingAsync, OwnershipByMapClaimSqlTests.Inbox_TheMapMovesThePartition_TheNewOwnerClaimsTheStream_AndTheStoredOwnerNothingAsync, ClaimPathsDecideThroughTheOwnershipTableGuardTests.EveryClaimFunction_DecidesThroughWhIOwn_AndRanksOnlyInTheLegacyBranchAsync}
+
+With the service's [ownership-by-map switch](partition-assignment.md#ownership-switch) on (the default), nothing in
+the claim ranks instances, and nothing reads a stream's stored owner:
+
+- **No valid map, no claim.** A claimer with no valid published map (published, and its lease running or every member
+  live, judged on the database's clock: [map validity](partition-assignment.md#map-validity)) claims nothing, raises
+  `whizbang.partition_map_unavailable=true`, and waits for its next poll. The claimer's cached version is not consulted:
+  the claim reads the map in its own statement. Two claimers can therefore never use two maps at once.
+- **The ownership table decides.** Every acquisition (outbox, inbox, perspective, multi-stream), the event fetch, the
+  outbox continuation and the due schedules take a partition only through `wh_i_own(partition, instance)`, or its set
+  form `wh_partitions_i_own(instance)` for a window of rows. A partition handing over is claimed by nobody.
+- **The stored owner has no say.** A live stored owner in `wh_active_streams` blocks nobody and wins nothing: the
+  owner path is off, so a stream whose partition the map moved goes to its new owner at its next claim. The claim's
+  ledger pass names the instance that claimed, which is the partition's owner.
+- **The inbox never steals** (above), and renews a lapsed lease only on a partition it owns.
+
+The [ineligible-caller rule](#ineligible-caller-claims-nothing) applies first in both modes.
 
 ### Only peers eligible for work are ranked {#eligible-only-ranking}
 {verified: WorkEligibilitySqlTests.Rank_APeerInMigrating_IsNotCounted_SoTheCallerCoversEveryPartitionAsync, WorkEligibilitySqlTests.Rank_APeerThatReachesAcceptingCommands_IsCountedAsync, WorkEligibilitySqlTests.Rank_ADrainingPeer_ItsShareMovesToTheCallerAtOnceAsync, WorkEligibilitySqlTests.Rank_ADirectPeerHoldingItsLockInMigrating_IsNotCountedAsync, WorkEligibilitySqlTests.Rank_AnOlderPeerThatRecordsNoPhase_IsCountedAsBeforeAsync, WorkEligibilitySqlTests.Rank_ACallerThatIsNotYetEligible_StillCountsItselfAsync}
@@ -953,7 +1008,7 @@ The claim loop does not wait for the `AcceptingCommands` write to land before it
 | `MaxOutboxRowsPerBatch` | 1000 | Outbox acquisition row bound per claim, independent of the stream window. A claim that fills it is followed at once by another. `0` restores the previous bound (the stream window). |
 | `OutboxRunLength` | 100 | Consecutive rows of one outbox stream a claim may lease. `1` is one row per chosen stream. |
 | `MaxOutstandingOutboxRows` | 10 000 | Ceiling on outbox rows held; once holdings are measured the outbox bound is the headroom under it. |
-| `PartitionCount` | 10 000 | Modulo partition count. |
+| `PartitionCount` | 10 000 | The number of partitions `compute_partition` hashes a stream id into. The [partition map](partition-assignment.md#incremental-map) has a fixed 10,000 entries; a partition number past it wraps to its remainder. |
 | `LeaseSeconds` | 300 | Lease duration on claimed work. |
 | `AdaptiveOutstandingBudget` | true | Bound the total outstanding inbox rows across claims (per category, row-bound). `false` falls back to the churn-based claim window alone. |
 | `MaxOutstandingInboxRows` | 10 000 | Ceiling on the acquisition row bound. |

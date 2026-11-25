@@ -269,7 +269,7 @@ configure: config => config
 
 - `UseTopic(string)` sets the logical `Topic`; `UseStreamId(string)` sets the `StreamId` (ordering/partitioning key).
 - `UseExecutionStrategy<T>()` — the shipped strategies are `SerialExecutor` (strict FIFO, one message at a time) and `ParallelExecutor` (concurrent, bounded by `WithConcurrency`).
-- `UsePartitionRouter<T>()` — `HashPartitionRouter` (consistent hashing over the stream key) ships in `Whizbang.Core.Partitioning`.
+- `UsePartitionRouter<T>()`: `HashPartitionRouter` (an FNV-1a hash of the stream key, modulo the partition count) ships in `Whizbang.Core.Partitioning`. It is not consistent hashing: changing the partition count moves most keys.
 - `UseSequenceProvider<T>()` — `InMemorySequenceProvider` (monotonic per-stream sequence numbers) ships in `Whizbang.Core.Sequencing`.
 - `WithPartitions(int)`, `WithConcurrency(int)`, and `WithPersistenceSize(maxDataSizeBytes: …)` each throw `ArgumentOutOfRangeException` when the supplied value is `<= 0`.
 

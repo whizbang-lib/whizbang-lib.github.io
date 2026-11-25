@@ -267,6 +267,17 @@ release's hashes from today's files.
 | 0 | Pending | A [step row](#step-ledger-rows) the current pass still owes |
 | -1 | Failed | The step threw; it is still owed and runs again on the next attempt ([failure record](#failure-record)) |
 
+## Migration events {#migration-events}
+
+`Whizbang.Core` defines five system event records for a migration pass: `MigrationBatchStarted`,
+`MigrationItemStarted`, `MigrationItemCompleted`, `MigrationItemFailed` and `MigrationBatchCompleted`, whose statuses
+are the ones above ([their shapes](../../fundamentals/events/system-events#migration-events)). **Neither driver
+publishes them today**: a schema pass records its outcome in the migration ledger and its log lines, not as events.
+To follow a pass as it runs, register an `ISchemaInitializationObserver`
+([watching initialization](../../data/turnkey-initialization#watching-initialization)), which is called for each
+bootstrap retry, each committed step and the phases before the schema lock, on both drivers, or read the
+[step lines](#step-log-lines) and the [step rows](#step-ledger-rows).
+
 ## Per-Perspective Tracking
 
 Each perspective schema (CREATE TABLE + indexes) is tracked individually. When a developer adds a `[PhysicalField]` or changes a model, the source generator produces updated DDL. On next startup:
@@ -766,6 +777,15 @@ recorded as applied without how to undo it. Where each kind comes from:
 - **A stored-form conversion** is never in this ledger, and is always irreversible
   ([the rollback gate](../startup/rolling-upgrades#the-rollback-gate)).
 
+**A rollback reverses only the sides this start runs.** The W! migrations and the application's schema (its
+perspective tables, associations and application objects) are [judged apart](../startup/rolling-upgrades#two-verdicts),
+so a rollback runs the stored reverses of the W! migrations only when the W! migrations run this start, and of the
+application's schema only when it runs too. Each side reads its own lossy setting
+(`Whizbang:Startup:Platform:AllowLossyRollback`, `Whizbang:Startup:Application:AllowLossyRollback`, or the shared
+`Whizbang:Startup:AllowLossyRollback` where a side's own key is unset). A held side is left exactly as it is, and a
+change this build defines identically (the same name and content hash) is never reversed, whoever applied it.
+{verified: TwoVerdictsTests.ARollback_ReversesOnlyTheSidesThatRun_EachWithItsOwnLossySettingAsync, SchemaRollbackTests.ASideTheRollbackDoesNotRun_IsLeftAsItIs_UnderTheLockAsync, SchemaRollbackTests.AChangeThisBuildDefinesIdentically_IsNeverReversedUnderTheLock_WhoeverAppliedItAsync}
+
 **A re-apply clears the old reverse.** 359's trigger, redefined by 386, sets `reversal` and `down_sql` to `NULL` when a
 row's content hash changes and the statement does not set them itself. A writer that then records a new reverse
 replaces it; one that records nothing (an older release during a rolling deploy, or a migration that predates the
@@ -1099,6 +1119,9 @@ Run the default-privilege statements before the first start, so every object the
 
 The migrator is a duty, and like every duty it is held by [role assignment](../startup/capabilities-and-duties#role-assignment-the-default). Its vote is part of the bootstrap closure (migration `184_RoleAssignmentResilience.sql` is a bootstrap region), so the assignment table and its functions exist before the first migration runs. Every instance applies the [bootstrap closure](#bootstrap-waits-for-the-lock) and then joins the registry, both in Preflight, and votes in Elect; the winner migrates and releases the duty when it returns, however it returns.
 
+**Both drivers elect it** ([#2561](https://github.com/whizbang-lib/whizbang/issues/2561)). The election is shared runtime code, `MigratorElection`, which the EF Core driver's generated initializer and the Dapper driver's schema runner both call, so on either driver one instance migrates and the others wait for it and then serve, taking no schema lock and running no pass of their own. A waiter whose migrator dies mid-migration votes for the duty and finishes the work. See [Dapper coordination](../../data/dapper-integration#one-migrator).
+{verified: DapperMigratorElectionTests.TwoInstancesStarting_OneMigrates_TheOtherWaitsForIt_ThenServesAsync, DapperMigratorElectionTests.AMigratorThatDiesMidMigration_HandsTheWorkToTheWaiterAsync, DapperSchemaStartupTests.HostStart_RegistersVotesAndIsElectedMigrator_BeforeItMigratesAsync, SchemaMigratorDeferralGenerationTests.AWaiterWatchesTheMigratorAsync}
+
 **No election on a current schema.** The election runs only when the [Assess verdict](../startup/rolling-upgrades#assess) leaves something to migrate. When the verdict is [`Current`](../startup/rolling-upgrades#current), nothing is pending and every stored-form conversion has settled, so the instance applies no bootstrap closure, joins the registry as Preflight's last step (`the schema is current; registering this instance`), and skips Elect and Migrate (`Stage 2 of 7: Elect - skipped: the schema is current; no migrator is needed`). It takes neither the migrator duty nor the schema lock, so a restart or a scale-out never waits behind another instance's migration. A [stood-down](../startup/rolling-upgrades#standing-down) instance does not vote either: it applies nothing and stays in Preflight. **Why skip it rather than hold a quick one.** A vote is a write to the role tables and a wait on whoever holds the duty; with nothing to migrate there is no outcome worth waiting for. The check that found the schema current is made without a lock: the hash checks of the pass's own fast path, plus the stored-form settlement that the rewrite would otherwise take the schema lock to discover.
 {verified: StartupParityTests.ARestartOnACurrentSchema_TakesNoSchemaLock_AndSkipsElectAndMigrateAsync, SchemaInitializationStagesTests.OnACurrentSchema_ElectAndMigrateAreSkipped_AfterRegisteringAsync, AssessBindingSourceGuardTests.TheGeneratedPass_ReadsTheVerdict_BeforeItAppliesAnythingAsync}
 
@@ -1107,6 +1130,25 @@ Registering is Preflight's last step, logged as `Stage 1 of 7: Preflight - the b
 
 An instance that lost the vote waits for the result instead of queuing behind the schema lock. It watches the migrator itself (`MigratorWatch`): the migrator's assignment row, plus any holding of the duty recorded outside the table by a migrator on an older release that held it by its own session lock, counted only while [the one liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule) calls that instance live. No lock is read: the watch never uses the lock probe, so a waiter sees an older migrator through the record it writes, and a dead one's record does not hold the waiter up. The migrator's lease is 30 seconds by default (`RoleAssignmentOptions.RoleLeases`), and it marks the backend running its DDL as a backstop. If the migrator dies, its assignment lapses and a waiter goes on to do the schema work itself, still under the schema lock, which keeps DDL to one instance at a time whatever the duty says.
 {verified: MigratorWatchTests.AMigratorHoldingTheRole_IsMigrating_UntilItReleasesItAsync, MigratorWatchTests.AMigratorOnAnOlderRelease_IsSeenByItsRecordedHolding_WhileTheRuleCallsItLiveAsync, MigratorWatchTests.NothingHeld_IsNotMigratingAsync, CoordinationSourceGuardTests.NoDuty_IsHeldByAnAdvisoryLockAnywhereAsync, SchemaMigratorDeferralGenerationTests.AWaiterWatchesTheMigratorAsync, SchemaMigratorDeferralGenerationTests.TheMigratorRenewsItsRole_AndMarksTheBackendRunningTheMigrationAsync}
+
+#### Every start checks the perspective registry {#registry-check}
+{verified: PerspectiveRegistryRestartTests.ACleanHashRestart_AgainstAMatchingRegistry_TouchesNothingAsync, PerspectiveRegistryRestartTests.ACleanHashRestart_AgainstARegistryNoHashCovers_ReconcilesItAsync, DapperMigratorElectionTests.ACurrentStart_AgainstAMatchingRegistry_TouchesNothingAsync, DapperMigratorElectionTests.ACurrentStart_AgainstARegistryNoHashCovers_ReconcilesItAsync, DapperMigratorElectionTests.AWaiterBehindASameBuildMigrator_DoesNoRegistryReconcileAsync, DapperMigratorElectionTests.AWaiterBehindAMigratorWithAnotherRegistry_ReconcilesItAsync, DapperMigratorElectionTests.AWaiterThatWaitsForAnothersReconcile_ChecksAgainUnderTheLock_AndDoesNothingAsync, DapperMigratorElectionTests.ARegistryThatCannotBeReconciled_IsNotFatalAsync, DapperMigratorElectionTests.AWaitersConverge_AgainstARegistryNoHashCovers_ReconcilesItAsync, DapperMigratorElectionTests.AStartHoldingTheApplication_LeavesTheRegistryAsItIsAsync}
+
+No content hash covers the stored perspective registry, so a start that skips the pass (a hash-clean restart, a schema
+Assess found current, a waiter whose migrator may have been another build, a restored database) would otherwise keep
+whatever registry it found. So on either driver **every start** checks the stored registry against what its build
+declares (`PerspectiveRegistryCurrency`), and reconciles it **only when it differs**:
+
+- **The check takes no lock.** It reads exactly what `reconcile_perspective_registry` writes for each entry (the table
+  name, the schema JSON, the schema hash, and the perspectives that fold the model), so a registry it reads as current
+  is one the reconcile would only stamp again. A Dapper start on a current schema no longer rewrites a registry that
+  already matches.
+- **A difference is reconciled under the schema lock**, in one transaction, after checking again once the lock is
+  held, so a waiter that waited for another waiter's reconcile finds nothing to do.
+- **It is never fatal.** A registry that cannot be read or reconciled is logged at Warning, and the next start tries
+  again.
+- **A held application schema is left as it is.** A start that [stands the application down](../startup/rolling-upgrades#two-verdicts)
+  does not touch its registry.
 
 #### The migrator keeps its role through every phase {#migrator-keepalive}
 
@@ -1168,7 +1210,8 @@ migrator doing exactly what it was allowed to. A negative value is refused at st
 Progress reaches the duty without any phase knowing who holds it: the schema initializer routes the progress its
 start reports to the migrator duty it holds (`StartupProgress.ReportTo`), and every reporting point calls
 `StartupProgress.Note()`. A phase added later reports through the same calls it already uses for its log lines. The
-limit applies to the EF Core driver, which elects a migrator; the Dapper driver holds no election.
+limit applies on both drivers, since both elect the migrator; on the Dapper driver each committed migration file is
+the progress the pass reports ([Dapper coordination](../../data/dapper-integration.md#one-migrator)).
 
 | Behavior | Why | Verified by |
 |---|---|---|

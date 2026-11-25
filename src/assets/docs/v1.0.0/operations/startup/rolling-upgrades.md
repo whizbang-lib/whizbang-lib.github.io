@@ -11,13 +11,15 @@ description: >-
   (Current skips the schema lock, StandDown applies nothing and stays visible),
   the cluster-wide stand-down when a newer version comes online (application
   version first), the rollback gate and its override, rolling back what a newer
-  version applied, the standby handshake for
+  version applied, judged by content and decided apart for the W!
+  migrations and the application's schema, the standby handshake for
   breaking migrations, eviction as the fence behind it, and revival by
   re-entering the pipeline
 tags: >-
   rolling-upgrades, assess, verdict, current, stand-down, standby, handshake,
   eviction, semver, versioning, migrations, multi-instance, deployment,
-  rollback, application-version, override, down-migrations, allow-lossy-rollback
+  rollback, application-version, override, down-migrations, allow-lossy-rollback,
+  two-verdicts, content-hash, restored-database
 codeReferences:
   - src/Whizbang.Core/Startup/AssessStartupStep.cs
   - src/Whizbang.Core/Startup/StartupAssessmentSource.cs
@@ -42,6 +44,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/360_TheInstanceRowRecordsAnOverriddenIncompatibility.sql
   - src/Whizbang.Data.Postgres/Migrations/385_StoredFormConversionsRecordWhoAppliedThem.sql
   - src/Whizbang.Data.Postgres/Migrations/386_TheLedgerRecordsHowToReverseEachChange.sql
+  - src/Whizbang.Data.Postgres/Migrations/568_StoredFormConversionsRecordWhatTheyApplied.sql
   - src/Whizbang.Data.Postgres/SchemaRollback.cs
   - src/Whizbang.Data.Postgres/StoredFormApplier.cs
   - src/Whizbang.Data.Postgres/MigrationReversal.cs
@@ -70,6 +73,8 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Startup/StandbyWatcherUpgradeStandDownTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/UpgradeStandDownE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RollbackGateTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/TwoVerdictsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/WhizbangHostExtensionsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaRollbackTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StoredFormApplierTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/OnePassReadsCurrentTests.cs
@@ -99,6 +104,16 @@ Two rules anchor everything below:
 | Schema changes were [applied after my version](#the-rollback-gate) by a newer version, nothing newer is online, and [every one can be reversed](#rolling-back) | `Migrate`, with a rollback owed | The instance doing the schema work runs the reverse scripts the newer version stored, then migrates as usual. A change whose reversal discards data counts only when `Whizbang:Startup:AllowLossyRollback` is `true` |
 | A schema change was [applied after my version](#the-rollback-gate) by a newer version, and one of them cannot be reversed (or would discard data, and the operator has not allowed it) | `StandDown`, or `Current` when [the override](#the-incompatibility-override) is on | Stands down with an error naming each change that blocks the rollback and who applied it; with the override, serves the schema as it is |
 | A ledger that exists and cannot be read | none | A temporary failure is retried within Preflight; any other [fails the attempt](#unreadable-version-record) |
+
+The rows about changes applied since this version are decided **twice**: once for the W! migrations and once for the
+application's schema, each with its own verdict, and the instance serves only when both sides can
+([two verdicts](#two-verdicts)).
+
+**One instance migrates, on either driver.** Where the verdict leaves something to migrate, the instances of a rolling
+start elect one migrator, and the others wait for it and then serve without a pass of their own. The EF Core and the
+Dapper drivers run the same election ([#2561](https://github.com/whizbang-lib/whizbang/issues/2561)); see
+[which instance migrates](../infrastructure/migrations#which-instance-migrates).
+{verified: DapperMigratorElectionTests.TwoInstancesStarting_OneMigrates_TheOtherWaitsForIt_ThenServesAsync, MigratorKeepaliveStartupTests.TwoReplicas_OnlyAnInstanceHoldingTheRoleRunsThePreLockPhasesAsync}
 
 ```csharp{title="The verdict" description="Decided once, before anything is changed, and read by every part of startup" category="Implementation" difficulty="INTERMEDIATE" tags=["Startup","RollingUpgrades"] tests=["AssessStartupStepTests.StandDownVerdict_FailsTheBlockingStep_WhichIsNotReadyWhileAliveAsync","AssessStartupStepTests.CurrentVerdict_CompletesWithTheReason_LikeServeAsync","StartupAssessorTests.AnyNewerRecorded_VerdictIsStandDownAsync","StartupAssessorTests.AnUpToDateSchema_IsCurrent_AndOneWithWorkPending_IsServeAsync"]}
 public enum StartupVerdict { Migrate, Serve, StandDown, Current }
@@ -188,7 +203,9 @@ Two cases that start as `Serve` and are expected to:
 ### Standing down {#standing-down}
 
 A `StandDown` verdict means a newer version is online, or the database holds a change this binary did not make
-(see [the rollback gate](#the-rollback-gate)). The instance:
+(see [the rollback gate](#the-rollback-gate)). When only the application's schema stood down, the W! migrations run
+first and the instance then stands down as below, with the application's schema left as it is
+([two verdicts](#two-verdicts)). Otherwise the instance:
 
 - **applies nothing**: no bootstrap closure, no election, no stored-form rewrite, no pass, no managed-object reconcile;
 - **holds the data plane**: the schema-ready gate stays closed, so no worker that needs the schema starts, no claim is made, and readiness answers 503 while liveness stays healthy. The `Assess` step fails as a blocking step, which keeps the pipeline incomplete;
@@ -200,8 +217,8 @@ A `StandDown` verdict means a newer version is online, or the database holds a c
 **Why it registers and stays visible.** The tables exist, because the database is newer than the binary, so registering is safe without a bootstrap. An operator watching a rollout that does not progress sees each stood-down instance in [`wh_instance_startup_stages()`](startup-status#seeing-every-instances-stage) with the reason, instead of a pod that is not ready for no stated reason. A host with no instance identity logs the stand-down at Warning and still applies nothing.
 {verified: StartupParityTests.ANewerSchema_StandsDown_AppliesNothing_AndKeepsTheGateClosed_WhileVisibleAsync, SchemaInitializationRunnersTests.StandDown_RunsNoRunner_KeepsTheGateClosed_AndRegistersTheInstanceVisiblyAsync, SchemaInitializationRunnersTests.StandDown_WithNoInstanceIdentity_StillAppliesNothingAsync, StartupStandDownTests.Record_StaysInPreflight_NamingTheReason_AndStandsByAsync, StartupStandDownTests.KeepVisible_RegistersAtOnce_ThenOnEveryBeat_UntilTheHostStopsAsync, StartupStandDownTests.FromServices_BeatsOnTheHeartbeatCadence_AsTheRegisteredInstanceAsync, StartupStandDownTests.KeepVisible_AFailedBeat_IsRetriedOnTheNextBeatAsync, StartupStandDownTests.KeepVisible_WhenTheRegistryEvictedTheInstance_StopsBeatingAsync, StartupStandDownTests.KeepVisible_WhenTheRegistryEvictedTheInstance_ExitsOnce_AsAClusterEvictionAsync, AssessStartupStepTests.StandDown_ThroughTheRealPipeline_KeepsReadinessPendingForeverAsync}
 
-**A direct call is refused.** `EnsureWhizbangInitializedAsync` (or a DbContext's `EnsureWhizbangDatabaseInitializedAsync`) on a stood-down host throws `SchemaStandDownException`, naming the reason, and applies nothing.
-{verified: StartupParityTests.TheTurnkeyCall_OnAStoodDownInstance_IsRefused_AndAppliesNothingAsync, StartupVerdictBindingTests.AStandDown_IsRefused_NamingTheReasonAsync}
+**A direct call is refused.** `EnsureWhizbangInitializedAsync` (or a DbContext's `EnsureWhizbangDatabaseInitializedAsync`) on a stood-down host throws `SchemaStandDownException`, naming the reason, and applies nothing. When only the application's schema stood down, `EnsureWhizbangInitializedAsync` applies the W! migrations first, then throws, naming the side and its reason (`This instance applied the W! migrations, then stood down because its application schema cannot be served: <reason>`).
+{verified: StartupParityTests.TheTurnkeyCall_OnAStoodDownInstance_IsRefused_AndAppliesNothingAsync, StartupVerdictBindingTests.AStandDown_IsRefused_NamingTheReasonAsync, WhizbangHostExtensionsTests.EnsureWhizbangInitializedAsync_WhenTheApplicationSchemaStoodDown_RunsTheWMigrations_ThenThrowsNamingItAsync, WhizbangHostExtensionsTests.EnsureWhizbangInitializedAsync_WithAVerdictThatServes_ReturnsAsync}
 
 The stand-down composes with machinery that already exists: readiness stays withheld, the data-plane seams keep refusing, and liveness stays healthy, which is precisely the state that tells an orchestrator to replace the instance and a load balancer to stop sending it traffic. The fence runs *backwards* on purpose: a migrating instance can never wait for older instances to be retired (the orchestrator will not retire them until the new instance is ready, which requires migrating first), so the **older instance stands itself down** instead.
 
@@ -330,6 +347,30 @@ own version**:
   **application or library**, since the library generates those from the application's model;
 - no stored-form conversion applied by a newer **application or library** (see below).
 
+**What was applied decides, not who applied it** ([#2553](https://github.com/whizbang-lib/whizbang/issues/2553)). A
+change the ledger records counts as applied since this version only when this build does not make that same change.
+Every ledger row records a content hash, and the gate compares it with what this build defines under the same name:
+
+| The recorded change | How it is judged |
+|---|---|
+| This build produces the same name with the same content hash | **Current**, whatever version applied it. It never counts, and is never rolled back |
+| A different hash, or a name this build does not produce | By who applied it, as above |
+| No recorded hash: a stored-form or temporal-form conversion recorded before migration 568 | By its name, which is the conversion's form: current when this build declares a conversion of that name, otherwise by who applied it |
+
+A database restored from another environment records that environment's versions, which say nothing about whether this
+build makes the same change; the content does. See [a restored database](#restored-database). What this build defines
+is produced only when some change applied by a newer version has to be judged, because judging by content only ever
+clears a change: a ledger nothing newer touched costs nothing more, and a driver whose definitions cannot be produced
+fails no start it would not have failed.
+{verified: UpgradeOrderTests.AChangeThisBuildDefinesIdentically_IsCurrent_WhateverVersionAppliedItAsync, UpgradeOrderTests.AChangeThisBuildDefinesDifferently_OrDoesNotDefine_IsJudgedByWhoAppliedItAsync, UpgradeOrderTests.AChangeWithNoRecordedHash_IsJudgedByWhoAppliedIt_EvenWhenThisBuildDefinesItsNameAsync, UpgradeOrderTests.AConversionRecordedBeforeItsHash_IsCurrentWhenThisBuildDeclaresItsName_AndJudgedByVersionWhenNotAsync, UpgradeOrderTests.WhenThisBuildDefinesNothingKnown_EveryChangeIsJudgedByWhoAppliedItAsync, RollbackGateTests.TheVerdict_JudgesAChangeThisBuildDefinesIdentically_AsCurrentAsync, StartupAssessorTests.WhatThisBuildDefines_IsAskedOnlyWhenANewerVersionAppliedSomethingAsync}
+
+What this build defines is every migration it carries, every perspective table, every application object, and every
+conversion it declares, each by the ledger's name for it (`perspective:<table>`, `stored-form:<name>`,
+`temporal-form:<table>`) with the content hash its pass records. Both drivers produce it.
+{verified: DbContextInitializationRegistryTests.SchemaContent_IsWhatTheContextsPassRecords_AndNothingForAnUnregisteredContextAsync, DapperStartupAssessorTests.WhatThisBuildDefines_IsEveryMigrationPerspectiveTableAndApplicationObject_ByLedgerName_WhicheverWayItWasBuiltAsync, DapperStartupAssessorTests.WhatThisBuildDefines_IncludesEachDeclaredKeyCheck_ByItsJournalName_WithItsContentHashAsync}
+
+The rest of this section is how a change this build does **not** define identically is judged.
+
 When something was applied since, Assess asks whether every such change can be reversed. When it can, and nothing
 newer is online, the verdict is `Migrate` with a rollback owed, and the instance [rolls the schema back](#rolling-back)
 before its pass. Otherwise the instance stands down at Assess. The stand-down reason, on the row and in the log, is the
@@ -367,6 +408,11 @@ the documents back), so a rollback across one always stands down.
   documents already converted applied nothing.
 - **Conversions recorded before this release name nobody** (the columns are `NULL`), and never stand an instance down,
   exactly as a ledger row with no known applier.
+- **What a conversion applied is recorded too** (migration 568, #2553). Each journal records `content_hash` beside the
+  versions, whenever it records them: the SHA-256 of the statement the rewrite ran, or of what a declared-key check
+  declares. A pass that converts nothing keeps it. A conversion that records its hash is judged by the hash; one
+  recorded before 568 (`content_hash` is `NULL`), or by an earlier release during a rolling deploy, is identified by its
+  name. The name rule exists only for those rows.
 
 The schema initializer sets who applies the conversions once, for its whole start (`StoredFormApplier.ScopeTo`), and
 every conversion records it from there, so no conversion added later has to be handed the versions or can forget them.
@@ -375,6 +421,7 @@ every conversion records it from there, so no conversion added later has to be h
 |---|---|---|
 | Each conversion that converts rows records who applied it, and a pass that converts nothing keeps the record. | A rollback after a newer version rewrote stored documents went unseen: the older version read documents in a form it does not know. A pass that only found them converted changed nothing a rollback could break. | {verified: StoredFormApplierTests.AStoredFormMigration_RecordsWhoConvertedRows_AndKeepsItThroughAPassThatConvertsNothingAsync, StoredFormApplierTests.ACustomMigration_RecordsWhoRanItAsync, StoredFormApplierTests.TheTemporalRewrite_RecordsWhoConvertedATable_AndKeepsItAsync, StoredFormApplierTests.TheDeclaredKeyPass_RecordsWhoMovedKeysAsync} |
 | A conversion by a newer application or library stands the older instance down, naming it; one by this version or by nobody known does not. | The same rule as every other change applied since, so a conversion is judged exactly like a migration. | {verified: StoredFormApplierTests.AStoredFormConversionByANewerApplication_StandsTheOlderDown_NamingItAsync, StoredFormApplierTests.ATemporalConversionByANewerLibrary_StandsTheOlderDown_NamingItAsync, StoredFormApplierTests.AConversionByThisVersion_OrByNobodyKnown_DoesNotStandItDownAsync} |
+| Each conversion records what it applied as the hash of its statement; once it has, the hash decides, not the name. A restored database whose conversions this build declares serves, whatever application applied them. | Without a hash, the gate could tell who converted the documents but not whether this build converts them the same way, so a restored database stood down over conversions this build makes identically. | {verified: StoredFormApplierTests.EveryConversion_RecordsWhatItApplied_AsTheHashOfItsStatementAsync, StoredFormApplierTests.OnceAConversionRecordsItsHash_TheHashDecides_NotTheNameAsync, StoredFormApplierTests.ARestoredDatabase_WhoseConversionsThisBuildDeclares_ServesWhateverApplicationAppliedThemAsync} |
 | Outside the initializer's scope a conversion records nobody; on journals older than 385 the gate reads the ledger alone, and the declared-key pass still moves keys. | A version nobody set must not be invented, and a database an older release migrated must still start. | {verified: StoredFormApplierTests.OutsideAnyScope_AConversionRecordsNobodyAsync, StoredFormApplierTests.OnJournalsOlderThanTheRecord_TheGateReadsTheLedgerAloneAsync, StoredFormApplierTests.TheDeclaredKeyPass_OnAJournalOlderThanTheRecord_StillMovesTheKeysAsync, StoredFormApplierTests.ScopeTo_RestoresTheApplierBefore_AndRefusesNoneAsync} |
 
 **Who applied each change** is recorded by migration 359 in `wh_schema_migrations.applied_version_id`, kept by a
@@ -411,6 +458,102 @@ since. Every migration before this release, every stored-form conversion and eve
 irreversible, so those rollbacks stand down exactly as before.
 :::
 
+### Two verdicts: the W! migrations and the application's schema {#two-verdicts}
+{verified: TwoVerdictsTests.EveryCombinationOfTheTwoVerdicts_IsJudgedSideBySide_WithTheWMigrationsFirstAsync, TwoVerdictsTests.EachSidesStandDown_NamesItsSide_AndItsChanges_AndTheInstancesReasonCarriesBothAsync, TwoVerdictsTests.TheWholeInstancesRefusals_AreNotJudgedBySideAsync, AssessStartupStepTests.EachSidesVerdict_IsLoggedOnItsOwn_NamingItsSideAsync}
+
+The gate makes **two decisions** ([#2553](https://github.com/whizbang-lib/whizbang/issues/2553)): one for the W!
+migrations and one for the application's schema (its perspective tables, associations, application objects and
+stored-form conversions). Each side is judged on its own changes only, with its own verdict, its own reason, its own
+override and its own lossy setting. Before, one list held both, so a change the application could not reverse stood
+the W! migrations down too, and the reverse.
+
+Each side's verdict is one of: `Serve` (nothing applied since this version), `Migrate` (with the rollback that side
+owes), `StandDown`, or `Current` when that side's own [override](#the-incompatibility-override) serves it as it is.
+They are on the assessment as `StartupAssessment.Platform` and `StartupAssessment.Application` (`SchemaSideVerdict`).
+
+**W! first.** The application's schema is generated against the library's schema, so the W! migrations are decided and
+run first:
+
+- **The W! migrations stand down:** nothing runs, not even the application's schema.
+- **The application's schema stands down:** it never blocks the W! migrations. They run (with any rollback they owe),
+  the application's schema is **held**, and the instance then stands down.
+- **The instance serves only when both sides can.**
+
+**Held application.** While the application's schema is held (it stood down, or its own override serves it as it is),
+the schema pass applies the W! migrations alone: no application object, perspective table, perspective registry,
+declared-key pass, stored-form conversion, managed-object reconcile or storage settings. The instance still registers,
+as on every start.
+{verified: StartupParityTests.AnApplicationStandDown_LetsTheWMigrationsRunFirst_ThenStandsDown_LeavingTheApplicationSchemaAsItIsAsync, StartupParityTests.AWStandDown_RunsNothing_NotEvenTheApplicationSchema_AndNamesItsSideAsync, SchemaInitializationRunnersTests.AnApplicationStandDown_RunsTheRunnersForTheWMigrations_ThenStandsDown_WithTheGateClosedAsync, StartupVerdictBindingTests.AnApplicationStandDown_IsHandedToThePass_SoTheWMigrationsRunFirst_ButAWStandDownIsRefusedAsync}
+
+**Readiness.** An instance whose application schema stood down stands down exactly as any other
+[stand-down](#standing-down) once the W! migrations have run: the schema-ready gate stays closed, readiness answers 503
+while liveness stays healthy, and the row records the reason. A direct
+[`EnsureWhizbangInitializedAsync`](../../data/turnkey-initialization#assess-on-both-drivers) call on it applies the W!
+migrations, then throws `SchemaStandDownException`.
+
+| W! migrations | Application schema | The instance | What runs |
+|---|---|---|---|
+| `Serve` | `Serve` | `Serve` (or `Current`) | Startup as usual |
+| `Serve` or `Migrate` | `Serve` or `Migrate` | `Migrate` when either side owes a rollback | Each side's rollback, each with its own lossy setting, then the pass |
+| `Serve` or `Migrate` | `StandDown` | `StandDown` | The W! migrations and their rollback; the application's schema is held; then the stand-down |
+| `Serve` or `Migrate` | `Current` (its own override) | `Serve` or `Migrate` | The W! migrations and their rollback; the application's schema is served as it is, and the override is recorded on the row |
+| `StandDown` | any | `StandDown` | Nothing |
+| `Current` (its own override) | `Serve` or `Current` | `Current` | Nothing |
+| `Current` (its own override) | `Migrate` or `StandDown` | `StandDown` | Nothing: the application's rollback cannot run while nothing is applied; its reason names `Whizbang:Startup:Application:OverrideIncompatibility` as the key that would serve it as it is too |
+
+{verified: TwoVerdictsTests.AnApplicationOverride_ServesTheApplicationAsItIs_WhileTheWMigrationsStillRunAsync, TwoVerdictsTests.TheWMigrationsServedAsTheyAre_CannotRunTheApplicationsRollback_AndSayWhichOverrideWouldAsync, TwoVerdictsTests.ARollback_ReversesOnlyTheSidesThatRun_EachWithItsOwnLossySettingAsync, StartupParityTests.TheApplicationsOwnOverride_ServesItAsItIs_WhileTheWMigrationsStillRun_AndRecordsItAsync}
+
+**What is not judged by side.** A newer version online, a build whose own library version is missing or unreadable, and
+a fresh database are decisions for the whole instance, as before: `Platform` and `Application` are then `null`.
+
+**The reason names each side.** The instance's reason lists every side that does not serve, by name:
+`W! migrations: <reason>; application schema: <reason>`, followed, for a stand-down, by
+`; standing down: never apply anything, hold the data plane, report not-ready-while-alive`. Each side's verdict is also
+logged on its own by the `Assess` step at Information: `Assess verdict for the <side>: <verdict>: <reason>`, where the
+side is `W! migrations` or `application schema`.
+
+```text{title="An application stand-down after the W! migrations ran" description="The instance's reason names the side that stood down and its changes" category="Operations" difficulty="BEGINNER" tags=["Startup","RollingUpgrades","Rollback"] tests=["TwoVerdictsTests.EachSidesStandDown_NamesItsSide_AndItsChanges_AndTheInstancesReasonCarriesBothAsync"]}
+application schema: since this instance's version (library 1.0.0, application 1.9.0), 1 schema change(s) were applied
+by a newer version that this version did not make, and 1 cannot be reversed: perspective:wh_per_orders (applied by
+library 1.0.0, application 2.0.0); a rollback runs only when every change since this version can be reversed; standing
+down: never apply anything, hold the data plane, report not-ready-while-alive
+```
+
+### A database restored from another environment {#restored-database}
+{verified: RollbackGateTests.ARestoredDatabase_WhoseChangesThisBuildDefinesIdentically_ServesWhateverVersionAppliedThemAsync, RollbackGateTests.ARestoredDatabase_WithAChangeThisBuildDoesNotDefine_StillGoesThroughTheGate_NamingOnlyThatChangeAsync, DapperStartupAssessorTests.ARestoredDatabase_WhoseChangesThisBuildDefinesIdentically_ServesWhateverVersionAppliedThemAsync, DapperStartupAssessorTests.ARestoredDatabase_WithAChangeThisBuildDoesNotDefine_StillStandsDown_NamingOnlyThatChangeAsync, StoredFormApplierTests.ARestoredDatabase_WhoseConversionsThisBuildDeclares_ServesWhateverApplicationAppliedThemAsync}
+
+A database restored from another environment carries that environment's ledger, and with it that environment's
+versions. A build from a preview or feature line often reports a version such as `0.0.0-preview.7`, which by SemVer is
+lower than any release, even when its code is newer. Judged by who applied each change, every application schema change
+in the restored ledger was "applied by a newer version", and a populated perspective table cannot be reversed without
+loss, so the instance stood down forever. The incompatibility override started it but ran no migration, so the build's
+own new tables were never created.
+
+Here is how such a start goes now, for a preview build started against a ledger whose changes were applied by
+application `2.4.0`:
+
+1. **Changes this build makes identically are current.** Every perspective table, association, application object and
+   migration whose recorded hash matches what this build defines under the same name counts as current, whatever
+   version applied it. If that is every change, the instance serves, or migrates whatever this build adds.
+2. **A change this build does not make goes through the gate as before.** A perspective table whose definition differs,
+   or one this build does not have, is judged by who applied it: the application `2.4.0` is newer, so it counts. When
+   it can be reversed, the instance [rolls it back](#rolling-back) (a lossy reversal needs the
+   [lossy setting](#rolling-back) for the application side); otherwise the application's schema stands down, naming only
+   that change. The W! migrations still run first.
+3. **Conversions are judged by their hash, or by their name before it.** A stored-form or temporal-form conversion
+   recorded since migration 568 matches by its content hash. One recorded before 568 counts as current when this build
+   declares a conversion of that name.
+
+**An interim workaround: a deploy number.** For a restored database that still stands the application down over
+changes this build does not make, a host can supply `Whizbang:Application:DeployNumber` instead of a SemVer version
+([application version](../configuration/configuration-reference#application-version)). A deploy number does not order
+against the SemVer versions the restored ledger records, so the application version no longer finds those changes
+newer, and only the library version decides. It is a stopgap, with costs: the deploy number must then be supplied on
+every deploy of the service and must rise each time, and while instances record SemVer and deploy numbers side by side
+their application versions do not order at all, so a newer application online no longer stands an older one down by
+its application version. Prefer the rollback or the application side's own
+[override](#the-incompatibility-override), which leave the version record intact.
+
 ### Rolling back {#rolling-back}
 
 An older version started against a database a newer version migrated **rolls the schema back to its own version** when
@@ -420,7 +563,26 @@ three things are true:
   [newer-version-online rule](#cluster-wide-stand-down) still wins;
 - **every change applied since its version can be reversed**, as the newer version recorded when it applied each one
   ([how a migration is reversed](../infrastructure/migrations#how-a-migration-is-reversed));
-- **no change would discard data**, or the operator allows it with `Whizbang:Startup:AllowLossyRollback=true`.
+- **no change would discard data**, or the operator allows it for that change's side (below).
+
+Each side is decided on its own ([two verdicts](#two-verdicts)), so a rollback **reverses only the sides this start
+runs**, each with its own lossy setting. The W! migrations' rollback runs unless they stood down or are served as they
+are; the application's runs only when its schema runs too. A side that is held is left exactly as it is, also when the
+rollback is decided again under the lock. A change this build defines identically is never reversed, whoever applied
+it.
+{verified: TwoVerdictsTests.ARollback_ReversesOnlyTheSidesThatRun_EachWithItsOwnLossySettingAsync, SchemaRollbackTests.ASideTheRollbackDoesNotRun_IsLeftAsItIs_UnderTheLockAsync, SchemaRollbackTests.AChangeThisBuildDefinesIdentically_IsNeverReversedUnderTheLock_WhoeverAppliedItAsync}
+
+**Which key allows a lossy reversal.** Each side reads its own key when it is set, and the shared key otherwise:
+
+| Key | Allows a lossy reversal of |
+|---|---|
+| `Whizbang:Startup:Platform:AllowLossyRollback` | The W! migrations |
+| `Whizbang:Startup:Application:AllowLossyRollback` | The application's schema |
+| `Whizbang:Startup:AllowLossyRollback` | Both sides, where a side's own key is unset |
+
+A side's own key wins over the shared one either way, so `Application:AllowLossyRollback=false` keeps the application
+side safe even with the shared key on.
+{verified: UpgradeOrderTests.TheOverrides_AreScopedPerSide_AndTheSharedKeysStillMeanBothAsync, UpgradeOrderTests.EachSide_KnowsItsOwnOverrides_AndItsOwnKeyAsync}
 
 Assess then returns `Migrate` with a rollback owed (`StartupAssessment.Rollback`), and its reason names every change it
 reverses:
@@ -431,9 +593,10 @@ that this version did not make, and every one can be reversed: rolling back pers
 library 1.0.0, application 2.0.0)
 ```
 
-**Who runs it.** Only the instance doing the schema work: on the EF Core driver the elected migrator, as the first of
-the [phases it runs before the schema lock](../infrastructure/migrations#pre-lock-phases), before the stored-form
-rewrite; on the Dapper driver, which holds no election, the schema runner before its pass. Either way it runs under the
+**Who runs it.** Only the instance doing the schema work, the elected migrator on either driver
+([#2561](https://github.com/whizbang-lib/whizbang/issues/2561)): on the EF Core driver as the first of the
+[phases it runs before the schema lock](../infrastructure/migrations#pre-lock-phases), before the stored-form rewrite;
+on the Dapper driver before its pass. A waiter whose migrator finished runs neither. Either way it runs under the
 schema lock, so it is kept to one instance. On the EF Core driver it needs a connection of its own: a start that owes
 a rollback with no initialization connection string and no registered `NpgsqlDataSource` fails, naming the schema,
 rather than running the pass over the newer version's schema.
@@ -441,10 +604,11 @@ rather than running the pass over the newer version's schema.
 **How it runs** (`SchemaRollback`):
 
 1. It opens one transaction and takes the schema lock in it.
-2. It **decides again under the lock**, from the same ledger and the same rule: another instance may have finished the
+2. It **decides again under the lock**, from the same ledger and the same rule, side by side, for only the sides the
+   verdict runs and with what this build defines: another instance may have finished the
    rollback while this one waited (nothing is left, and nothing runs), a newer version may have come online, or a
    change may have been recorded that cannot be reversed. In the last two cases nothing runs and the start fails,
-   naming why.
+   naming why and which side.
 3. It runs the reverse scripts the newer version stored in the ledger, **newest first**: the changes the latest
    version applied, then the version before it; within one version the application schema before the library's
    migrations (the pass applies them the other way round), each in reverse name order.
@@ -501,12 +665,45 @@ Only `true` turns it on; a value that is not a boolean fails startup naming the 
 `Whizbang:Startup:OverrideIncompatibility` (off by default) lets an instance start when Assess would stand it down for
 an **incompatibility**: the schema newer than its build, or a change it cannot reverse applied since its version.
 
-- **What it does.** The instance starts as `Current`: no election, no pass, no converge, nothing applied, and no
-  migration run backward. It serves the schema as it is.
+**It can be scoped to one side** ([two verdicts](#two-verdicts)). Each side reads its own key when it is set, and the
+shared key otherwise, so the shared key keeps meaning both sides:
+
+| Key | Serves as it is, when it would stand down |
+|---|---|
+| `Whizbang:Startup:Platform:OverrideIncompatibility` | The W! migrations |
+| `Whizbang:Startup:Application:OverrideIncompatibility` | The application's schema |
+| `Whizbang:Startup:OverrideIncompatibility` | Each side whose own key is unset |
+
+A side's own `false` refuses even with the shared key on.
+{verified: UpgradeOrderTests.TheOverrides_AreScopedPerSide_AndTheSharedKeysStillMeanBothAsync, UpgradeOrderTests.EachSide_KnowsItsOwnOverrides_AndItsOwnKeyAsync, TwoVerdictsTests.AnApplicationOverride_ServesTheApplicationAsItIs_WhileTheWMigrationsStillRunAsync}
+
+- **What it does on the W! side.** The instance starts as `Current`: no election, no pass, no converge, nothing applied,
+  and no migration run backward. It serves the schema as it is. The application's schema is then not migrated either;
+  an application rollback it owes stands the instance down, naming
+  `Whizbang:Startup:Application:OverrideIncompatibility` as the key that would serve the application schema as it is too.
+- **What it does on the application side.** The application's schema is served as it is, and **the W! migrations still
+  run**, with any rollback they owe. Serving the application's schema as it is no longer skips them. The verdict is
+  then `Serve` or `Migrate`, not `Current`.
+
+:::updated{version="1.0.0" type="breaking"}
+**Behavior change ([#2553](https://github.com/whizbang-lib/whizbang/issues/2553)):** the shared
+`Whizbang:Startup:OverrideIncompatibility` on an incompatibility that is the application's alone now serves the
+application's schema as it is **and still runs the W! migrations**: the verdict is `Serve` or `Migrate`, where it was
+`Current` with nothing applied. That is the per-side decision, not a regression.
+:::
 - **What it does not override.** The stand-down for a [newer version online](#cluster-wide-stand-down), which is not an
   incompatibility, and the refusal of a build whose own library version is missing or unreadable.
-- **It says so, loudly, at every start.** An Error from `StartupAssessmentSource` (EventId 3):
+- **It says so, loudly, at every start, naming the side.** Each overridden side logs its own Error from
+  `StartupAssessmentSource` (EventId 4), naming that side, its own key with the shared one beside it, the verdict it
+  would have had, its full reason, and what still runs:
+  - the W! side: `Running past the W! migrations incompatibility verdict because Whizbang:Startup:Platform:OverrideIncompatibility (or Whizbang:Startup:OverrideIncompatibility) is on: its verdict was StandDown: <reason>. This build serves that side as it is: nothing of the W! migrations is applied and no W! migration runs; the instance row records the override`;
+  - the application side: `Running past the application schema incompatibility verdict because Whizbang:Startup:Application:OverrideIncompatibility (or Whizbang:Startup:OverrideIncompatibility) is on: its verdict was StandDown: <reason>. This build serves that side as it is: the application schema is left as it is, and the W! migrations still run; the instance row records the override`.
+
+  A verdict judged as one, with no sides (an assessor that does not split them), keeps the shared message (EventId 3):
   `Running past an incompatibility verdict because Whizbang:Startup:OverrideIncompatibility is on: startup's verdict was StandDown: <the full reason>. This build serves a schema it did not create; nothing is applied and no migration runs, and the instance row records the override`.
+  Before [#2553](https://github.com/whizbang-lib/whizbang/issues/2553) the shared message was logged for either side,
+  so an application-only override said no migration ran while the W! migrations did.
+  {verified: StartupAssessmentSourceTests.AnOverrideOfOneSide_IsLoggedForThatSide_WithItsOwnKeyAndWhatStillRunsAsync, StartupAssessmentSourceTests.AnOverriddenIncompatibility_IsLoggedLoudly_OncePerStart_WithTheVerdictAndItsFullReasonAsync}
 - **It is on the row.** The reason the verdict would have stood the instance down is written to
   `wh_service_instances.incompatibility_override` (migration 360) once the instance registers, so operators and peers
   can see it without reading logs. Every other instance's column is `NULL`.
@@ -528,6 +725,7 @@ Only the one verdict reads and honors the key; everything else learns of an over
 
 | Behavior | Why | Verified by |
 |---|---|---|
+| The application side's own override serves its schema as it is while the W! migrations still run, and records it on the row. | An operator should never have to skip the W! migrations to get past an application change (owner decision). | {verified: StartupParityTests.TheApplicationsOwnOverride_ServesItAsItIs_WhileTheWMigrationsStillRun_AndRecordsItAsync, TwoVerdictsTests.TheWMigrationsServedAsTheyAre_CannotRunTheApplicationsRollback_AndSayWhichOverrideWouldAsync} |
 | With the override on, an incompatible instance serves as `Current`, applying nothing, and carries the full reason. | An operator who must keep an older build serving (a rollback across a change that cannot be reversed) gets a way to do it that changes nothing in the schema. | {verified: RollbackGateTests.TheOverride_LetsAnIncompatibleInstanceServe_WithoutAMigration_AndCarriesTheFullReasonAsync, RollbackGateTests.TheOverride_AgainstTheRealLedger_ServesWhatTheGateRefusesAsync, StartupParityTests.TheIncompatibilityOverride_StartsWhatTheGateRefuses_LogsIt_RecordsIt_AndAppliesNothingAsync} |
 | It never lifts the stand-down for a newer version online, nor serves a build that cannot say what it is. | A newer version online is a rollout in progress, not an incompatibility; and an unknown build cannot be judged at all. | {verified: RollbackGateTests.TheOverride_NeverOverridesANewerVersionOnlineAsync, StartupParityTests.TheIncompatibilityOverride_DoesNotOverrideANewerVersionOnlineAsync, RollbackGateTests.TheOverride_NeverServesABuildThatCannotSayWhatItIsAsync} |
 | On a compatible instance it changes nothing, logs nothing and records nothing. | Leaving it on after the emergency must not make every later start look overridden. | {verified: RollbackGateTests.TheOverride_OnACompatibleInstance_ChangesNothingAsync, StartupParityTests.TheIncompatibilityOverride_OnACompatibleInstance_LogsNothing_AndRecordsNothingAsync, StartupAssessmentSourceTests.ACompatibleVerdict_LogsNoOverrideAsync} |

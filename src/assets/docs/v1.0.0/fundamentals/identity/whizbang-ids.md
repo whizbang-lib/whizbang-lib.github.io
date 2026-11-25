@@ -1142,6 +1142,9 @@ modelBuilder.Entity<Shipment>().Property(s => s.OrderId).HasColumnName("OrderId"
 Event and message ids must be UUIDv7. The framework checks each one where it enters, before any SQL runs, and refuses
 an id that is not a UUIDv7 with a `GuidOrderingException`.
 
+Ids the dispatcher derives inside a handling ([emission identity](../dispatcher/message-cascade.md#every-dispatch-path-derives)) are stamped as version 7 by construction, even when their cause is not, so they pass these checks without opting out.
+{verified: DerivedIdentityTimeOrderingComponentTests.DerivedIds_QueuedThroughTheStrategyEntryCheck_AreNeitherLoggedNorCountedAsync, DerivedIdentityTimeOrderingComponentTests.EveryDerivedIdKind_FromANonV7Cause_PassesTheCheckSilentlyAsync}
+
 ### Why event and message ids must be time-ordered {#why-time-ordered}
 
 The framework reads the time in these ids in several places, and a non-v7 id would put events in the wrong order:

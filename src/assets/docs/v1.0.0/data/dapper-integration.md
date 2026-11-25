@@ -15,9 +15,12 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/PostgresConnectionFactory.cs
   - src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperSchemaInitializationRunner.cs
+  - src/Whizbang.Data.Postgres/Notifications/PostgresCoordinationRegistration.cs
 testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/ServiceCollectionExtensionsTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSchemaStartupTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperCoordinationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/DriverCoordinationParityTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -139,6 +142,63 @@ the type registry, lifecycle reconciliation and coalescing. Stream integrity is 
 driver only, its switches default to off on a Dapper host, and turning one on fails the host at start. See
 [What the Dapper work coordinator supports](drivers.md#dapper-coordinator-parity) and
 [What the Dapper driver refuses at startup](drivers.md#what-dapper-refuses-at-startup).
+
+### Coordination: elected duties and the partition assigner {#coordination}
+
+{verified: DriverCoordinationParityTests.EveryPieceOfTheSharedCoordination_IsRegisteredAlikeByBothDriversAsync, DriverCoordinationParityTests.BothDrivers_ResolveTheSameElectorDutyLoopAndAssignerAsync, DapperCoordinationTests.AddWhizbangPostgres_RegistersRoleAssignmentAndTheElectedAssignerAsync, DapperCoordinationTests.TwoInstances_ExactlyOneHoldsTheMaintainerRole_AndOnlyItDoesTheMaintainersWorkAsync, DapperCoordinationTests.TheRebuildGuardsDuty_IsHeldByOneInstanceAtATimeAsync, DapperCoordinationTests.WhenTheMaintainerDies_TheSurvivorTakesTheDutyOverAsync, DapperCoordinationTests.TwoInstances_OneIsElectedAssigner_AndTheOthersClaimPresentsItsMapAsync}
+
+`AddWhizbangPostgres` registers the same coordination as the EF Core driver, through one shared registration that both
+drivers call ([#2559](https://github.com/whizbang-lib/whizbang/issues/2559)): role assignment (the elector, the duty
+holder loop and its owed-work store) and the elected
+[partition assigner](../fundamentals/work-coordinator/partition-assignment.md). A parity test fails if either driver
+stops registering any piece of it. So on Dapper, as on EF Core, these run on **one elected instance** instead of on
+every instance:
+
+| Duty | What it is |
+|---|---|
+| `maintainer` | The maintenance sweep and its steps, and the table rewrite at startup ([the maintainer duty](../operations/startup/capabilities-and-duties#the-maintainer-duty-governs-fleet-wide-work)) |
+| `perspective-rebuild:<table>` | The [blue-green rebuild guard](../fundamentals/perspectives/rebuild.md#one-blue-green-rebuild-per-table) of each perspective table: a second rebuild of a table on another instance is refused as in flight |
+| `partition-assigner` | The [partition assigner](../fundamentals/work-coordinator/partition-assignment.md): the claim presents its published map instead of every instance ranking its peers itself, so the published assignment is the one source of stream ownership on both drivers |
+| `migrator` | The schema migration at startup ([below](#one-migrator)) |
+
+When the holder dies, a surviving instance takes the duty over once the holder's lease lapses. The `roles`
+[health component](../resilience/managed-resource-health#roles) names the holders. The coordination connects with the
+driver's connection string unless `Whizbang:Database` (`ConnectionStringKey` or `DirectConnectionString`) names another.
+
+#### One migrator is elected {#one-migrator}
+{verified: DapperMigratorElectionTests.TwoInstancesStarting_OneMigrates_TheOtherWaitsForIt_ThenServesAsync, DapperMigratorElectionTests.AMigratorThatDiesMidMigration_HandsTheWorkToTheWaiterAsync, DapperSchemaStartupTests.HostStart_RegistersVotesAndIsElectedMigrator_BeforeItMigratesAsync, DapperMigratorElectionTests.AWaiterWhoseMigratorIsGone_VotesAgainUntilItMayWork_PausingBetweenVotesAsync, DapperMigratorElectionTests.AClosureThatCannotElect_LeavesTheInstanceUnstaged_AndElectSkippedAsync, DapperMigratorElectionTests.AnUnstagedInstance_WaitsWhileTheSchemaLockIsHeld_ThenWorksAsync, DapperMigratorElectionTests.AnUnforeseenFailureInTheElection_LeavesTheInstanceUnstaged_HoldingNothingAsync}
+
+Schema migration is an elected duty on Dapper too ([#2561](https://github.com/whizbang-lib/whizbang/issues/2561)),
+through the same election the EF Core driver runs (`MigratorElection`, shared runtime code that the EF Core driver's
+generated initializer now calls as well):
+
+- **The migrator.** On a rolling start, one instance applies the
+  [bootstrap closure](../operations/infrastructure/migrations#what-the-closure-carries), registers, wins the
+  `migrator` duty and migrates. Its pass reports each committed migration file as progress, which keeps the duty
+  renewed, and to `ISchemaInitializationObserver.OnSchemaStepCommittedAsync`.
+- **The waiters.** Every other instance registers, votes, and waits on the migrator's duty with its schema-ready gate
+  shut. Once the migrator is done, a waiter serves: it takes no schema lock and runs no pass of its own, only the
+  [registry check](../operations/infrastructure/migrations#registry-check) and the managed-object reconcile.
+- **Takeover.** A waiter whose migrator dies mid-migration, with the schema still behind, votes for the duty, and
+  finishes the work once it holds it. Repeated lost votes are paced, so a waiter never spins.
+- **Nothing about the election is fatal.** An instance that cannot be staged (no election is possible on the
+  database, the registry refuses it, or the election fails unexpectedly) migrates under the schema lock alone, as every
+  Dapper instance did before, and the lock still keeps DDL to one instance at a time.
+
+The stages read the same as on the EF Core driver
+([Dapper's stages](../operations/startup/startup-status#dapper-stages)).
+
+:::updated
+Before this release every Dapper instance migrated under the schema lock in turn and no migrator was elected, so a
+rolling start queued each instance behind the schema lock, and each ran a pass of its own. Nothing changes in code.
+:::
+
+:::updated
+Before this release a Dapper host registered no role assignment and no assigner: every instance did the maintainer's
+work, each perspective table's rebuild was guarded on its own instance only, and every claim ranked its peers itself.
+Nothing changes in code. A Dapper service that watched the maintainer's work on every instance now sees it on the one
+instance holding the `maintainer` role.
+:::
 
 ---
 

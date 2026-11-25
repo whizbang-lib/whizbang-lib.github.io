@@ -418,7 +418,7 @@ schema-ready gate opens, each beat is a **startup beat**, `IWorkCoordinator.Reco
 The first beat after the gate opens is due at once, not on the next cadence boundary, and is the full heartbeat, which
 registers, reaps and announces the join as before. Readiness is unchanged: a starting instance stays out of the claim
 ranking and the partition assignment, holds no role but the migrator, and reads as migrating in the fleet status, until
-it records Accept commands. On the Dapper driver, which applies no bootstrap closure and registers after its pass, a
+it records Accept commands. On the Dapper driver, an instance that could not be staged registers after its pass, so a
 startup beat before the pass has created the function is accepted and writes nothing.
 
 | Behavior | Why | Verified by |
@@ -428,7 +428,7 @@ startup beat before the pass has created the function is accepted and writes not
 | A startup beat never moves the stage or the phase, inserts no row, and keeps the instance ineligible for work. | The stage record is the one writer of the phase; a beat that wrote it could only bring back the races that rule removed. | {verified: StartingInstanceHeartbeatE2ETests.AStartingInstanceThatBeats_KeepsItsStageAndPhase_AndIsNotEligibleForWork_UntilItRecordsAcceptingCommandsAsync, StartingInstanceHeartbeatE2ETests.TheFleetReadModel_ShowsAStartingInstanceAsMigrating_LiveAndNotEvictedAsync, DapperStartupHeartbeatTests.AStartupBeat_NeverMovesTheStageOrThePhase_AndRecordsTheModeAndTheWindowAsync, DapperStartupHeartbeatTests.AStartupBeat_OfAnInstanceWithNoRow_InsertsNothingAsync, HeartbeatWorkerStartupBeatTests.BeforeTheSchemaIsReady_AnAcceptedBeat_IsRecorded_ButWritesNoStageAndAnnouncesNoJoinAsync} |
 | A startup beat of an evicted instance is refused. | An evicted instance learns it the same way whether it is starting or running. | {verified: DapperStartupHeartbeatTests.AStartupBeat_OfAnEvictedInstance_IsRefusedAsync, StartingInstanceHeartbeatE2ETests.AStartupBeat_OfAnEvictedInstance_IsRefused_AndOfAnUnregisteredOne_WritesNothingAsync, HeartbeatWorkerStartupBeatTests.BeforeTheSchemaIsReady_ARefusedBeat_EndsTheLoopAsEvictedAsync} |
 | Before the schema is ready a beat is the startup beat; once the gate opens the next beat is the full heartbeat, at once. | The full heartbeat needs tables the bootstrap closure does not create, and once they exist the row is registered and any held stage written without waiting a cadence. | {verified: HeartbeatWorkerStartupBeatTests.BeforeTheSchemaIsReady_ABeat_GoesThroughTheStartupHeartbeat_WithTheModeAndTheWindowAsync, HeartbeatWorkerStartupBeatTests.OnceTheGateOpens_TheNextBeatIsDueAtOnce_AndIsTheFullHeartbeatAsync, HeartbeatWorkerStartupBeatTests.WithAnOpenGate_EveryBeatIsTheFullHeartbeatAsync, HeartbeatWorkerStartupBeatTests.TheLoop_AfterAStartupBeat_BeatsInFullWhenTheGateOpens_WithoutWaitingForItsCadenceAsync, HeartbeatWorkerStartupBeatTests.TheWait_WhileTheGateIsClosed_EndsWhenTheGateOpensAsync, HeartbeatWorkerStartupBeatTests.TheWait_AfterAStartupBeat_WhenTheGateOpenedSinceThePlan_EndsAtOnceAsync} |
-| On Dapper, a startup beat before the pass created its function is accepted and writes nothing; any other failure throws. | The Dapper driver registers after its pass; a beat before then has no row to refresh, and a real failure must not be hidden. | {verified: DapperStartupHeartbeatTests.AStartupBeat_BeforeThePassCreatedItsFunction_IsAcceptedAndWritesNothingAsync, DapperStartupHeartbeatTests.AStartupBeat_ThatFailsForAnyOtherReason_ThrowsAsync} |
+| On Dapper, a startup beat before the pass created its function is accepted and writes nothing; any other failure throws. | A Dapper instance that could not be staged registers after its pass; a beat before then has no row to refresh, and a real failure must not be hidden. | {verified: DapperStartupHeartbeatTests.AStartupBeat_BeforeThePassCreatedItsFunction_IsAcceptedAndWritesNothingAsync, DapperStartupHeartbeatTests.AStartupBeat_ThatFailsForAnyOtherReason_ThrowsAsync} |
 | A custom `IWorkCoordinator` that does not override it sends the full heartbeat. | A coordinator with no schema to wait for has nothing to stage. | {verified: WorkCoordinatorDefaultInterfaceTests.RecordStartupHeartbeatAsync_DefaultImplementation_IsTheHeartbeatAsync} |
 
 ### Upgrading: the members this replaced {#upgrading-one-writer}
@@ -544,18 +544,38 @@ A fresh database is exactly when an operator most needs to see where startup is.
 
 {verified: StartupStageHostTests.AFreshDatabase_EntersEveryStageInOrder_LogsEach_AndRecordsEachTheRowCanHoldAsync, StartupStageHostTests.ARestartOnACurrentDatabase_SkipsMigrate_AndRecordsFromRegistrationAsync, SchemaBootstrapPhaseTests.AnEmptyDatabaseRecordsItsStageAtRegistrationAfterTheBootstrapAsync, SchemaBootstrapPhaseTests.AnEmptyDatabaseRecordsATransitionAtRegistrationAfterTheBootstrapAsync}
 
-Elect, Migrate and Converge are reported by the EF Core driver's schema pass. A host on the Dapper driver logs
-Preflight, Coordinate, Accept commands, Running and the shutdown stages, and since migration 278 records them on its row
-through the same recorder: the row is created by the instance's first heartbeat, and the stage held until then is
-written on that beat's registration signal. Earlier releases wrote no stage on this driver.
-{verified: DapperHeartbeatPhaseOrderTests.ATransition_IsRecorded_StagePhaseAndVersionTogether_AndAPauseKeepsTheStageAsync, StartupStageReporterTests.InstanceRegistered_WritesTheHeldStage_OnceAsync}
+### Dapper's stages {#dapper-stages}
+{verified: DapperSchemaStartupTests.HostStart_RegistersVotesAndIsElectedMigrator_BeforeItMigratesAsync, DapperMigratorElectionTests.TwoInstancesStarting_OneMigrates_TheOtherWaitsForIt_ThenServesAsync, DapperMigratorElectionTests.AClosureThatCannotElect_LeavesTheInstanceUnstaged_AndElectSkippedAsync, DapperMigratorElectionTests.AnInstanceTheRegistryRefuses_IsUnstaged_NotFailedAsync, StartupParityTests.EachDriver_EntersConverge_BeforeItsReconcileAsync, StartupParityTests.ARestartOnACurrentSchema_TakesNoSchemaLock_AndSkipsElectAndMigrateAsync, DapperHeartbeatPhaseOrderTests.ATransition_IsRecorded_StagePhaseAndVersionTogether_AndAPauseKeepsTheStageAsync, StartupStageReporterTests.InstanceRegistered_WritesTheHeldStage_OnceAsync}
 
-A Dapper host holds no election, so once the database answers it logs Elect as skipped
-(`Stage 2 of 7: Elect - skipped: no election could be held, so this instance migrates under the schema lock`), which
-ends Preflight for it as for the EF Core driver. On a current schema it skips Elect and Migrate with the same reasons
-as the EF Core driver (`the schema is current; no migrator is needed`, `the schema is current`). The
-[managed-resource health](../../resilience/managed-resource-health#startup-stage) `startup` component reports the same
-stage line.
+A host on the Dapper driver reports the same seven stages as one on the EF Core driver, through the same recorder.
+Since [#2561](https://github.com/whizbang-lib/whizbang/issues/2561) it runs the same
+[migrator election](../infrastructure/migrations#which-instance-migrates), so it reports **Elect** the same way: voting,
+then the outcome.
+
+| Elect line | When |
+|---|---|
+| `Stage 2 of 7: Elect - voting for the migrator duty` | The instance has applied the bootstrap closure and registered, and votes |
+| `Stage 2 of 7: Elect - this instance migrates the schema` | It won the duty |
+| `Stage 2 of 7: Elect - another instance migrates the schema` | It lost the vote and waits for the migrator, with its schema-ready gate shut |
+| `Stage 2 of 7: Elect - no migrator was elected, so this instance migrates under the schema lock` | It voted, and the vote could not be held |
+| `Stage 2 of 7: Elect - skipped: no election could be held, so this instance migrates under the schema lock` | Elect was never entered: the bootstrap could not make an election possible, or the instance could not join the registry |
+| `Stage 2 of 7: Elect - skipped: the schema is current; no migrator is needed` | The [Assess verdict](rolling-upgrades#current) is `Current` |
+
+A waiter then reports Migrate as `waiting for the instance migrating the schema`, and, once the migrator is done,
+`another instance migrated the schema` (or skipped with that reason), and runs no pass. It also reports
+**Converge** ([#2563](https://github.com/whizbang-lib/whizbang/issues/2563)): every Dapper start that converges enters
+Converge just before it reconciles the managed schema objects, on a fresh or a current schema, so a host or an
+`IStartupStageReporter` watching the stages sees the same sequence on either driver. Each committed migration file is
+reported to `ISchemaInitializationObserver.OnSchemaStepCommittedAsync`. On a current schema it skips Elect and Migrate
+with the same reasons as the EF Core driver (`the schema is current; no migrator is needed`, `the schema is current`).
+The [managed-resource health](../../resilience/managed-resource-health#startup-stage) `startup` component reports the
+same stage line.
+
+:::updated
+Earlier releases reported Elect, Migrate and Converge only from the EF Core driver's schema pass. A Dapper host logged
+Elect as skipped (`no election could be held`) on every start, never entered Converge, and recorded its stages only
+from its first heartbeat on.
+:::
 
 ## What runs in each stage {#what-runs-in-each-stage}
 

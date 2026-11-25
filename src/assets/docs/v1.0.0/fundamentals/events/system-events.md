@@ -1567,7 +1567,7 @@ public record StreamRewindCompleted(
 <a id="migration-events"></a>
 ## Migration Events
 
-These events track the lifecycle of database migrations. They are emitted during `AddWhizbang()` startup when migrations are applied.
+These records describe the lifecycle of a database migration pass. They are defined, but neither PostgreSQL driver publishes them today; follow a pass through `ISchemaInitializationObserver` instead ([migration events](../../operations/infrastructure/migrations#migration-events)).
 
 ### MigrationItemStarted
 
