@@ -300,6 +300,20 @@ are never picked: neither has a snapshot to take, and neither holds the body. Th
 snapshot only when one was written (see [Bootstrap](../perspectives/snapshots#bootstrap)).
 {verified: MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_ReapDrivenSnapshot_BootstrapsEachTargetPairAsync, EphemeralSnapshotTargetSqlTests.GetEphemeralPairsNeedingSnapshot_ReturnsConsumedAgedUncovered_ThenDropsAfterSnapshotAsync, EphemeralOnlyReadModelReapSqlTests.PairsNeedingSnapshot_AReadModelThatKeepsNoFloor_IsNotATarget_AndItsBodyIsOfferedForDestructionAsync, PurgedRowEphemeralHistorySqlTests.PairsNeedingSnapshot_APurgedPair_IsNotATarget_AndItsBodyIsOfferedForDestructionAsync, MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_AStreamWithNoRow_IsNotLoggedAsASnapshot_ButAsAMissingRowAsync}
 
+### A reaped body is never replayed {#a-reaped-body-is-never-replayed}
+
+The pointer row a reaped event leaves still has its version, type and origin position, so anything that decides from
+the event store's rows alone can still name it. Two rules keep that from stalling a perspective (#2591):
+
+- **A rewind never reaches below the reap floor.** A rewind starts at the first event at or after its trigger that
+  still has a body and that the perspective reads, and one with none is skipped, leaving the cursor and the snapshot
+  the reap kept as it was. See [the reap floor](../perspectives/rewind#reap-floor).
+- **A queued row whose body was reaped fails only itself.** The perspective drain reads it as unreadable and
+  dead-letters it on first sight with `MessageFailureReason.EventBodyMissing` (the body never comes back, so no retry
+  is spent), and applies the rest of the batch. See [unreadable stored events](../../operations/workers/perspective-worker#unreadable-stored-events).
+
+{verified: OriginPositionFillSqlTests.Fill_ThatReordersAStreamWhoseBodiesWereAllReaped_QueuesNoReplay_AndLeavesTheCursorAndItsSnapshotAsync, ReapedBodyBatchIsolationTests.AReapedStreamSharingABatch_FailsOnlyItself_AndIsDeadLetteredOnFirstSightAsync, ReapedBodyBatchIsolationTests.AStreamMissingASourcedBody_FailsOnlyItself_IsRetriedBoundedly_AndIsDeadLetteredAtErrorAsync}
+
 ### The reap scans start at the oldest body {#the-reap-scans-start-at-the-oldest-body}
 
 Before the delete, each cycle asks which pairs need that snapshot and which bodies the [destruction
