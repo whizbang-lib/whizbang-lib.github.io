@@ -998,3 +998,20 @@ These matter to services that run [stream integrity](../resilience/stream-integr
 - **What to do:** nothing. See [One migrator is elected](../data/dapper-integration.md#one-migrator),
   [Dapper's stages](../operations/startup/startup-status.md#dapper-stages) and
   [the registry check](../operations/infrastructure/migrations.md#registry-check).
+
+### A due schedule on a stream no live instance holds fires, and an unfired one is reported {#schedules-without-a-live-owner}
+
+*[#2575](https://github.com/whizbang-lib/whizbang/issues/2575)*
+
+- **What changed:** the temporal engine claims a due schedule on any instance when no live instance holds its stream
+  (no active-stream row, an unassigned one, or an owner the liveness rule calls dead). Before, a schedule fired only
+  through its stream's pin, so one created on a fresh stream, such as the framework's integrity schedules, never
+  fired. Each drain pass also reports Active schedules overdue beyond `Whizbang:Temporal:OverdueWarningMilliseconds`
+  with a warning and two gauges on the `Whizbang.Temporal` meter. `IScheduleClaimer` gains `GetOverdueSchedulesAsync`.
+- **Who is affected:** a host with a schedule that had stopped firing this way: it fires once on the first pass after
+  the upgrade, its missed window coalesced under the default misfire policy. A custom `IScheduleClaimer`
+  implementation must add the new member.
+- **What to do:** add `Whizbang.Temporal` to an explicit meter allow-list if the host keeps one (`WhizbangMeters.All`
+  already lists it). Implement `GetOverdueSchedulesAsync` on a custom claimer: `ScheduleOverdueReading.None` when
+  nothing is overdue, `null` when it cannot read. See
+  [Temporal Engine](../fundamentals/temporal/temporal-engine.md#which-instance-fires-a-schedule).
