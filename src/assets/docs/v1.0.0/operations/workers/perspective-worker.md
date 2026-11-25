@@ -799,6 +799,24 @@ whose stored event cannot be read is failed, not retried silently:
 - **One Warning per pass,** `PerspectiveWorker` EventId 78, gives the number of rows failed and the first one's
   event id, type and exception.
 
+A row the **drain's read returns without its event** is failed the same way, before anything is parsed (#2591). The
+read (`get_stream_events_in_stream_order`) returns a row whose body the reap has deleted (an
+[ephemeral](../../fundamentals/events/ephemeral-events#reap-gates) event past its retention) with a NULL body; both
+drivers return it as a row named unreadable (`StreamEventData.UnreadableReason`) instead of failing the read. The
+worker then:
+
+- **fails that row alone** through the failure channel with `MessageFailureReason.EventBodyMissing` and an error naming
+  the perspective, the stream, the event and its version, so the database records the failure and backs the retry
+  off, and the pre-apply dead-letter filter moves the row once its failures pass `MaxPerspectiveEventAttempts`;
+- **logs one Warning per row,** `PerspectiveWorker` EventId 84, naming the same and the failures recorded before;
+- **applies every other row of the batch,** of every stream, in the same pass.
+
+Before, the read cast the NULL body and threw `InvalidCastException`, so the worker lost the whole batch
+(EventId 68, [a failure that is not the database's](../../fundamentals/workers/transient-database-failures)), released it and leased it again with the same row in it. Nothing was recorded
+against the row, it was never dead-lettered, and every batch it joined failed. A rewind no longer queues such a row
+([the reap floor](../../resilience/stream-integrity#a-rewind-never-reaches-below-the-reap-floor)); this is what happens
+to one queued before that, or by any other path.
+
 A row whose event type this service does not register is **not** failed. During a rolling deploy an older instance
 can lease an event whose type only the newer version knows; counting it toward the bound there would dead-letter an
 event that an instance able to read it is about to apply. It stays leased as before and is picked up again.
@@ -809,6 +827,7 @@ event that an instance able to read it is about to apply. It stays leased as bef
 | The read throws for every row | The batch read once, then each row once; every row is failed and nothing is applied | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_ReadThrowsForEveryRow_FailsEveryRowAsync} |
 | The store skips a row it cannot read | That row is failed (`SerializationError`); EventId 78 at Warning | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_StoreSkipsARowItCannotRead_FailsThatRowAsync} |
 | The row's event type is not registered here | Not failed; left for an instance that can read it | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_RowOfATypeThisServiceDoesNotKnow_IsNotFailedAsync} |
+| The row's event has no body (reaped), in a batch with healthy streams | The healthy streams are applied; that row is failed (`EventBodyMissing`), EventId 84 at Warning, retried with backoff and dead-lettered past `MaxPerspectiveEventAttempts` | {verified: ReapedBodyBatchIsolationTests.AReapedStreamSharingABatch_FailsOnlyItself_IsRetriedBoundedly_AndIsDeadLetteredAsync, PerspectiveWorkerUnreadableFetchedRowTests.AnUnreadableRow_IsFailedAlone_ByName_AndTheRestKeepTheirOrderAsync, ReapedBodyStreamReadTests.GetStreamEvents_OverABatchHoldingAStreamWhoseBodiesWereReaped_ReadsEveryRow_AndThrowsNothingAsync, DapperWorkCoordinatorWithDataTests.GetStreamEventsAsync_AnEventWhoseBodyWasReaped_IsReadAsUnreadable_NextToAReadableOneAsync} |
 
 Before, a read that threw dropped the whole fetch with an Error line (`Drain mode: DeserializeStreamEvents threw`),
 and a row the store skipped had no event and nothing recorded. Either way the rows' leases lapsed, they were claimed
