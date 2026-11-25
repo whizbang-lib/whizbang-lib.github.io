@@ -97,6 +97,7 @@ public enum MessageFailureReason {
     ReceptorDenied = 28,                       // A receptor interceptor denied a receptor (dead-lettered)
     ReceptorQuarantined = 29,                  // A receptor interceptor quarantined the message for review
     AwaitingStreamHead = 30,                   // Not a failure: an inbox row waiting for its stream's head
+    EventBodyMissing = 31,                     // A perspective row's event has no body (reaped); failed, then dead-lettered
     Unknown = 99                               // Default (not classified)
 }
 ```

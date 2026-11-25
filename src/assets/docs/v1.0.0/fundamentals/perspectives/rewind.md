@@ -120,6 +120,21 @@ The **inbox emit chain** (`_emit_event_store_chain_for_inbox`, migration 100) de
 **The straggler is found by origin order** ([#2551](https://github.com/whizbang-lib/whizbang/issues/2551), migration 574). A replay moves a received event only within its own origin's slots, so a stored event is a straggler exactly when it comes before its origin's latest event at or below the cursor's version, by origin position. An id decides nothing: an event whose id sorts above the cursor's but whose origin position is below it is a straggler, and an event of another origin with a lower id is not. The earliest straggler, and the earlier of it and an existing trigger, are chosen by stream version. See [receive order](../event-store/version-ordering#receive-order).
 {verified: ReconcileRewindDeclarationSqlTests.InboxEmitChain_LateEventBelowCursor_DeclaresRewindOnTheCursorAsync, ReconcileRewindDeclarationSqlTests.InboxEmitChain_EventAboveCursor_DoesNotDeclareRewindAsync, ReconcileRewindDeclarationSqlTests.InboxEmitChain_AnotherOriginsEvent_WithALowerId_DoesNotDeclareRewindAsync}
 
+### A rewind never reaches below the reap floor {#reap-floor}
+
+A rewind replays stored events, so it can only start where they can still be read. An
+[ephemeral](../events/ephemeral-events#reap-gates) stream keeps its pointer rows after the reap has deleted its bodies,
+and a path that decides from those rows alone (the [origin-position fill](../../resilience/stream-integrity#filling-missing-origin-positions)
+is one) can name a trigger whose body is gone. `_wh_rewind_perspectives_from` therefore starts each rewind at the
+**reap floor** (#2591, migration 600): the first event at or after the trigger that still has a body and that the
+perspective reads. When there is none, the rewind is skipped: the cursor is not flagged, its snapshots stay, and
+nothing is queued. When the floor is above the trigger, the replay starts from the snapshot below the floor. That is the
+best state available, not a full refold of the reaped history: the reaped events stay folded in the order they were
+first applied, because their bodies are gone. See [the reap floor](../../resilience/stream-integrity#a-rewind-never-reaches-below-the-reap-floor)
+for the cases and the counter, and [unreadable stored events](../../operations/workers/perspective-worker#unreadable-stored-events)
+for what the worker does with a row queued without its body by any other path.
+{verified: OriginPositionFillSqlTests.Fill_ThatReordersAStreamWhoseBodiesWereAllReaped_QueuesNoReplay_AndLeavesTheCursorAndItsSnapshotAsync, OriginPositionFillSqlTests.Fill_ThatReordersAStreamWhoseEarliestBodiesWereReaped_RewindsFromTheFirstEventWithABodyAsync, OriginPositionFillSqlTests.Rewind_FromAReapedTrigger_WithNothingReadableAfterIt_FlagsDeletesAndQueuesNothingAsync}
+
 ### Execution
 
 The `PerspectiveWorker` picks up a stream whose cursor carries the RewindRequired flag and runs `_executeRewindPathAsync`:
