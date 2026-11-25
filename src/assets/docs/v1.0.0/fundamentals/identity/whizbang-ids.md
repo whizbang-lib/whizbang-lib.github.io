@@ -34,6 +34,10 @@ codeReferences:
   - src/Whizbang.Data.Postgres/BatchedRewriteRunner.cs
   - src/Whizbang.Data.Postgres/StrongIdDocumentGate.cs
   - src/Whizbang.Core/Perspectives/WhizbangIdDocumentForm.cs
+  - src/Whizbang.Data.Postgres/StrongIdDocumentGateStep.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdSetterFormRewriter.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/WhizbangIdColumnConvention.cs
+  - src/Whizbang.Generators/Templates/Snippets/WhizbangIdRuleSnippets.cs
   - src/Whizbang.Core/SuppressGuidInterceptionAttribute.cs
   - src/Whizbang.Core/SuppressGuidOrderingValidationAttribute.cs
   - src/Whizbang.Core/Validation/GuidOrderingSuppressions.cs
@@ -65,6 +69,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/WhizbangIdModelTimingTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GraphQLWhizbangIdFilterIndexTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/StrongIdDocumentGateTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/WhizbangIdEntityColumnTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStrongIdDocumentGateTests.cs
+  - tests/Whizbang.Core.Tests/Validation/GuidOrderingStreamIdByTypeTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderRegistryTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdServiceCollectionExtensionsTests.cs
@@ -870,7 +877,18 @@ bytes carry a listed version nibble by chance far more often than they also carr
 {verified: WhizbangIdVersionAcceptanceTests.AllowList_ListedVersionWithAnotherVariant_IsRejectedByEveryCheckedEntryPointAsync}.
 
 `UuidVersions` is a flags enum with one flag per RFC 9562 version, `V1` to `V8`. `Versions` defaults to `V7`, so an
-id that does not write it, or writes `Versions = UuidVersions.V7`, generates exactly the code it always has.
+id that does not write it, or writes `Versions = UuidVersions.V7`, generates the code it always has, plus `IsAccepted`.
+
+Every generated id has `IsAccepted(Guid)`: its rule, including a [grandfathered value](#grandfathered-values), as a
+yes or no that never throws. `From` checks through it, and the stream-id report asks it, so a stream id the id's own
+rule accepts is never reported, and a grandfathered-values hook that throws makes the stream id reported rather than
+failing the append {verified: GuidOrderingStreamIdByTypeTests.AcceptsStreamId_AsksTheIdsOwnRule_WithoutAnExceptionAsync, GuidOrderingStreamIdByTypeTests.AcceptsStreamId_AHookThatThrows_ReportsTheStreamIdRatherThanFailingTheAppendAsync}.
+
+```csharp{title="Asking an id's rule without an exception" description="IsAccepted answers what From would accept" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "WhizbangId", "Versions"] tests=["GuidOrderingStreamIdByTypeTests.AcceptsStreamId_AsksTheIdsOwnRule_WithoutAnExceptionAsync"]}
+if (CustomerId.IsAccepted(value)) {
+  var id = CustomerId.From(value);
+}
+```
 
 | Way in | Default | `Versions = V7 \| V4` | `AcceptAnyVersion = true` |
 |--------|---------|----------------------|---------------------------|
@@ -1011,6 +1029,12 @@ without it cannot build a model that holds a collection of ids {verified: Whizba
 Every query that compares an id matches either form: equality, `Contains`, ordering, a collection element, a collection
 of ids, document containment in either containment mode, and the predicates of `ExecuteUpdate` and `ExecuteDelete`
 {verified: WhizbangIdDocumentStorageTests.Whizbang_EveryIdQueryFindsARowStillInTheObjectFormAsync, WhizbangIdDocumentStorageTests.Whizbang_OrderingByAnIdSortsRowsInEitherStoredFormAsync, WhizbangIdDocumentStorageTests.Whizbang_ExecuteUpdateSetsAnIdAsAUuidString_AndItsIdPredicateMatchesBothFormsAsync, StrongIdScalarRewriteIntegrationTests.AnIdPredicate_FindsObjectFormRows_BeforeTheRewriteAndFromAnOldWriterAfterItSettlesAsync, GraphQLWhizbangIdFilterIndexTests.IdEquality_FindsBothFormsThroughTheDocumentIndex_InEitherContainmentModeAsync}.
+An `ExecuteUpdate` that sets an id writes it in the form the fleet reads, as SaveChanges does: the object form while the
+[switch](#stored-form-switch) is off, the UUID string once it is on, decided each time the statement runs (a compiled
+query is cached for the life of the process), and JSON `null` for no id
+{verified: WhizbangIdDocumentStorageTests.Whizbang_ExecuteUpdateWhileTheGateIsClosed_SetsAnIdInTheObjectFormAsync, WhizbangIdDocumentStorageTests.Whizbang_OneCompiledExecuteUpdate_FollowsTheGateWhenItRunsAsync}.
+A collective setter does the same, and a collective comparison on an id matches a row in either form
+{verified: CollectiveSettersRewriterTests.CollectAssignments_AStrongIdWhileTheGateIsClosed_IsSerializedInTheObjectFormAsync, CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_AComparisonOnAStrongId_MatchesItInEitherStoredFormAsync}.
 Reads take either form and count the object form on `whizbang.perspective.identifier_form_fallbacks`. SQL of your own
 that matched `{"Value": "..."}` (a view, a trigger, a report) has to match both forms, as above, until the rewrite has
 settled, and then the UUID string.
@@ -1025,29 +1049,57 @@ instance can read it. It takes one package; there is no ordered pair of releases
 1. **Each instance announces what it reads.** Its heartbeat writes `stored_form_level` into its row of
    `wh_service_instances.metadata`: `2` for this release, which reads the UUID string; `1` or nothing for an earlier
    one. What an instance announces decides, not its version, so two prereleases of one release are told apart.
-2. **The gate latches once every live instance reads it.** `wh_strong_id_document_gate()`, asked at every start and every
-   maintenance cycle, latches the `wh_settings` row `strong_id_uuid_string_documents` once at least one instance is live
+2. **The gate latches once every live instance reads it.** `wh_strong_id_document_gate()`, asked by both drivers (Entity
+   Framework and Dapper) at every start and every maintenance cycle, latches the `wh_settings` row `strong_id_uuid_string_documents` once at least one instance is live
    and every live instance is at level 2 or higher. Until then both writers write the object form every release reads
    {verified: StrongIdDocumentGateTests.AnInstanceThatDoesNotReadTheUuidString_HoldsTheWriteFormAndTheRewrite_WhateverItsVersionAsync, StrongIdDocumentGateTests.WhileAnEarlierInstanceIsLive_NeitherWriterWritesTheUuidStringAsync, WhizbangIdDocumentStorageTests.Whizbang_WhileTheGateIsClosed_WritesTheObjectForm_WhichTheEarlierReleaseReadsAsync}.
 3. **Each instance switches its writes and says so.** An instance that sees the gate open writes the UUID string from
    then on, and its heartbeat adds `strong_id_document_form: "uuid-string"`. A process writes the UUID string only once
-   the gate of every database schema it writes documents to is open.
+   the gate of every database schema it writes documents to is open; a schema with no gate at all is left out rather
+   than holding the others {verified: StrongIdDocumentGateTests.ASchemaWithoutTheGate_IsUnavailable_AndLeftOutOfTheWriteFormAsync}.
+   A Dapper instance asks too, so a schema with Entity Framework and Dapper instances reaches the rewrite
+   {verified: DapperStrongIdDocumentGateTests.AMixedFleet_ReachesTheRewrite_OnceTheDapperInstanceAsksTheGateAsync}.
+   The Dapper driver's own document writer uses the serializer options the application gives it, as before.
 4. **The rewrite starts once every live instance writes it.** So no instance writes the object form behind the rewrite
-   {verified: StrongIdDocumentGateTests.TheRewrite_WaitsUntilEveryLiveInstanceWritesTheUuidString_ThenRunsAsync}.
+   {verified: StrongIdDocumentGateTests.TheRewrite_WaitsUntilEveryLiveInstanceWritesTheUuidString_ThenRunsAsync}. It
+   asks again before every batch, so an instance that cannot read the new form and joins during a run stops it before
+   the next batch {verified: StrongIdScalarRewriteIntegrationTests.AnEarlierInstanceJoiningDuringARun_StopsItBeforeTheNextBatchAsync}.
+
+##### The switch is one-way {#stored-form-one-way}
 
 The latch is one-way, like the [stored-metadata trim gate](../../data/event-store#trim-gate): once open it stays open,
-so an instance of an earlier release started after it cannot read rows written since, and rolling back below this
-release is then not supported {verified: StrongIdDocumentGateTests.OnceOpen_TheGateStaysOpen_WhenAnEarlierInstanceAppearsAsync}.
+because rows have been written, and rewritten, in a form an earlier release cannot read.
+
+- **Rolling back below this release after the switch is not supported.** An instance of an earlier release fails on
+  every row written or converted since.
+- **An earlier instance that joins after the switch is reported, by name.** Every gate check counts the live instances
+  below level 2: the gate's answer says how many (`; 1 live instances cannot read them`), a Warning names each one
+  (instance, service, host and the level it announces) whenever that set changes, and the
+  `whizbang.perspective.strong_id_unreadable_instances` gauge reports 1 per such instance, tagged by database, schema,
+  instance, service and host, for as long as it is live. Upgrade or stop it
+  {verified: StrongIdDocumentGateTests.OnceOpen_AnEarlierInstanceThatJoins_IsNamedByEveryCheck_AndTheGateStaysOpenAsync, StrongIdDocumentGateTests.OnceTheEarlierInstanceIsGone_TheGaugeNamesNoneAsync, StrongIdScalarRewriteIntegrationTests.TheMaintenanceStep_FinishesWhatStartupLeft_ThenDoesNothingAsync}.
 
 | Gate answer | Meaning | Writes | Rewrite |
 |---|---|---|---|
 | `closed (n of m live instances read strong ids as UUID strings)` | A live instance cannot read the UUID string | Object form | Waits |
 | `opened` | This call latched the gate | UUID string | Waits |
 | `open (n of m live instances write strong ids as UUID strings)` | Every live instance reads it; some still write the object form | UUID string | Waits |
+| `open (...); k live instances cannot read them` | The switch is on, and an instance of an earlier release joined after it ([one-way](#stored-form-one-way)) | UUID string | Waits |
 | `ready` | Every live instance reads and writes it | UUID string | Runs |
 
-To see where a schema stands, run `SELECT wh_strong_id_document_gate();` (it latches the gate when it can, as the
-maintenance cycle would).
+To see where a schema stands, ask the read-only status function, which never latches anything, and list the instances
+that cannot read the UUID string:
+
+```sql{title="Where a schema's strong-id switch stands" description="Read-only: neither call flips the switch" category="Operations" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "Perspectives", "SQL", "Operations"] tests=["StrongIdDocumentGateTests.TheStatusFunction_NeverLatchesTheGateAsync"]}
+SELECT wh_strong_id_document_status();
+-- closed (2 of 3 live instances read strong ids as UUID strings)
+
+SELECT * FROM wh_strong_id_document_unreadable_instances();
+-- instance_id | service_name | host_name | stored_form_level
+```
+
+Do not call `wh_strong_id_document_gate()` to look: it is the one that flips the switch, and it does so whenever every
+live instance reads the UUID string {verified: StrongIdDocumentGateTests.TheStatusFunction_NeverLatchesTheGateAsync}.
 
 #### The rewrite {#stored-form-rewrite}
 
@@ -1061,6 +1113,29 @@ finishes, a restart redoes nothing, and two instances never convert the same row
 {verified: StrongIdScalarRewriteIntegrationTests.ATableLargerThanOneRun_SettlesAcrossRuns_EachResumingWhereTheLastStoppedAsync, StrongIdScalarRewriteIntegrationTests.TwoInstances_NeverConvertTheSameRowsAsync, StrongIdScalarRewriteIntegrationTests.TheMaintenanceStep_FinishesWhatStartupLeft_ThenDoesNothingAsync}.
 A table settles on a complete pass that converts nothing, so a row written in the object form behind the recorded key
 is converted by the next pass {verified: StrongIdScalarRewriteIntegrationTests.ARowWrittenBehindTheKeyDuringTheRewrite_IsConvertedByTheNextPassAsync}.
+A slice never runs past its budget by more than the time left in it: the last batch's statement is cut off at what is
+left, and rolled back for the next run to redo {verified: StrongIdScalarRewriteIntegrationTests.ABatchThatOutrunsTheBudget_IsCutOffAtWhatIsLeftOfItAsync}.
+The startup slice runs after the other stored-form steps and on its own, so a failure in it skips none of them.
+
+#### Strong ids outside a document {#strong-id-columns}
+
+A strong-id property of your own entity, outside a perspective document, keeps the column it had. An earlier release
+mapped such an id as a complex type, so its column is the one the id's `Value` had: `OrderId_Value`, or
+`Depot_DepotId_Value` inside a table-split complex type. This release maps the id as a `uuid` scalar but keeps that
+column, so an instance of each release reads and writes the same one during a rolling deploy, and no migration is
+needed {verified: WhizbangIdEntityColumnTests.ATableAnEarlierReleaseCreated_IsReadAndWrittenByThisRelease_AndTheOtherWayAsync, WhizbangIdEntityColumnTests.WithTheExtension_AnIdOutsideADocument_KeepsTheColumnItHadAsAComplexTypeAsync, WhizbangIdEntityColumnTests.WithoutTheExtension_TheGeneratedConvention_KeepsTheSameColumnsAsync}.
+An id with a converter of your own (`HasConversion`) is left as you mapped it.
+
+A column named after the property is opt-in. Configure it, and deploy it in two steps so that no release reads a column
+the other does not write:
+
+1. Add the new column and copy the values (`UPDATE shipments SET "OrderId" = "OrderId_Value"`), and ship a release that
+   writes both, with every instance on it.
+2. Switch the mapping, then drop the old column in a later release.
+
+```csharp{title="A strong id in a column named after its property" description="Opt in with HasColumnName" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "EF Core"] tests=["WhizbangIdEntityColumnTests.AConfiguredColumnName_IsTheOptInToAColumnNamedAfterThePropertyAsync"]}
+modelBuilder.Entity<Shipment>().Property(s => s.OrderId).HasColumnName("OrderId");
+```
 
 ## Time-ordering checks {#time-ordering-checks}
 
