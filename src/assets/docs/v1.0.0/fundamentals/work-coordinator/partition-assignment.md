@@ -37,6 +37,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/571_MovedPartitionsAreHandedOver.sql
   - src/Whizbang.Data.Postgres/Migrations/572_FailureReportsAreFenced.sql
   - src/Whizbang.Data.Postgres/Migrations/577_PerspectiveWritesHoldTheirPartitionEpoch.sql
+  - src/Whizbang.Data.Postgres/Migrations/610_WritersHoldTheEpochKeyAndFlipsNeverWait.sql
   - src/Whizbang.Core/Messaging/PartitionTenures.cs
   - src/Whizbang.Core/Workers/PartitionHandoverWorker.cs
   - src/Whizbang.Core/Perspectives/PartitionOwnershipLostException.cs
@@ -80,6 +81,9 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/PartitionHandoverWorkerLoopTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDrainModeTests.WriteBehindHandover.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperOwnershipNoticesTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/MultiStreamWriteOrderSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PartitionEpochKeySqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/FlipLockOrderSqlTests.cs
 ---
 
 # Partition assignment
@@ -296,7 +300,8 @@ behind a per-service switch that is **on by default** ([#2557](https://github.co
 the assigner turns it on once every live instance of the service supports the mode, so a rolling deploy of mixed
 releases keeps the stored-owner rules until the last instance of an earlier release is gone. A partition the map moves
 is [handed over](#handover) rather than moved under a running owner, and a write made under an epoch that has moved on
-is [fenced](#fencing).
+is [fenced](#fencing). In map mode a publish never raises an epoch: a partition leaving an owner that is not live
+becomes a handover with an immediate deadline, completed by the assigner's deadline sweep in the same tick.
 
 ### The ownership table
 
@@ -459,12 +464,15 @@ report alike.
 
 **A write holds its epoch until it commits.** A check made before a write leaves a gap: a flip that commits between
 the check and the write (the deadline takeover of a stuck owner, the one case fencing is for) would let the stale write
-land. So in map mode a write holds its partition's ownership row **`FOR SHARE` at the claimed epoch, inside the write
-statement itself** (`wh_hold_partition_epoch(partition, epoch)`, migration 577 for perspective writes; the
-coordinator's fences are getting the same treatment). The flip's `UPDATE` of that row waits for the write to commit,
-so a flip can never commit while the write is open. A flip that committed first is seen when the lock re-reads the
-row, and the write raises SQLSTATE `WHF02` and lands nowhere. The cost is one primary-key probe and one row lock of
-`wh_partition_ownership` per row written, in map mode only.
+land. So in map mode a write holds its partition's ownership row **`FOR KEY SHARE` at the claimed epoch, inside the
+write statement itself** (`wh_hold_partition_epoch(partition, epoch)`, migration 577 for perspective writes and 580 for
+the coordinator's fences, held `FOR KEY SHARE` since migration 610). The epoch is a key column (a unique index on
+`(partition_number, epoch)`), so only a change of the epoch conflicts with the hold: a flip, which raises it, cannot
+lock the row while the write is open and skips the partition until a later pass (see [Write order](#write-order)),
+so a flip can never commit while the write is open. A handover, a cancel and a redirect keep the epoch, so they never
+wait for the write, and the writes made at that epoch still land. A flip that committed first is seen when the lock
+re-reads the row, and the write raises SQLSTATE `WHF02` and lands nowhere. The cost is one primary-key probe and one
+row lock of `wh_partition_ownership` per row written, in map mode only.
 {verified: PerspectiveWriteHoldSqlTests.TheCurrentEpoch_IsHeldUntilTheWriteCommits_SoAFlipWaitsAsync, PerspectiveWriteHoldSqlTests.AnEpochThatMovedOn_RaisesTheFenceAsync, PerspectiveWriteHoldSqlTests.AWriteThatNamesNoEpoch_HoldsNothingAsync, PerspectiveWriteHoldSqlTests.TheHeldStream_IsTheStreamsIdAsync, PerspectiveWritesAreFencedTests.TheSink_AgainstAFlipThatCommitsWhileItWrites_WaitsForIt_AndIsFencedAsync, PerspectiveWritesAreFencedTests.ThePerPairUpsert_AgainstAFlipThatCommitsWhileItWrites_WaitsForIt_AndThrowsAsync}
 
 **Perspective rows are fenced too.** Every form of perspective write carries the hold in its own statement: an insert
@@ -506,7 +514,7 @@ is published ...`), by both PostgreSQL drivers. The warning comes again only aft
 `HandlerBatchResult` gains an optional `Fenced`.
 
 ## Handover {#handover}
-{verified: PartitionHandoverSqlTests.Publish_InMapMode_AMovedPartitionWithALiveOwner_HandsOver_KeepingTheOwnerAndEpochAsync, PartitionHandoverSqlTests.Publish_InMapMode_TheDeadlineIsTheOneThePublishNamesAsync, PartitionHandoverSqlTests.Publish_InMapMode_AMovedPartitionWhoseOwnerIsNotLive_FlipsAtOnceAsync, PartitionHandoverSqlTests.Publish_SwitchOff_MovesAPartitionAtOnce_AsBeforeAsync, PartitionHandoverSqlTests.Claims_APartitionHandingOver_IsClaimableByNeitherSide_UntilTheFlipAsync, PartitionHandoverSqlTests.Ack_FlipsToTheNextOwnerAtEpochPlusOne_AndReleasesTheOldOwnersUnstartedRowsAsync, PartitionHandoverSqlTests.Ack_UnderAStaleEpoch_OrByAnInstanceThatIsNotTheOwner_FlipsNothingAsync, PartitionHandoverSqlTests.Ack_OfAnActivePartition_FlipsNothingAsync, PartitionHandoverSqlTests.HandingOver_ListsWhatTheOldOwnerMustHandOver_AndNothingForAnyoneElseAsync, PartitionHandoverSqlTests.Order_TheNewOwnerTakesTheStreamAfterTheOldOwnersCompletedEvent_AndNotBeforeAsync}
+{verified: PartitionHandoverSqlTests.Publish_InMapMode_AMovedPartitionWithALiveOwner_HandsOver_KeepingTheOwnerAndEpochAsync, PartitionHandoverSqlTests.Publish_InMapMode_TheDeadlineIsTheOneThePublishNamesAsync, PartitionHandoverSqlTests.Publish_InMapMode_AMovedPartitionWhoseOwnerIsNotLive_HandsOverWithAnImmediateDeadline_AndTheSweepFlipsItAsync, PartitionHandoverSqlTests.Publish_InMapMode_APartitionHandingOverWhoseOwnerIsNoLongerLive_IsDueAtOnceAsync, PartitionHandoverSqlTests.Publish_SwitchOff_MovesAPartitionAtOnce_AsBeforeAsync, PartitionHandoverSqlTests.Claims_APartitionHandingOver_IsClaimableByNeitherSide_UntilTheFlipAsync, PartitionHandoverSqlTests.Ack_FlipsToTheNextOwnerAtEpochPlusOne_AndReleasesTheOldOwnersUnstartedRowsAsync, PartitionHandoverSqlTests.Ack_UnderAStaleEpoch_OrByAnInstanceThatIsNotTheOwner_FlipsNothingAsync, PartitionHandoverSqlTests.Ack_OfAnActivePartition_FlipsNothingAsync, PartitionHandoverSqlTests.HandingOver_ListsWhatTheOldOwnerMustHandOver_AndNothingForAnyoneElseAsync, PartitionHandoverSqlTests.Order_TheNewOwnerTakesTheStreamAfterTheOldOwnersCompletedEvent_AndNotBeforeAsync}
 
 In map mode, a partition is never moved under a running owner
 ([#2557](https://github.com/whizbang-lib/whizbang/issues/2557)). A publish that moves a partition away from a **live**
@@ -532,7 +540,10 @@ sequenceDiagram
 
 1. **The assigner marks it.** The partition goes `handing_over`, with its next owner and a deadline
    (`HandoverDeadline`, default 30 seconds, judged on the database's clock). Its owner and epoch stay the old owner's.
-   A partition whose owner is not live flips at once, and with the switch off a partition moves at once, as before.
+   In map mode a publish never raises an epoch: a partition leaving an owner that is not live becomes a handover with
+   an immediate deadline, which the deadline sweep completes in the same assigner tick, after the publish
+   has committed (a partition already handing over from an owner that is no longer live has its deadline brought
+   forward). With the switch off a partition moves at once, as before.
 2. **Nobody claims it.** `wh_i_own` answers only for an `active` partition, so neither the old owner nor the next one
    claims new work there until the flip.
 3. **The old owner finishes.** Its `PartitionHandoverWorker` asks once a second which partitions it is handing over
@@ -546,19 +557,22 @@ sequenceDiagram
 5. **It acknowledges.** `AcknowledgeHandoverAsync` releases the old owner's unstarted rows in the partition and flips
    it to `active`, owned by the next owner at epoch + 1, in one statement checked against the old epoch. An
    acknowledgement under a stale epoch, by an instance that is not the owner, or of an `active` partition, flips
-   nothing.
+   nothing. An acknowledgement can flip **part** of what it names: a partition a write holds at that moment is skipped
+   (see [Write order](#write-order)), and the acknowledgement returns the partitions it flipped. The rest stay handing
+   over, and the worker asks for them again on its next pass, a second later, until they move.
 6. **The next owner takes over.** Its next claim sees the partition and works its streams from the stored state, so a
    stream's next event is taken only after the old owner's last one completed.
 
-{verified: PartitionHandoverWorkerTests.NothingHandingOver_AcknowledgesNothingAsync, PartitionHandoverWorkerTests.NothingHandingOver_ResolvesNoParticipantAsync, PartitionHandoverWorkerTests.APartitionWithAStreamInFlight_Waits_AndTheOthersAreAcknowledgedAsync, PartitionHandoverWorkerTests.HeldWorkOfAReadyPartition_IsSavedBeforeTheAcknowledgement_AndNoOtherAsync, PartitionHandoverWorkerTests.TheQueuedWritesLand_BeforeTheAcknowledgementAsync, PartitionHandoverWorkerTests.DrainChannels_ReportTheStreamsTheirDrainsAreWorkingAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AHandover_SavesTheModelsOfTheMovedStreams_AndKeepsTheOthersHeldAsync, PartitionHandoverWorkerLoopTests.AFailedPass_IsRetriedOnTheNextInterval_AndThenHandsOverAsync, CoordinatorNamesTheClaimedEpochTests.TheCoordinator_ListsWhatThisInstanceHandsOver_AndAcknowledgesItAsync, DapperOwnershipNoticesTests.TheCoordinator_ListsWhatThisInstanceHandsOver_AndAcknowledgesItAsync}
+{verified: PartitionHandoverWorkerTests.NothingHandingOver_AcknowledgesNothingAsync, PartitionHandoverWorkerTests.NothingHandingOver_ResolvesNoParticipantAsync, PartitionHandoverWorkerTests.APartitionWithAStreamInFlight_Waits_AndTheOthersAreAcknowledgedAsync, PartitionHandoverWorkerTests.HeldWorkOfAReadyPartition_IsSavedBeforeTheAcknowledgement_AndNoOtherAsync, PartitionHandoverWorkerTests.TheQueuedWritesLand_BeforeTheAcknowledgementAsync, PartitionHandoverWorkerTests.DrainChannels_ReportTheStreamsTheirDrainsAreWorkingAsync, PerspectiveWorkerDrainModeTests.WriteBehind_AHandover_SavesTheModelsOfTheMovedStreams_AndKeepsTheOthersHeldAsync, PartitionHandoverWorkerLoopTests.AFailedPass_IsRetriedOnTheNextInterval_AndThenHandsOverAsync, PartitionHandoverWorkerLoopTests.AnAcknowledgementThatFlipsPartOfWhatItNamed_IsReAskedOnTheNextInterval_UntilTheRestMoveAsync, CoordinatorNamesTheClaimedEpochTests.TheCoordinator_ListsWhatThisInstanceHandsOver_AndAcknowledgesItAsync, DapperOwnershipNoticesTests.TheCoordinator_ListsWhatThisInstanceHandsOver_AndAcknowledgesItAsync}
 
 **Past the deadline, the assigner completes it.** An old owner that is stuck, or cut off from the database, never
 acknowledges. On each tick in map mode the assigner completes every handover past its deadline itself
 (`IPartitionAssignmentStore.CompleteExpiredHandoversAsync`, under its role epoch, so a deposed assigner is refused): it
 flips the partition to the next owner at epoch + 1 and releases what the old owner held, without refunding the attempts
-those rows were charged. The old owner's late writes are then [fenced](#fencing), and its held models dropped, not
+those rows were charged. Like the acknowledgement, the sweep skips a partition a write holds at that moment and picks
+it up on a later tick. The old owner's late writes are then [fenced](#fencing), and its held models dropped, not
 written.
-{verified: PartitionHandoverSqlTests.ExpiredHandover_PastTheDeadline_TheAssignerFlips_AndReleasesTheOldOwnersRowsWithoutRefundAsync, PartitionHandoverSqlTests.ExpiredHandover_BeforeTheDeadline_FlipsNothingAsync, PartitionHandoverSqlTests.ExpiredHandover_ByADeposedAssigner_IsRefusedAsync, PartitionAssignerWorkerTests.Tick_InMapMode_CompletesTheHandoversPastTheirDeadline_AtItsEpochAsync, PartitionAssignerWorkerTests.Tick_BeforeMapMode_NeverCompletesAHandoverAsync, PartitionAssignerWorkerTests.Tick_PublishesWithTheConfiguredHandoverDeadlineAsync, PartitionAssignerWorkerTests.Options_HandoverDeadline_DefaultsToThirtySeconds_AndANonPositiveOneIsRefusedAsync}
+{verified: PartitionHandoverSqlTests.ExpiredHandover_PastTheDeadline_TheAssignerFlips_AndReleasesTheOldOwnersRowsWithoutRefundAsync, PartitionHandoverSqlTests.ExpiredHandover_BeforeTheDeadline_FlipsNothingAsync, PartitionHandoverSqlTests.ExpiredHandover_ByADeposedAssigner_IsRefusedAsync, PartitionAssignerWorkerTests.Tick_InMapMode_CompletesTheHandoversPastTheirDeadline_AtItsEpochAsync, PartitionAssignerWorkerTests.Tick_BeforeMapMode_NeverCompletesAHandoverAsync, PartitionAssignerWorkerTests.Tick_PublishesWithTheConfiguredHandoverDeadlineAsync, PartitionAssignerWorkerTests.Options_HandoverDeadline_DefaultsToThirtySeconds_AndANonPositiveOneIsRefusedAsync, PartitionEpochKeySqlTests.TheDeadlineSweep_AgainstAWriterHoldingOnePartition_FlipsTheOtherWithoutWaiting_AndTheHeldOneOnTheNextTickAsync}
 
 **A republish can change its mind.** A map that gives the partition back to its old owner while it hands over cancels
 the handover; one that names another next owner redirects it. A lease renewal keeps the old owner's row while the
@@ -582,7 +596,8 @@ once the instance is draining (the assigner gives a draining instance no partiti
 and has finished the work in hand, and before the instance releases its roles and deregisters:
 
 - **It hands over until it owns nothing.** Each interval it hands over what the assigner has moved, then asks again
-  (`IWorkCoordinator.GetLeaveStatusAsync`), and returns once it owns no partition.
+  (`IWorkCoordinator.GetLeaveStatusAsync`), and returns once it owns no partition. A partition a write held when its
+  acknowledgement ran is still owned, so it is asked for again on the next interval like any other.
 - **It returns at once when nobody could take them.** With no other live instance, its partitions have nowhere to go,
   and waiting would only delay the stop.
 - **It is skipped before the heartbeat's start point.** An instance that never reached Elect was never given a
@@ -591,6 +606,56 @@ and has finished the work in hand, and before the instance releases its roles an
   {Budget}; deregistering, and the assigner completes their moves` at Warning and lets the stop go on; the assigner
   completes those moves past their own deadlines. The host's stop budget ends the wait too.
 
+## Write order {#write-order}
+{verified: MultiStreamWriteOrderSqlTests.Publish_AgainstACallerHoldingItsPartitionsOutOfOrder_NeverDeadlocks_AndHandsBothOverAsync, MultiStreamWriteOrderSqlTests.Acknowledgement_AgainstACallerHoldingItsPartitionsOutOfOrder_NeverDeadlocks_AndFlipsWhatIsFreeAsync, MultiStreamWriteOrderSqlTests.DeadlineSweep_AgainstACallerHoldingItsPartitionsOutOfOrder_NeverDeadlocks_AndFlipsWhatIsFreeAsync, PartitionEpochKeySqlTests.TheEpoch_IsAKeyColumn_ThroughAUniqueIndexOnPartitionAndEpochAsync, PartitionEpochKeySqlTests.AHold_LetsAChangeThatKeepsTheEpochThrough_AndMakesAnEpochChangeWaitAsync, PartitionEpochKeySqlTests.NoInstalledFunction_HoldsAnOwnershipRowForShare_AndEveryWriterHoldsItForKeyShareAsync, PartitionEpochKeySqlTests.APublishInMapMode_AgainstAWriter_HandsOverRedirectsAndCancelsWithoutWaiting_AndKeepsTheEpochAsync, FlipLockOrderSqlTests.AnAcknowledgement_AgainstAWriterHoldingTheEarlierPartition_FlipsTheOtherWithoutWaiting_AndTheHeldOneWhenReAskedAsync}
+
+A caller may write streams in **any order** inside its own transaction (a handler that saves several perspective rows,
+or an application transaction that appends to several streams) and never deadlocks with the framework
+([#2577](https://github.com/whizbang-lib/whizbang/issues/2577), migration 610). Every transaction the framework opens
+takes its partitions in partition order, but a caller's transaction takes them in the order it writes them, which the
+framework cannot know. A flip that waited on one partition while holding another could close a cycle with such a
+caller. Three rules remove the cycle by construction:
+
+1. **The epoch is a key.** `wh_partition_ownership` has a unique index on `(partition_number, epoch)`, and every writer
+   holds its partition `FOR KEY SHARE`. Only a change of the epoch conflicts with that hold.
+2. **What keeps the epoch never waits.** A handover, a cancel and a redirect change the partition's state and next
+   owner but keep its epoch, so they pass a writer's hold without waiting. In map mode a publish never raises an epoch
+   (a partition leaving an owner that is not live becomes a handover with an immediate deadline), so a publish never
+   waits on a writer either.
+3. **What raises the epoch never waits while holding a partition.** The flips (the acknowledgement and the deadline
+   sweep) lock their rows `FOR UPDATE SKIP LOCKED` in partition order and flip only the rows they locked. A partition
+   a writer holds is skipped, stays handing over, and is flipped on a later pass: the old owner's handover worker asks
+   again each second, and the sweep picks it up on a later assigner tick.
+
+```mermaid{caption="What a writer's FOR KEY SHARE hold does to each ownership change: a change that keeps the epoch passes without waiting, and a flip that raises it skips the held partition and takes it on a later pass. Nothing waits on a writer while holding a partition, so no cycle can form." tests=["PartitionEpochKeySqlTests.AHold_LetsAChangeThatKeepsTheEpochThrough_AndMakesAnEpochChangeWaitAsync", "PartitionEpochKeySqlTests.APublishInMapMode_AgainstAWriter_HandsOverRedirectsAndCancelsWithoutWaiting_AndKeepsTheEpochAsync", "MultiStreamWriteOrderSqlTests.Acknowledgement_AgainstACallerHoldingItsPartitionsOutOfOrder_NeverDeadlocks_AndFlipsWhatIsFreeAsync", "MultiStreamWriteOrderSqlTests.DeadlineSweep_AgainstACallerHoldingItsPartitionsOutOfOrder_NeverDeadlocks_AndFlipsWhatIsFreeAsync"]}
+flowchart LR
+    W["Writer holds partition P<br/>FOR KEY SHARE at epoch E"]
+    K["Handover, cancel, redirect<br/>(epoch stays E)"]
+    F["Flip: acknowledgement, deadline sweep<br/>(epoch becomes E + 1)"]
+    Pass["Proceeds at once, no wait"]
+    Skip["Skips P (SKIP LOCKED), flips the rest"]
+    Later["P flipped on a later pass,<br/>after the writer commits"]
+
+    W --> K --> Pass
+    W --> F --> Skip --> Later
+```
+
+| A writer holds the partition, and the framework... | Effect |
+|---|---|
+| publishes a map that hands it over, cancels a handover, or redirects one | no wait: the epoch is unchanged, so the hold does not conflict |
+| acknowledges a handover of it | the acknowledgement skips it, flips what is free, and returns what it flipped; the worker asks again next pass |
+| sweeps it past its deadline | the sweep skips it and flips it on a later assigner tick |
+
+**Rolling deploy.** The function signatures are unchanged, so an instance on the previous release calls the same
+functions and gets the new behavior. The one statement such an instance still writes itself, the set-based perspective
+writer's hold, is `FOR SHARE`. The new flips skip it the same way, so ownership is never flipped under its write, but
+it still blocks a publish's handover until it commits. Until every instance runs this release, a caller writing out of
+partition order through an instance of the previous release can still meet a deadlock, which PostgreSQL resolves by
+failing one side. Ownership is never corrupted either way.
+{verified: PartitionEpochKeySqlTests.AWriterOnThePreviousRelease_HoldingForShare_IsNeverFlippedUnder_AndItsPartitionMovesOnceItCommitsAsync, PartitionEpochKeySqlTests.APublish_AgainstAWriterOnThePreviousRelease_WaitsForIt_ThenHandsOverKeepingTheEpochAsync, PartitionEpochKeySqlTests.ACallThePreviousReleaseMakes_StillResolvesAsync}
+
+**Cost.** One more 10,000-row unique index on the 10,000-row ownership table, and a flip that raises the epoch is no
+longer a HOT update. No claim path changes.
 
 ## Draining {#draining}
 
