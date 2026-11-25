@@ -3848,6 +3848,72 @@ flowchart LR
 lane already sealed and make its folds meaningless. Before #2353 the width had no configuration path at all, only the
 `wh_settings` row.
 
+##### What keeps a seal true {#what-keeps-a-seal-true}
+{verified: SealedEpochLateWriteSqlTests.ABackfilledEvent_StoredByTheInboxChainInsideASealedEpoch_RefoldsItAsync, SealedEpochLateWriteSqlTests.ADirectInsert_IntoASealedEpochOfAReceivedLane_RefoldsItAsync, SealedEpochLateWriteSqlTests.AReattribution_MovingAPositionedEventBetweenLanes_RefoldsTheSealedEpochsOfBothAsync, SealedEpochLateWriteSqlTests.APositionWrittenByAnUpdate_IntoASealedEpoch_RefoldsItAsync, SealedEpochLateWriteSqlTests.AnEventMovedIntoASealedLocalEpoch_RefoldsIt_AndAdvancesTheOriginGenerationAsync, SealedEpochLateWriteSqlTests.AChangeThatLeavesTheFoldAsItWas_RewritesNothing_AndBumpsNothingAsync, SealedEpochLateWriteSqlTests.AnIneligibleEvent_IntoASealedEpoch_IsNotRecordedAsATouchAsync, SealedEpochLateWriteSqlTests.AnExplicitRefoldAfterTheChange_LeavesNothingForTheCommitAsync, SealedEpochLateWriteSqlTests.ATouchedEpochTheFrontierFellBelow_IsLeftForClosureAsync, SealedEpochLateWriteSqlTests.TwoTransactions_StoringIntoOneSealedEpoch_LeaveItsFoldCountingBothAsync, SealedEpochLateWriteSqlTests.ARefoldAtCommit_HoldsTheEpochsLockUntilItsTransactionEndsAsync}
+
+Answers and audits trust a sealed epoch's fold without re-reading the events behind it, so the fold must change
+whenever the events it covers do. Before #2572 each path that wrote into sealed history had to remember to refold what
+it touched, and the receive path did not: a backfill or redelivery answer arriving after its epoch was sealed was stored
+at its origin's position, inside the sealed range, and the fold stayed short of the store. The windowed audit against
+that origin then mismatched on every pass, the drill-down found the live rows equal and opened nothing, and the seal
+never advanced past the first such epoch.
+
+Since migration 592 the event store does it, whichever path writes:
+
+- **Every write records the sealed epochs it changes.** An insert into `wh_event_store` is read once per statement (its
+  transition table): each digest-eligible row with a position records the epoch it falls in, if that epoch is at or
+  below its lane's frontier. An update of `origin_service_id` or `origin_commit_sequence` records both the epoch the row
+  left and the one it joined. A row that inherited a superseding slot also records the slot's epoch. The record is one
+  row per transaction, lane and epoch in `wh_sealed_epoch_touches`.
+- **The commit refolds each recorded epoch once.** A deferred trigger folds them at commit, in lane and epoch order,
+  each under its own advisory lock, and rewrites an epoch only when its fold differs from the store. A refold of this
+  service's own lane moves its [origin generation](#origin-generation), so its consumers lower their seals as far as
+  the rewrite reached.
+- **A path that refolds what it changed costs nothing extra.** Folding an epoch clears its record for the transaction,
+  so the reconcile, adoption, origin correction, re-attribution, position fill and restore, which refold explicitly,
+  leave the commit nothing to do.
+
+| Write path | What it writes into sealed history |
+|---|---|
+| Receive (inbox emit chain): live, redelivered, backfill and bulk backfill answers | A new event at its origin's position. Refolded by the store since 592; it was not before |
+| Redelivery reconcile and the [position fill](#filling-missing-origin-positions) | An origin or origin position filled on a held event. Refolded by the path, and by the store if it missed one |
+| Origin adoption, correction and [re-attribution](#re-attribution) | An event moved between lanes. Refolded by the path, and by the store if it missed one |
+| Restore of an archived stream | Events back at their positions. Refolded by the path; the store finds the fold unchanged when the cut carried them |
+| Any direct `INSERT` or origin `UPDATE` | Whatever it writes. Refolded by the store |
+
+| Choice | Why |
+|---|---|
+| The store refolds, not each path. | A path written later cannot forget the refold: the least resistant way to write an event is also the one that keeps the seal true. |
+| At commit, not at the end of the statement. | A path that writes in several statements (a restore takes back what its cut carried after inserting the events) is folded once, in its final state. |
+| Only when the fold differs. | A write that leaves the fold as it was rewrites nothing and moves no generation. |
+| A lock per epoch. | Two transactions writing into one sealed epoch fold one after the other, so the later fold counts the earlier one's event. |
+| The insert side reads the statement, not each row. | An outbox emit's rows carry no position yet and a received event positioned in an open epoch touches nothing sealed, so the ordinary write pays one scan of the rows it already wrote and nothing else. |
+
+An epoch above its lane's frontier is not sealed: closure folds it when it closes. One window remains: an event that
+commits into the very epoch a concurrent closure pass is closing, after that pass read the epoch, is not in its fold.
+The [seal re-check](#seal-re-check) is the backstop for it.
+
+##### Healing epochs that drifted {#healing-epochs-that-drifted}
+{verified: SealedEpochLateWriteSqlTests.TheUpgradeHeal_QueuesEverySealedReceivedEpochOnce_AndNoLocalOneAsync, SealedEpochLateWriteSqlTests.TheHeal_RefoldsADriftedEpoch_LeavesAnUndriftedOne_AndDrainsTheQueueAsync, SealedEpochLateWriteSqlTests.TheHeal_TakesTheLowestEpochsFirst_WithinItsBudgetAsync, SealedEpochLateWriteSqlTests.TheHeal_DropsAQueuedEpochItsLaneNoLongerSealsAsync, SealedEpochLateWriteSqlTests.Closing_HealsTheQueue_WithTheConfiguredBudget_BesideTheEpochsItClosesAsync}
+
+A database upgraded with drift already in its received lanes heals it once, with nothing to turn on (migration 593):
+
+- the upgrade queues every sealed epoch of every received lane in `wh_digest_epoch_heal_queue`, once per database
+  (`integrity_epoch_heal_queued` in `wh_settings`), empty epochs included;
+- each maintenance closure pass then re-checks the lowest queued epochs, at most `integrity_epoch_heal_per_cycle`
+  (default 8), and refolds those whose fold differs from the store;
+- `integrity_epoch_heal_refolded` counts the refolds, and the queue is empty when the heal is done.
+
+| Choice | Why |
+|---|---|
+| A queue drained by the closure pass, not a refold during the upgrade. | One fold per sealed epoch grows with history; spread over maintenance cycles it never holds a startup. |
+| Not the seal re-check. | It is off by default, reaches only epochs sealed within its lookback (the drift sits in the oldest epochs), and skips an epoch holding a recent arrival. |
+| Lowest epochs first. | A seal advances only as far as its first drifted epoch, so healing the low ones first frees seals soonest. |
+| Received lanes only. | The fault was on the receive path. Every path that rewrites this service's own lane refolds and moves the generation, and a local refold here would make consumers re-verify history with no fault to show for it. |
+| Its own budget. | A closure backlog never starves the heal, and the heal never takes the closures' share. |
+
+The heal runs where sealing runs: with `Sealing:Enabled` off, nothing drains the queue.
+
 #### The seal re-check {#seal-re-check}
 {verified: IntegrityCheckOptionsTests.SealRecheck_IsOffByDefault_WithTheDocumentedLimitsAsync, SealRecheckRotationSqlTests.Closing_RecordsWhenEachEpochWasSealed_EmptyEpochsIncludedAsync, SealRecheckRotationSqlTests.Recheck_ResumesPastWhatItChecked_NeverRestartingAtTheFirstEpochAsync, SealRecheckRotationSqlTests.VerifyDigestEpochs_RotatesThroughTheEpochs_InsteadOfRestartingAtZeroAsync, SealRecheckRotationSqlTests.Recheck_LeavesEpochsSealedBeforeTheLookbackAloneAsync, SealRecheckRotationSqlTests.Recheck_ChecksAnEpochAtMostOncePerInterval_ThenAgainAsync, SealRecheckRotationSqlTests.Recheck_ADriftedEpoch_IsRefoldedOrOnlyReported_AsAskedAsync, SealRecheckRotationSqlTests.Recheck_AnEpochWithAnUnsettledArrival_IsSkippedAndStaysFirstAsync, SealRecheckRotationSqlTests.TheBackfill_RecordsEpochsSealedBeforeTheRecordExisted_AtTheirFoldTimeAsync}
 
@@ -3864,6 +3930,12 @@ Each sealed epoch, empty epochs included, records when it was sealed and when it
 (`wh_digest_epoch_seals`, migration 450). A run takes the epochs sealed within the lookback that are due, never
 re-checked first and then least recently re-checked, up to its cap. An epoch holding an arrival younger than the settle
 window is skipped whole, as closure skips it, and stays first in line.
+
+Since #2572 every write into a sealed epoch refolds it ([What keeps a seal true](#what-keeps-a-seal-true)), and the
+drift that came before it is healed once without the re-check ([Healing epochs that drifted](#healing-epochs-that-drifted)),
+so on a current database a drifted epoch the re-check finds means a write the store did not see: a change made with
+its triggers disabled, or the closure window described there. A re-check limited to its lookback never reaches an
+epoch sealed before it; set `Lookback` past the oldest seal for a one-off pass over all of them.
 
 **Why a record per epoch, not a cursor.** Before #2353 `verify_digest_epochs` walked every lane from epoch 0 on every
 call and stopped at its cap, so past 10,000 epochs the later ones were never re-checked and every run paid again for
