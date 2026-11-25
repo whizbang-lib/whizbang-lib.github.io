@@ -17,7 +17,8 @@ description: >-
   than ranking itself, how an owner renews the
   inbox leases it let run out, why the perspective drain's calls are priced
   by their batch rather than the backlog or the applied history, why the
-  per-stream walk stops at its row bound at every depth,
+  per-stream walk stops at its row bound at every depth, where each re-offer
+  walk starts and how a measurement fixes that start,
   and why a claim no longer announces the caller's lifecycle phase.
 tags: 'work-coordinator, claim-loop, claim-work, acquisition, backpressure, work-stealing, command-lane'
 codeReferences:
@@ -44,6 +45,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/462_HeldLeasesAreRenewedByTheirOwner.sql
   - src/Whizbang.Data.Postgres/Migrations/536_PerspectiveWorkQueueCallsArePricedByTheBatch.sql
   - src/Whizbang.Data.Postgres/Migrations/557_TheStreamWalkStopsAtItsBoundAtEveryDepth.sql
+  - src/Whizbang.Data.Postgres/Migrations/598_TheReOfferWalkStartCanBeSeededForAMeasurement.sql
   - src/Whizbang.Data.Postgres/ConcurrentIndexBuild.cs
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/Signals/BasePollSignalSource.cs
@@ -67,6 +69,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HeldBackEventsDoNotCrowdTheReOfferTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimReofferPlanShapeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimReofferWalkCostSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWalkSeedSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimFixedCostSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveWorkQueueBacklogCostSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkStaleStatisticsTests.cs
@@ -401,7 +404,8 @@ Migration 158 bounds each part of it:
   index, one index-only probe per stream, lane by lane in the order the batch is ordered: most urgent
   bucket first, commands before events, and for the inbox the fresh and retried classes side by side
   so the fresh-work share still holds. Each lane's walk starts at a stream id drawn per poll and
-  wraps once, so a lane larger than the batch does not hand back the same streams on every poll.
+  wraps once, so a lane larger than the batch does not hand back the same streams on every poll (see
+  [where each walk starts](#the-re-offer-walk-start)).
 - **The inbox event-store chain**, which gives an inbox event leased at store time its event-store
   row and its perspective work, re-checked every held event against the event store on every poll.
   It now reads only rows it has not finished with and stamps the ones whose event it finds there.
@@ -443,6 +447,31 @@ start, so every step read every live lease. At 1,000 held streams one perspectiv
 written `(lease_expiry > now) IS TRUE`, which no index can serve, so it stays a filter on the
 held-lanes entry the walk already reads, and that entry carries the lease. Results, order and lock
 order are unchanged.
+
+### Where each walk starts {#the-re-offer-walk-start}
+{verified: ClaimWalkSeedSqlTests.TheWalkStart_Unseeded_IsDrawnAtRandomOnEveryCallAsync, ClaimWalkSeedSqlTests.TheWalkStart_Seeded_IsTheSeedAsync, ClaimWalkSeedSqlTests.TheWalkStart_SeedReset_IsDrawnAtRandomAgainAsync, ClaimWalkSeedSqlTests.ClaimWork_AsInstalled_DrawsEveryWalkStartThroughTheSeedableStartAsync, ClaimWalkSeedSqlTests.ClaimWork_Seeded_ReOffersTheHeldStreamsThatFollowTheSeed_InStreamOrderAsync}
+
+Each re-offer walk starts at a stream id drawn at random, for fairness: a lane larger than the batch is not handed
+back from the same streams on every poll. Since migration 598 the inbox and perspective walks take their start from
+one function, `_claim_walk_start()`, which draws with `gen_random_uuid()` unless the session has set
+`whizbang.claim_walk_seed` to a stream id. With the seed set, every walk in that session starts there and takes the
+held streams that follow it, in stream order.
+
+The seed exists for measurements. Where the draw lands decides how many probes a walk makes before it wraps, so two
+measurements of one workload could read different pages with nothing different but the draw; two fills of one
+workload measured blocks up to 1.3% apart. A measurement sets the seed for its own session and compares the two runs
+exactly. The per-call cost scenario compares the work each poll does (index scans, tuples fetched, rows leased and
+updated), not blocks: on a server shared with other databases, blocks also follow those databases' activity, which no
+single session can hold still:
+
+```sql{title="Seed the re-offer walk for a measurement" description="Fixes where every claim re-offer walk starts, for this session only" category="Operations" difficulty="ADVANCED" tags=["Work-Coordinator", "Claim", "Measurement"] tests=["ClaimWalkSeedSqlTests.TheWalkStart_Seeded_IsTheSeedAsync", "ClaimPollPerCallCostScenarioTests.ClaimPollPerCallCost_TwoFillsOfOneDepth_AreOneWorkloadAtOneCostAsync"]}
+SET whizbang.claim_walk_seed = '01a20000-0000-7000-8000-000000002580';
+```
+
+Nothing in the framework sets the setting. A pooled connection's reset clears it, and a setting reset in a session
+reads as the empty string, which counts as no seed, so the walk is random again. The lookup is one session-setting read
+per walk with no table read, and the walk's start is a parameter to its plan either way, so the plans are unchanged.
+{verified: ClaimPollPerCallCostScenarioTests.ClaimPollPerCallCost_TwoFillsOfOneDepth_AreOneWorkloadAtOneCostAsync}
 
 ### The re-offer hands on only what the drain can fetch {#the-re-offer-hands-on-only-what-the-drain-can-fetch}
 {verified: HeldBackEventsDoNotCrowdTheReOfferTests.OneStreamReOffer_PassesOverAHeldBackEvent_ToAFetchableCheckpointAsync, HeldBackEventsDoNotCrowdTheReOfferTests.HeldBackStream_OnceItsPredecessorIsHeldToo_IsStoredAndReOfferedAsync}

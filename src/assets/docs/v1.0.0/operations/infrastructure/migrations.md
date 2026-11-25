@@ -48,6 +48,8 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/SchemaStepRunner.cs
   - src/Whizbang.Data.Postgres/SchemaPassLedger.cs
   - src/Whizbang.Data.EFCore.Postgres/SchemaInitializationLog.cs
+  - src/Whizbang.Data.Postgres/MigrationPassProgress.cs
+  - src/Whizbang.Data.Postgres/PerspectiveRegistryCurrency.cs
   - src/Whizbang.Data.Postgres/Migrations/153_PerspectiveForms.sql
   - src/Whizbang.Data.Postgres/Migrations/544_DictionaryMembersStoredAsPairs.sql
   - src/Whizbang.Data.Postgres/Migrations/154_PerspectiveFailureElementNames.sql
@@ -474,9 +476,11 @@ Every step of a pass logs one fixed form, counted against the whole pass:
 | `Migration complete: Y of Y succeeded (N applied, M skipped) in <duration>` | Information | The pass finished |
 | `Migration stopped at X of Y: <name> : <error>` | Error | The pass stopped at that step; nothing after it ran in this attempt |
 
-**What Y counts.** Y is every step of the pass, including the ones it skips: each migration file the build carries,
-each perspective table (or one `perspective-tables` step for a context with none), plus five for the core tables, the
-perspective renames, the constraints, the associations and the registries. A context with 218 migration files and 3
+**What Y counts.** Y is every step of the pass, including the ones it skips. On the EF Core driver that is each
+migration file the build carries, each perspective table (or one `perspective-tables` step for a context with none),
+plus five for the core tables, the perspective renames, the constraints, the associations and the registries. On the
+Dapper driver it is each migration file and each perspective table, with no fixed steps (see
+[progress of long startup work](#progress-of-long-startup-work)). A context with 218 migration files and 3
 perspectives counts `Y = 218 + 3 + 5 = 226`. The first step, which re-checks the hashes and records the plan, is not
 counted and logs no line. The order is the core tables, the migration files in order, the perspective renames
 (`PerspectiveRenames` in the phase timings), the perspective tables, then the constraints, the associations and the
@@ -559,6 +563,27 @@ nothing to do, and the instance's own workers [start at the stage they need](../
 instead of running against the tables the migration is changing.
 
 ## Progress of long startup work {#progress-of-long-startup-work}
+
+**Both drivers write the same step lines** ([#2579](https://github.com/whizbang-lib/whizbang/issues/2579)). A pass on
+either driver logs `Migration X of Y - Started` for each step it runs, then `Succeeded`, `Skipped` or `Failed`, and
+ends with the one summary, `Migration complete: Y of Y succeeded (N applied, M skipped) in <duration>`, or with
+`Migration stopped at X of Y`. Both write them through one shared reporter (`MigrationPassProgress` in
+`Whizbang.Data.Postgres`), so the lines read the same on either driver, in the form [reading the step lines](#step-log-lines)
+describes. Both also enter the Migrate stage with how many steps the pass owes
+(`Stage 3 of 7: Migrate - 226 migration steps to apply`; see [startup stages](../startup/startup-status#startup-stages)).
+What differs is what Y counts:
+
+| Driver | Y counts |
+|---|---|
+| EF Core | the migration files, the perspective tables, and its five fixed steps (the core tables, the perspective renames, the constraints, the associations and the registries) |
+| Dapper | the migration files and the perspective tables; a start that [holds the application schema](../startup/rolling-upgrades#two-verdicts) counts only the migration files |
+
+On Dapper the bootstrap file (`000_*.sql`) runs before the pass and is not counted, where the EF Core driver counts it
+as a migration file. A Dapper deadlock keeps its own line, which names the file rather than its position (see
+[a deadlock is retried in place](#a-deadlock-is-retried-in-place)). Earlier releases logged these lines only from the
+EF Core driver; a Dapper start that migrated never entered Migrate with a step count and said nothing per step.
+{verified: StartupParityTests.AFreshStart_EntersMigrate_AndLogsEveryStep_OnEitherDriverAsync}
+
 
 Long startup work used to run silently: the declared-key spelling scan and the required-member check said nothing
 above Debug, so a migrating instance could show minutes with no output, and a batched migration step (for example
@@ -1149,6 +1174,14 @@ declares (`PerspectiveRegistryCurrency`), and reconciles it **only when it diffe
   again.
 - **A held application schema is left as it is.** A start that [stands the application down](../startup/rolling-upgrades#two-verdicts)
   does not touch its registry.
+- **Whatever the connection registration** ([#2578](https://github.com/whizbang-lib/whizbang/issues/2578)). The check
+  runs on every start on either driver, however the host registered its connection. An EF Core context configured over
+  a connection of its own (`UseNpgsql(connection)`) leaves the initializer no way to open a second connection, so the
+  check runs on the context's own connection: opened only if it is closed, and closed again afterwards; a connection
+  the host opened is left open, and it is never disposed. Earlier releases skipped the check for such a host, so its
+  registry was reconciled only inside the schema pass, and a start that skipped the pass kept whatever registry it
+  found.
+  {verified: PerspectiveRegistryRestartTests.ACleanHashRestart_WithNoSeparateConnection_ReconcilesARegistryNoHashCoversAsync, PerspectiveRegistryRestartTests.ACleanHashRestart_OnAConnectionTheHostOpened_ReconcilesTheRegistry_AndLeavesItOpenAsync, PerspectiveRegistryRestartTests.ACleanHashRestart_WithNoSeparateConnection_AgainstAMatchingRegistry_TouchesNothingAsync, DapperMigratorElectionTests.ABorrowedConnection_WhoseRegistryCannotBeReconciled_IsNotFatal_AndIsClosedAgainAsync, SchemaMigratorDeferralGenerationTests.TheRegistryCheck_RunsWithOrWithoutASeparateConnectionAsync}
 
 #### The migrator keeps its role through every phase {#migrator-keepalive}
 
