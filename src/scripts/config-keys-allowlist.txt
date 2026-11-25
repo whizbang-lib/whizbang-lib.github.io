@@ -18,3 +18,4 @@ Whizbang:Database:RoleAssignment:HoldLegacySessionLock  # configuration-referenc
 Whizbang:Database:Stamper:AdvisoryLockKey               # configuration-reference#removed-keys lists it as a removed key (#2044): the stamper takes no lock of its own
 Whizbang:Database:PartitionAssigner:Enabled             # configuration-reference#removed-keys and partition-assignment list it as a removed key (#2559): the partition assigner always runs
 
+Whizbang:Temporal:OverdueWarningMilliseconds          # temporary: read by the fix for whizbang#2575; drop once it merges
