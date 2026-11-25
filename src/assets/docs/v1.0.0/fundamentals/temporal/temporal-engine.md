@@ -84,7 +84,7 @@ The claim, the timer's next-fire-time query and the due-schedule poll all apply 
 claim and for no other.
 
 :::note
-Before migration 598 a schedule in the legacy mode was claimable only through its stream's pin. A schedule created on a fresh stream
+Before migration 601 a schedule in the legacy mode was claimable only through its stream's pin. A schedule created on a fresh stream
 (the framework's own integrity schedules use a control stream nothing else writes to) was therefore seen by no
 instance and never fired, and neither did one whose stream's owner had died. In map mode the claim already fired it,
 but the timer and the due poll still looked for the stream's pin and never woke for it, so it fired only on the
