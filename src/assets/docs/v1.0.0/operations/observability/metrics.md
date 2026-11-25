@@ -713,6 +713,19 @@ How long the outbox has held an event for its commit-order stamp. Each instance 
 
 {verified: SequenceHoldWorkerTests.OnItsInterval_ReadsThisInstancesOldestHold_AndPublishesItsAgeAsync, SequenceHoldWorkerTests.NothingHeld_ReadsZero_AndAFailedReading_ReportsNothingAsync}
 
+## Whizbang.Temporal {#temporal}
+
+Meter name: `Whizbang.Temporal` (`TemporalMetrics`)
+
+The Active schedules overdue beyond `Whizbang:Temporal:OverdueWarningMilliseconds` that no instance has fired, read on every schedule worker drain pass. Every instance reads the whole table, so each reports the same set. Design and operator guidance: [Temporal Engine](/v1.0.0/fundamentals/temporal/temporal-engine#a-schedule-that-does-not-fire-is-reported).
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.temporal.schedules.overdue` | ObservableGauge\<double\> | Active schedules overdue beyond the bound; `0` when none is, no value when the reading is unknown |
+| `whizbang.temporal.schedules.overdue.oldest_age_seconds` | ObservableGauge\<double\> | Seconds since the oldest overdue schedule was due; `0` when none is overdue, no value when the reading is unknown |
+
+{verified: ScheduleWorkerOverdueTests.CheckOverdue_AScheduleOverdueBeyondTheBound_WarnsOnce_AndPublishesItAsync, ScheduleWorkerOverdueTests.CheckOverdue_WhenTheOverdueSetClears_SaysSoOnceAsync, ScheduleWorkerOverdueTests.CheckOverdue_AnUnknownReading_LeavesTheGaugesEmptyAsync}
+
 ## Whizbang.Probes {#probes}
 
 Meter name: `Whizbang.Probes` (`ProbeCadenceMetrics`)

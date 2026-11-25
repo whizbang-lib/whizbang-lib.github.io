@@ -2075,7 +2075,7 @@ Which system events are enabled and how audit records ship. **Configure:** the s
 
 ### TemporalOptions
 
-The temporal engine's schedule worker. **Configure:** bound automatically from `Whizbang:Temporal` — no registration call needed. `services.Configure<TemporalOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** no dedicated page yet.
+The temporal engine's schedule worker. **Configure:** bound automatically from `Whizbang:Temporal` — no registration call needed. `services.Configure<TemporalOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Temporal Engine](/v1.0.0/fundamentals/temporal/temporal-engine).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
@@ -2083,6 +2083,7 @@ The temporal engine's schedule worker. **Configure:** bound automatically from `
 | `BackstopIntervalMilliseconds` | `int` | `5000` | `Whizbang__Temporal__BackstopIntervalMilliseconds` | Reconcile cadence for due schedules absent a doorbell |
 | `ClaimBatchLimit` | `int` | `100` | `Whizbang__Temporal__ClaimBatchLimit` | Max schedules claimed per call |
 | `LeaseDurationSeconds` | `int` | `300` | `Whizbang__Temporal__LeaseDurationSeconds` | Outbox lease granted to a spawned occurrence |
+| `OverdueWarningMilliseconds` | `int` | `60000` | `Whizbang__Temporal__OverdueWarningMilliseconds` | How long past due an Active schedule may stay unfired before a warning and the `Whizbang.Temporal` gauges report it; `0` or less turns the check off ([details](/v1.0.0/fundamentals/temporal/temporal-engine#a-schedule-that-does-not-fire-is-reported)) |
 
 ## Resilience Primitives
 
