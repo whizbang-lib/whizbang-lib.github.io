@@ -4727,15 +4727,18 @@ then holds events it received from this service, filed in its local lane as if i
 redelivery names itself as their origin. Adopting that origin would stamp it on events this service wrote.
 Nothing is lost if that happens, but the origin then alarms on a surplus it can never repair.
 
-So before an empty origin is filled, the receiver reads the stored event's hops (the `Hops` of
-`wh_event_body.metadata`) and compares the first hop's service with the bundle's origin service, the service
-on the bundle's own publish hop (`RedeliveryReconciler.OriginServiceNameOf`).
+So before an empty origin is filled, the receiver reads the stored event's first hop and compares its service with
+the bundle's origin service, the service on the bundle's own publish hop (`RedeliveryReconciler.OriginServiceNameOf`).
+The first hop's service is read wherever the event keeps it: the stored row's hops (the `Hops` of
+`wh_event_body.metadata`), else the event's route, else its staged full form (see
+[events written here stay local](#events-written-here-stay-local)).
 
 | The stored event's first hop | Result |
 | --- | --- |
 | Names the bundle's origin service, in any case (`OrdersService` matches `ordersservice`) | Adopts the origin, as above. |
 | Names another service (this one, or a third), in any case | Refused: the event keeps its empty origin, its digest stays in the local lane, and it is counted as refused. |
-| Carries no service identity (the [slim stored form](../messaging/message-envelopes#stored-form) leaves it out, or it names `Unknown`) | Adopts, so that history still converges. |
+| Names `Unknown`, or carries no service identity in a row from before the [slim stored form](../messaging/message-envelopes#stored-form) | Adopts, so that history still converges. |
+| A slim row (it carries a route id) whose first hop names no service in the row, its route or its staged form | Refused: it was written here (#2573). |
 | No hops, or no stored body | Adopts, for the same reason. |
 | The bundle names no service (its envelope has no hop, a blank name, or `Unknown` in any case) | Adopts: there is nothing to compare. |
 
@@ -5091,12 +5094,39 @@ learned later.
 
 | The row | What happens | Counted on |
 | --- | --- | --- |
-| The owner is known, and the stored first hop names the owner, names no service, or is absent | The row takes the owner as its origin (the origin's commit sequence stays empty; a later redelivery from the owner fills it, see [history received before origins were recorded](#pre-stamp-history)). Its digest leaves the local lane for the owner's lane, sealed local epochs over it are refolded (advancing the [origin generation](#origin-generation), so consumers re-verify instead of alarming), and the owner's repair-ledger buckets it lands in, per stream and the type lane, have their unhealable and exhausted marks cleared and their attempts and pending answer reset. | `origins_reattributed` |
+| The owner is known, and the first hop names the owner, names no service, or is absent (a slim row whose first hop names no service anywhere is the exception below) | The row takes the owner as its origin (the origin's commit sequence stays empty; a later redelivery from the owner fills it, see [history received before origins were recorded](#pre-stamp-history)). Its digest leaves the local lane for the owner's lane, sealed local epochs over it are refolded (advancing the [origin generation](#origin-generation), so consumers re-verify instead of alarming), and the owner's repair-ledger buckets it lands in, per stream and the type lane, have their unhealable and exhausted marks cleared and their attempts and pending answer reset. | `origins_reattributed` |
 | The owner is known, but the first hop names a third service | **Ownership is primary, the first hop only a cross-check:** the row is left as it was, and the batch logs a Warning with the count for an operator to inspect. | `reattribution_hop_disagreements` |
 | No owner is known (or the domain is contested) | Left as it was, and out of the local lane logically because the lane follows ownership. Each such type is logged once. It moves when an owner announces the domain. | `origins_unattributed` |
 
 Rows of types this service owns are never touched. An ephemeral or at-most-once row takes its owner as origin
 without touching any digest, because it folds into none.
+
+#### Events written here stay local {#events-written-here-stay-local}
+
+{verified: EventsWrittenHereStayLocalSqlTests.Reattribute_AnEventWrittenHere_WhoseSlimRowRecordsNoService_StaysLocalAsync, EventsWrittenHereStayLocalSqlTests.Reattribute_AnEventWrittenHere_WhoseStagedFormNamesThisService_IsLeftAsync, EventsWrittenHereStayLocalSqlTests.Reattribute_AnEventWrittenHere_WhoseRouteNamesThisService_IsLeftAsync, EventsWrittenHereStayLocalSqlTests.Reattribute_HistoryWhoseRouteNamesTheOwner_TakesTheOwnerAsync, EventsWrittenHereStayLocalSqlTests.Adopt_AnEventWrittenHere_WhoseSlimRowRecordsNoService_IsRefusedAsync, EventsWrittenHereStayLocalSqlTests.Batch_AnEventWrittenHere_WhoseSlimRowRecordsNoService_IsRefusedAsync, EventsWrittenHereStayLocalSqlTests.FirstHopService_ForASlimRow_ReadsTheStagedForm_ThenTheRouteAsync}
+
+A service does not only write events of the types it owns. A receptor's reaction to a received event (a "succeeded"
+event, with an id derived from the event it answers) is often of a type in the domain of the service that sent the
+trigger, and it is written here, as a local event with no origin. Re-attribution and the
+[redelivery reconcile](#pre-stamp-history-first-hop) must leave such an event local, or the owner is named as the
+origin of an event it never wrote: it answers "unknown" when asked for the event's position, and the event can never be
+placed in the owner's lane.
+
+The first hop is what tells the two apart, and the [slim stored form](../messaging/message-envelopes#stored-form)
+keeps no service on it. So the first hop's service is read wherever the event keeps it:
+
+1. the stored row's first hop (a full row, or a row written before the slim form);
+2. else the event's route (`wh_routes`, by the route id the row carries), which keeps each hop's service;
+3. else the staged full form (`wh_event_metadata_staging`), until maintenance distills it into the route.
+
+A row that carries a route id was written after origins were recorded, so a received copy of it carries its origin. If
+such a row names no service in any of the three, it was written here: re-attribution leaves it in the local lane, and a
+redelivery bundle cannot give it an origin (it is counted as refused). A first hop that names this service is a
+disagreement or a refusal, as before.
+
+Rows moved before this rule (migration 594) are left as they are. They hold no cut, their owner's "unknown" answer is
+recorded once and never asked again, and nothing in the store tells them reliably from events received before their
+origin stamped them.
 
 **Options.**
 
