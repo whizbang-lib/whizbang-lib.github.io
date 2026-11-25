@@ -173,6 +173,7 @@ Stage 1 of 7: Preflight - host starting
 Stage 1 of 7: Preflight - the bootstrap closure is in place; registering this instance
 Stage 2 of 7: Elect - voting for the migrator duty
 Stage 2 of 7: Elect - this instance migrates the schema
+Stage 3 of 7: Migrate - 226 migration steps to apply
 Stage 4 of 7: Converge - analyzing new indexes and reconciling managed objects
 Stage 5 of 7: Coordinate - recomputing partitions before the schema-ready gate opens
 Stage 6 of 7: Accept commands - the schema is ready; commands are accepted while the read models catch up
@@ -545,7 +546,7 @@ A fresh database is exactly when an operator most needs to see where startup is.
 {verified: StartupStageHostTests.AFreshDatabase_EntersEveryStageInOrder_LogsEach_AndRecordsEachTheRowCanHoldAsync, StartupStageHostTests.ARestartOnACurrentDatabase_SkipsMigrate_AndRecordsFromRegistrationAsync, SchemaBootstrapPhaseTests.AnEmptyDatabaseRecordsItsStageAtRegistrationAfterTheBootstrapAsync, SchemaBootstrapPhaseTests.AnEmptyDatabaseRecordsATransitionAtRegistrationAfterTheBootstrapAsync}
 
 ### Dapper's stages {#dapper-stages}
-{verified: DapperSchemaStartupTests.HostStart_RegistersVotesAndIsElectedMigrator_BeforeItMigratesAsync, DapperMigratorElectionTests.TwoInstancesStarting_OneMigrates_TheOtherWaitsForIt_ThenServesAsync, DapperMigratorElectionTests.AClosureThatCannotElect_LeavesTheInstanceUnstaged_AndElectSkippedAsync, DapperMigratorElectionTests.AnInstanceTheRegistryRefuses_IsUnstaged_NotFailedAsync, StartupParityTests.EachDriver_EntersConverge_BeforeItsReconcileAsync, StartupParityTests.ARestartOnACurrentSchema_TakesNoSchemaLock_AndSkipsElectAndMigrateAsync, DapperHeartbeatPhaseOrderTests.ATransition_IsRecorded_StagePhaseAndVersionTogether_AndAPauseKeepsTheStageAsync, StartupStageReporterTests.InstanceRegistered_WritesTheHeldStage_OnceAsync}
+{verified: DapperSchemaStartupTests.HostStart_RegistersVotesAndIsElectedMigrator_BeforeItMigratesAsync, DapperMigratorElectionTests.TwoInstancesStarting_OneMigrates_TheOtherWaitsForIt_ThenServesAsync, DapperMigratorElectionTests.AClosureThatCannotElect_LeavesTheInstanceUnstaged_AndElectSkippedAsync, DapperMigratorElectionTests.AnInstanceTheRegistryRefuses_IsUnstaged_NotFailedAsync, StartupParityTests.EachDriver_EntersConverge_BeforeItsReconcileAsync, StartupParityTests.AFreshStart_EntersMigrate_AndLogsEveryStep_OnEitherDriverAsync, StartupParityTests.ARestartOnACurrentSchema_TakesNoSchemaLock_AndSkipsElectAndMigrateAsync, DapperHeartbeatPhaseOrderTests.ATransition_IsRecorded_StagePhaseAndVersionTogether_AndAPauseKeepsTheStageAsync, StartupStageReporterTests.InstanceRegistered_WritesTheHeldStage_OnceAsync}
 
 A host on the Dapper driver reports the same seven stages as one on the EF Core driver, through the same recorder.
 Since [#2561](https://github.com/whizbang-lib/whizbang/issues/2561) it runs the same
@@ -566,7 +567,11 @@ A waiter then reports Migrate as `waiting for the instance migrating the schema`
 **Converge** ([#2563](https://github.com/whizbang-lib/whizbang/issues/2563)): every Dapper start that converges enters
 Converge just before it reconciles the managed schema objects, on a fresh or a current schema, so a host or an
 `IStartupStageReporter` watching the stages sees the same sequence on either driver. Each committed migration file is
-reported to `ISchemaInitializationObserver.OnSchemaStepCommittedAsync`. On a current schema it skips Elect and Migrate
+reported to `ISchemaInitializationObserver.OnSchemaStepCommittedAsync`. A Dapper start that migrates enters **Migrate** with
+how many steps its pass owes, `Stage 3 of 7: Migrate - N migration steps to apply`, as the EF Core driver does, and
+logs a `Migration X of Y` line for every migration file and perspective table
+([#2579](https://github.com/whizbang-lib/whizbang/issues/2579); see
+[progress of long startup work](../infrastructure/migrations#progress-of-long-startup-work)). On a current schema it skips Elect and Migrate
 with the same reasons as the EF Core driver (`the schema is current; no migrator is needed`, `the schema is current`).
 The [managed-resource health](../../resilience/managed-resource-health#startup-stage) `startup` component reports the
 same stage line.
@@ -574,7 +579,8 @@ same stage line.
 :::updated
 Earlier releases reported Elect, Migrate and Converge only from the EF Core driver's schema pass. A Dapper host logged
 Elect as skipped (`no election could be held`) on every start, never entered Converge, and recorded its stages only
-from its first heartbeat on.
+from its first heartbeat on. Until #2579 a Dapper start that migrated never entered Migrate with a step count and
+logged no per-step lines.
 :::
 
 ## What runs in each stage {#what-runs-in-each-stage}

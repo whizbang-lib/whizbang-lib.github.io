@@ -622,7 +622,8 @@ Perspective lifecycle stages are new in v1.0.0 and enable deterministic test syn
 
 **Guarantees**:
 - Detached - fire-and-forget, does not block the perspective worker
-- Fires once per batch, not per event
+- Fires once for each event of the batch whose type has a receptor, once per perspective; one dedicated thread announces the batch's events in its order
+- Not fired again when a refused write re-runs the batch
 - Perspective may complete before this stage finishes
 
 **Hook Location**: Shared perspective runner logic (`PerspectiveRunnerBase` in Whizbang.Core) before event processing loop begins
@@ -638,7 +639,8 @@ Perspective lifecycle stages are new in v1.0.0 and enable deterministic test syn
 
 **Guarantees**:
 - Blocking - perspective processing waits
-- Fires once per batch, not per event
+- Fires once for each event of the batch whose type has a receptor, once per perspective, in the batch's order
+- Not fired again when a refused write re-runs the batch
 - No events processed yet
 
 **Hook Location**: Shared perspective runner logic (`PerspectiveRunnerBase` in Whizbang.Core) before event processing loop begins
@@ -1213,7 +1215,7 @@ See [Lifecycle Receptors](../receptors/lifecycle-receptors.md) for API details.
 | `PreDistribute*` / `DistributeDetached` / `PostDistribute*` | `WorkCoordinatorFlushHelper.cs` | Around the flush's outbox and inbox store calls |
 | `PreOutbox*` / `PostOutbox*` | `OutboxPublishWorker.cs` | Around transport publish |
 | `PreInbox*` / `PostInbox*` | `InboxDispatchWorker.cs` | Around receptor dispatch (`PostInbox` fires after event storage) |
-| `PrePerspective*` | `PerspectiveRunnerBase.cs` (Whizbang.Core) | Before event processing loop (once per batch) |
+| `PrePerspective*` | `PerspectiveRunnerBase.cs` (Whizbang.Core) | Before event processing loop (once for each event of the batch) |
 | `PostPerspectiveDetached` | `PerspectiveRunnerBase.cs` (Whizbang.Core) | After perspective data flush, before checkpoint save |
 | `PostPerspectiveInline` | `PerspectiveWorker.cs` | After checkpoint commit (data + checkpoint durable) |
 | `PostAllPerspectives*` | `PerspectiveWorker.cs` | After ALL perspectives complete (WhenAll) — managed by [Lifecycle Coordinator](lifecycle-coordinator.md) |
