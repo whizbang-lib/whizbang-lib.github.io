@@ -3986,7 +3986,7 @@ What it reports: `whizbang.stream_integrity.compare_streams_covered` (streams th
 `compare_slices` (runs), `compare_passes_completed` and `compare_pass_runs` (a histogram of the runs one pass took).
 
 #### Each check has its own schedule {#integrity-check-schedules}
-{verified: IntegritySweepSchedulingTests.Start_WithBothChecksOn_RegistersOneScheduleEach_OnItsOwnCronAsync, IntegritySweepSchedulingTests.Start_WithTheDefaults_RegistersNothing_SoNeitherCheckRunsAsync, IntegritySweepSchedulingTests.Start_WithOnlyTheSealRecheckOn_RegistersOnlyItsScheduleAsync, IntegritySweepSchedulingTests.SweepReceptor_RunsTheCheckTheOccurrenceNamesAsync, IntegritySweepSchedulingTests.SweepReceptor_AnOccurrenceNamingNoCheck_RunsTheFullHistoryCompareAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_LeavesACheckToItsSchedule_OnceTheScheduleIsRegisteredAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_RunsEachCheckWhoseScheduleIsNotRegistered_AndOnlyThatOneAsync}
+{verified: IntegritySweepSchedulingTests.Start_WithBothChecksOn_RegistersOneScheduleEach_OnItsOwnCronAsync, IntegritySweepSchedulingTests.Start_WithTheDefaults_RegistersNothing_SoNeitherCheckRunsAsync, IntegritySweepSchedulingTests.Start_WithOnlyTheSealRecheckOn_RegistersOnlyItsScheduleAsync, IntegritySweepSchedulingTests.SweepReceptor_RunsTheCheckTheOccurrenceNamesAsync, IntegritySweepSchedulingTests.SweepReceptor_AnOccurrenceNamingNoCheck_RunsTheFullHistoryCompareAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_LeavesACheckToItsSchedule_OnceTheScheduleIsRegisteredAsync, IntegrityAuditWorkerBranchCoverageTests.ACounterCycle_RunsEachCheckWhoseScheduleIsNotRegistered_AndOnlyThatOneAsync, IntegritySweepScheduleRemovalTests.Start_ACheckThatWantsNoSchedule_CancelsItsStoredSchedule_AndLogsTheRemovalAsync, IntegritySweepScheduleRemovalTests.Start_WithNoStoredSchedule_CancelsQuietlyAsync, IntegritySweepScheduleRemovalTests.Start_WhenARemovalFails_LogsWhatFailed_AndCarriesOnAsync}
 
 Each enabled check registers its own schedule on the temporal engine: the full-history compare under the key
 `wh-integrity-sweep` (the key the sweep always had) and the re-check under `wh-seal-recheck`. Each occurrence names its
@@ -3994,8 +3994,16 @@ check (`ScheduledIntegritySweep.Check`); an occurrence scheduled before #2353 na
 compare. The default minute `0` is replaced by a stable per-service splay (FNV-1a of the service name), so a fleet
 sharing one database server does not run in unison. On a host without the temporal engine, or whose registration
 failed, each enabled check runs on every `FullSweepEveryNthAudit`-th audit cycle instead (default 7); once a check's
-schedule is registered, the counter stands down for that check only. A schedule left behind for a check that was turned
-off runs nothing.
+schedule is registered, the counter stands down for that check only.
+
+A check that is off, or on with an empty `Schedule`, has no schedule: at every start the scheduler cancels the one
+stored under its key (`IScheduleManager.CancelByKeyAsync`, #2586) and logs an Information line when one was actually
+canceled. Without this, a schedule registered while the check was on a cron kept firing after the check was turned off
+(a no-op) or after its `Schedule` was cleared (the check then ran on that schedule and on the every-Nth-audit counter
+both). Canceling a key with no active schedule does nothing and logs nothing. A host without the temporal engine has
+nothing stored to cancel. A cancel that fails is logged as a warning naming the key, and the start goes on; an
+occurrence of a check that is off still runs nothing, so a schedule left behind that way is harmless until the next
+start removes it.
 
 **Why one schedule per check.** The re-check is local and bounded by its lookback; the compare asks every origin for
 everything. Sharing one cron would tie the cheaper check to the costlier one's timing.
