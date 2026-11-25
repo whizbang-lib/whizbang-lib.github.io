@@ -600,6 +600,7 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ042 | Retired | [No User Services Found](whiz042.md) (retired: never reported, ID never reused) |
 | WHIZ043 | Error | [WhizbangId Accepts No Version](whiz043.md) |
 | WHIZ044 | Error | [WhizbangId Versions Outside 1 To 8](whiz044.md) |
+| WHIZ045 | Error | [WhizbangId Declares IsAccepted](whiz045.md) |
 | WHIZ050 | Retired | [Public API Missing Tests](whiz050.md) (retired: never reported, ID never reused) |
 | WHIZ051 | Retired | [Invalid Test Reference](whiz051.md) (retired: never reported, ID never reused) |
 | WHIZ052 | Retired | [Test Link Discovered](whiz052.md) (retired: never reported, ID never reused) |

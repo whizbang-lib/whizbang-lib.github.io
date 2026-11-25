@@ -1,8 +1,8 @@
 ---
 title: "WhizbangIds: Strongly-Typed Identity Values"
 pageType: concept
-verifiedAgainstCommit: 'bf8517ac'
-verifiedDate: 2026-11-24
+verifiedAgainstCommit: '8b593d37b'
+verifiedDate: 2026-11-25
 version: 1.0.0
 category: "Core Concepts"
 order: 24
@@ -36,7 +36,8 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/WhizbangIdDocumentForm.cs
   - src/Whizbang.Data.Postgres/StrongIdDocumentGateStep.cs
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdSetterFormRewriter.cs
-  - src/Whizbang.Data.EFCore.Postgres/Perspectives/WhizbangIdColumnConvention.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdDocumentTarget.cs
+  - src/Whizbang.Generators/Templates/Snippets/WhizbangIdJsonSnippets.cs
   - src/Whizbang.Generators/Templates/Snippets/WhizbangIdRuleSnippets.cs
   - src/Whizbang.Core/SuppressGuidInterceptionAttribute.cs
   - src/Whizbang.Core/SuppressGuidOrderingValidationAttribute.cs
@@ -71,6 +72,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/StrongIdDocumentGateTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/WhizbangIdEntityColumnTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStrongIdDocumentGateTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveUpsertStrongIdFormTests.cs
+  - tests/Whizbang.Core.Tests/WhizbangIdJsonConverterReadTests.cs
   - tests/Whizbang.Core.Tests/Validation/GuidOrderingStreamIdByTypeTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderRegistryTests.cs
@@ -93,7 +96,7 @@ testReferences:
   - tests/Whizbang.Generators.Tests/ThirdPartyGuidInterceptionTests.cs
   - tests/Whizbang.Generators.Tests/GuidUsageAnalyzerTests.cs
   - tests/Whizbang.Migrate.Tests/Transformers/GuidToTrackedGuidTransformerTests.cs
-lastMaintainedCommit: 'bf8517ac'
+lastMaintainedCommit: '8b593d37b'
 ---
 
 # WhizbangIds: Strongly-Typed Identity Values
@@ -882,7 +885,10 @@ id that does not write it, or writes `Versions = UuidVersions.V7`, generates the
 Every generated id has `IsAccepted(Guid)`: its rule, including a [grandfathered value](#grandfathered-values), as a
 yes or no that never throws. `From` checks through it, and the stream-id report asks it, so a stream id the id's own
 rule accepts is never reported, and a grandfathered-values hook that throws makes the stream id reported rather than
-failing the append {verified: GuidOrderingStreamIdByTypeTests.AcceptsStreamId_AsksTheIdsOwnRule_WithoutAnExceptionAsync, GuidOrderingStreamIdByTypeTests.AcceptsStreamId_AHookThatThrows_ReportsTheStreamIdRatherThanFailingTheAppendAsync}.
+failing the append, with a Warning, once per stream id, naming the id type, the stream id and what the hook threw
+{verified: GuidOrderingStreamIdByTypeTests.AcceptsStreamId_AsksTheIdsOwnRule_WithoutAnExceptionAsync, GuidOrderingStreamIdByTypeTests.AcceptsStreamId_AHookThatThrows_ReportsTheStreamIdRatherThanFailingTheAppendAsync, GuidOrderingStreamIdByTypeTests.AcceptsStreamId_AHookThatThrows_IsLoggedAtWarningNamingTheIdTypeAndStreamIdAsync}.
+An id type that declares its own member named `IsAccepted` is the error
+[WHIZ045](../../operations/diagnostics/whiz045) {verified: WhizbangIdVersionsTests.AnIdThatDeclaresIsAccepted_ReportsWhiz045Async}.
 
 ```csharp{title="Asking an id's rule without an exception" description="IsAccepted answers what From would accept" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "WhizbangId", "Versions"] tests=["GuidOrderingStreamIdByTypeTests.AcceptsStreamId_AsksTheIdsOwnRule_WithoutAnExceptionAsync"]}
 if (CustomerId.IsAccepted(value)) {
@@ -1033,6 +1039,12 @@ An `ExecuteUpdate` that sets an id writes it in the form the fleet reads, as Sav
 [switch](#stored-form-switch) is off, the UUID string once it is on, decided each time the statement runs (a compiled
 query is cached for the life of the process), and JSON `null` for no id
 {verified: WhizbangIdDocumentStorageTests.Whizbang_ExecuteUpdateWhileTheGateIsClosed_SetsAnIdInTheObjectFormAsync, WhizbangIdDocumentStorageTests.Whizbang_OneCompiledExecuteUpdate_FollowsTheGateWhenItRunsAsync}.
+That holds on a generated context built from options without the Whizbang extension too: its `OnConfiguring` gives
+the options the framework's query postprocessor when they lack one
+{verified: WhizbangIdDocumentStorageTests.Convention_ExecuteUpdateWhileTheGateIsClosed_SetsAnIdInTheObjectFormAsync, WhizbangIdDocumentStorageTests.Configure_LeavesOptionsWithAPostprocessorOrFrozen_AsTheyAreAsync}.
+A pooled context's options cannot be changed there, so a pooled context needs the extension (`UseWhizbangFunctions`),
+which the generated registration always adds. A partial class of yours that overrode `OnConfiguring` moves its body to
+`OnConfiguringExtended`.
 A collective setter does the same, and a collective comparison on an id matches a row in either form
 {verified: CollectiveSettersRewriterTests.CollectAssignments_AStrongIdWhileTheGateIsClosed_IsSerializedInTheObjectFormAsync, CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_AComparisonOnAStrongId_MatchesItInEitherStoredFormAsync}.
 Reads take either form and count the object form on `whizbang.perspective.identifier_form_fallbacks`. SQL of your own
@@ -1053,17 +1065,38 @@ instance can read it. It takes one package; there is no ordered pair of releases
    Framework and Dapper) at every start and every maintenance cycle, latches the `wh_settings` row `strong_id_uuid_string_documents` once at least one instance is live
    and every live instance is at level 2 or higher. Until then both writers write the object form every release reads
    {verified: StrongIdDocumentGateTests.AnInstanceThatDoesNotReadTheUuidString_HoldsTheWriteFormAndTheRewrite_WhateverItsVersionAsync, StrongIdDocumentGateTests.WhileAnEarlierInstanceIsLive_NeitherWriterWritesTheUuidStringAsync, WhizbangIdDocumentStorageTests.Whizbang_WhileTheGateIsClosed_WritesTheObjectForm_WhichTheEarlierReleaseReadsAsync}.
-3. **Each instance switches its writes and says so.** An instance that sees the gate open writes the UUID string from
-   then on, and its heartbeat adds `strong_id_document_form: "uuid-string"`. A process writes the UUID string only once
-   the gate of every database schema it writes documents to is open; a schema with no gate at all is left out rather
-   than holding the others {verified: StrongIdDocumentGateTests.ASchemaWithoutTheGate_IsUnavailable_AndLeftOutOfTheWriteFormAsync}.
-   A Dapper instance asks too, so a schema with Entity Framework and Dapper instances reaches the rewrite
-   {verified: DapperStrongIdDocumentGateTests.AMixedFleet_ReachesTheRewrite_OnceTheDapperInstanceAsksTheGateAsync}.
-   The Dapper driver's own document writer uses the serializer options the application gives it, as before.
+3. **Each instance switches its writes and says so, per schema.** The form is decided for each database schema a
+   process writes documents to: the upsert, a collective setter and `ExecuteUpdate` write the UUID string into a schema
+   once its own gate is open, whatever the process's other schemas say, and the heartbeat in that schema adds
+   `strong_id_document_form: "uuid-string"`
+   {verified: PerspectiveUpsertStrongIdFormTests.AnUpsert_WritesTheFormItsSchemasGateAllows_WhileAnotherSchemaIsHeldAsync, WhizbangIdDocumentStorageTests.Whizbang_ExecuteUpdate_FollowsTheGateOfTheSchemaItUpdates_NotTheProcessesAsync, WhizbangIdDocumentFormTests.AWriteToAnOpenSchema_WritesTheUuidString_WhileAnotherIsHeldAsync}.
+   A schema with no gate at all (not yet migrated, or migrated by an earlier release) is held, so nothing writes the
+   UUID string into it; the gate is asked again each maintenance cycle
+   {verified: StrongIdDocumentGateTests.ASchemaWithoutTheGate_IsUnavailable_AndHeld_SoNothingWritesTheUuidStringIntoItAsync}.
+   A write of your own that names no schema (SaveChanges on a context of yours) writes the UUID string only once every
+   schema the process knows is open. The [Dapper driver](#stored-form-drivers) says it writes the UUID string from its
+   first beat.
 4. **The rewrite starts once every live instance writes it.** So no instance writes the object form behind the rewrite
    {verified: StrongIdDocumentGateTests.TheRewrite_WaitsUntilEveryLiveInstanceWritesTheUuidString_ThenRunsAsync}. It
    asks again before every batch, so an instance that cannot read the new form and joins during a run stops it before
    the next batch {verified: StrongIdScalarRewriteIntegrationTests.AnEarlierInstanceJoiningDuringARun_StopsItBeforeTheNextBatchAsync}.
+
+##### Entity Framework and Dapper on one table {#stored-form-drivers}
+
+Before this release, an Entity Framework instance and a Dapper instance could not share one perspective table: the
+Entity Framework driver wrote and read only the object form, and the Dapper store, with Whizbang's serializer options,
+wrote and read only the UUID string, so each failed on the other's rows. This release reads both forms everywhere: the
+generated id's JSON converter, which the Dapper store reads with, takes `{"Value": "..."}` as well as the UUID string,
+through the id's own rule {verified: WhizbangIdJsonConverterReadTests.Read_TakesTheUuidString_AndTheObjectForm_AndWritesTheUuidStringAsync, WhizbangIdJsonConverterReadTests.Read_TheObjectForm_IsCheckedByTheIdsRule_AsTheUuidStringIsAsync}.
+
+The Dapper store keeps writing the UUID string. The gate governs the Entity Framework writer only, since that is the
+only writer an earlier release's reader cannot follow, and the Dapper heartbeat says it writes the UUID string from its
+first beat {verified: DapperStrongIdDocumentGateTests.TheDapperHeartbeat_SaysItWritesTheUuidString_FromItsFirstBeatAsync}.
+The Dapper driver also asks the gate, at host start and each maintenance cycle, so it latches the switch, opens the
+form for any Entity Framework writer in the same process, and names instances that cannot read the new form; a schema
+with Entity Framework and Dapper instances reaches the rewrite
+{verified: DapperStrongIdDocumentGateTests.AMixedFleet_ReachesTheRewrite_ThroughTheDapperCoordinatorAndStepAsync}.
+An earlier release's Entity Framework instance still cannot read what a Dapper instance writes, as before.
 
 ##### The switch is one-way {#stored-form-one-way}
 
@@ -1115,27 +1148,37 @@ A table settles on a complete pass that converts nothing, so a row written in th
 is converted by the next pass {verified: StrongIdScalarRewriteIntegrationTests.ARowWrittenBehindTheKeyDuringTheRewrite_IsConvertedByTheNextPassAsync}.
 A slice never runs past its budget by more than the time left in it: the last batch's statement is cut off at what is
 left, and rolled back for the next run to redo {verified: StrongIdScalarRewriteIntegrationTests.ABatchThatOutrunsTheBudget_IsCutOffAtWhatIsLeftOfItAsync}.
-The startup slice runs after the other stored-form steps and on its own, so a failure in it skips none of them.
+The startup slice runs after the other stored-form steps and on its own, so a failure in it skips none of them. Each
+journal row records the hash of the statement that converted it, so the
+[rollback gate](../../operations/startup/rolling-upgrades#the-rollback-gate) judges it by its content, as every other
+conversion {verified: StrongIdScalarRewriteIntegrationTests.TheMaintenanceStep_RecordsWhoAppliedIt_AndWhatAsync, StoredFormApplierTests.ARestoredDatabase_WhoseConversionsThisBuildDeclares_ServesWhateverApplicationAppliedThemAsync}.
 
 #### Strong ids outside a document {#strong-id-columns}
 
-A strong-id property of your own entity, outside a perspective document, keeps the column it had. An earlier release
-mapped such an id as a complex type, so its column is the one the id's `Value` had: `OrderId_Value`, or
-`Depot_DepotId_Value` inside a table-split complex type. This release maps the id as a `uuid` scalar but keeps that
-column, so an instance of each release reads and writes the same one during a rolling deploy, and no migration is
-needed {verified: WhizbangIdEntityColumnTests.ATableAnEarlierReleaseCreated_IsReadAndWrittenByThisRelease_AndTheOtherWayAsync, WhizbangIdEntityColumnTests.WithTheExtension_AnIdOutsideADocument_KeepsTheColumnItHadAsAComplexTypeAsync, WhizbangIdEntityColumnTests.WithoutTheExtension_TheGeneratedConvention_KeepsTheSameColumnsAsync}.
-An id with a converter of your own (`HasConversion`) is left as you mapped it.
+A strong-id property of your own entity, outside a perspective document, is a `uuid` column named after the property:
+`OrderId`, or `Depot_DepotId` inside a table-split complex type
+{verified: WhizbangIdEntityColumnTests.AnIdOutsideADocument_IsAColumnNamedAfterItsProperty_OnEitherPathAsync}.
+An id you configured keeps what you configured: a `ComplexProperty`, a `HasColumnName` or a converter of your own
+(`HasConversion`).
 
-A column named after the property is opt-in. Configure it, and deploy it in two steps so that no release reads a column
-the other does not write:
+An earlier release mapped an unconfigured id inside a table-split complex type as a complex type of its own, so its
+column was the one its `Value` had, `Depot_DepotId_Value`. Run `migrations add`: Entity Framework scaffolds the move as
+a rename, never a drop and an add, so the values stay
+{verified: WhizbangIdEntityColumnTests.MigrationsAdd_FromAnEarlierModel_RenamesTheValueColumn_AndKeepsItsDataAsync, WhizbangIdEntityColumnTests.MigrationsAdd_OnAContextWithoutTheExtension_RenamesTooAsync}:
 
-1. Add the new column and copy the values (`UPDATE shipments SET "OrderId" = "OrderId_Value"`), and ship a release that
-   writes both, with every instance on it.
-2. Switch the mapping, then drop the old column in a later release.
-
-```csharp{title="A strong id in a column named after its property" description="Opt in with HasColumnName" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "EF Core"] tests=["WhizbangIdEntityColumnTests.AConfiguredColumnName_IsTheOptInToAColumnNamedAfterThePropertyAsync"]}
-modelBuilder.Entity<Shipment>().Property(s => s.OrderId).HasColumnName("OrderId");
+```csharp{title="The migration for an id's column" description="migrations add scaffolds the move from the complex id's Value column as a rename" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "EF Core", "Migrations"] tests=["WhizbangIdEntityColumnTests.MigrationsAdd_FromAnEarlierModel_RenamesTheValueColumn_AndKeepsItsDataAsync"]}
+migrationBuilder.RenameColumn(
+    name: "Depot_DepotId_Value",
+    table: "shipments",
+    newName: "Depot_DepotId");
 ```
+
+The rename is a deploy step, not a rolling one: an instance of the earlier release reads the old column and an
+instance of this release the new one. Deploy in this order:
+
+1. Stop the earlier release's instances that use the table.
+2. Apply the migration.
+3. Start this release.
 
 ## Time-ordering checks {#time-ordering-checks}
 
