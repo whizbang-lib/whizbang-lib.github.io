@@ -45,7 +45,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/462_HeldLeasesAreRenewedByTheirOwner.sql
   - src/Whizbang.Data.Postgres/Migrations/536_PerspectiveWorkQueueCallsArePricedByTheBatch.sql
   - src/Whizbang.Data.Postgres/Migrations/557_TheStreamWalkStopsAtItsBoundAtEveryDepth.sql
-  - src/Whizbang.Data.Postgres/Migrations/620_TheReOfferWalkStartCanBeSeededForAMeasurement.sql
+  - src/Whizbang.Data.Postgres/Migrations/598_TheReOfferWalkStartCanBeSeededForAMeasurement.sql
   - src/Whizbang.Data.Postgres/ConcurrentIndexBuild.cs
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/Signals/BasePollSignalSource.cs
@@ -452,7 +452,7 @@ order are unchanged.
 {verified: ClaimWalkSeedSqlTests.TheWalkStart_Unseeded_IsDrawnAtRandomOnEveryCallAsync, ClaimWalkSeedSqlTests.TheWalkStart_Seeded_IsTheSeedAsync, ClaimWalkSeedSqlTests.TheWalkStart_SeedReset_IsDrawnAtRandomAgainAsync, ClaimWalkSeedSqlTests.ClaimWork_AsInstalled_DrawsEveryWalkStartThroughTheSeedableStartAsync, ClaimWalkSeedSqlTests.ClaimWork_Seeded_ReOffersTheHeldStreamsThatFollowTheSeed_InStreamOrderAsync}
 
 Each re-offer walk starts at a stream id drawn at random, for fairness: a lane larger than the batch is not handed
-back from the same streams on every poll. Since migration 620 the inbox and perspective walks take their start from
+back from the same streams on every poll. Since migration 598 the inbox and perspective walks take their start from
 one function, `_claim_walk_start()`, which draws with `gen_random_uuid()` unless the session has set
 `whizbang.claim_walk_seed` to a stream id. With the seed set, every walk in that session starts there and takes the
 held streams that follow it, in stream order.
@@ -460,7 +460,9 @@ held streams that follow it, in stream order.
 The seed exists for measurements. Where the draw lands decides how many probes a walk makes before it wraps, so two
 measurements of one workload could read different pages with nothing different but the draw; two fills of one
 workload measured blocks up to 1.3% apart. A measurement sets the seed for its own session and compares the two runs
-exactly:
+exactly. The per-call cost scenario compares the work each poll does (index scans, tuples fetched, rows leased and
+updated), not blocks: on a server shared with other databases, blocks also follow those databases' activity, which no
+single session can hold still:
 
 ```sql{title="Seed the re-offer walk for a measurement" description="Fixes where every claim re-offer walk starts, for this session only" category="Operations" difficulty="ADVANCED" tags=["Work-Coordinator", "Claim", "Measurement"] tests=["ClaimWalkSeedSqlTests.TheWalkStart_Seeded_IsTheSeedAsync", "ClaimPollPerCallCostScenarioTests.ClaimPollPerCallCost_TwoFillsOfOneDepth_AreOneWorkloadAtOneCostAsync"]}
 SET whizbang.claim_walk_seed = '01a20000-0000-7000-8000-000000002580';
