@@ -17,6 +17,10 @@ codeReferences:
     samples/ECommerce/tests/ECommerce.Integration.TestUtilities/Fixtures/PerspectiveCompletionReceptor.cs
   - >-
     samples/ECommerce/tests/ECommerce.Integration.TestUtilities/Fixtures/LifecycleReceptorTestExtensions.cs
+  - >-
+    samples/ECommerce/tests/ECommerce.Integration.TestUtilities/Fixtures/LifecycleStageTestExtensions.cs
+  - >-
+    samples/ECommerce/tests/ECommerce.Integration.TestUtilities/Fixtures/LifecycleStageFiringObserver.cs
   - src/Whizbang.Core/Messaging/IReceptorRegistry.cs
   - src/Whizbang.Core/Messaging/LifecycleStage.cs
   - src/Whizbang.Core/Messaging/ILifecycleContext.cs
@@ -26,6 +30,10 @@ testReferences:
   - tests/Whizbang.Testing.Component.Tests/Lifecycle/LifecycleStageAwaiterTests.cs
   - tests/Whizbang.Testing.Tests/Lifecycle/PerspectiveCompletionWaiterTests.cs
   - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ReceptorRegistryRuntimeRegistrationTests.cs
+  - >-
+    samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Lifecycle/PerspectiveLifecycleTests.cs
+  - >-
+    samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Lifecycle/PerspectiveLifecycleTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -330,6 +338,77 @@ public async Task CreateProduct_UpdatesProductCatalog_SimpleAsync() {
 - ✅ Automatic registration/cleanup
 - ✅ Consistent timeout handling
 - ✅ Reusable across all tests
+
+---
+
+## Every Lifecycle Stage: One Helper for Every Transport Suite {#lifecycle-stage-helper}
+
+The sample's transport suites (RabbitMQ and Azure Service Bus) wait on any of the 18 lifecycle stages through one
+shared helper, `LifecycleStageTestExtensions` in `ECommerce.Integration.TestUtilities`. The suites once kept a copy
+each, and only one copy could wait for a perspective stage once per perspective; since #2581 there is one copy, and
+both suites call it.
+
+### Register the firing observer on every host
+
+The helper's completion signal is `LifecycleStageFiringObserver`, which the receptor invoker calls after every receptor
+at a stage has run. Each host a test waits on registers it once, through `AddLifecycleStageFiringObserver()`, which
+registers one instance both as itself (what the helper waits on) and as the host's `IReceptorFiringObserver` (what the
+invoker reports to). A helper waiting on a host without it fails at once with the missing service rather than waiting
+out its timeout.
+
+```csharp{title="Register the Firing Observer" description="Every transport suite's host builder registers the lifecycle stage firing observer" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Lifecycle", "Observer"] tests=["PerspectiveLifecycleTests.PrePerspectiveInline_FiresBeforePerspectiveProcessing_BlocksUntilCompleteAsync"]}
+using ECommerce.Integration.TestUtilities.Fixtures;
+
+builder.Services.AddLifecycleStageFiringObserver();
+```
+
+### Expect one firing per perspective
+
+A perspective stage (`PrePerspectiveInline`, `PrePerspectiveDetached`, `PostPerspectiveDetached`,
+`PostPerspectiveInline`) fires once per event for each perspective that folds the event. The perspective stage waits
+take an `expectedFirings` count, and `PerspectivesFolding<TEvent>()` reads that count from the host's own perspective
+runner registry, so it is never counted by hand. It throws when no perspective of the host folds the event, because a
+stage count would then prove nothing. Arm the wait before you send, then require exactly that many firings:
+
+```csharp{title="Wait Once Per Perspective" description="A perspective stage wait expects one firing for each perspective that folds the event" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Lifecycle", "PerspectivesFolding"] tests=["PerspectiveLifecycleTests.PrePerspectiveInline_FiresBeforePerspectiveProcessing_BlocksUntilCompleteAsync", "PerspectiveLifecycleTests.PostPerspectiveInline_BlocksCheckpointReporting_GuaranteesDataSavedAsync"]}
+var perspectives = fixture.BffHost.PerspectivesFolding<ProductCreatedEvent>();
+bool filter(ProductCreatedEvent e) => e.ProductId == command.ProductId.Value;
+
+// Armed before the send, so no firing of this product can be missed.
+var stage = fixture.BffHost.WaitForPostPerspectiveInlineAsync<ProductCreatedEvent>(
+  messageFilter: filter, expectedFirings: perspectives, cancellationToken: cancellationToken);
+await fixture.Dispatcher.SendAsync(command);
+var receptor = await stage;
+
+// Once per perspective that folds the event, and no more
+await Assert.That(receptor.InvocationCount).IsEqualTo(perspectives);
+```
+
+### One wait per stage
+
+The firing observer counts every test receptor a stage invokes, so two waits armed at one stage count each firing
+twice. When a test sends several events, arm **one** wait per stage that covers all of them (a filter that matches
+every event, and `expectedFirings` set to the events times the perspectives), then count each event's own firings from
+the receptor's `CountedMessages`:
+
+```csharp{title="One Wait Per Stage for Several Events" description="One wait per stage covers every event; each event's firings are counted from what the receptor recorded" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Lifecycle", "CountedMessages"] tests=["PerspectiveLifecycleTests.PerspectiveStages_MultipleEvents_AllStagesFireForEachAsync"]}
+CreateProductCommand[] commands = [_command(), _command()];
+var perspectives = fixture.BffHost.PerspectivesFolding<ProductCreatedEvent>();
+var ids = commands.Select(c => c.ProductId.Value).ToHashSet();
+
+var wait = fixture.BffHost.WaitForPostPerspectiveInlineAsync<ProductCreatedEvent>(
+  messageFilter: e => ids.Contains(e.ProductId),
+  expectedFirings: commands.Length * perspectives,
+  cancellationToken: cancellationToken);
+foreach (var command in commands) {
+  await fixture.Dispatcher.SendAsync(command);
+}
+var receptor = await wait;
+
+foreach (var id in ids) {
+  await Assert.That(receptor.CountedMessages.Count(m => m.ProductId == id)).IsEqualTo(perspectives);
+}
+```
 
 ---
 
