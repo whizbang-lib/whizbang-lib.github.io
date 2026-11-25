@@ -300,6 +300,28 @@ are never picked: neither has a snapshot to take, and neither holds the body. Th
 snapshot only when one was written (see [Bootstrap](../perspectives/snapshots#bootstrap)).
 {verified: MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_ReapDrivenSnapshot_BootstrapsEachTargetPairAsync, EphemeralSnapshotTargetSqlTests.GetEphemeralPairsNeedingSnapshot_ReturnsConsumedAgedUncovered_ThenDropsAfterSnapshotAsync, EphemeralOnlyReadModelReapSqlTests.PairsNeedingSnapshot_AReadModelThatKeepsNoFloor_IsNotATarget_AndItsBodyIsOfferedForDestructionAsync, PurgedRowEphemeralHistorySqlTests.PairsNeedingSnapshot_APurgedPair_IsNotATarget_AndItsBodyIsOfferedForDestructionAsync, MaintenanceWorkerReapDrivenSnapshotTests.RunMaintenanceOnce_AStreamWithNoRow_IsNotLoggedAsASnapshot_ButAsAMissingRowAsync}
 
+### The reap scans start at the oldest body {#the-reap-scans-start-at-the-oldest-body}
+
+Before the delete, each cycle asks which pairs need that snapshot and which bodies the [destruction
+hooks](#destruction-hooks) will be offered. Both questions read the ephemeral events in the order they were stored.
+The reap removes the body and keeps the pointer, and the [pointer prune](#pruning-ancient-pointers) is opt-in, so on
+a long-running store almost every ephemeral pointer has already lost its body. Both questions used to read every one
+of them on every cycle: millions of rows to find the few hundred bodies a cycle reaps.
+
+They now start at a floor, an instant below which no ephemeral event still has a body. Each cycle walks forward from
+the stored floor to the first event whose body is still stored and moves the floor there, so an event is walked past
+once after its body goes, not once a cycle. Three limits keep the floor from skipping a body:
+
+| Limit | What it does | `wh_settings` key, default |
+|---|---|---|
+| Margin | The walk reads only events older than this, so an event stored by a transaction that commits late is still above the floor. | `ephemeral_reap_scan_floor_margin_seconds`, 3600 |
+| Full rescan | The walk starts from the beginning again at this interval, so a body that reached the store below the floor by another path (a restore keeps an archived timestamp) is found within the interval. | `ephemeral_reap_scan_floor_rescan_seconds`, 86400 |
+| No body left | The floor moves to the newest event it walked past, never over a range it has not read. | |
+
+A body that stays (held by a hook, kept to its TTL, or waiting on a snapshot) holds the floor at its own position, so
+the cycle reads what lies above it, which is the set it has to examine again anyway.
+{verified: EphemeralReapScanFloorSqlTests.Scans_ACycleAfterTheFirst_ReadOnlyThePointersAboveTheFloorAsync, EphemeralReapScanFloorSqlTests.Floor_StopsAtTheOldestPointerWithABody_AndNeverPassesItAsync, EphemeralReapScanFloorSqlTests.Floor_WithNoBodyLeft_RestsOnTheNewestPointerItWalkedPastAsync, EphemeralReapScanFloorSqlTests.Floor_NeverWalksPointersInsideTheMarginAsync, EphemeralReapScanFloorSqlTests.Floor_AfterTheRescanInterval_StartsFromTheBeginningAgainAsync}
+
 ### A purged row covers its history {#a-purged-row-covers-its-history}
 
 When a perspective purges its row (`ApplyResult.Purge()`, for example when a session ends), the
@@ -1077,7 +1099,13 @@ themselves. Its rule:
   deduplication window), and its body is already reaped;
 - no perspective work for it is pending;
 - it is not the newest pointer of its stream. That one stays as the stream's tombstone: it keeps the stream flagged
-  ephemeral for the rebuild guard, and it is the target of the perspective cursor's last event id.
+  ephemeral for the rebuild guard;
+- no perspective cursor and no snapshot rests on it. A cursor names the last event its own perspective applied, which
+  is often below the stream's newest pointer (a later event another perspective applies, or a Sourced event, sits above
+  it), and a rewind moves a cursor onto its snapshot's event. Such a pointer stays until its cursor moves on. Before
+  this rule, one such pointer in a batch failed the whole call on the cursor's foreign key, the claimed watermark rolled
+  back with it, and the prune failed on every cycle without removing anything.
+  {verified: EphemeralPointerPruneSqlTests.Prune_APointerACursorRestsOn_IsKept_AndTheRestOfTheBatchPrunesAsync, EphemeralPointerPruneSqlTests.Prune_APointerASnapshotRestsOn_IsKeptAsync}
 
 The streams about to lose pointers fold their apply path first, so a pruned prefix is never lost unfolded.
 
