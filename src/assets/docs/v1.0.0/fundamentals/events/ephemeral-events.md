@@ -1029,16 +1029,18 @@ per rewind.
 | `PerspectiveRewindStarted`, `PerspectiveRewindCompleted` | the rewind's own id (never the stream being rewound) |
 
 Each implements `IEphemeralSystemEvent`, a profile interface carrying
-`[Ephemeral(Destruction = Destruction.AfterTtl, TtlSeconds = 2592000, RewindGraceSeconds = 2592000)]`: 30 days.
+`[Ephemeral(Destruction = Destruction.AfterTtl, TtlSeconds = 1209600, RewindGraceSeconds = 1209600)]`: 14 days
+(30 days before #2585).
 Because every one of them is written to a stream of its own, no stream holds both kinds of event.
 `StreamRewindStarted` and `StreamRewindCompleted` are not in the family: their stream id is the application stream
 being rewound, so an ephemeral event there would mix modes (WHIZ133). Nothing emits them today.
-{verified: SystemEventRetentionTests.EveryRewindAndRebuildEvent_IsEphemeral_ForThirtyDaysByDefaultAsync, SystemEventRetentionTests.StreamRewindEvents_StaySourced_BecauseTheyNameTheApplicationStreamAsync}
+{verified: SystemEventRetentionTests.EveryRewindAndRebuildEvent_IsEphemeral_ForFourteenDaysByDefaultAsync, SystemEventRetentionTests.StreamRewindEvents_StaySourced_BecauseTheyNameTheApplicationStreamAsync}
 
 ### How long they are kept
 
-`Whizbang:Ephemeral:SystemEvents:Ttl` sets the retention for the whole family (default `30.00:00:00`). It must be
-greater than zero and fit in whole seconds of a 32-bit integer; anything else stops the host at start, naming the key.
+`Whizbang:Ephemeral:SystemEvents:Ttl` sets the retention for the whole family (default `14.00:00:00`; it was
+`30.00:00:00` before #2585, so set it to that value to keep the old retention). It must be greater than zero and
+fit in whole seconds of a 32-bit integer; anything else stops the host at start, naming the key.
 The value reaches two places, and both are needed:
 
 - **The TTL stamped on a new event.** The ephemeral-mode resolver applies it, so dispatch stamps the configured TTL
