@@ -35,6 +35,9 @@ codeReferences:
   - src/Whizbang.Core/Workers/WorkTableVacuumOnAcquisition.cs
   - src/Whizbang.Core/Startup/MaintainerDuty.cs
   - src/Whizbang.Core/RunControl/WhizbangRunPermit.cs
+  - src/Whizbang.Core/Startup/RoleCatalog.cs
+  - src/Whizbang.Core/Startup/RoleCatalogServiceCollectionExtensions.cs
+  - src/Whizbang.Data.Postgres/Migrations/615_ALapseNeedsASuccessor.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceTransitionSqlTests.cs
@@ -63,6 +66,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleHolderLivenessSqlTests.cs
   - tests/Whizbang.Core.Unit.Workers.Tests/Startup/DutyGrantContractTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperTableMaintenanceTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RoleLapseNeedsASuccessorSqlTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/RoleCatalogTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/RoleDeclarationGuardTests.cs
 ---
 
 # Capabilities and Duties
@@ -214,9 +220,9 @@ Staying up is also the more informative outcome, and fail-closed is what makes i
 
 ## Every duty is a role assignment {#role-assignment-the-default}
 
-With the Postgres driver every duty is held by **role assignment**: `maintainer`, `migrator`, the commit-order stamper's leadership (`commit-stamper`), the partition assigner's, and any duty a host names for its own steps. There is no other way to hold a duty, and no setting that turns it off. The vote is a single statement, and its transaction-scoped lock only serializes votes for the same role; it is released when the statement commits. From then on the duty is a row in `wh_role_assignments` with a holder, an **epoch** and a **lease** in database time. The holder's own work loop renews the lease through `VerifyStillHeldAsync`. Past its lease a holder is judged by [the one liveness rule](../../fundamentals/workers/instance-liveness#role-holders) plus a progress window: it keeps the duty while the rule calls it live and it renewed inside `RoleAssignmentOptions.ProgressWindow` (2 minutes by default), so a holder that is stuck stops renewing and loses the duty at the end of its window, and a holder the rule calls dead loses it once the rule says so. Each grant watches its assignment once per renew interval and cancels `IDutyGrant.LostToken` on a loss. Exclusive work presents `(holder, epoch)` to the database (`wh_assert_role_epoch`), so a holder that lost the duty cannot write. The grant carries the epoch as `IDutyGrant.Epoch`.
+With the Postgres driver every duty is held by **role assignment**: `maintainer`, `migrator`, the commit-order stamper's leadership (`commit-stamper`), the partition assigner's, and any duty a host [declares](#the-role-catalog) for its own steps. There is no other way to hold a duty, and no setting that turns it off. The vote is a single statement, and its transaction-scoped lock only serializes votes for the same role; it is released when the statement commits. From then on the duty is a row in `wh_role_assignments` with a holder, an **epoch** and a **lease** in database time. The holder's own work loop renews the lease through `VerifyStillHeldAsync`. Past its lease a holder is judged by [the one liveness rule](../../fundamentals/workers/instance-liveness#role-holders) plus a progress window: it keeps the duty while the rule calls it live and it renewed inside `RoleAssignmentOptions.ProgressWindow` (2 minutes by default), so a holder that is stuck stops renewing and loses the duty at the end of its window, and a holder the rule calls dead loses it once the rule says so. Each grant watches its assignment once per renew interval and cancels `IDutyGrant.LostToken` on a loss. Exclusive work presents `(holder, epoch)` to the database (`wh_assert_role_epoch`), so a holder that lost the duty cannot write. The grant carries the epoch as `IDutyGrant.Epoch`.
 
-`RoleAssignmentOptions.Roles` lists the duties the [holder loop](#the-holder-loop) holds and the `roles` health component reports. A duty not listed there is still held by assignment whenever something asks for it.
+`RoleAssignmentOptions.Roles` lists the duties the [holder loop](#the-holder-loop) holds and the `roles` health component reports. A duty not listed there is still held by assignment whenever something asks for it, as long as the [role catalog](#the-role-catalog) declares it.
 
 ### Design choices {#role-assignment-design-choices}
 
@@ -237,7 +243,76 @@ A few more behaviors to know:
 - **A newer release takes over cooperatively.** An instance on a newer library version asks an older holder to drain (`IDutyGrant.DrainRequested`); the holder finishes its current step and releases. A vacant duty goes to the newest version voting for it.
 - **A busy holder does not lose the duty.** Past its lease a holder the liveness rule calls live keeps the duty while it renews inside its progress window, so a slow startup or one long unit of work does not hand the duty away.
 - **One long statement does not lose the duty.** Each duty may declare its own lease, and a holder that marks the backend running its statement (`PgRoleElector.MarkDutyBackendAsync`) stays live while that statement runs.
-- **A database outage does not cool anyone down.** After an involuntary lapse an instance waits `CooldownAfterLapse` before winning the duty back, unless every holder lapsed together.
+- **A database outage does not cool anyone down.** After an involuntary lapse an instance waits `CooldownAfterLapse` before winning the duty back, unless every holder lapsed together. The cool-down is answered only while a peer that could take the duty exists (see [a lapse needs a successor](#a-lapse-needs-a-successor)).
+
+### A lapse needs a successor {#a-lapse-needs-a-successor}
+
+{verified: RoleLapseNeedsASuccessorSqlTests.Lapse_ALiveSoleHolderPastItsLeaseAndWindow_KeepsTheRoleAtItsEpochAsync, RoleLapseNeedsASuccessorSqlTests.Lapse_APeerThatVotes_TakesOverAStuckHolder_AtTheNextEpochAsync, RoleLapseNeedsASuccessorSqlTests.Successor_APeerTheRuleCallsDead_ATombstonedPeer_AndAStaleCandidacy_DoNotCountAsync, RoleLapseNeedsASuccessorSqlTests.Lapse_ASoleHolderTheRuleCallsDead_LapsesAtItsLease_AndANewInstanceWinsWithNoCoolDownAsync, RoleLapseNeedsASuccessorSqlTests.Lapse_ATombstonedSoleHolder_IsStillEvictedAsync, RoleLapseNeedsASuccessorSqlTests.CoolDown_AHolderWhosePeerLeft_WinsTheRoleStraightBackAsync, RoleLapseNeedsASuccessorSqlTests.CoolDown_WithALivePeer_IsAnsweredAsBeforeAsync}
+
+A role lapses only when a live peer can take it (migration 615, [#2593](https://github.com/whizbang-lib/whizbang/issues/2593)). The verdict "the holder lapsed" only matters when someone else could hold the role. Before this release a sole instance past its lease and its progress window was voided as lapsed, and the vote then answered `cooling_down` to that same instance, so a single instance could lose a standing role to its own lease again and again with nobody to take it.
+
+**What counts as a successor.** A candidate for the role other than the holder that:
+
+- voted for the role within the role's lease,
+- is not tombstoned, and
+- is live by [the one liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule), which also needs its registration row.
+
+A peer that stopped voting, or that the rule calls dead, does not count.
+
+**What changes, and what does not.**
+
+| Case | Result |
+|---|---|
+| A live sole holder past its lease and its progress window | Keeps the role at its epoch, and its writes pass the epoch fence (`wh_assert_role_epoch`): there is no other writer. |
+| A stuck holder with a peer that votes | Taken over at the next epoch, exactly as before. A peer writes its candidacy before it reads the assignment, so in a fleet of two or more nothing changes. |
+| A sole holder the rule calls dead | Lapses at its lease, and a new instance wins with no cool-down. |
+| A tombstoned or unregistered holder | Evicted, unchanged. |
+| A holder voided while a peer existed, whose peer then left | Wins the role straight back: `cooling_down` is answered only while a successor exists. |
+
+The rule only extends a holding when no successor exists; it never shortens one. Every release calls these functions, so in a rolling deploy it applies to old and new instances at once.
+
+**A stalled sole holder is seen, not hidden.** `wh_role_assignment_status()` gains `stalled_without_successor`: a held role whose holder is past its lease, its marked backend's statement and its progress window, and keeps the role only because no other live candidate can take it. The [`roles` health component](../../resilience/managed-resource-health#roles) reports such a role `Degraded` (`role stalled: ... stalled with no peer to take over`), and each read that finds one is counted on `whizbang.roles.stalled_without_successor`, tagged with the role. A healthy sole holder, renewing inside its window, is not stalled and reads Healthy. The holder keeps the role either way; restarting it is the operator's call.
+{verified: RoleLapseNeedsASuccessorSqlTests.Status_ReportsAStalledSoleHolder_AsHeld_AndStalledWithoutSuccessorAsync, RoleLapseNeedsASuccessorSqlTests.Status_AHealthySoleHolder_IsNotStalledAsync, RoleAssignmentHealthSourceTests.AStalledSoleHolder_IsDegraded_StalledWithNoPeerToTakeOverAsync, RoleAssignmentHealthSourceTests.AHealthySoleHolder_IsOperationalAsync, RoleAssignmentElectorE2ETests.ReadAssignments_CountsAStalledSoleHolder_OnTheStalledWithoutSuccessorMeterAsync}
+
+### The role catalog {#the-role-catalog}
+
+{verified: RoleCatalogTests.TheFrameworkRoles_AreDeclared_WithTheirKindsAsync, RoleCatalogTests.AnUndeclaredRole_IsNotDeclaredAsync, RoleCatalogTests.AHostsRole_IsDeclared_AndAnExactNameWinsOverAPrefixAsync, RoleCatalogTests.ARoleDeclaredTwice_WithOneKind_IsOneDeclaration_AndWithTwoKinds_IsRefusedAsync, RoleCatalogTests.ADeclaration_RefusesAnEmptyName_AndTheCatalogRefusesNullsAsync, RoleCatalogTests.AddWhizbangRole_DeclaresIt_AndTheHolderLoopAndHealthManageItAsync, RoleCatalogTests.AddWhizbangRole_RefusesNullsAndEmptyNamesAsync, RoleAssignmentOptionsTests.IsEpisodic_ReadsTheRoleCatalog_TheFrameworksRolesAndAHostsAsync, RoleAssignmentOptionsTests.LeaseFor_APerspectiveRebuildDuty_KeepsTheDefaultLease_ThoughItIsEpisodicAsync}
+
+Every role an instance may vote for is declared once, in the `RoleCatalog` ([#2594](https://github.com/whizbang-lib/whizbang/issues/2594)). A declaration names the role and its `RoleKind`:
+
+| `RoleKind` | How the role is held |
+|---|---|
+| `Standing` | By one loop for a tenure, and reported unassigned while nobody holds it. |
+| `Episodic` | For one unit of work and released, so a vacancy between units is its normal state. The holder loop never holds it. |
+
+The framework declares its own roles (`RoleCatalog.FrameworkRoles`):
+
+| Role | Kind |
+|---|---|
+| `migrator` | Episodic |
+| `maintainer` | Standing |
+| `commit-stamper` (the commit-order stamper) | Standing |
+| `partition-assigner` | Standing |
+| the perspective-rebuild family (every role starting with `perspective-rebuild:`) | Episodic, declared by prefix |
+
+A host declares its own with `AddWhizbangRole(name, kind)`, or a family named per item (one per table, say) with `AddWhizbangRolePrefix(prefix, kind)`:
+
+```csharp{title="Declaring a host's own role" description="A startup step whose RequiredCapability is a duty of the host's own declares it in the role catalog, or the elector refuses it." framework="NET10" category="Configuration" difficulty="INTERMEDIATE" tags=["startup", "duties", "roles", "role-catalog"] tests=["RoleCatalogTests.AddWhizbangRole_DeclaresIt_AndTheHolderLoopAndHealthManageItAsync"]}
+using Whizbang.Core.Startup;
+
+services.AddWhizbangRole("report-builder", RoleKind.Standing);
+services.AddWhizbangRolePrefix("tenant-export:", RoleKind.Episodic);
+```
+
+A standing role declared this way also joins `RoleAssignmentOptions.Roles`, the roster the holder loop holds and the `roles` health component reports; an episodic role or a family is held only by the work that asks for it, so its vacancy is never reported. An exact declaration wins over a prefix, and the longest matching prefix wins over a shorter one. One name declared twice with one kind is one declaration; declared with two kinds, or as a role and as a family, it is refused at startup. A role already listed in `RoleAssignmentOptions.Roles` counts as a declared standing role.
+
+**Undeclared roles are refused.** The role elector refuses a role the catalog does not declare before any statement runs, so an undeclared name never reaches the vote and writes no candidacy. The refusal names the fix: `duty '<name>' is not a declared role: declare it with services.AddWhizbangRole("<name>", RoleKind.Standing or Episodic)`.
+{verified: RoleAssignmentElectorE2ETests.TryAcquire_ARoleTheCatalogDoesNotDeclare_IsRefused_AndCastsNoVoteAsync}
+
+**Upgrade.** A host that runs a duty of its own, for example a startup step whose `StartupStepDescriptor.RequiredCapability` names one, declares it with `AddWhizbangRole`. `RoleAssignmentOptions.IsEpisodic` is now an instance member that reads the declaration (`options.IsEpisodic(role)`), not a static one that knew only the migrator. The migrator alone keeps the longer default lease (`DefaultMigratorLease`); a perspective rebuild's duty, though episodic, keeps the default lease.
+
+**A guard keeps the catalog true.** `RoleDeclarationGuardTests` reads the real call sites: every acquire call names a declared role or forwards one from a listed place, and every framework standing role has exactly one loop that holds it.
+{verified: RoleDeclarationGuardTests.EveryAcquireCall_NamesADeclaredRole_OrForwardsOneFromAListedPlaceAsync, RoleDeclarationGuardTests.EveryFrameworkStandingRole_HasExactlyOneLoopThatHoldsItAsync, RoleDeclarationGuardTests.TheGuard_ReadsTheRealCallSitesAsync}
 
 Health reports the duties under the [`roles` component](../../resilience/managed-resource-health#roles) and the meter `Whizbang.Roles` counts elections, hand-offs, drains and losses. The full design, the resilience requirements it meets and the chaos suite that tests them are in the [Duty Role Assignment](../../../proposals/duty-role-assignment) proposal; the options are in the [configuration reference](../configuration/configuration-reference#role-assignment-options).
 

@@ -139,6 +139,13 @@ map (migration 564; a reader that names its columns reads what it read before). 
 `IPartitionAssignmentSource.Current`, or `PartitionAssignerWorker.IsAssigner`, `Epoch` and
 `LastPublished` on the instance that holds the role.
 
+**An instance's share is part of its assignment.** How many partitions each instance owns, with the published map's
+revision and the roles it holds, is one derived fact per instance, `wh_instance_assignments()`: in map mode a count of
+its ownership rows, before the switch what a claim ranks by (the explicit map, or the modulo of the member list). An
+eligible instance that owns no partition reads `awaiting-share`, and logs and reports it, but readiness does not wait
+for a share. See [instance assignments](/v1.0.0/operations/startup/startup-status#instance-assignments).
+{verified: InstanceAssignmentsSqlTests.Assignments_InMapMode_NameEveryKind_FromTheTablesThatDecideItAsync, InstanceAssignmentsSqlTests.Assignments_BeforeTheMapSwitch_CountTheShareFromThePublishedMapAsync, InstanceAssignmentsSqlTests.Assignments_WithNoMapPublished_AreAwaitingTheirShare_AndALapsedRoleIsNotHeldAsync}
+
 ## How it behaves
 
 **Election.** Every instance, on either driver, runs `PartitionAssignerWorker` from the Coordinate stage and votes for
