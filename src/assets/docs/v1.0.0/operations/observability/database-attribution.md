@@ -67,6 +67,11 @@ Nobody has to remember to tag anything.
   worker is which lives in one file per package (`WorkerDbMechanisms.cs`). The host starts every worker inside its
   mechanism (`GatedHostedService`), and an `AsyncLocal` scope (`DbMechanismScope`) carries it through every `await` and
   into every task the worker's loop starts. A test fails when a framework worker the host starts names none.
+  The workers that keep the fleet's roles and partitions run under `role`: the duty holder loop, the partition
+  assigner (`PartitionAssignerWorker`) and the [partition handover worker](../../fundamentals/work-coordinator/partition-assignment#handover)
+  (`PartitionHandoverWorker`), so the statements a handover and a graceful leave run show on the same series as the
+  assignment that caused them.
+  {verified: WorkerDbMechanismsTests.EachWorker_IsAttributedToItsMechanismAsync}
 - **Commands are made in one place each.** The framework's raw commands come from `CreateWhizbangCommand()` /
   `CreateCoordinatorCommand()`, which annotate the text as it is set and record the statement when the command is
   disposed (the one point every execution path passes). The commands EF Core runs for the framework pass through

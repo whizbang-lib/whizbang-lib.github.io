@@ -16,3 +16,15 @@ Whizbang:StandbyWatcher:RequesterLivenessWindow  # configuration-reference#remov
 Whizbang:Database:RoleAssignment:Enabled                # configuration-reference#removed-keys lists it as a removed key (#2044): every duty is a role assignment
 Whizbang:Database:RoleAssignment:HoldLegacySessionLock  # configuration-reference#removed-keys lists it as a removed key (#2044): the legacy-lock bridge is gone
 Whizbang:Database:Stamper:AdvisoryLockKey               # configuration-reference#removed-keys lists it as a removed key (#2044): the stamper takes no lock of its own
+Whizbang:Database:PartitionAssigner:Enabled             # configuration-reference#removed-keys and partition-assignment list it as a removed key (#2559): the partition assigner always runs
+
+Whizbang:Database:PartitionAssigner                     # temporary: read by whizbang#2570 (wave 11); drop once it merges
+Whizbang:Database:PartitionAssigner:AssignmentLease     # temporary: read by whizbang#2570 (wave 11); drop once it merges
+Whizbang:Database:PartitionAssigner:HandoverDeadline    # temporary: read by whizbang#2570 (wave 11); drop once it merges
+Whizbang:Database:PartitionAssigner:OwnershipByMap      # temporary: read by whizbang#2570 (wave 11); drop once it merges
+Whizbang:Database:PartitionAssigner:RepublishInterval   # temporary: read by whizbang#2570 (wave 11); drop once it merges
+Whizbang:Database:PartitionAssigner:SettleWindow        # temporary: read by whizbang#2570 (wave 11); drop once it merges
+Whizbang:Startup:Application:AllowLossyRollback         # temporary: read by whizbang#2570 (wave 11); drop once it merges
+Whizbang:Startup:Application:OverrideIncompatibility    # temporary: read by whizbang#2570 (wave 11); drop once it merges
+Whizbang:Startup:Platform:AllowLossyRollback            # temporary: read by whizbang#2570 (wave 11); drop once it merges
+Whizbang:Startup:Platform:OverrideIncompatibility       # temporary: read by whizbang#2570 (wave 11); drop once it merges

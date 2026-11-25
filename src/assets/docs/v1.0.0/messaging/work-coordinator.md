@@ -215,20 +215,22 @@ WHERE message_id IN (...)
 
 **Problem**: How do you distribute work evenly across workers?
 
-**Solution**: **Consistent hashing** via `partition_number` (computed database-side by `compute_partition`).
+**Solution**: a stable hash into a fixed set of partitions, then a published map from partition to instance. This is not consistent hashing: the hash from stream to partition is a plain modulo that never changes, and what moves when instances join or leave is the [partition map](../fundamentals/work-coordinator/partition-assignment.md), changed [incrementally](../fundamentals/work-coordinator/partition-assignment.md#incremental-map) so a join or leave moves about 1/N of the partitions.
 
-```sql{title="Partition-Based Distribution" description="Solution: Consistent hashing via partition_number." category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Partition-Based", "Distribution"]}
--- Each message gets a partition number (0-9999) from its stream_id
+```sql{title="Partition-Based Distribution" description="Modulo into 10,000 partitions, then the published partition map decides the instance." category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Partition-Based", "Distribution"]}
+-- Each message gets a partition number (0-9999) from its stream_id (compute_partition)
 partition_number := abs(hashtext(stream_id::TEXT)) % partition_count;
 
--- Unowned work is claimable by the instance whose rank matches:
---   partition_number % active_instance_count = instance_rank
+-- The published map names the partition's owner:
+--   with ownership by map on (the default): wh_i_own(partition_number, instance) answers its epoch
+--   otherwise, unowned work: wh_partition_in_share(partition_number, rank, count, owners)
+--   with no map published, the fallback: partition_number % active_instance_count = instance_rank
 ```
 
 **Benefits**:
 - ✅ **Even distribution**: Hash function spreads streams evenly
 - ✅ **Deterministic**: Same stream always maps to same partition
-- ✅ **Scalable**: Add more workers, unowned partitions redistribute via the modulo formula
+- ✅ **Scalable**: Add more workers, and the assigner's next map moves about 1/N of the partitions to them
 
 ---
 
@@ -511,7 +513,7 @@ CREATE OR REPLACE FUNCTION claim_work(
 - ✅ **Let the built-in workers drive the coordinator**: They batch, coalesce, and flush correctly
 - ✅ **Report completions promptly**: Don't let leases expire (the flush workers coalesce automatically)
 - ✅ **Monitor stale leases**: Alert when lease_expiry is old
-- ✅ **Use consistent hashing**: Partition-based work distribution
+- ✅ **Let the partition map distribute work**: Partition-based work distribution
 - ✅ **Log all operations**: InstanceId, ServiceName, timestamps
 - ✅ **Handle failures gracefully**: `ReportFailuresAsync` increments retry counts and records errors
 - ✅ **Rely on `perform_maintenance`**: Purges completed rows and old dedup entries on schedule

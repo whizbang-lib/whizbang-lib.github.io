@@ -368,8 +368,10 @@ so a collective mutation would be lost on rebuild without a dedicated
 seam. `ICollectiveReplayApplier` (default `CollectiveReplayApplier`)
 supplies it: during a rebuild it loads the tenant's persisted collective
 events for the model being rebuilt, folds them into each stream's event
-list, and lets the runner's existing `OrderByMessageId` place them
-chronologically among the per-stream events; collectives that share an
+list, and lets the replay order place them among the per-stream events:
+by commit sequence, and an unstamped collective by its id, the replay's one
+documented fallback, since collectives of different streams share no stream
+position ([#2551](https://github.com/whizbang-lib/whizbang/issues/2551)); collectives that share an
 [ordering key](#ordering-key) are then put in commit order among themselves,
 the order the live sink applied them in. For each matching `[CollectiveApplyFor]` entry it invokes the
 handler for the spec and hands it to the per-model, **driver-neutral**
@@ -393,8 +395,8 @@ lives on its own stream — so this is worth stating plainly: the
 interleave, not the stream set, is what makes a collective survive.
 
 The order is a guarantee, not an accident of iteration. Within a row's
-replay, `OrderByMessageId` places each collective chronologically among
-that stream's own events, and collectives that share a stream through an
+replay, the replay order places each collective among that stream's own
+events by commit sequence (by id only when it is unstamped), and collectives that share a stream through an
 ordering key are then placed in commit order among themselves — the
 order the live sink applied them in. The order in which *rows* are
 rebuilt is unspecified and does not matter, because each row's replay

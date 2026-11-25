@@ -12,10 +12,12 @@ codeReferences:
   - src/Whizbang.Core/Notifications/CommitOrderStamperOptions.cs
   - src/Whizbang.Core/Notifications/CommitOrderStampSizer.cs
   - src/Whizbang.Data.Postgres/Migrations/248_StampReadsOnlyTheBatchItStamps.sql
+  - src/Whizbang.Data.Postgres/Migrations/569_StampFenceSkipsAutovacuum.sql
   - src/Whizbang.Data.Postgres/Notifications/PgCommitOrderStamperWorker.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Notifications/PgNotificationStackStartupGateTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CommitSequenceStreamOrderSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StampFenceAutovacuumSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/RoleVoteBehindAHeldBackStampScenarioTests.cs
   - tests/Whizbang.Core.Tests/Notifications/CommitOrderStampBatchTests.cs
   - tests/Whizbang.Core.Tests/Notifications/CommitOrderStampSizerTests.cs
@@ -141,6 +143,18 @@ database (plus prepared transactions targeting it) can do that, so the fence is:
 - the oldest `pg_prepared_xacts` transaction for `current_database()`,
 
 whichever is older — falling back to the snapshot's `xmax` when neither exists.
+
+**An autovacuum worker is not counted** ([#2562](https://github.com/whizbang-lib/whizbang/issues/2562), migration 569).
+The fence counts a backend only when it could still write the event store, and an autovacuum worker
+(`backend_type = 'autovacuum worker'`) never inserts an event row, so its transaction id can hide
+nothing. It is assigned one while it vacuums or analyzes, though, including the shared catalogs
+(`pg_database`, which every `CREATE DATABASE` and `DROP DATABASE` on the server churns) from whichever
+database it happens to be connected to. Counted, it held the fence for as long as it ran: every event
+committed meanwhile stayed unstamped, perspectives could not read it, and the outbox held it for its
+stamp. The [fenced retry](#fenced-retry) caught up once the worker finished, so nothing was lost,
+only delayed. Every other backend still counts, a client backend running `VACUUM` or `ANALYZE`
+included, and so do prepared transactions.
+{verified: StampFenceAutovacuumSqlTests.Stamp_AnAutovacuumWorkerHoldingAnOlderTransactionId_DoesNotHoldBackTheRowsAsync, StampFenceAutovacuumSqlTests.Stamp_AClientBackendHoldingAnOlderTransactionId_StillHoldsBackTheRowsAsync}
 
 :::updated
 Earlier versions fenced on `pg_snapshot_xmin(pg_current_snapshot())`, which is **cluster-wide**:

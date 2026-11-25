@@ -813,3 +813,188 @@ These matter to services that run [stream integrity](../resilience/stream-integr
   second one.
 - **What to do:** create a new message instance for each new stream. See
   [GenerateStreamId](../extending/attributes/generatestreamid.md#derived-stream-ids).
+
+### Every dispatch inside a handling derives its message ids {#every-dispatch-derives}
+
+*[#2543](https://github.com/whizbang-lib/whizbang/issues/2543)*
+
+- **What changed:** inside a receptor's handling, `SendAsync`, every `LocalInvokeAsync` and
+  `LocalInvokeWithReceiptAsync` overload, the batch methods (`SendManyAsync`, `LocalSendManyAsync`,
+  `PublishManyAsync`, `LocalInvokeManyAsync`), a publish routed to local receptors only, and `CascadeMessageAsync`
+  with no source envelope now derive their message ids from the handling, as explicit publishes already did. A
+  redelivered handling sends the same messages under the same ids. Outside a handling every id is still a fresh
+  UUIDv7.
+- **Who is affected:** nobody needs to change code. A handling first run before the upgrade and redelivered after it
+  sends once more under new ids, as before. A handling that publishes to its local receptors only, or cascades with no
+  source envelope, now spends an emission ordinal on that call, so the events it emits afterwards derive different ids
+  than on the previous version for a handling redelivered across the deploy.
+- **What to do:** nothing. See
+  [Every dispatch path inside a handling derives](../fundamentals/dispatcher/message-cascade.md#every-dispatch-path-derives).
+
+### The partition map moves about 1/N of the partitions, after membership settles {#incremental-partition-map}
+
+*[#2558](https://github.com/whizbang-lib/whizbang/issues/2558)*
+
+- **What changed:** the published partition assignment carries an explicit map of the 10,000 partitions to its
+  members, and every claim reads it. A join takes about 1/(N+1) of the partitions evenly from the others, a leave
+  spreads its share evenly over the rest, and nothing else moves; before, every join or leave moved nearly all
+  partitions. Membership changes are collected for a settle window
+  (`Whizbang:Database:PartitionAssigner:SettleWindow`, default 5 seconds) before one map is published, and an instance
+  is given partitions only once its startup reports ready. `AssignmentLease` and `RepublishInterval` now bind from the
+  same section. Migrations 564 and 566.
+- **Who is affected (breaking for implementers):** code that implements `IPartitionAssignmentStore`, or calls
+  `PartitionAssigner.Evaluate` itself. Hosts on the drivers' registrations change nothing. During a rolling deploy,
+  instances of the previous release publish without a map, and the claims then rank by modulo exactly as before.
+- **What to do:** an `IPartitionAssignmentStore` takes a `PartitionMap` in `PublishAsync` where it took the member list
+  (`map.Members` is that list), and implements `OpenOwnershipByMapAsync`. A call to `PartitionAssigner.Evaluate` passes
+  how long the membership has been unsettled (`unsettledFor`) before the options. See
+  [The incremental map](../fundamentals/work-coordinator/partition-assignment.md#incremental-map).
+
+### The Dapper driver elects its duties and runs the partition assigner; `Enabled` is removed {#dapper-coordination}
+
+*[#2559](https://github.com/whizbang-lib/whizbang/issues/2559)*
+
+- **What changed:** both Postgres drivers register role assignment and the elected partition assigner through one
+  shared registration. On Dapper, the maintainer (the maintenance sweep and its steps, and the table rewrite at
+  startup), each perspective table's blue-green rebuild guard and the partition assigner now run on one elected
+  instance instead of on every instance, and a claim presents the published partition map. When the holder dies, a
+  survivor takes the duty over once its lease lapses. Schema migration on Dapper is elected too
+  ([below](#dapper-migrator-election)). `PartitionAssignerOptions.Enabled` is removed: the assigner always runs, in
+  every driver.
+- **Who is affected:** Dapper services that watched the maintainer's work on every instance now see it on the one
+  instance holding the `maintainer` role (the `roles` health component names it). Code or configuration that set the
+  assigner's `Enabled`.
+- **What to do:** nothing in code for Dapper. Delete any `options.Enabled = ...` line from a
+  `Configure<PartitionAssignerOptions>` call, and the `Whizbang:Database:PartitionAssigner:Enabled` key from
+  configuration: it is reported once at startup as a removed key and changes nothing (it fails the start only when
+  unknown keys are set to throw). See [Dapper coordination](../data/dapper-integration.md#coordination).
+
+### The rollback gate judges by content, with one verdict for W! and one for the application {#two-verdicts}
+
+*[#2553](https://github.com/whizbang-lib/whizbang/issues/2553)*
+
+- **What changed:** a schema change the ledger records counts as applied since this version only when this build does
+  not make the same change (the same name with the same content hash); a change this build defines identically is
+  current, whatever version applied it. A database restored from another environment, whose ledger records a
+  SemVer-higher application version, now migrates or serves instead of standing down forever. Stored-form and
+  temporal-form conversions record a content hash too (migration 568); one recorded before that is identified by its
+  name. The W! migrations and the application's schema are then judged apart, each with its own verdict, reason and log
+  line: the W! migrations run first, an application stand-down never blocks them, and the instance serves only when
+  both sides can. The incompatibility override and the lossy rollback switch can be scoped to one side with
+  `Whizbang:Startup:Platform:OverrideIncompatibility`, `Whizbang:Startup:Application:OverrideIncompatibility`,
+  `Whizbang:Startup:Platform:AllowLossyRollback` and `Whizbang:Startup:Application:AllowLossyRollback`; the shared keys
+  keep meaning both sides. An override in use logs one Error per overridden side, naming that side, its own key and
+  what still runs.
+- **Who is affected:** hosts that set the shared `Whizbang:Startup:OverrideIncompatibility` for an incompatibility that
+  is the application's alone: the application's schema is now served as it is **and the W! migrations still run** (the
+  verdict is `Serve` or `Migrate`, where it was `Current` with nothing applied). That is the per-side decision, not a
+  regression. Code that calls `EnsureWhizbangInitializedAsync` on an instance whose application schema stood down: it
+  now applies the W! migrations, then throws `SchemaStandDownException` naming the side and its reason. Code that builds
+  an `EFCorePostgresStartupAssessor`, a `SchemaRollbackRequest`, or calls `UpgradeOrder.AppliedSince` itself.
+- **What to do:** nothing, for a host on the drivers' registrations. Code that builds an
+  `EFCorePostgresStartupAssessor` passes a `SchemaGateOverrides` (`UpgradeOrder.ReadOverrides(configuration)`) in
+  place of the two booleans. Code that builds a `SchemaRollbackRequest` passes the `RollbackPlan` in place of
+  `AllowLossy`, and what this build defines (an `IReadOnlyDictionary<string, string>` of ledger name to content hash).
+  `UpgradeOrder.AppliedSince` takes that dictionary too (`null` judges by version alone). See
+  [Two verdicts](../operations/startup/rolling-upgrades.md#two-verdicts) and
+  [a restored database](../operations/startup/rolling-upgrades.md#restored-database).
+
+### Ownership by map is on by default, with handover and fencing {#ownership-by-map}
+
+*[#2554](https://github.com/whizbang-lib/whizbang/issues/2554), [#2555](https://github.com/whizbang-lib/whizbang/issues/2555), [#2556](https://github.com/whizbang-lib/whizbang/issues/2556), [#2557](https://github.com/whizbang-lib/whizbang/issues/2557)*
+
+- **What changed:** a partition ownership table (`wh_partition_ownership`, one row per partition) is written by the
+  partition assigner with every map it publishes, and one predicate (`wh_i_own`) answers whether an instance may claim a
+  partition. With the per-service switch on, every claim path decides through that table alone: a stream's first writer
+  is no longer pinned as its owner, new perspective work is leased by partition, a live stored owner no longer keeps a
+  stream the map has moved, and a claimer with no valid map claims nothing and waits instead of ranking itself (counted
+  on `whizbang.work_coordinator.partition_map_unavailable` and warned once per streak). The wake-up notification goes to
+  the instance the map names for each stream's partition, with the switch off as well. Every heartbeat records
+  `partition_ownership_level` in the instance's registry metadata. A partition the map moves away from a live owner is
+  **handed over**: nobody claims it while the old owner finishes its in-flight streams, saves its write-behind models
+  (flush reason `handover`) and acknowledges, and it flips to the next owner at a raised epoch; past
+  `Whizbang:Database:PartitionAssigner:HandoverDeadline` (default 30 seconds) the assigner flips it itself. A stopping
+  instance hands its partitions over before it deregisters. Every write that commits a result names the partition epoch
+  its work was claimed under, and a write under an epoch that has moved on is **fenced**: it changes nothing and is
+  counted on `whizbang.work_coordinator.fenced_writes`. A perspective write holds its partition's epoch inside its own
+  statement until it commits, so a flip waits for it (migration 577). Migrations 565 to 567, 570 to 572 and 577.
+- **Who is affected:** every service on the PostgreSQL drivers, once every live instance of it runs this release:
+  `PartitionAssignerOptions.OwnershipByMap` now defaults to `true` and binds from
+  `Whizbang:Database:PartitionAssigner:OwnershipByMap`, and the switch is one-way. During a rolling deploy the switch
+  waits for the last instance of the previous release to stop, so mixed releases keep the stored-owner rules.
+  Implementers of `IPartitionAssignmentStore` (breaking): `PublishAsync` takes the handover deadline, and
+  `CompleteExpiredHandoversAsync` is new. Implementers of `IWorkCoordinator` gain epoch-taking overloads of
+  `CompleteOutboxPublishedAsync` and `CompletePerspectiveAsync`, and `GetPartitionsHandingOverAsync`,
+  `AcknowledgeHandoverAsync` and `GetLeaveStatusAsync`, all with default implementations, so a custom coordinator
+  compiles and hands nothing over. `HandlerBatchResult` gains an optional `Fenced`.
+- **What to do:** nothing, for a host on the drivers' registrations. To keep the stored-owner rules, set
+  `Whizbang:Database:PartitionAssigner:OwnershipByMap` to `false` **before** the switch turns on: it only stops the
+  assigner asking, and a switch already on stays on. Watch `fenced_writes` during the first deploy; a trickle while
+  partitions move is expected. See [Ownership by map](../fundamentals/work-coordinator/partition-assignment.md#ownership-by-map),
+  [Handover](../fundamentals/work-coordinator/partition-assignment.md#handover) and
+  [Fencing](../fundamentals/work-coordinator/partition-assignment.md#fencing).
+
+### Streams are ordered by position, never by id; `MessageOrderingExtensions` is removed {#stream-order}
+
+*[#2551](https://github.com/whizbang-lib/whizbang/issues/2551)*
+
+- **What changed:** a stored batch is versioned in the order its events were emitted, and a received stream in its
+  origin's order (each origin by the commit sequence it carries, dealt into the arrival slots it holds), never by id.
+  The outbox strategies flush a stream in the order its messages were appended instead of sorting them by id. The
+  perspective reads return a stream by version. The inbox fetch ranks a stream's received events by stored version and
+  its commands by arrival (a new `wh_inbox.arrival_position`), and returns the rank as `InboxBatchRow.StreamPosition`;
+  the perspective read returns each event's version (`StreamEventData.Version`, carried onto the envelope's
+  `LocalStreamVersion`). The drivers call two new functions, `fetch_inbox_batch_in_stream_order` and
+  `get_stream_events_in_stream_order`; `fetch_inbox_batch` and `get_stream_events` keep their results for a caller
+  built before them. `store_perspective_events` judges a late event by stream version (migration 578). The outbox
+  drains in emission order (migration 579): each row takes an emission position (`wh_outbox.emission_position`) as it
+  is stored, the claim, fetch, continuation and failure release follow it, `OutboxBatchRow.StreamPosition` carries it,
+  and the continuation cursor is `OutboxStreamCursor.LastPublishedPosition`, the last position published, not the
+  largest id. The drivers call `fetch_outbox_batch_in_stream_order` and
+  `wh_continue_outbox_streams_in_emission_order`; `fetch_outbox_batch` and `wh_continue_outbox_streams` keep their
+  results for a binary mid-rollout. No worker or runner re-sorts a stream by id. Migrations 573 to 576, 578 and 579.
+- **Who is affected (breaking):** code that calls `OrderByMessageId` from the public `MessageOrderingExtensions`, which
+  is removed. A custom `IWorkCoordinator` that implements `ContinueOutboxStreamsAsync`. Code that reads
+  `fetch_inbox_batch`, `get_stream_events`, `fetch_outbox_batch` or `wh_continue_outbox_streams` itself keeps working,
+  in the same order as before.
+- **What to do:** order a stream with `StreamOrder.InStreamOrder` (fetched inbox and outbox rows by `StreamPosition`,
+  one stream's envelopes by `LocalStreamVersion`), or keep the order the read returned. A custom coordinator's
+  `ContinueOutboxStreamsAsync` continues a stream after `OutboxStreamCursor.LastPublishedPosition` and fills
+  `OutboxBatchRow.StreamPosition` on the rows it fetches; the drain publishes rows without one in the order they are
+  returned. Outbox rows already queued take their positions during the migration, in the order they were drained in
+  until now. Streams already stored keep their versions;
+  a stream written after the upgrade by a producer still on the previous release is versioned in the order its batches
+  are listed, and the inbox rows already queued keep the order they were dispatched in until now. See
+  [Stream version ordering](../fundamentals/event-store/version-ordering.md) and the
+  [stream order rule](../extending/internals/event-ordering-invariant.md).
+
+### A locally invoked `[GenerateStreamId]` event derives its stream inside a handling {#local-invoke-generated-stream}
+
+*[#2552](https://github.com/whizbang-lib/whizbang/issues/2552)*
+
+- **What changed:** a `[GenerateStreamId]` event invoked with the void `LocalInvokeAsync` inside a receptor's handling
+  starts a stream derived from the handling, so a redelivered handling starts the same stream; outside a receptor it
+  still mints a fresh one. A published `[GenerateStreamId]` event's local receptors now see the stream derived from the
+  event's id, the one its stored copy and delivery receipt carry, instead of a second minted stream.
+- **Who is affected:** nobody needs to change code. A handling whose first run happened before the upgrade and is
+  redelivered after it starts the invoked event's stream once more, as before.
+- **What to do:** nothing. See [Derived stream ids](../extending/attributes/generatestreamid.md#derived-stream-ids).
+
+### The Dapper driver elects one schema migrator and reports Elect and Converge {#dapper-migrator-election}
+
+*[#2561](https://github.com/whizbang-lib/whizbang/issues/2561), [#2563](https://github.com/whizbang-lib/whizbang/issues/2563)*
+
+- **What changed:** on a rolling start, one Dapper instance applies the bootstrap closure, registers, wins the
+  migrator duty and migrates; every other instance registers, votes, waits on the migrator with its schema-ready gate
+  shut, and then serves without taking the schema lock or running a pass of its own. A waiter whose migrator dies
+  mid-migration votes for the duty and finishes the work. The election is shared runtime code (`MigratorElection`),
+  which the EF Core driver's generated initializer now calls too. On either driver every start checks the stored
+  perspective registry against what its build declares and reconciles it only when it differs, so a Dapper start on a
+  current schema no longer rewrites a registry that already matches. A Dapper start now reports Elect (voting, then
+  the outcome) instead of skipping it, enters Converge before it reconciles the managed schema objects, and reports
+  each committed migration file to `ISchemaInitializationObserver.OnSchemaStepCommittedAsync`.
+- **Who is affected:** Dapper hosts, which start faster on a rolling deploy (one pass, not one per instance), and
+  anything that watched their stage lines: Elect is no longer `skipped: no election could be held` on every start.
+- **What to do:** nothing. See [One migrator is elected](../data/dapper-integration.md#one-migrator),
+  [Dapper's stages](../operations/startup/startup-status.md#dapper-stages) and
+  [the registry check](../operations/infrastructure/migrations.md#registry-check).
