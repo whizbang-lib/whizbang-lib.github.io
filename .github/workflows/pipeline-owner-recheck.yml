@@ -1,0 +1,50 @@
+name: Pipeline owner re-check
+
+# The required "Gate · Pipeline owner" job in ci.yml reads a pull request's reviews when it runs, so a build
+# admin's approval given after it ran is not seen until it runs again. When a review is submitted or
+# dismissed, this re-runs that job of the pull request's latest CI run when the review can change its
+# verdict: an approval re-runs a failed gate, a change request or a dismissal a passed one
+# (.github/scripts/Invoke-PipelineOwnerRecheck.ps1, tested by "Test pipeline scripts" in ci.yml). The
+# library does the same from its pr-intake.yml; this repository has no intake workflow, so it is its own.
+# GitHub cannot re-run a job of a run that is still going, so the script waits for such a run to end.
+#
+# pull_request_review has no _target form: it runs this file as the pull request has it, with a token that
+# is read-only for a fork, so this runs only for pull requests from this repository, whose authors can push
+# here already. On a fork's pull request, re-run the gate job from the Checks tab after an approval. This
+# never judges anything: the gate itself runs the base branch's script and CODEOWNERS.
+
+on:
+  pull_request_review:
+    types: [submitted, dismissed]
+
+permissions: {}
+
+jobs:
+  review:
+    name: Re-check the pipeline-owner gate after a review
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.review.state != 'commented'
+    runs-on: ubuntu-latest
+    # Long enough to wait out a CI run that is still going.
+    timeout-minutes: 30
+    concurrency:
+      group: pipeline-owner-recheck-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pull-requests: read   # the head commit
+      actions: write        # re-run the gate job
+    steps:
+      - name: Checkout the pipeline scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github
+          persist-credentials: false
+      - name: Re-run the gate when the review can change its verdict
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          STATE: ${{ github.event.review.state }}
+        run: pwsh -NoProfile -File .github/scripts/Invoke-PipelineOwnerRecheck.ps1 -Repository "$REPO" -Number "$PR" -ReviewState "$STATE"

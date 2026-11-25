@@ -72,6 +72,45 @@ jobs:
       - name: Build
         run: pnpm run build
 
+  pipeline-owner:
+    name: Gate · Pipeline owner
+    # A change to the pipeline, the gates or the build inputs (the files .github/CODEOWNERS gives to
+    # build-admins) merges only when its author has the admin role, which the build-admins team grants, or a
+    # user with the admin role approved its current head commit (the library's GOVERNANCE.md, "Roles"). It
+    # stands in for a code owner's review, which the ruleset does not require because an author can never
+    # approve their own pull request. pipeline-owner-recheck.yml re-runs this job when a review is submitted
+    # or dismissed. Bots are exempt; the rules live in .github/scripts/Test-PipelineOwner.ps1 (the library's
+    # gate, ported), tested by "Test pipeline scripts" in the build job. This repository has no merge queue,
+    # so unlike the library's this job runs on pull requests only.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read   # the changed files and the reviews
+    steps:
+      # The base branch's script and CODEOWNERS, not the pull request's, so a pull request cannot change
+      # the rule that judges it.
+      - name: Checkout the base branch's pipeline scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          sparse-checkout: .github
+          persist-credentials: false
+      # A base branch from before this gate existed has no script to run; the pull request's is used there.
+      - name: Checkout the pull request's pipeline scripts (base branch predates the gate)
+        if: hashFiles('.github/scripts/Test-PipelineOwner.ps1') == ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github
+          persist-credentials: false
+      - name: A change to a build admin's files has a build admin's approval
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: pwsh -NoProfile -File .github/scripts/Test-PipelineOwner.ps1 -Repository "$REPO" -PullRequest "$PR"
+
   # Read the Docs builds only after a merge to main, so a change that breaks its build (an
   # unparseable mkdocs.yml, a dead link on the mirror) would otherwise merge green and surface
   # days later on the Read the Docs dashboard (#762). This runs exactly what .readthedocs.yaml

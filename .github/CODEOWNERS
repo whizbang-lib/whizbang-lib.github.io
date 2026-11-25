@@ -1,7 +1,13 @@
-# The pipeline, its gates and the build inputs belong to the build-admins team (docs#1237), as in the
-# library repository. With code-owner review required by the develop and main ruleset, a change to any of
-# these merges only with a build admin's approval; maintainers included. Everything else needs no
-# particular owner.
+# The pipeline, the gates and the build inputs belong to the build-admins team (docs#1237), as in the
+# library repository: changing any of these needs a build admin's approval of the pull request's latest
+# commit, unless a build admin opened it (the library's GOVERNANCE.md, "Roles":
+# https://github.com/whizbang-lib/whizbang/blob/develop/GOVERNANCE.md#roles). The ruleset does not require
+# a code owner's review, since an author cannot approve their own pull request; the Gate · Pipeline owner
+# check (.github/scripts/Test-PipelineOwner.ps1, the library's gate ported) reads this file instead.
+# Maintainers and committers can propose such a change; a build admin approves it. The gate reads this
+# file from the base branch, so a pull request cannot loosen it for itself. Patterns are plain paths: a
+# wildcard fails the gate rather than being guessed at. Everything else needs no particular owner.
+# Every pattern must match a file (.github/scripts/tests/CodeOwners.Tests.ps1).
 # https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
 # Workflows, composite actions, Dependabot, this file
