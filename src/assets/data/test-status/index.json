@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "45769131674",
-    "sha": "24e8527045a5bab2de1ec2725b0d80e537c15eb8",
+    "runId": "45783384463",
+    "sha": "73c8999e443853c49b0ea5cf49b1e605f5560db8",
     "branch": "develop",
-    "libraryVersion": "0.4522.0-alpha.635",
-    "completedAt": "2026-11-26T06:46:41.777Z"
+    "libraryVersion": "0.4522.0-alpha.643",
+    "completedAt": "2026-11-26T08:40:38.631Z"
   },
   "total": {
-    "passed": 45610,
+    "passed": 45634,
     "failed": 0,
     "skipped": 12
   },
@@ -18,7 +18,7 @@
       "skipped": 0
     },
     "component": {
-      "passed": 6383,
+      "passed": 6392,
       "failed": 0,
       "skipped": 0
     },
@@ -38,7 +38,7 @@
       "skipped": 0
     },
     "postgres-efcore-": {
-      "passed": 11733,
+      "passed": 11743,
       "failed": 0,
       "skipped": 0
     },
@@ -58,7 +58,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 24652,
+      "passed": 24657,
       "failed": 0,
       "skipped": 8
     }
@@ -162,7 +162,7 @@
     },
     "Whizbang.Core.Component.Tests": {
       "file": "Whizbang.Core.Component.Tests.json",
-      "passed": 5006,
+      "passed": 5015,
       "failed": 0,
       "skipped": 0
     },
@@ -198,7 +198,7 @@
     },
     "Whizbang.Core.Unit.Workers.Tests": {
       "file": "Whizbang.Core.Unit.Workers.Tests.json",
-      "passed": 3554,
+      "passed": 3559,
       "failed": 0,
       "skipped": 0
     },
@@ -210,7 +210,7 @@
     },
     "Whizbang.Data.EFCore.Postgres.Tests": {
       "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
-      "passed": 11731,
+      "passed": 11741,
       "failed": 0,
       "skipped": 0
     },
