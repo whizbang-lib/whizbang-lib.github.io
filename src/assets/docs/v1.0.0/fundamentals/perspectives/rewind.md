@@ -187,6 +187,14 @@ replay folds the stream** ([replay ordering](#replay-ordering)), then replays fr
 - If the candidate does not qualify, or none exists, or its serialization version is stale, the runner performs a
   **full replay**. It never falls back to a floor chosen in another order: that answer arrives exactly when the floor
   cannot be placed, and a wrong restore point leaves a read model with nothing pending to repair.
+- **One exception: a refused tip falls back to the floor.** A perspective that applies ephemeral and durable events
+  keeps a [tip snapshot](../events/ephemeral-events#the-tip-snapshot) beside its floor. When the candidate is that tip
+  and it cannot be read, or `ReplayFloor.Qualifies` refuses it, the runner restores from the floor below it
+  (`GetFloorSnapshotAsync`), judged by the same `ReplayFloor` rule; a floor that does not qualify either means a full
+  replay, as before. The tip was only ever a shortcut past the floor, so falling back to the floor never drops the late
+  event. A rewind also removes a tip at or above its late event (`DeleteTipSnapshotFromAsync`), as the
+  trigger on the cursor table does when the rewind is flagged.
+  {verified: TipSnapshotRunnerTests.ATipTheRewindCannotRead_FallsBackToTheFloor_InsteadOfDroppingTheLateEventAsync, TipSnapshotRunnerTests.ATipThatIsNoFloorInReplayOrder_FallsBackToTheFloorAsync, TipSnapshotRunnerTests.ALateEventBelowTheTip_RewindsFromTheFloor_AndTheTipThatMissedItGoesAsync, TipSnapshotSqlTests.ACursorFlaggedForALateEvent_DropsTheTipAtOrAboveIt_AndKeepsTheFloorAsync}
 - When that replay needs archived history and the stream's archive was deleted, it refuses instead of replaying (see [A deleted archive](#deleted-archive)).
 
 **Why the floor follows the replay's order (#2379).** A producer emitted three Started events and then a Completed

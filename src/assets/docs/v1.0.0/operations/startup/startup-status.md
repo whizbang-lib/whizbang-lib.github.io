@@ -51,6 +51,11 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Notifications/PgWorkAvailablePollSourceBase.cs
   - src/Whizbang.Core/Signals/SignalBusServiceCollectionExtensions.cs
   - src/Whizbang.Core/Signals/SignalBusHostedService.cs
+  - src/Whizbang.Core/Startup/InstanceAssignment.cs
+  - src/Whizbang.Core/Startup/InstanceAssignmentMonitor.cs
+  - src/Whizbang.Core/Startup/InstanceAssignmentOptions.cs
+  - src/Whizbang.Core/Health/InstanceAssignmentHealthSource.cs
+  - src/Whizbang.Data.Postgres/Migrations/616_EachInstanceAssignmentIsOneFact.sql
 testReferences:
   - tests/Whizbang.Hosting.AspNet.Component.Tests/StartupStatusEndpointsTests.cs
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/WhizbangStartupStatusEndpointBaseTests.cs
@@ -90,6 +95,11 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Startup/WorkerStartGateSourceGuardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStopBeforeReadyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupHealthWhileMigratingTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceAssignmentsSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceAssignmentDriverParityTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/InstanceAssignmentMonitorTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Health/InstanceAssignmentHealthSourceTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/InstanceAssignmentMonitorLoopTests.cs
 ---
 
 # The Startup Status Surface
@@ -115,7 +125,7 @@ All three serve the same `StartupStatusReport`, built by one shared reporter —
 The report has two sections because the endpoint gets reached two different ways:
 
 - **`instance`** — the process that answered this request: current step, the ordered step list with status, duration and outcome, and whether its pipeline is complete and ready. Read from memory, so it is exact and current.
-- **`fleet`** — every live instance, from the database: version, lifecycle phase, [capabilities held](capabilities-and-duties), whether it is evicted, and seconds since it was last heard from.
+- **`fleet`**: every live instance, from the database: version, lifecycle phase, [capabilities held](capabilities-and-duties), whether it is evicted, seconds since it was last heard from, and its [assignment](#instance-assignments) with the partitions it owns.
 
 Behind a load balancer, the fleet section is what makes checking a rolling deployment one request instead of curling repeatedly and hoping to reach each pod; the instance section is what identifies *which* instance answered — and the responder appears in both, its id being the key that finds its row among the rest.
 
@@ -506,6 +516,64 @@ SELECT service_name, host_name, stage_name, stage_position, stage_count,
        startup_stage_message, time_in_stage, eligible_for_work
 FROM wh_instance_startup_stages();
 ```
+
+### Instance assignments {#instance-assignments}
+
+{verified: InstanceAssignmentsSqlTests.Assignments_InMapMode_NameEveryKind_FromTheTablesThatDecideItAsync, InstanceAssignmentsSqlTests.Assignments_BeforeTheMapSwitch_CountTheShareFromThePublishedMapAsync, InstanceAssignmentsSqlTests.Assignments_WithNoMapPublished_AreAwaitingTheirShare_AndALapsedRoleIsNotHeldAsync, InstanceAssignmentsSqlTests.Assignments_FollowTheDecidingTables_WithNoWriteOfTheirOwnAsync, InstanceAssignmentDriverParityTests.BothDrivers_RegisterTheFleetSourceAndTheAssignmentReader_AndAnswerAlikeAsync, InstanceAssignmentDriverParityTests.KindOf_ReadsEveryNameTheFunctionWrites_AndRefusesAnUnknownOneAsync, InstanceAssignmentDriverParityTests.TheFleet_BeforeTheAssignmentFunctionExists_StillReads_WithNoAssignmentAsync}
+
+What an instance has been given to do sits in three tables (`wh_service_instances`, `wh_role_assignments`,
+`wh_partition_ownership`). `wh_instance_assignments()` (migration 616,
+[#2595](https://github.com/whizbang-lib/whizbang/issues/2595)) derives it as one fact, one row per registered
+instance, from those tables alone, so it is never stored a second time and never drifts. Each row carries the
+instance's roles (the ones it validly holds, with their epochs), its share of the partitions, the published map's
+revision, and the kind of assignment:
+
+| `assignment` | `InstanceAssignmentKind` | Meaning |
+|---|---|---|
+| `evicted` | `Evicted` | Tombstoned: refused at heartbeat, acquisition and claims. |
+| `draining` | `Draining` | Its recorded phase is past Running: pausing, paused, standing by, resuming, stopping, stopped, faulted or halted. |
+| `ineligible` | `Ineligible` | An older release in a service that claims by the partition map, which gives it no partition. |
+| `starting` | `Starting` | Registered, and its recorded stage or phase does not yet make it eligible for work. |
+| `awaiting-share` | `AwaitingShare` | Eligible for work, owning no partition: no map gives it a share yet. |
+| `role-holder` | `RoleHolder` | Eligible, owning partitions and holding at least one role: a standard worker as well. |
+| `standard-worker` | `StandardWorker` | Eligible, owning partitions, holding no role. |
+
+**How the share is counted.** In [map mode](../../fundamentals/work-coordinator/partition-assignment#ownership-by-map),
+it is a count of the ownership rows the instance owns. Before the switch, it is what a claim ranks by: the published
+explicit map, or the modulo of the member list when no map was published.
+
+```sql{title="Every instance's assignment" description="The operator query over each instance's derived assignment" category="Operations" difficulty="BEGINNER" tags=["Startup","SQL","Partitions","Roles"] tests=["InstanceAssignmentsSqlTests.Assignments_InMapMode_NameEveryKind_FromTheTablesThatDecideItAsync"]}
+SELECT service_name, host_name, assignment, roles, owned_partitions, map_revision, is_live
+FROM wh_instance_assignments();
+```
+
+**Readiness does not wait for a share.** An instance that is eligible but owns no partition (for example while the
+partition assigner is unheld) becomes Running as usual. A missing share is made visible instead, three ways:
+
+- **The fleet section.** `FleetInstanceStatus.Assignment` and `FleetInstanceStatus.OwnedPartitions` carry each
+  instance's row; both are null while the database cannot answer yet (a fleet read during a cold boot, before this
+  release's migration created the function). Both PostgreSQL drivers serve the fleet section now; the Dapper driver
+  gained its fleet source in this release.
+- **The log line.** From the Coordinate stage on, each instance reads its own assignment every `ObserveInterval`
+  (30 seconds by default) and logs it at Information when it first appears and on every change, for example
+  `Assigned: role holder (partition-assigner), 2500 partitions, map 12` or `Assigned: standard worker, 2500 partitions,
+  map 12`. A read that fails is logged as a warning and read again on the next interval, never thrown.
+- **The `assignment` health component.** It reports the latest read, and is never `Faulted`:
+
+| State | When |
+|---|---|
+| Operational | A standard worker, a role holder, or any other kind that is not evicted; one awaiting its share inside the grace; a fresh instance not yet observed, until the grace runs out. |
+| Degraded | Awaiting its share past the grace; a failed read after a successful one; not in the registered fleet; evicted; or no successful read by the end of `AwaitingShareGrace`, measured from the monitor's start. |
+
+The grace is `AwaitingShareGrace`; its default, zero, derives it as two partition-assigner settle windows plus one role
+renew interval (15 seconds with the defaults), which is how long a healthy assigner takes to give a new member its
+share. One failed read never restarts the awaiting-share clock. Both settings are in the
+[configuration reference](../configuration/configuration-reference#instance-assignment).
+{verified: InstanceAssignmentMonitorTests.Observe_LogsTheAssignment_WhenItFirstAppears_AndOnlyOnEveryChangeAsync, InstanceAssignmentMonitorTests.Describe_NamesEveryKindAsync, InstanceAssignmentMonitorTests.Observe_AwaitingItsShare_KeepsSinceWhen_AcrossAFailedRead_UntilItHasOneAsync, InstanceAssignmentMonitorTests.TheGrace_IsTwoSettleWindowsAndARenewInterval_UnlessSetAsync, InstanceAssignmentMonitorLoopTests.TheHostedLoop_ReadsAtStart_AndOnEveryInterval_UntilStoppedAsync, InstanceAssignmentHealthSourceTests.AFreshInstance_NotYetObserved_IsOperational_LikeOneAwaitingItsShareInsideTheGraceAsync, InstanceAssignmentHealthSourceTests.NoSuccessfulReadPastTheGrace_IsDegraded_NamingTheLastFailureAsync, InstanceAssignmentHealthSourceTests.AStandardWorker_IsOperational_SayingWhatItWasGivenAsync, InstanceAssignmentHealthSourceTests.AwaitingItsShare_IsOperationalInsideTheGrace_AndDegradedPastIt_NeverFaultedAsync, InstanceAssignmentHealthSourceTests.AFailedRead_AfterASuccessfulOne_ANotRegisteredInstance_AndAnEvictedOne_AreDegradedAsync, InstanceAssignmentHealthSourceTests.TheComponent_IsNamedAssignment_AndRefusesANullMonitorAsync, InstanceAssignmentDriverParityTests.BothDrivers_RegisterTheMonitorAndTheAssignmentHealthComponent_ThatReadTheInstancesOwnRowAsync}
+
+**Cost.** Read by the status surface, the monitor and operators, never on a hot path: one grouped count over the
+10,000-row ownership table (or one pass over the 10,000 map entries before the switch), one probe of the role table
+per role, and the liveness rule's one scan of the instances.
 
 ### What a fresh database and a restart record {#what-a-fresh-database-and-a-restart-record}
 
