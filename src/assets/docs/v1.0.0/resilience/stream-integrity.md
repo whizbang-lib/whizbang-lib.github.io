@@ -4674,8 +4674,8 @@ What the fill keeps consistent:
   perspective replays only the event types it handles, and the id merge is not stable under taking a subset, so a fill
   can reorder a whole stream while one perspective's events keep their order, or keep the stream's order while one
   perspective's events change theirs. For each cursor of the stream (the collective sink's excepted), the origin's
-  events of the types its perspective's association rows name (all of the origin's events when it has none, the
-  conservative answer) are compared before and after the fill by the replay's own rule
+  events of the types its perspective's association rows name (none when it has none: [it reads nothing](#a-rewind-starts-only-from-an-event-the-perspective-reads))
+  are compared before and after the fill by the replay's own rule
   (`ReceivedStreamOrder.FirstSlotTheFillChanges`). When they differ, the cursor is rewound from the first version whose
   slot changed: only that perspective's snapshots at that version or above (or with no version) are deleted, since
   the slots below it fold the same events either way, the cursor is flagged with that trigger and its replay frontier
@@ -4740,7 +4740,8 @@ every perspective batch the row was leased into.
 
 So a rewind starts no earlier than the **reap floor** (#2591, migration 600, `wh_rewind_reap_floor`): the first event of
 the stream at or after the trigger's version that still has a body and that the perspective reads (the types its
-association rows name, every type when it has none, and always the trigger itself).
+association rows name). Since migration 602 the trigger counts only when the perspective reads it, and a perspective with
+no association rows reads nothing; see [the next section](#a-rewind-starts-only-from-an-event-the-perspective-reads).
 
 | Case | What the rewind does |
 | --- | --- |
@@ -4775,6 +4776,35 @@ Why this choice:
   {verified: OriginPositionFillSqlTests.Repair_MovesAReapedTriggerToItsFloor_ClearsOneWithNone_LeavesTheRest_AndRunsOnceAsync, ReapedBodyBatchIsolationTests.Migration600_ClearsARewindThatCanNeverComplete_AndABlockingStartupIsNotHeldAsync}
 - **The re-sequence tool needs no floor.** [Re-sequencing a received stream](../operations/infrastructure/resequencing-received-streams)
   leaves streams that hold ephemeral events alone, and a Sourced event's body is never reaped.
+
+##### A rewind starts only from an event the perspective reads {#a-rewind-starts-only-from-an-event-the-perspective-reads}
+
+{verified: OriginPositionFillSqlTests.Rewind_FromAnEventThePerspectiveDoesNotRead_StartsAtTheFirstEventItReads_AndQueuesThatAsync, OriginPositionFillSqlTests.Rewind_ForAPerspectiveWithNoAssociationRows_FlagsDeletesAndQueuesNothingAsync, OriginPositionFillSqlTests.Fill_ThatReordersOnlyEventsAPerspectiveDoesNotRead_RewindsNothingAsync, OriginPositionFillSqlTests.ReapFloor_IsTheFirstEventWithABodyThePerspectiveReads_AtOrAfterTheTriggerAsync, OriginPositionFillSqlTests.Repair_MovesAnUnreadTriggerToTheFirstReadEvent_ClearsOneWithNone_LeavesTheRest_AndRunsOnceAsync}
+
+A flagged rewind is run by the drain for a (stream, perspective) pair, and the drain forms a pair only for an event the
+perspective applies. A rewind flagged from an event the perspective does not read therefore never ran: its queued row
+was leased on every pass, nothing was recorded against it (so it never dead-lettered), and the cursor stayed flagged,
+holding a worker in [Blocking mode](../fundamentals/perspectives/rewind#startup-modes) to the startup cap on every start
+(#2601). The first fill (migration 561) rewound every cursor of a stream from its first event, which is how a cursor
+came to be flagged from a type its perspective never handles.
+
+Since migration 602 the floor counts only events the perspective reads:
+
+| Rule | Why |
+| --- | --- |
+| The trigger counts only when the perspective's association rows name its type; otherwise the rewind starts at the first event at or after it that the perspective reads | The events before that one are not the perspective's, so a replay from either folds the same events, and the one it starts from is one a drain pair forms for |
+| A perspective with **no association rows reads nothing**: no rewind is raised for it, and the fill never rewinds it | The store queues a perspective only the event types its association rows name (the fan-out joins them), and each service's startup deletes the rows of a perspective it no longer runs. A cursor with none belongs to a perspective nothing in the schema runs, and a rewind of it could only queue a replay no runner takes. Reading it as "every type", as 590 and 600 did, flagged such cursors forever |
+| A fill that reorders only events a perspective does not read does not rewind it | Its own events fold in the same order before and after |
+
+What a database already holds is repaired once: migration 602 runs `_wh_repair_rewinds_from_unread_events` once per
+database (the `rewind_read_floor_repaired` setting records that it ran and what it did). A flagged cursor whose
+perspective reads nothing at or after its trigger has its flag, trigger and flag times cleared; one whose first read
+event is above its trigger is moved to that event and the event queued; and those cursors' queued rows that nothing would
+apply (an unread type, or no body) are deleted. It raises a NOTICE with the three counts, reads the cursor table once and
+touches only the flagged cursors' rows by key. A cursor the repair cannot reach (one flagged after it ran, by an older
+instance during a rolling deploy) is still rewound: the worker runs a [flagged rewind with nothing to apply](../fundamentals/perspectives/rewind#a-flagged-rewind-with-nothing-to-apply)
+from the stored trigger. The cursors of a perspective no service runs are removed by
+[the cleanup step](../fundamentals/perspectives/rewind#perspectives-no-longer-registered).
 
 #### Events this service authored {#pre-stamp-history-first-hop}
 

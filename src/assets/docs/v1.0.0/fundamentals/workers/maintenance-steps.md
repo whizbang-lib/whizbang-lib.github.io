@@ -24,6 +24,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/337_StreamDigestIdLanesBackfill.sql
   - src/Whizbang.Data.Postgres/MisattributedOriginCorrectionStep.cs
   - src/Whizbang.Data.Postgres/Migrations/346_MisattributedOriginCorrection.sql
+  - src/Whizbang.Data.Postgres/UnregisteredPerspectiveCleanupStep.cs
+  - src/Whizbang.Data.Postgres/Migrations/602_ARewindStartsOnlyFromAnEventThePerspectiveReads.sql
 testReferences:
   - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerStepTests.cs
   - tests/Whizbang.Core.Unit.Workers.Tests/Workers/MaintenanceWorkerRetentionSyncTests.cs
@@ -38,6 +40,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestIdLaneBackfillSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MisattributedOriginCorrectionSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMisattributedOriginCorrectionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/UnregisteredPerspectiveCleanupStepTests.cs
 ---
 
 # Maintenance steps {#maintenance-steps}
@@ -146,6 +149,19 @@ store where no service has announced an owned domain costs one read per run. `Re
 Each correction is logged at Warning and counted on `whizbang.stream_integrity.misattributed_origins_corrected`.
 [An origin that does not own the type](../../resilience/stream-integrity#misattributed-origin-correction) has the
 failure it repairs and the reason for each rule.
+
+## Unregistered-perspective cleanup {#unregistered-perspective-cleanup}
+
+{verified: UnregisteredPerspectiveCleanupStepTests.Clean_RemovesTheCursorsRowsAndSnapshotsOfAPerspectiveNothingRuns_AndLeavesTheRestAsync, UnregisteredPerspectiveCleanupStepTests.Clean_TakesBatchesWithinTheCycleBudget_AndTheNextCycleTakesTheRestAsync, UnregisteredPerspectiveCleanupStepTests.Clean_IsSkipped_WhenTurnedOff_OrWithoutAPerspectiveRegistryAsync, UnregisteredPerspectiveCleanupStepTests.ThePostgresDriver_RegistersTheStepAsync}
+
+Both Postgres drivers register the `unregistered-perspective-cleanup` step (#2601). It removes the cursors, queued rows
+and snapshots of a perspective this service does not register and no service's association rows name, at most
+`Whizbang:Workers:Perspective:UnregisteredPerspectiveCleanup:MaxBatchesPerCycle` batches of `BatchCursors` cursors a
+run. It is a step, not a migration, because only the running service knows which perspectives it registers, and it runs
+after startup, when that service has written its own association rows. `Enabled` turns it off. Each run that removed
+anything is logged at Warning, naming the perspectives, and counted on
+`whizbang.perspective.unregistered_cursors_removed`. [Perspectives no longer registered](../perspectives/rewind#perspectives-no-longer-registered)
+has the rule and why it cannot take a perspective a newer instance runs.
 
 ## Ledger retention {#ledger-retention}
 

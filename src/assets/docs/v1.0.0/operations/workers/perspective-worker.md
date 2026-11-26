@@ -429,6 +429,14 @@ public class PerspectiveWorkerOptions {
   /// without an apply under a backlog; it is diagnostic only. Default: 10. Null = no limit.
   public int? MaxPerspectiveEventAttempts { get; set; } = 10;
 
+  /// Leases after which a queued row with no failure recorded is warned about once (EventId 94) and counted
+  /// (#2601). Default: 25. Null turns the warning off.
+  public int? LeasedWithoutFailureWarningAttempts { get; set; } = 25;
+
+  /// The maintenance step that removes the cursors, queued rows and snapshots of a perspective no service runs
+  /// (#2601). Enabled by default; BatchCursors 1000, MaxBatchesPerCycle 10.
+  public UnregisteredPerspectiveCleanupOptions UnregisteredPerspectiveCleanup { get; set; } = new();
+
   /// Lease duration in seconds. Also drives the dedup cache retention period.
   /// Default: 300 (5 minutes).
   public int LeaseSeconds { get; set; } = 300;
@@ -839,6 +847,26 @@ perspective's own row holds a stored form no reader of this release takes. Its r
 dead-lettered at the same bound, and EventId 65 stays at Error as the cue that a
 [stored-form rewrite](../../fundamentals/perspectives/stored-form-migrations#recovery) is needed; see
 [why it stays at Error](../observability/logging-categories#kept-at-error).
+
+### Rows Leased Without a Failure {#rows-leased-without-a-failure}
+{verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_ARowLeasedToTheWarningBound_WithNoFailure_IsWarnedOnceAndCountedAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_TheLeasedWithoutFailureWarning_TurnedOff_WarnsNothingAsync, PerspectiveWorkerLeasedWithoutFailureTests.RowsLeasedWithoutFailure_AreThoseAtTheBoundWithNoFailure_AndEveryRowsLeasesReachTheStartupSetAsync, PerspectiveWorkerLeasedWithoutFailureTests.RowsLeasedWithoutFailure_TurnedOff_AreNone_AndWithNoStartupSetNothingIsRecordedAsync, PerspectiveWorkerLeasedWithoutFailureTests.FirstWarningOf_IsTrueOncePerRow_AndTheMemoryStartsOverAtItsCapAsync}
+
+Every claim of a `wh_perspective_events` row adds one to its `attempts`; only a failed apply adds to `failures`, and the
+dead-letter bound reads `failures`. A lease ends in an apply, which completes the row, or in a failure, which the bound
+counts. A row leased again and again with neither is one nothing applies, fails or completes: a rewind flagged from an
+event its perspective does not read was one (#2601), leased 150 times with `failures` 0 and no error, and nothing said
+so.
+
+So once a fetched row's `attempts` reach `LeasedWithoutFailureWarningAttempts` (default **25**) with `failures` still 0,
+the drain logs it at Warning, `PerspectiveWorker` EventId 94, naming the perspective, the stream, the event and the
+leases, and counts it on `whizbang.perspective.rows_leased_without_failure` (tag `perspective_name`). Each row is warned
+about once per process (the worker remembers up to 10,000 rows, then starts over). A row that failed is left to the
+dead-letter bound. `null` turns the warning off.
+
+The default is well past the leases a healthy row is charged: a busy backlog or a rolling deploy re-leases a row a few
+times, and the [re-offer release](../../fundamentals/work-coordinator/claim-loop#releasing-unstarted-work) refunds the attempt it charged. While a
+[Blocking startup](../../fundamentals/perspectives/rewind#startup-modes) waits, every fetched row's leases are also
+recorded for the cursors it waits on, and the cap's Warning names them (`queued row leased 62 times, 0 failures`).
 
 ### Unhandled Collective Events {#unhandled-collective-events}
 {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_CollectiveRowsNoHandlerHereApplies_AreCompletedWithoutApplying_WarnedOncePerTypeAndCountedAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_UnhandledCollectiveRowFetchedWithAReadableEvent_IsCompleted_AndTheEventAppliedAsync}
