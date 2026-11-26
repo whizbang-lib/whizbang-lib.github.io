@@ -640,6 +640,23 @@ no claims at all: look at the partition assigner's election and its liveness.
 
 {verified: CoordinatorOwnershipNoticesTests.AFencedWrite_IsCountedByKind_AndLoggedAsync, CoordinatorOwnershipNoticesTests.AFencedPerspectiveCompletion_IsCountedAsync, CoordinatorOwnershipNoticesTests.AFencedFlush_IsCountedAsync, CoordinatorOwnershipNoticesTests.AClaimWithNoValidMap_IsCounted_AndWarnedOncePerStreakAsync, DapperOwnershipNoticesTests.AFencedWrite_IsCountedByKind_AndAFencedHandlerCommitIsNotAFailureAsync, DapperOwnershipNoticesTests.AClaimWithNoValidMap_IsCounted_AndWarnedOncePerStreakAsync, PerspectiveWritesAreFencedTests.TheFence_InsideTheWritesTransaction_OnAHostWithoutMetricsOrLogging_StillFencesAsync}
 
+### Queue statistics refresh {#queue-statistics-refresh}
+
+Recorded by both PostgreSQL work coordinators from the warning a claim's
+[statistics refresh](../../fundamentals/work-coordinator/claim-loop#the-statistics-refresh-never-waits) raises when it
+could not analyze a stale queue table.
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.work_coordinator.queue_statistics.refresh_skipped` | Counter\<long\> | Queue tables whose stale planner statistics a claim could not refresh, counted once per back-off (the table is then left alone for 60 seconds). Tags: `table`, and `reason`: `lock_not_available` (another session held a lock that conflicts with `ANALYZE`, such as a concurrent index build or a transaction that locked the table), `lock_timeout` (a lock wait passed the refresh's bound), `failed` (`ANALYZE` raised an error). Each is also logged at Warning, naming the table, the reason and what happened |
+
+A claim never waits for a refresh it cannot run, so this counter is the only sign of one: claims go on planned on
+stale statistics until the refresh succeeds. A count that recurs every minute or so for the same table means whatever
+holds it has not let go; for `lock_not_available`, look for a long concurrent index build or an old open transaction
+(`pg_stat_activity`, oldest `xact_start` first), and see [a rebuild never waits for hours](../infrastructure/storage-maintenance#a-rebuild-never-waits-for-hours).
+
+{verified: ClaimWorkStaleStatisticsTests.ClaimWork_WhileTheRefreshCannotAnalyze_NeverWaits_CountsTheSkip_AndWarnsOncePerBackoffAsync, DapperClaimNeverWaitsOnMaintenanceTests.AClaimWhoseRefreshCannotAnalyze_CountsTheSkip_AndWarnsOncePerBackoffAsync}
+
 ### Batch store failures {#batch-store-failures}
 
 :::new
@@ -809,6 +826,15 @@ Meter name: `Whizbang.Maintenance` (`MaintenanceMetrics`)
 | `whizbang.maintenance.rows_affected` | Counter\<long\> | Rows a maintenance task deleted or processed in one cycle; tagged by `task`. Records only when the count is above zero |
 | `whizbang.maintenance.task_duration` | ms | A task's per-cycle wall time; tagged by `task`. Records every cycle, the liveness half of the signal |
 | `whizbang.maintenance.retention_adopted` | Counter\<long\> | Rows past a declared retention window at the moment the maintenance cycle adopted it and opened the enrolled reap's gate; tagged by `perspective` (the model's CLR type name). A zero backlog still records, so the series marks the adoption. The value is the backlog the drain will remove, not a rate |
+| `whizbang.maintenance.queue_index_rebuild.gave_up` | Counter\<long\> | Concurrent rebuilds of a queue index that gave up because a lock wait passed `Whizbang:Workers:Maintenance:ReindexLockTimeout`; tagged by `index` and `table`. The rebuild is tried again on a later cycle, and its Warning names each session it waited on with how long its transaction has been open. Sustained non-zero means a transaction stays open across maintenance cycles ([a rebuild never waits for hours](../infrastructure/storage-maintenance#a-rebuild-never-waits-for-hours)) |
+
+### Queue-index rebuild {#queue-index-rebuild}
+
+`whizbang.maintenance.queue_index_rebuild.gave_up` (above) is the one signal that the maintenance cycle's queue-index
+rebuild is waiting behind an old transaction: before the bound, such a rebuild held the table's lock for as long as the
+transaction stayed open, and nothing said so.
+
+{verified: QueueIndexReindexStepTests.Run_ARebuildThatGaveUp_WarnsNamingTheBlockers_CountsIt_AndDropsItsCopyAsync, QueueIndexReindexSqlTests.TheStep_BehindAnIdleTransaction_GivesUp_NamesTheBlocker_CountsIt_AndLeavesNoLeftoverAsync}
 
 `Whizbang.WorkCoordinator` also carries the `whizbang.maintenance.task.duration` and `whizbang.maintenance.task.rows_affected` histograms listed under its [Maintenance](#work-coordinator) heading; the per-task counter and the retention adoption signal live here.
 

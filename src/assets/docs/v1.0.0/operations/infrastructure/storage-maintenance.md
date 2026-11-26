@@ -1036,7 +1036,10 @@ named `queue-index-reindex`. Each cycle:
    progress.
 5. **Drops every invalid leftover** of an interrupted rebuild with `DROP INDEX CONCURRENTLY` ([leftovers](#queue-index-leftovers)).
 6. **Rebuilds at most one index:** of the valid indexes more than `ReindexBloatThreshold` times their expected size
-   and at least 1 MiB, the one with the most bytes to give back.
+   and at least 1 MiB, the one with the most bytes to give back. Each lock it waits for is bounded by
+   `ReindexLockTimeout` ([a rebuild never waits for hours](#a-rebuild-never-waits-for-hours)).
+7. **Drops the copy a failed rebuild left** on that table at once, rather than leaving it to be written on every insert
+   until the next cycle.
 
 ```mermaid{caption="One maintenance cycle of the queue-index rebuild: one claim per window, nothing while a build runs, leftovers dropped first, then at most one rebuild." tests=["QueueIndexReindexStepTests.Run_AThresholdOfZero_DoesNothing_NotEvenASurveyAsync","QueueIndexReindexStepTests.Run_WhenTheClaimIsLost_NothingIsSurveyedOrRebuiltAsync","QueueIndexReindexStepTests.Run_WhileABuildIsInProgress_NothingIsDroppedOrRebuiltAsync","QueueIndexReindexStepTests.Run_DropsEveryInvalidLeftoverFirst_ThenRebuildsAsync","QueueIndexReindexStepTests.Run_RebuildsOneIndexPerCycleAsync"]}
 flowchart TD
@@ -1058,11 +1061,12 @@ long rebuild is visible while it runs:
 When it finishes, the sizes before and after:
 `Queue index rebuild: wh_inbox_pkey on wh_inbox rebuilt concurrently, 41943040 -> 8388608 bytes`.
 A rebuild that fails is logged with the index and the error and does not fail the cycle; the copy it left is dropped
-on the next one.
+right away.
 
 | Key | Environment variable | Default | Meaning |
 |---|---|---|---|
 | `Whizbang:Workers:Maintenance:ReindexBloatThreshold` | `Whizbang__Workers__Maintenance__ReindexBloatThreshold` | `3.0` | How many times its expected size an index may grow before it is rebuilt. `0` turns the rebuild off; any other value must be finite and greater than 1. |
+| `Whizbang:Workers:Maintenance:ReindexLockTimeout` | `Whizbang__Workers__Maintenance__ReindexLockTimeout` | `00:01:00` | The longest the rebuild, or the drop of a leftover, waits for any one lock. Must be positive. |
 
 ```json{title="Rebuild queue indexes only past five times their expected size" description="Raises the queue-index rebuild threshold, so the maintenance cycle rebuilds an index on a queue table only once it is more than five times the size a fresh one would need." category="Configuration" difficulty="BEGINNER" tags=["storage", "reindex", "maintenance", "configuration"] tests=["QueueIndexReindexStepTests.TheThreshold_DefaultsToThree_AndBindsFromConfigurationAsync", "QueueIndexReindexStepTests.Run_TheThresholdIsTheOptionsAsync"]}
 {
@@ -1076,16 +1080,69 @@ on the next one.
 }
 ```
 
-The step runs with the EF Core driver's work coordinator. A coordinator that does not survey its indexes (the Dapper
-driver today) offers none, so the step does nothing there.
+The step runs with the work coordinator of either PostgreSQL driver, EF Core or Dapper. A coordinator that does not
+survey its indexes offers none, so the step does nothing there.
+
+### A rebuild never waits for hours {#a-rebuild-never-waits-for-hours}
+{verified: QueueIndexReindexSqlTests.Rebuild_BehindAnIdleTransaction_GivesUpWithinTheLockTimeout_AndNamesTheBlockerAsync, QueueIndexReindexSqlTests.Drop_BehindATransactionHoldingTheTable_GivesUpWithinTheLockTimeoutAsync, QueueIndexReindexSqlTests.TheStep_BehindAnIdleTransaction_GivesUp_NamesTheBlocker_CountsIt_AndLeavesNoLeftoverAsync, QueueIndexReindexStepTests.Run_ARebuildThatGaveUp_WarnsNamingTheBlockers_CountsIt_AndDropsItsCopyAsync, QueueIndexReindexStepTests.Run_TheLockTimeoutReachesTheDropAndTheRebuildAsync, QueueIndexReindexStepTests.Validate_TheLockTimeoutMustBePositiveAsync, DapperClaimNeverWaitsOnMaintenanceTests.ARebuildBehindAnIdleTransaction_GivesUpWithinTheLockTimeout_AndNamesTheBlockerAsync}
+
+A concurrent rebuild waits for every transaction in the database older than it, and for every session holding a lock
+on the table, and it holds the table's `ShareUpdateExclusiveLock` the whole time. That lock blocks `ANALYZE`, so a
+rebuild stuck behind an application transaction left idle also stops the [claim's statistics refresh](../../fundamentals/work-coordinator/claim-loop#the-statistics-refresh-never-waits)
+from analyzing the table. A deployed service had one wait over three hours that way.
+
+So every lock the rebuild waits for, the waits for older transactions included, is bounded by
+`Whizbang:Workers:Maintenance:ReindexLockTimeout` (default one minute, applied as `lock_timeout`; the build itself has
+no time limit). The drop of a leftover is bounded the same way. A rebuild that reaches the bound:
+
+- **gives up,** releasing its lock on the table;
+- **warns,** naming the index, each session it was waiting on with how long that session's transaction has been open,
+  and how many sessions the role could not see;
+- **is counted** on [`whizbang.maintenance.queue_index_rebuild.gave_up`](../observability/metrics#queue-index-rebuild),
+  tagged by index and table;
+- **drops the invalid copy** it left, at once;
+- **is tried again** on a later cycle.
+
+```text{title="The warning a rebuild that gave up writes"}
+Queue index rebuild of idx_inbox_state_held_lanes_covering on wh_inbox_state gave up: a lock wait passed
+Whizbang:Workers:Maintenance:ReindexLockTimeout (00:01:00). It was waiting on pid 4242 (transaction open 03:17:05).
+It is tried again on a later cycle
+```
+
+The sessions are found after the wait ends, by the rule Postgres waited by (`pg_blocking_pids` answers only while a
+wait is in progress): every other session of the database whose transaction began before the rebuild and still holds
+a snapshot or a transaction id, and every session holding a lock on the table. A session's transaction age is
+readable only to the same role or to one granted `pg_read_all_stats` (which `pg_monitor` grants); without it, the
+warning names the pid of a lock holder without its age and counts the sessions it could not see. To find the session
+and what it is doing:
+
+```sql{title="Inspect a session a rebuild waited on" category="Operations" difficulty="BEGINNER"}
+SELECT pid, usename, application_name, state, now() - xact_start AS open_for, left(query, 200) AS last_query
+FROM pg_stat_activity
+WHERE pid = 4242;
+```
+
+```json{title="Let a queue-index rebuild wait up to five minutes for a lock" category="Configuration" difficulty="BEGINNER" tags=["storage", "reindex", "maintenance", "configuration"] tests=["QueueIndexReindexStepTests.TheLockTimeout_DefaultsToOneMinute_AndBindsFromConfigurationAsync"]}
+{
+  "Whizbang": {
+    "Workers": {
+      "Maintenance": {
+        "ReindexLockTimeout": "00:05:00"
+      }
+    }
+  }
+}
+```
 
 ### Leftovers of an interrupted rebuild {#queue-index-leftovers}
-{verified: QueueIndexReindexStepTests.Run_DropsEveryInvalidLeftoverFirst_ThenRebuildsAsync, QueueIndexReindexStepTests.Run_ALeftoverThatIsNotDropped_IsLogged_AndTheRebuildStillRunsAsync, QueueIndexReindexSqlTests.TheStep_DropsAnInvalidLeftover_AndStillRebuildsAsync}
+{verified: QueueIndexReindexStepTests.Run_DropsEveryInvalidLeftoverFirst_ThenRebuildsAsync, QueueIndexReindexStepTests.Run_ALeftoverThatIsNotDropped_IsLogged_AndTheRebuildStillRunsAsync, QueueIndexReindexSqlTests.TheStep_DropsAnInvalidLeftover_AndStillRebuildsAsync, QueueIndexReindexSqlTests.TheStep_DropsTheCopyACancelledRebuildLeftOnTheInboxState_WhileTheIdleTransactionIsStillOpenAsync, QueueIndexReindexStepTests.Run_ARebuildThatFailed_DropsTheCopyItLeft_RightAwayAsync}
 
 `REINDEX CONCURRENTLY` builds a copy of the index named `<index>_ccnew`, swaps it in, and retires the original as
 `<index>_ccold`. Interrupted part way (a restart, a canceled statement, a lost connection), it leaves one of them behind,
 marked invalid. An invalid index is never used for reads but is still kept up to date on every write, so it costs
-without helping. Each cycle drops every such leftover on the queue tables before it rebuilds anything. A leftover that
+without helping. Each cycle drops every such leftover on the queue tables before it rebuilds anything, including one a
+rebuild cancelled by hand left behind (an operator cancelling a rebuild stuck behind an old transaction leaves
+`<index>_ccnew`), and a rebuild that fails or gives up drops its own copy at once. A leftover that
 was not dropped, or whose drop failed, is logged by name, and the rebuild still runs.
 
 To see them:
