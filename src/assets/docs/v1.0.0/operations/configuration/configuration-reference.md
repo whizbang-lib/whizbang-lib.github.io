@@ -66,6 +66,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/DeadLetterLoggingOptions.cs
   - src/Whizbang.Core/Workers/DatabaseFailureEscalationOptions.cs
   - src/Whizbang.Core/Startup/RoleAssignmentOptions.cs
+  - src/Whizbang.Core/Startup/StartupWorkOptions.cs
+  - src/Whizbang.Data.Postgres/StartupWorkSessions.cs
   - src/Whizbang.Data.Postgres/MigratorDuty.cs
   - src/Whizbang.Core/Versioning/UpgradeOrder.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
@@ -231,6 +233,7 @@ DbContext), the latest registration is used and startup logs a warning naming th
 | `Whizbang:Database:RoleAssignment` | `RoleAssignmentOptions` | Automatic (Postgres driver) |
 | `Whizbang:Database:PartitionAssigner` | `PartitionAssignerOptions` | Automatic (both Postgres drivers); see [Partition assigner](#partition-assigner) |
 | `Whizbang:Database:InstanceAssignment` | `InstanceAssignmentOptions` | Automatic (both Postgres drivers); see [Instance assignment](#instance-assignment) |
+| `Whizbang:Database:StartupWork` | `StartupWorkOptions` | Automatic (both Postgres drivers); see [Startup work](#startup-work) |
 | `Whizbang:Capabilities` | `CapabilityOptions` | Automatic (registered by every capability provider, both Postgres drivers among them); see [Capabilities](#capabilities-options) |
 | `Whizbang:WorkCoordinatorGate` | `WorkCoordinatorGateOptions` | Automatic (worker pipeline); a Postgres driver's `MaxInFlightCommands` fills `MaxConcurrent` when the section leaves it unset |
 | `Whizbang:ServiceName` (falls back to `ServiceName`) | — (string) | Automatic |
@@ -397,6 +400,20 @@ settings only decide how often an instance reads its own assignment and when a m
 |-----|------|---------|----------------------|---------|
 | `ObserveInterval` | `TimeSpan` | `00:00:30` | `Whizbang__Database__InstanceAssignment__ObserveInterval` | How often the instance reads its own assignment, logs it when it changes, and refreshes the `assignment` health component. Must be positive |
 | `AwaitingShareGrace` | `TimeSpan` | `00:00:00` | `Whizbang__Database__InstanceAssignment__AwaitingShareGrace` | How long an instance eligible for work may own no partition before the `assignment` health component reports it `Degraded`. `00:00:00` derives it: two partition-assigner `SettleWindow`s plus one role `RenewInterval`, 15 seconds with the defaults. Negative is refused |
+
+### Whizbang:Database:StartupWork → StartupWorkOptions {#startup-work}
+{verified: StartupWorkParityTests.TheCap_BindsFromConfiguration_AndKeepsItsDefaultsWithoutItAsync, StartupWorkCatalogTests.TheOptions_DefaultToACap_SoAHostThatConfiguresNothingIsCappedAsync, StartupWorkCatalogTests.TheOptions_RefuseACapBelowOne_AndANonPositiveIntervalOrLimitAsync, StartupWorkSessionsTests.ACapThatCannotWork_FailsTheStartAsync}
+
+Bound by both Postgres drivers (#2596). Parsed by hand, without reflection; a key that is absent or does not parse
+keeps its default, and a value that cannot work (a cap below 1, a non-positive interval or limit) fails the start.
+The cap counts the instances of one service schema, not every service on the database server. **Details:**
+[Heavy startup work](../startup/startup-pipeline#heavy-startup-work) and [the heavy-start cap](../startup/startup-pipeline#the-heavy-start-cap).
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `MaxConcurrentHeavyStarts` | `int` | `2` | `Whizbang__Database__StartupWork__MaxConcurrentHeavyStarts` | How many instances of the schema may run heavy startup work in Converge at once. A start past it waits for a permit. Must be at least 1; raise it when a large fleet should start faster |
+| `PermitPollInterval` | `TimeSpan` | `00:00:01` | `Whizbang__Database__StartupWork__PermitPollInterval` | How often a waiting start asks for a permit again. Must be positive |
+| `PermitWaitLimit` | `TimeSpan` | `00:05:00` | `Whizbang__Database__StartupWork__PermitWaitLimit` | How long a start waits for a permit before it runs its heavy work without one, at Warning, so stuck permit holders never keep an instance from starting. Must be positive |
 
 ### Whizbang:Capabilities → CapabilityOptions {#capabilities-options}
 

@@ -1,8 +1,8 @@
 ---
 title: The Startup Pipeline
 pageType: concept
-verifiedAgainstCommit: f1ff5bcf
-verifiedDate: 2026-08-16
+verifiedAgainstCommit: 147ab39b
+verifiedDate: 2026-11-26
 version: 1.0.0
 category: Startup
 order: 1
@@ -12,7 +12,7 @@ description: >-
   readiness and the data-plane seams compose from it
 tags: >-
   startup, pipeline, steps, ordering, readiness, hooks, observers,
-  schema-ready-gate, lifecycle
+  schema-ready-gate, lifecycle, heavy-startup-work, heavy-start-cap
 codeReferences:
   - src/Whizbang.Core/Startup/StartupStepDescriptor.cs
   - src/Whizbang.Core/Startup/StartupPipelineRunner.cs
@@ -21,6 +21,12 @@ codeReferences:
   - src/Whizbang.Core/Startup/StartupPipelineHosting.cs
   - src/Whizbang.Core/Startup/StartupReadiness.cs
   - src/Whizbang.Core/Health/StartupPipelineHealthSource.cs
+  - src/Whizbang.Core/Startup/StartupWork.cs
+  - src/Whizbang.Core/Startup/StartupWorkSession.cs
+  - src/Whizbang.Core/Startup/StartupWorkOptions.cs
+  - src/Whizbang.Data.Postgres/PgStartupWorkLedger.cs
+  - src/Whizbang.Data.Postgres/StartupWorkSessions.cs
+  - src/Whizbang.Data.Postgres/Migrations/630_HeavyStartupWorkIsCappedAndSharedWorkRunsOncePerBuild.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ColdBootJourneyE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TableRewriteJourneyE2ETests.cs
@@ -32,6 +38,12 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Startup/StartupWiringAuditTests.cs
   - tests/Whizbang.Core.Unit.Workers.Tests/Startup/StartupStepOrderResolverTests.cs
   - tests/Whizbang.Core.Unit.Workers.Tests/Health/StartupPipelineHealthSourceTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/StartupWorkCatalogTests.cs
+  - tests/Whizbang.Core.Unit.Workers.Tests/Startup/StartupWorkSessionTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/StartupWorkDeclarationGuardTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupWorkLedgerSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupWorkSessionsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupWorkParityTests.cs
 ---
 
 # The Startup Pipeline
@@ -117,6 +129,109 @@ The framework registers its own steps through the same contract — the built-in
 | `Rewrite` | `maintainer` (duty) | `Skip` | **no** | [Requested table rewrites](../infrastructure/migrations#table-rewrites-run-post-ready-under-the-maintainer-duty) (`VACUUM FULL`) — post-ready and deliberately unbounded, because a half-finished rewrite is worse than a slow one. Nobody blocks on it. |
 
 `Migrate` and `Rewrite` want opposite non-holder answers, which is why the behaviour is a declared field and not a global rule: every instance must wait for the schema to exist, and no instance should ever wait on a `VACUUM FULL`.
+
+## Heavy startup work {#heavy-startup-work}
+
+The [Converge stage](startup-status#startup-stages) runs on every instance at every start. A mass restart (a rollout, an autoscaler adding instances under load) used to start that work on every instance at once, against the same schema. Each unit of it is now **declared with a scope**, and both Postgres drivers run every unit only through one startup work session (`StartupWorkSession`), which refuses a name nothing declares. So the fleet-wide cap and the once-per-build rule apply to all of it, and a new unit cannot skip them by forgetting a call: a source guard fails the build when heavy Converge work runs outside a session. {verified: StartupWorkDeclarationGuardTests.EveryHeavyConvergeCall_RunsInsideASessionRunOfADeclaredNameAsync, StartupWorkDeclarationGuardTests.EverySessionRun_NamesADeclaredUnit_AndEachDriverRunsEveryUnitItHasAsync, StartupWorkSessionTests.AnUndeclaredName_IsRefused_AndItsWorkNeverRunsAsync}
+
+| Unit (`FrameworkStartupWork`) | Scope | What it does |
+|---|---|---|
+| `perspective-registry` | `PerSchemaPerBuild` | Checks the stored perspective registry against what this build declares, and reconciles it when they differ ([the registry check](../infrastructure/migrations#registry-check)) |
+| `perspective-storage-settings` | `PerSchemaPerBuild` | Brings each perspective table's fillfactor and autovacuum settings in line with its model ([storage settings](../../fundamentals/perspectives/physical-fields#removed-storage-settings)) |
+| `managed-object-reconcile` | `PerInstance` | Reconciles the [managed schema objects](../../fundamentals/perspectives/managed-schema-objects) and records what this instance declares |
+| `analyze-new-indexes` | `PerInstance` | EF Core driver: statistics for each table this instance's own schema pass indexed |
+
+{verified: StartupWorkCatalogTests.TheFrameworkWork_IsDeclared_WithTheScopeEachRunsUnderAsync, StartupWorkCatalogTests.WorkDeclaredWithoutADefinedScope_IsRefusedAsync}
+
+There are two scopes and no default: a declaration states its scope or is refused.
+
+- **`PerInstance`**: the work changes this instance, or records something about it. Every instance runs it at every start, within the [heavy-start cap](#the-heavy-start-cap).
+- **`PerSchemaPerBuild`**: the work changes state the whole schema shares, the same way from any instance of one build. The first start of a build runs it, once per schema; every other start of that build skips it.
+
+```mermaid{caption="How one unit of heavy startup work runs. Shared work is claimed before a permit is asked for, so a start whose shared work a peer did, or is doing, takes no permit for it." tests=["StartupWorkSessionTests.SharedWorkThisBuildFinished_IsSkipped_AndTakesNoPermitAsync","StartupWorkSessionTests.ClaimedSharedWork_RunsUnderAPermit_AndIsRecordedDoneForThisBuildsFingerprintAsync","StartupWorkSessionTests.PastTheCap_TheStartWaitsForAPermit_SaysSoOnce_AndRunsOnceOneIsFreeAsync","StartupWorkSessionTests.OnASchemaWithoutTheFunctions_EveryUnitRunsDirectly_AndAvailabilityIsAskedOnceAsync"]}
+graph TB
+    U["a declared unit"] --> A{"schema has<br/>migration 630?"}
+    A -->|no| D["run it directly,<br/>uncapped, as before"]
+    A -->|yes| S{"scope"}
+    S -->|PerInstance| P
+    S -->|PerSchemaPerBuild| C{"claim for this<br/>build's fingerprint"}
+    C -->|done| K1["skip: already ran<br/>for this build"]
+    C -->|running| K2["skip: a live instance<br/>of this build runs it"]
+    C -->|claimed| P{"heavy-start permit<br/>(once per start)"}
+    P -->|granted| R["run the work"]
+    P -->|"cap reached"| W["wait in Converge,<br/>ask again"]
+    W -->|"freed"| R
+    W -->|"PermitWaitLimit"| R
+    R -->|"completed"| X["record done"]
+    R -->|"failed or unfinished"| Y["release the claim"]
+
+    style D fill:#e2e3e5,stroke:#6c757d,stroke-width:2px
+    style K1 fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style K2 fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style W fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+    style Y fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+```
+
+### Once per schema per build {#once-per-build}
+
+The record is `wh_startup_work` ([migration 630](../infrastructure/migrations)), one row per unit, read and written only through `wh_claim_startup_work` and `wh_complete_startup_work`, so every release that knows them runs one rule.
+
+- **The identity is the build.** A claim is keyed by the unit's fingerprint: a SHA-256 of the library version, the unit's name and what that build gives the work (the registry payloads, the perspective schema). Two builds of one library version whose perspectives differ have different fingerprints. {verified: StartupWorkSessionTests.TheFingerprint_FollowsTheNameAndTheInputs_AndIsStableAsync, StartupWorkSessionsTests.TheInputs_KeepEveryListOfPartsDistinct_AndFollowEachPayloadAsync}
+- **The first start claims it; the rest skip it.** Another start of the same build skips the unit while a live instance runs it and after it finished, and logs which at Information. A start that skips does not wait for the claimer; the claimer brings the shared state in line. Ten starts of one build at once claim it exactly once. {verified: StartupWorkLedgerSqlTests.TheFirstStartOfABuild_ClaimsSharedWork_ThePeersSkipIt_AndOnceDoneEveryLaterStartSkipsItAsync, StartupWorkLedgerSqlTests.TenStartsOfOneBuildAtOnce_ClaimTheWorkExactlyOnceAsync, StartupWorkParityTests.TheFirstStart_RecordsItsSharedWorkDone_ARestartOfTheBuildSkipsIt_AndNoPermitStaysHeldAsync}
+- **A run that does not finish releases its claim.** A run that throws, is canceled, or completes without finishing (a registry check that failed, a storage pass that left a table behind) removes the row, so the next start runs it again. A throw still reaches the caller, after the release. {verified: StartupWorkLedgerSqlTests.ARunThatDidNotFinish_ReleasesItsClaim_AndTheNextStartClaimsItAsync, StartupWorkSessionTests.ARunThatDidNotFinish_ReleasesItsClaim_SoTheNextStartRunsItAgainAsync, StartupWorkSessionTests.ARunThatThrows_ReleasesItsClaim_AndTheFailureReachesTheCallerAsync, StartupWorkSessionTests.ACanceledRun_ReleasesItsClaim_OnAnUncanceledTokenAsync, StartupWorkSessionsTests.AStorageReconcile_IsCompleteOnlyWhenItReadEverything_AndLeftNoTableBehindAsync}
+- **A claimer that is no longer live is taken over.** A claim held by an instance [the one liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule) calls dead is claimed by the next start, with no deadline to tune; the dead claimer's late completion changes nothing. {verified: StartupWorkLedgerSqlTests.AClaimHeldByAnInstanceNoLongerLive_IsTakenOver_AndItsLateCompletionChangesNothingAsync}
+- **It runs again on another build, a rollback included.** A different fingerprint claims the unit again, so the row always names the build that last changed the shared state, and rolling back re-runs what the newer build changed. {verified: StartupWorkLedgerSqlTests.AnotherBuild_ClaimsTheWorkAgain_SoARollbackRerunsWhatTheNewerBuildChangedAsync}
+- **It runs again when the start's own schema pass applied anything.** Such a start claims the unit whatever the record says. {verified: StartupWorkLedgerSqlTests.AStartWhosePassAppliedSomething_ClaimsDoneWork_AndARetryOfItsOwnClaimSucceedsAsync, StartupWorkSessionTests.AStartWhosePassAppliedSomething_ClaimsSharedWorkEvenWhenItIsDoneAsync}
+
+### Mixed versions {#heavy-startup-work-mixed-versions}
+
+Nothing here is fatal, and nothing weakens what ran before:
+
+- **An older release** never calls the new functions. It runs its startup work uncapped, as before, and holds no permit, so it is not counted against the cap.
+- **A newer instance on a schema without migration 630** (the functions are looked up with `to_regprocedure`) runs every unit directly, uncapped, as before the cap existed. So does a start with no instance id or no connection of its own.
+- **A ledger call that fails** (the availability read, a claim, a permit request) is logged at Warning, and the unit runs without the record or the permit. A claim or permit that cannot be given back is logged at Warning and is reclaimed once the instance is no longer live.
+
+{verified: StartupWorkLedgerSqlTests.OnAMigratedSchema_TheLedgerIsAvailable_AndOnOneWithoutTheFunctionsItIsNotAsync, StartupWorkSessionTests.OnASchemaWithoutTheFunctions_EveryUnitRunsDirectly_AndAvailabilityIsAskedOnceAsync, StartupWorkSessionTests.WithNoInstanceId_TheWorkRunsDirectly_AndTheLedgerIsNotAskedAsync, StartupWorkSessionsTests.WithNoHostAndNoConnection_TheWorkRunsDirectlyAsync, StartupWorkSessionTests.AClaimThatCannotBeMade_RunsTheWorkDirectly_AtWarningAsync, StartupWorkSessionTests.APermitThatCannotBeGivenBack_IsSaidAtWarningAsync}
+
+### Why the managed-object reconcile stays per instance {#reconcile-stays-per-instance}
+
+The managed-object reconcile would look like shared work: it changes the schema. But each run also records what **that instance** declares, and the [drop gate](../../fundamentals/perspectives/managed-schema-objects#rolling-deploys) keeps an object while any live instance still declares it. The gate needs a report from every live instance, so one run per build would leave the other instances unreported, and a rolling deploy could drop an object an older instance still uses. The analyze of newly indexed tables is per instance for a simpler reason: only that instance's own pass queued those tables.
+
+### The heavy-start cap {#the-heavy-start-cap}
+
+While any of its heavy work runs, an instance holds one of the fleet's **heavy-start permits**, at most `MaxConcurrentHeavyStarts` at once (default **2**). The permits are `wh_startup_permits`, one row per holder, written only by `wh_try_acquire_startup_permit` and `wh_release_startup_permit`.
+
+- **One permit per start.** It is taken at the first unit that runs and given back when the Converge work is done, so it covers every unit of that start. A start whose only work was shared work a peer had done takes none. {verified: StartupWorkSessionTests.OnePermit_CoversEveryUnitOfTheStart_AndIsGivenBackOnDisposeAsync, StartupWorkSessionTests.SharedWorkThisBuildFinished_IsSkipped_AndTakesNoPermitAsync}
+- **Never more than the cap.** Ten starts asking at once are granted no more than the cap. {verified: StartupWorkLedgerSqlTests.NoMoreThanTheCap_HoldAPermit_AndAPermitGivenBackIsFreeAsync, StartupWorkLedgerSqlTests.TenStartsAskingAtOnce_AreGrantedNoMoreThanTheCapAsync}
+- **A permit of an instance no longer live is free.** A row whose instance the liveness rule calls dead does not count, and is removed as the next request is made, so a crashed instance never holds the cap. {verified: StartupWorkLedgerSqlTests.APermitHeldByAnInstanceNoLongerLive_IsFreeAsync}
+- **Past the cap a start waits, and says so once.** It waits in Converge, asking again every `PermitPollInterval` (default 1 second), and enters Converge with the message below, which the [stage line](startup-status#the-log-lines) and the status surface show. {verified: StartupWorkSessionTests.PastTheCap_TheStartWaitsForAPermit_SaysSoOnce_AndRunsOnceOneIsFreeAsync, StartupWorkParityTests.PastTheCap_AStartWaitsInConvergeForAPermit_AndGoesOnOnceOneIsFreeAsync}
+- **A wait is bounded.** After `PermitWaitLimit` (default 5 minutes) the start runs its heavy work without a permit and says so at Warning, so permit holders that are stuck never keep a new instance from starting. {verified: StartupWorkSessionTests.AWaitPastItsLimit_RunsTheWorkWithoutAPermit_AtWarningAsync}
+- **The cap is per service schema**, not per database server. Two services sharing one server each have their own permits, because each schema has its own table.
+
+```text{title="A start past the heavy-start cap" description="The Converge stage line of a start that waits for a permit, and the Warning when no permit came free within PermitWaitLimit" category="Operations" difficulty="BEGINNER" tags=["Startup","Logging","Converge"] tests=["StartupWorkSessionTests.PastTheCap_TheStartWaitsForAPermit_SaysSoOnce_AndRunsOnceOneIsFreeAsync","StartupWorkSessionTests.AWaitPastItsLimit_RunsTheWorkWithoutAPermit_AtWarningAsync"]}
+Stage 4 of 7: Converge - waiting for a heavy-start permit (2 of 2 held across the fleet)
+No heavy-start permit came free within 00:05:00 (2 of 2 held); this start runs its heavy work without one
+```
+
+The three settings bind from `Whizbang:Database:StartupWork` on both Postgres drivers ([Startup work](../configuration/configuration-reference#startup-work)). A cap below 1, or a non-positive interval or limit, fails the start. Raise `MaxConcurrentHeavyStarts` when a large fleet should start faster and the database has the headroom. {verified: StartupWorkParityTests.TheCap_BindsFromConfiguration_AndKeepsItsDefaultsWithoutItAsync, StartupWorkSessionsTests.ACapThatCannotWork_FailsTheStartAsync, StartupWorkCatalogTests.TheOptions_RefuseACapBelowOne_AndANonPositiveIntervalOrLimitAsync}
+
+### Upgrading {#heavy-startup-work-upgrading}
+
+Nothing to change. Two behaviors move from every restart to once per build:
+
+- **A storage setting changed by hand** on a perspective table (a fillfactor or autovacuum value set with `ALTER TABLE`) is now brought back in line by the first start of the next build, not by every restart. To keep a hand-set value, list the table as [managed by hand](../../fundamentals/perspectives/physical-fields#manually-managed-tables).
+- **The registry check** runs once per build, and again on any start whose schema pass applied something. A registry edited by hand between two restarts of one build is no longer noticed until the next build.
+
+### Design choices {#heavy-startup-work-design-choices}
+
+| Choice | Reason | Verified |
+|---|---|---|
+| Every unit of heavy Converge work is a declared name with a scope, and runs only through the session. | One path means the cap and the once-per-build rule cannot be bypassed by a call that forgot them; a new unit that skips the session fails a source guard. | {verified: StartupWorkDeclarationGuardTests.EveryHeavyConvergeCall_RunsInsideASessionRunOfADeclaredNameAsync, StartupWorkSessionTests.AnUndeclaredName_IsRefused_AndItsWorkNeverRunsAsync} |
+| Shared work is keyed by the build (library version, name, inputs), not by a time window. | The same build changes shared state the same way from any instance, so one run is enough; another build, a rollback included, may change it differently, so it runs again. | {verified: StartupWorkLedgerSqlTests.AnotherBuild_ClaimsTheWorkAgain_SoARollbackRerunsWhatTheNewerBuildChangedAsync, StartupWorkSessionTests.TheFingerprint_FollowsTheNameAndTheInputs_AndIsStableAsync} |
+| A claim or a permit of an instance that is no longer live is free, judged by the one liveness rule. | No lease or deadline to tune, and a crashed instance never holds the cap or a unit. | {verified: StartupWorkLedgerSqlTests.AClaimHeldByAnInstanceNoLongerLive_IsTakenOver_AndItsLateCompletionChangesNothingAsync, StartupWorkLedgerSqlTests.APermitHeldByAnInstanceNoLongerLive_IsFreeAsync} |
+| The managed-object reconcile stays per instance. | Each run reports what that instance declares, and the drop gate needs every live instance's report. | {verified: StartupWorkCatalogTests.TheFrameworkWork_IsDeclared_WithTheScopeEachRunsUnderAsync} |
+| A wait for a permit ends after `PermitWaitLimit`, and the start runs uncapped at Warning. | A cap that could keep an instance from ever starting would turn a stuck holder into an outage. | {verified: StartupWorkSessionTests.AWaitPastItsLimit_RunsTheWorkWithoutAPermit_AtWarningAsync} |
+| Without migration 630, or when a ledger call fails, the work runs directly, as before. | Rolling-deploy integrity: an instance never does less than an older release did. | {verified: StartupWorkSessionTests.OnASchemaWithoutTheFunctions_EveryUnitRunsDirectly_AndAvailabilityIsAskedOnceAsync, StartupWorkSessionTests.APermitThatCannotBeAskedFor_RunsTheWorkWithoutOne_AtWarningAsync} |
 
 ## Hooks
 
