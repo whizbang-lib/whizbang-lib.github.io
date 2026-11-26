@@ -165,7 +165,7 @@ gaps, never a list position, so a stored value means the same thing in every rel
 | 10 | Preflight | `Stage 1 of 7` | `Connecting` | the host lifecycle, as the host starts; schema initialization reports the [Assess](rolling-upgrades#assess) read, the bootstrap closure and the instance's registration as progress within it. A [stood-down instance](#stood-down) stays here |
 | 20 | Elect | `Stage 2 of 7` | `Migrating` | schema initialization: the vote for the migrator, then its result, or skipped when the schema is current |
 | 30 | Migrate | `Stage 3 of 7` | `Migrating` | schema initialization: the schema pass, or skipped when the schema is current |
-| 40 | Converge | `Stage 4 of 7` | `Migrating` | schema initialization: index statistics and the managed-object reconcile |
+| 40 | Converge | `Stage 4 of 7` | `Migrating` | schema initialization: index statistics, the managed-object reconcile, the perspective registry check and storage settings, run as [heavy startup work](startup-pipeline#heavy-startup-work). A start past the fleet's [heavy-start cap](startup-pipeline#the-heavy-start-cap) waits here, with the message `waiting for a heavy-start permit (N of N held across the fleet)` |
 | 50 | Coordinate | `Stage 5 of 7` | `Migrating` | the shared initializer, before the schema-ready gate opens |
 | 60 | Accept commands | `Stage 6 of 7` | `AcceptingCommands` | the lifecycle's AcceptingCommands transition |
 | 70 | Running | `Stage 7 of 7` | `Running` | the lifecycle's Running transition |

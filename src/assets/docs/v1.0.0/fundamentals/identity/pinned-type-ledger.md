@@ -17,6 +17,7 @@ codeReferences:
   - src/Whizbang.Generators/Ledger/PinnedTypeLedger.cs
   - src/Whizbang.Generators/PinnedTypeLedgerGenerator.cs
   - src/Whizbang.Generators/Analyzers/PinnedTypeRenameAnalyzer.cs
+  - src/Whizbang.Generators/WhizbangIdDeclaration.cs
   - src/Whizbang.Generators/MessageJsonContextGenerator.cs
   - src/Whizbang.Generators/MessageTypeCatalogGenerator.cs
   - src/Whizbang.Core/IMessageTypeCatalog.cs
@@ -29,6 +30,7 @@ codeReferences:
   - src/Whizbang.Generators/build/SoftwareExtravaganza.Whizbang.Generators.targets
 testReferences:
   - tests/Whizbang.Generators.Tests/Analyzers/PinnedTypeRenameAnalyzerTests.cs
+  - tests/Whizbang.Generators.Tests/PinnedStrongIdTests.cs
   - tests/Whizbang.Generators.Tests/MessageJsonContextRenameAliasTests.cs
   - tests/Whizbang.Generators.Tests/PinnedTypeLedgerGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/MessageTypeCatalogGeneratorTests.cs
@@ -78,7 +80,8 @@ components read and maintain it — all AOT-safe, all opt-in.
 
 ### 1. Ledger generator (bootstrap + monotonic merge)
 
-`PinnedTypeLedgerGenerator` discovers every `[PinnedId]` message and perspective type in the assembly, **merges**
+`PinnedTypeLedgerGenerator` discovers every `[PinnedId]` message and perspective type in the assembly, and every
+[pinned strong id](#strong-ids-in-the-ledger), **merges**
 it with the committed ledger, and emits the merged JSON as a C# constant (`PinnedTypeLedger.g.cs`). An MSBuild
 target reads that constant from the built assembly and writes it to `.whizbang/pinned-type-ledger.json` after each
 build that recompiles; a build that did not recompile skips the step. It needs no generated files on disk, so it works
@@ -130,8 +133,46 @@ the old assembly is not reached. If the move also renamed the type, WHIZ120 stil
   you record it.
 - [**WHIZ121**](../../operations/diagnostics/whiz121) (Warning) — a ledger entry whose pinned id no longer exists
   in the compilation (a removed type or a changed id).
+- [**WHIZ119**](../../operations/diagnostics/whiz119) (Error): the same, for a [strong id](#strong-ids-in-the-ledger)
+  entry, whose pin fixes the ids it derives.
 
 The analyzer is **inert** when no ledger is present, so adoption is opt-in per project.
+
+### Strong ids in the ledger {#strong-ids-in-the-ledger}
+
+{verified: PinnedStrongIdTests.Ledger_RecordsAStrongIdFromEveryRouteAsync, PinnedStrongIdTests.Ledger_RecordsTheNormalizedPinAsync, PinnedStrongIdTests.RenameAnalyzer_ALivingStrongId_ReportsNothingAsync, PinnedStrongIdTests.RenameAnalyzer_ARenamedStrongId_ReportsWhiz120Async, PinnedStrongIdTests.RenameAnalyzer_AStrongIdWhosePinChanged_ReportsWhiz119AsAnErrorAsync}
+
+A [pinned strong id](pinned-identity#strong-ids) is recorded too, with kind `strong-id`, whichever way it is pinned
+(`[PinnedId]` on its struct, or `[WhizbangId(PinnedId = ...)]` on a struct, a property or a parameter). The entry names
+the type the generator emits, in the namespace `[WhizbangId]` puts it in, and holds the pin in its normalized form. An
+unpinned strong id is not recorded.
+
+```json{
+title: "A strong id in the ledger"
+description: "A pinned [WhizbangId] type is recorded with kind strong-id; its pin is the input of every id it derives."
+category: "Identity"
+difficulty: "INTERMEDIATE"
+tags: ["pinned-id", "ledger", "strong-id", "WhizbangId"]
+}
+{
+  "pinnedId": "5d4c3b2a-1f0e-4d9c-8b7a-6f5e4d3c2b1a",
+  "clrTypeName": "MyApp.Domain.OrderId",
+  "kind": "strong-id",
+  "formerNames": []
+}
+```
+
+The gate treats a strong id as it does any pinned type, with one difference:
+
+| Ledger entry | A rename (same pin, new name) | The pin gone from the compilation |
+|---|---|---|
+| a message or a perspective | [WHIZ120](../../operations/diagnostics/whiz120), Error | [WHIZ121](../../operations/diagnostics/whiz121), Warning: dead history, harmless to correctness |
+| a strong id (`strong-id`) | [WHIZ120](../../operations/diagnostics/whiz120), Error | [WHIZ119](../../operations/diagnostics/whiz119), **Error** |
+
+A strong id's pin is the input every id it [derives from a handling](whizbang-ids#derived-ids) is fixed by. A pin that
+disappears usually means the pin was changed, and a changed pin makes a retry across the deploy derive different ids,
+so the gate fails the build instead of warning. Restore the pin, or, if the id type was removed on purpose, remove its
+entry.
 
 ### 3. Alias resolution (former events still deserialize)
 
