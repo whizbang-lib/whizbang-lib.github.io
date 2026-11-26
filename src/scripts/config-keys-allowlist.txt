@@ -23,3 +23,4 @@ Whizbang:Workers:Perspective:LeasedWithoutFailureWarningAttempts                
 Whizbang:Workers:Perspective:UnregisteredPerspectiveCleanup:BatchCursors        # temporary: read by whizbang#2603 (#2601); drop once it merges
 Whizbang:Workers:Perspective:UnregisteredPerspectiveCleanup:Enabled             # temporary: read by whizbang#2603 (#2601); drop once it merges
 Whizbang:Workers:Perspective:UnregisteredPerspectiveCleanup:MaxBatchesPerCycle  # temporary: read by whizbang#2603 (#2601); drop once it merges
+Whizbang:Database:StartupWork                     # temporary: read by whizbang#2610 (#2596); drop once it merges
