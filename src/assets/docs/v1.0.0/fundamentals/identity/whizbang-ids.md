@@ -1,8 +1,8 @@
 ---
 title: "WhizbangIds: Strongly-Typed Identity Values"
 pageType: concept
-verifiedAgainstCommit: 'bf8517ac'
-verifiedDate: 2026-11-23
+verifiedAgainstCommit: '147ab39b'
+verifiedDate: 2026-11-26
 version: 1.0.0
 category: "Core Concepts"
 order: 24
@@ -10,7 +10,7 @@ description: >-
   Whizbang uses strongly-typed identity values based on UUIDv7 for all identifiers.
   Provides compile-time type safety, prevents ID mixing, and enables AOT-compatible
   dependency injection with source-generated value types and TrackedGuid metadata.
-tags: 'whizbang-ids, identity, uuidv7, tracked-guid, type-safety, value-objects, time-ordering, guid-interception'
+tags: 'whizbang-ids, identity, uuidv7, tracked-guid, type-safety, value-objects, time-ordering, guid-interception, derived-ids, derive-from'
 codeReferences:
   - src/Whizbang.Core/ValueObjects/NameBasedGuid.cs
   - src/Whizbang.Core/IWhizbangId.cs
@@ -25,6 +25,10 @@ codeReferences:
   - src/Whizbang.Core/Uuid7IdProvider.cs
   - src/Whizbang.Core/WhizbangIdServiceCollectionExtensions.cs
   - src/Whizbang.Core/WhizbangIdAttribute.cs
+  - src/Whizbang.Core/Messaging/StrongIdDerivation.cs
+  - src/Whizbang.Core/Messaging/Handling.cs
+  - src/Whizbang.Generators/WhizbangIdDeclaration.cs
+  - src/Whizbang.Generators/Analyzers/StrongIdDeriveFromAnalyzer.cs
   - src/Whizbang.Core/SuppressGuidInterceptionAttribute.cs
   - src/Whizbang.Core/SuppressGuidOrderingValidationAttribute.cs
   - src/Whizbang.Core/Validation/GuidOrderingSuppressions.cs
@@ -48,6 +52,10 @@ testReferences:
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdVersionAcceptanceTests.cs
   - tests/Whizbang.Generators.Tests/WhizbangIdAcceptAnyVersionTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/StrongIdDerivationTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdDeriveFromTests.cs
+  - tests/Whizbang.Generators.Tests/WhizbangIdDeriveFromTests.cs
+  - tests/Whizbang.Core.Tests/WhizbangIdAttributeTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderRegistryTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdServiceCollectionExtensionsTests.cs
@@ -707,6 +715,100 @@ The framework uses it wherever writers must agree:
 **Never change a name** once ids derived from it are stored: a later derivation has to produce the ids already on
 disk. Put a version in the namespace name (`.v1`) so a deliberate change gets a new namespace instead.
 
+## Derived ids {#derived-ids}
+
+{verified: StrongIdDerivationTests.Derive_ARetryOfTheHandling_DerivesTheSameIdAsync, StrongIdDerivationTests.Derive_TheIdTypesName_TakesNoPart_SoARenameKeepsTheIdAsync, StrongIdDerivationTests.Derive_EachInput_SeparatesTheIdsAsync, StrongIdDerivationTests.Derive_SortsAtTheHandledMessage_AndIsAVersion7IdAsync, WhizbangIdDeriveFromTests.DeriveFrom_InAHandling_IsTheDerivationOfThePinnedIdAsync, WhizbangIdDeriveFromTests.EveryGeneratedStrongId_HasDeriveFromAsync}
+
+A receptor that mints a strong id with `New()` gets a new value every time it runs. When its handling is retried (a
+lease that lapsed, a completion that never committed), the retry mints a second id, and the first one, already sent or
+stored by the attempt that failed, is referred to by nothing. Every generated `[WhizbangId]` type also has
+`DeriveFrom(handling, purpose)` ([#2604](https://github.com/whizbang-lib/whizbang/issues/2604)): inside a receptor body
+it returns an id derived from the handling, so a retry of the same handling gets the **same** id.
+
+```csharp{title="Derive a strong id inside a receptor" description="OrderId.DeriveFrom returns the same id on every retry of this handling; New() would mint a new one each time" framework="NET10" category="Identity" difficulty="INTERMEDIATE" tags=["identity", "WhizbangId", "DeriveFrom", "retries", "idempotency"] tests=["WhizbangIdDeriveFromTests.DeriveFrom_InAHandling_IsTheDerivationOfThePinnedIdAsync", "WhizbangIdDeriveFromTests.DeriveFrom_ARetryOfTheHandling_DerivesTheSameIdAsync", "StrongIdDerivationTests.Derive_TheSamePurposeForTwoIdTypes_DerivesBothAsync"]}
+using Whizbang.Core;
+using Whizbang.Core.Attributes;
+using Whizbang.Core.Messaging;
+
+[WhizbangId]
+[PinnedId("5d4c3b2a-1f0e-4d9c-8b7a-6f5e4d3c2b1a")]
+public readonly partial struct OrderId;
+
+public sealed class PlaceOrderReceptor : IReceptor<PlaceOrder, OrderPlaced> {
+  public ValueTask<OrderPlaced> HandleAsync(PlaceOrder command, CancellationToken cancellationToken = default) {
+    var orderId = OrderId.DeriveFrom(Handling.Current, "order");
+    return ValueTask.FromResult(new OrderPlaced(orderId, command.CustomerId));
+  }
+}
+```
+
+The test it comes from, verbatim: two handlings of the same message by the same receptor derive one id.
+
+```csharp{
+title: "A retry of the handling derives the same id"
+description: "Two handlings of one message by one receptor in one service derive the same strong id."
+framework: "NET10"
+category: "Identity"
+difficulty: "INTERMEDIATE"
+tags: ["identity", "WhizbangId", "DeriveFrom", "retries"]
+testFile: "tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdDeriveFromTests.cs"
+testMethod: "DeriveFrom_ARetryOfTheHandling_DerivesTheSameIdAsync"
+githubUrl: "https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdDeriveFromTests.cs"
+tests: ["WhizbangIdDeriveFromTests.DeriveFrom_ARetryOfTheHandling_DerivesTheSameIdAsync"]
+}
+using (ReceptorHandling.Enter(_envelope(), "orders-service", "App.OrderReceptor")) {
+  first = DeriveFromProbeId.DeriveFrom(Handling.Current, "order");
+}
+using (ReceptorHandling.Enter(_envelope(), "orders-service", "App.OrderReceptor")) {
+  retry = DeriveFromProbeId.DeriveFrom(Handling.Current, "order");
+}
+
+await Assert.That(retry).IsEqualTo(first);
+```
+
+**What the id is derived from.** The handled message (the same anchor [every dispatch path](../dispatcher/message-cascade#every-dispatch-path-derives)
+derives from), the service, the handler, the receptor, the id type's [pinned id](pinned-identity#strong-ids) and the
+purpose. Each input separates the ids: two services handling one message, or two receptors of one message, derive two
+ids for one purpose. The type's **name takes no part**: the pinned id stands for the type, so renaming the type or moving
+it to another namespace keeps every id it derives. {verified: StrongIdDerivationTests.Derive_EachInput_SeparatesTheIdsAsync, StrongIdDerivationTests.InvokeAsync_TwoReceptorsOfOneMessage_DeriveTwoIdsForOnePurposeAsync, WhizbangIdDeriveFromTests.TwoNamesWithOnePin_DeriveThroughTheSameInput_SoARenameKeepsTheIdsAsync}
+
+:::updated
+**A receptor rename changes derived ids.** The receptor's identity is still its name, so renaming a receptor class
+changes the ids its handlings derive, and a retry that crosses a deploy with the rename derives new ones. That stays so
+until the pinned handler identity of [#2274](https://github.com/whizbang-lib/whizbang/issues/2274) lands.
+:::
+
+**It sorts with its cause.** The id is a UUIDv7 that sorts at the handled message: its first 80 bits are the handled
+message's, and the rest come from a SHA-256 of the inputs, so it is time-ordered and stays near what caused it. Nothing
+orders a stream by id. {verified: StrongIdDerivationTests.Derive_SortsAtTheHandledMessage_AndIsAVersion7IdAsync, StrongIdDerivationTests.Derive_ANestedCascadeHandling_AnchorsOnTheCascadedMessageAsync}
+
+**One call per purpose.** A second `DeriveFrom` for the same type and purpose in one handling throws, because deriving
+one purpose in a loop would give every item the same id and silently merge them. Name the item in the purpose:
+`LineId.DeriveFrom(Handling.Current, $"line:{sku}")`. Two different id types may use the same purpose. {verified: StrongIdDerivationTests.Derive_TheSamePurposeTwiceInOneHandling_ThrowsAsync, StrongIdDerivationTests.Derive_TheSamePurposeForTwoIdTypes_DerivesBothAsync}
+
+**When it throws.** `DeriveFrom` throws `InvalidOperationException`, naming the type and why, when:
+
+- it is called **outside a receptor body** (an API endpoint, a background service): there is no handled message to derive
+  from, so a retry could not derive the same id. Mint with `New()` there.
+- the handling **has ended**: the receptor body returned, so a retry would not reach this call. Derive inside the body.
+- the **handled message has no id** to derive from.
+- the purpose was **already derived** for this type in this handling.
+
+A purpose that is empty or white space is refused with `ArgumentException`. {verified: StrongIdDerivationTests.Derive_OutsideAHandling_ThrowsNamingWhyAsync, StrongIdDerivationTests.Derive_AfterTheHandlingEnded_ThrowsNamingWhyAsync, StrongIdDerivationTests.Derive_AHandledMessageWithNoId_ThrowsAsync, StrongIdDerivationTests.Derive_InvalidArguments_AreRefusedAsync, WhizbangIdDeriveFromTests.DeriveFrom_OutsideAHandling_ThrowsNamingTheTypeAsync}
+
+**It needs a pinned id.** Pin the type with `[PinnedId("<guid>")]` on its struct, or `[WhizbangId(PinnedId = "<guid>")]`
+where it is declared (see [Pinned identity: strong ids](pinned-identity#strong-ids)). A pin is required only where
+`DeriveFrom` is called: a call on an unpinned id does not compile ([WHIZ118](../../operations/diagnostics/whiz118)), and
+if that is suppressed it throws `NotSupportedException`. `New()` is unchanged and needs no pin. {verified: StrongIdDeriveFromAnalyzerTests.DeriveFromOnAnUnpinnedId_ReportsWhiz118Async, WhizbangIdDeriveFromTests.DeriveFrom_AnUnpinnedId_ThrowsNamingHowToPinItAsync}
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The derivation input is the type's pinned id, never its name. | A stored id is referenced by every record that names it; a rename or a namespace move must not change the ids a retry derives. | {verified: StrongIdDerivationTests.Derive_TheIdTypesName_TakesNoPart_SoARenameKeepsTheIdAsync, StrongIdDerivationTests.Derive_ThePinnedIdsSpelling_TakesNoPartAsync} |
+| A second call with the same purpose in one handling throws. | Two items given one purpose would get one id and merge without a trace; a throw makes the author name the item. | {verified: StrongIdDerivationTests.Derive_TheSamePurposeTwiceInOneHandling_ThrowsAsync} |
+| Outside a handling it throws instead of minting. | A silent mint would look derived and still change on a retry. | {verified: StrongIdDerivationTests.Derive_OutsideAHandling_ThrowsNamingWhyAsync} |
+| Every generated strong id has `DeriveFrom`. | The derived path is the easy path on every id, not a helper to remember. | {verified: WhizbangIdDeriveFromTests.EveryGeneratedStrongId_HasDeriveFromAsync} |
+| The layout is fixed (`whizbang.strong-id.in-handling.v1`). | A changed layout would change the id a retry across the deploy derives. | {verified: StrongIdDerivationTests.Derive_FixedInputs_DeriveTheCompatibilityValueAsync} |
+
 ## Quick Start
 
 ### Defining a WhizbangId
@@ -731,6 +833,22 @@ The `[WhizbangId]` attribute triggers source generation that creates:
 - JSON converter
 - **Strongly-typed provider** (`IWhizbangIdProvider<TId>`) via `CreateProvider(...)`
 - **Auto-registration** via ModuleInitializer
+- `DeriveFrom(Handling, string)`: an id [derived from the handling](#derived-ids), the same on every retry of it; needs a pinned id
+
+#### `[WhizbangId]` properties {#whizbang-id-attribute}
+
+| Property | Default | What it does |
+|---|---|---|
+| `Namespace` | the declaring type's namespace | The namespace the id type is generated in, for example to keep every id in one namespace or to place an id declared by a property or a parameter |
+| `SuppressDuplicateWarning` | `false` | Silences [WHIZ024](../../operations/diagnostics/whiz024) when id types with the same name exist in different namespaces on purpose |
+| `AcceptAnyVersion` | `false` | Accepts any non-empty Guid instead of only UUIDv7 ([Ids that are not UUIDv7](#accept-any-version)) |
+| `PinnedId` | none | The id type's [pinned id](pinned-identity#strong-ids), the input [`DeriveFrom`](#derived-ids) derives from. Use it where the id is declared by a property or a parameter, which has no struct to put `[PinnedId]` on. A value that is not a GUID is [WHIZ112](../../operations/diagnostics/whiz112); two declarations that pin it differently are [WHIZ123](../../operations/diagnostics/whiz123) |
+
+{verified: WhizbangIdAttributeTests.WhizbangIdAttribute_PinnedIdProperty_CanBeSetAsync, WhizbangIdDeriveFromTests.PinnedOnAProperty_BakesThePinAsync, WhizbangIdDeriveFromTests.PinnedOnTheStruct_BakesThePinAndDerivesFromItAsync}
+
+```csharp{title="Pinning an id declared by a parameter" description="An id declared on a record parameter has no struct of its own, so it is pinned with WhizbangId(PinnedId)" framework="NET10" category="Identity" difficulty="BEGINNER" tags=["identity", "WhizbangId", "PinnedId", "DeriveFrom"] tests=["WhizbangIdDeriveFromTests.PinnedOnAProperty_BakesThePinAsync", "StrongIdDeriveFromAnalyzerTests.DeriveFromOnAPinnedId_ReportsNothingAsync"]}
+public record OrderPlaced([WhizbangId(PinnedId = "3f2c8a1e-5b7d-4c9e-a1f0-6d2b8e4c7a91")] OrderId Id) : IEvent;
+```
 
 ### Using WhizbangIds
 

@@ -12,11 +12,15 @@ codeReferences:
   - src/Whizbang.Core/Attributes/PinnedIdAttribute.cs
   - src/Whizbang.Core/IPinnedIdRegistry.cs
   - src/Whizbang.Generators/PinnedIdRegistryGenerator.cs
+  - src/Whizbang.Core/WhizbangIdAttribute.cs
+  - src/Whizbang.Generators/WhizbangIdDeclaration.cs
   - src/Whizbang.Core/IEventTypeRenameTool.cs
   - src/Whizbang.Data.Schema/Schemas/MessageTypeRegistrySchema.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Attributes/PinnedIdAttributeTests.cs
   - tests/Whizbang.Generators.Tests/PinnedIdRegistryGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/PinnedStrongIdTests.cs
+  - tests/Whizbang.Generators.Tests/WhizbangIdDeriveFromTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEventTypeRenameToolTests.cs
 ---
 
@@ -105,13 +109,52 @@ When a namespace is renamed:
 
 Skipping the rename tool leaves stored rows unresolvable. This is deliberate — renames are a controlled operation, not an automatic one.
 
+## Strong ids {#strong-ids}
+
+{verified: WhizbangIdDeriveFromTests.PinnedOnTheStruct_BakesThePinAndDerivesFromItAsync, WhizbangIdDeriveFromTests.PinnedOnAProperty_BakesThePinAsync, WhizbangIdDeriveFromTests.Unpinned_DeriveFromThrowsAndHasNoPinAsync, PinnedStrongIdTests.Ledger_RecordsAStrongIdFromEveryRouteAsync, PinnedStrongIdTests.Registry_MapsEachPinnedStrongIdAsync}
+
+A strong id (a `[WhizbangId]` type) can be pinned too ([#2604](https://github.com/whizbang-lib/whizbang/issues/2604)).
+Its pin is not a stored name: it is the **derivation input** of the ids the type
+[derives from a handling](whizbang-ids#derived-ids), so renaming or moving the id type keeps every id it derives. There
+are two ways to pin one:
+
+- **`[PinnedId("...")]` on the struct**, for an id declared as a struct.
+- **`[WhizbangId(PinnedId = "...")]` where it is declared**, for an id declared by a property or a parameter, which has
+  no struct of its own to carry `[PinnedId]`. It works on a struct too.
+
+```csharp{title="The two ways to pin a strong id" description="A struct takes [PinnedId]; an id declared by a property or a parameter takes WhizbangId(PinnedId)" framework="NET10" category="Identity" difficulty="BEGINNER" tags=["pinned-id", "identity", "WhizbangId", "DeriveFrom"] tests=["WhizbangIdDeriveFromTests.PinnedOnTheStruct_BakesThePinAndDerivesFromItAsync", "WhizbangIdDeriveFromTests.PinnedOnAProperty_BakesThePinAsync"]}
+using Whizbang.Core;
+using Whizbang.Core.Attributes;
+
+[WhizbangId]
+[PinnedId("5d4c3b2a-1f0e-4d9c-8b7a-6f5e4d3c2b1a")]
+public readonly partial struct OrderId;
+
+public record AddLine([WhizbangId(PinnedId = "3f2c8a1e-5b7d-4c9e-a1f0-6d2b8e4c7a91")] LineId Id) : ICommand;
+```
+
+The generator normalizes the pin to its lowercase hyphenated form and bakes it into the id type as `PinnedId`, so its
+spelling takes no part in the ids.
+
+**A pin is required only where `DeriveFrom` is called.** An unpinned strong id works as before: `New()`, `From` and
+`Parse` need no pin, and no warning asks for one. A `DeriveFrom` call on an unpinned id does not compile
+([WHIZ118](../../operations/diagnostics/whiz118)).
+
+**Governed like any pinned type.** The [pinned-type ledger](pinned-type-ledger#strong-ids-in-the-ledger) records each
+pinned strong id with kind `strong-id`, and the generated pinned-id registry maps it. A pin that is not a GUID is
+[WHIZ112](../../operations/diagnostics/whiz112), two declarations that pin one id differently are
+[WHIZ123](../../operations/diagnostics/whiz123), and a pin that disappears from the compilation (a changed pin, which
+changes every id the type derives) is [WHIZ119](../../operations/diagnostics/whiz119), an error.
+
 ## Adoption
 
 `[PinnedId]` is optional and opt-in. The analyzer raises a **warning** (not an error) so adoption can happen gradually:
 
 - **WHIZ110 (Warning)** — Concrete `IMessage` without `[PinnedId]`.
 - **WHIZ111 (Warning)** — Concrete `IPerspectiveFor<>` without `[PinnedId]`.
-- **WHIZ112 (Error)** — `[PinnedId]` value is not a valid GUID.
+- **WHIZ112 (Error)**: a pinned id that is not a valid GUID, on a message, a perspective or a [strong id](#strong-ids).
+- **WHIZ118 (Error)**: `DeriveFrom` on a strong id with no pinned id.
+- **WHIZ123 (Error)**: one strong id pinned two ways.
 
 A code fix on WHIZ110/WHIZ111 inserts `[PinnedId("<new-guid>")]`. Use "Fix all in solution" after upgrading to tag an existing codebase in one pass. After that, the GUIDs are frozen forever.
 

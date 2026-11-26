@@ -755,6 +755,13 @@ the ids of the events the handling returns or publishes.
 **Outside a handling nothing changes.** An API endpoint, a background service or any other caller with no handling gets
 a fresh UUIDv7 per message, as before.
 
+**Strong ids derive from the same anchor.** A message id is not the only id a receptor body creates. A strong id (a
+`[WhizbangId]` type) the body creates with `OrderId.DeriveFrom(Handling.Current, "order")` is derived from the same
+handled message, plus the service, the handler, the receptor, the id type's pinned id and the purpose, so a redelivered
+handling gets the same strong ids as well as the same message ids ([#2604](https://github.com/whizbang-lib/whizbang/issues/2604)).
+A strong id created with `New()` is still minted on every attempt. See [Derived ids](../identity/whizbang-ids#derived-ids).
+{verified: WhizbangIdDeriveFromTests.DeriveFrom_ARetryOfTheHandling_DerivesTheSameIdAsync, StrongIdDerivationTests.Derive_ANestedCascadeHandling_AnchorsOnTheCascadedMessageAsync}
+
 **One place mints.** Every id the dispatcher creates goes through one private method, and a guard test fails the build
 when any other member of the dispatcher mints an id. A design-lock test enumerates the dispatch surface: a new dispatch
 method fails it until it is probed for derived ids inside a handling and minted ids outside one.
