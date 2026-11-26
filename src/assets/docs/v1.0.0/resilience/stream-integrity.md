@@ -4740,7 +4740,7 @@ every perspective batch the row was leased into.
 
 So a rewind starts no earlier than the **reap floor** (#2591, migration 600, `wh_rewind_reap_floor`): the first event of
 the stream at or after the trigger's version that still has a body and that the perspective reads (the types its
-association rows name). Since migration 602 the trigger counts only when the perspective reads it, and a perspective with
+association rows name). Since migration 660 the trigger counts only when the perspective reads it, and a perspective with
 no association rows reads nothing; see [the next section](#a-rewind-starts-only-from-an-event-the-perspective-reads).
 
 | Case | What the rewind does |
@@ -4788,7 +4788,7 @@ holding a worker in [Blocking mode](../fundamentals/perspectives/rewind#startup-
 (#2601). The first fill (migration 561) rewound every cursor of a stream from its first event, which is how a cursor
 came to be flagged from a type its perspective never handles.
 
-Since migration 602 the floor counts only events the perspective reads:
+Since migration 660 the floor counts only events the perspective reads:
 
 | Rule | Why |
 | --- | --- |
@@ -4796,7 +4796,7 @@ Since migration 602 the floor counts only events the perspective reads:
 | A perspective with **no association rows reads nothing**: no rewind is raised for it, and the fill never rewinds it | The store queues a perspective only the event types its association rows name (the fan-out joins them), and each service's startup deletes the rows of a perspective it no longer runs. A cursor with none belongs to a perspective nothing in the schema runs, and a rewind of it could only queue a replay no runner takes. Reading it as "every type", as 590 and 600 did, flagged such cursors forever |
 | A fill that reorders only events a perspective does not read does not rewind it | Its own events fold in the same order before and after |
 
-What a database already holds is repaired once: migration 602 runs `_wh_repair_rewinds_from_unread_events` once per
+What a database already holds is repaired once: migration 660 runs `_wh_repair_rewinds_from_unread_events` once per
 database (the `rewind_read_floor_repaired` setting records that it ran and what it did). A flagged cursor whose
 perspective reads nothing at or after its trigger has its flag, trigger and flag times cleared; one whose first read
 event is above its trigger is moved to that event and the event queued; and those cursors' queued rows that nothing would

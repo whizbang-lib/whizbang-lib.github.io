@@ -137,7 +137,7 @@ for what the worker does with a row queued without its body by any other path.
 
 ### A rewind starts only from an event the perspective reads {#read-floor}
 
-The reap floor counts only events of a type the perspective's association rows name (#2601, migration 602). A trigger the
+The reap floor counts only events of a type the perspective's association rows name (#2601, migration 660). A trigger the
 perspective does not read moves up to the first event at or after it that it does read, and a perspective with no
 association rows reads nothing, so no rewind is raised for it. A rewind flagged from an unread event used to be queued
 for a perspective no drain pair ever formed for, so it never ran. See
