@@ -19,6 +19,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/068_ClaimDueSchedules.sql
   - src/Whizbang.Data.Postgres/Migrations/579_TheOutboxDrainsInEmissionOrder.sql
   - src/Whizbang.Data.Postgres/Migrations/598_SchedulesWithNoLiveOwnerAreClaimed.sql
+  - src/Whizbang.Data.Postgres/Migrations/626_ScheduleOccurrenceIdsAreTimeOrdered.sql
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Temporal/ScheduleWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Temporal/ScheduleWorkerOverdueTests.cs
@@ -27,6 +28,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OwnershipByMapClaimSqlTests.Schedules.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgScheduleClaimerIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgScheduleDuePollSourceIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ScheduleOccurrenceIdSqlTests.cs
 ---
 
 # Temporal Engine
@@ -51,6 +53,30 @@ take, the claim, in one transaction, locks the row, emits the occurrence into th
 other event, advances `next_fire_at` (applying the misfire policy and any end bound), and records a row in
 `wh_schedule_runs`. The database clock decides what is due, so clock skew between instances cannot fire a schedule
 early.
+
+## Occurrence ids {#occurrence-ids}
+
+{verified: ScheduleOccurrenceIdSqlTests.AScheduledFire_MintsAUuidV7_StampedWithItsScheduledFireTimeAsync, ScheduleOccurrenceIdSqlTests.TheCadenceId_IsTheSameForTheSameOccurrence_AndDiffersAcrossOccurrencesAsync, ScheduleOccurrenceIdSqlTests.TheCadenceId_ForEveryOccurrenceNumber_IsAUuidV7OfItsFireTimeAsync, ScheduleOccurrenceIdSqlTests.TheClaim_MintsTheCadenceIdThroughTheOneOccurrenceIdFunctionAsync, ScheduleOccurrenceIdSqlTests.ACoalescedMisfire_MintsAUuidV7_StampedWithTheMissedFireTimeAsync, ScheduleOccurrenceIdSqlTests.ACatchUpReplay_MintsAUuidV7PerMissedOccurrence_EachStampedWithItsOwnFireTimeAsync, ScheduleOccurrenceIdSqlTests.ACatchUpReplayPastItsLookback_MintsAUuidV7Async, ScheduleOccurrenceIdSqlTests.ASkippedMisfire_LogsItsRunUnderAUuidV7Async, ScheduleOccurrenceIdSqlTests.ATriggerNow_MintsAFreshUuidV7_StampedWithTheDatabaseClockAsync, ScheduleOccurrenceIdSqlTests.ARunLoggedUnderTheOldId_KeepsItsId_WhenTheNextOccurrenceFiresAsync, ScheduleOccurrenceIdSqlTests.AScheduledFire_IsPublishedThroughTheOutboxUnderItsOccurrenceIdAsync, ScheduleOccurrenceIdSqlTests.ATriggerNowAsync_IsPublishedThroughTheOutboxUnderItsOccurrenceIdAsync}
+
+An occurrence's id is its outbox message id, and it is **always a UUIDv7**, as every message id the outbox accepts
+must be (migration 626, [#2599](https://github.com/whizbang-lib/whizbang/issues/2599)). The same id names the
+occurrence's row in `wh_schedule_runs`.
+
+| How the occurrence fires | Its id |
+|---|---|
+| On its cadence (`wh_claim_due_schedules`) | Deterministic, `wh_schedule_occurrence_id(schedule, occurrence, fire_at)`: the 48-bit timestamp is the occurrence's **scheduled** fire time in unix milliseconds, then version 7 and the RFC 4122 variant, and the remaining 74 bits come from an MD5 hash of the schedule id and the occurrence number. |
+| A misfire caught up, coalesced, or logged as a skip | The same rule: each missed occurrence is stamped with its own fire time. |
+| `IScheduleManager.TriggerNowAsync` (`wh_trigger_schedule_now`) | A fresh UUIDv7 stamped with the database clock, with random bits. |
+
+**Why the cadence id is deterministic.** The same inputs always give the same id, so two instances that race to claim
+one occurrence agree on its id, and the outbox deduplicates the second. Every claim path takes its id from the one
+statement that sets it, so no path can mint a different kind of id. The timestamp is the scheduled fire time, not the
+moment of the claim, so a late claim still gives the occurrence the id its schedule implies.
+
+**Ids stored before this release are left as stored.** Earlier releases minted a cadence id from an MD5 hash alone,
+which is a valid UUIDv7 only one time in sixteen, and a manual trigger as a random version 4 id; the outbox refused
+the rest. Rows already in `wh_schedule_runs`, `wh_outbox` or `wh_event_store` are history and are not rewritten, and a
+schedule whose last run was logged under an old id fires its next occurrence under the new rule.
 
 ## Which instance fires a schedule {#which-instance-fires-a-schedule}
 

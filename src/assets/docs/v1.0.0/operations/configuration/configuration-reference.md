@@ -230,6 +230,7 @@ DbContext), the latest registration is used and startup logs a warning naming th
 | `Whizbang:Database:Stamper` | `CommitOrderStamperOptions` | Automatic (Postgres driver) |
 | `Whizbang:Database:RoleAssignment` | `RoleAssignmentOptions` | Automatic (Postgres driver) |
 | `Whizbang:Database:PartitionAssigner` | `PartitionAssignerOptions` | Automatic (both Postgres drivers); see [Partition assigner](#partition-assigner) |
+| `Whizbang:Database:InstanceAssignment` | `InstanceAssignmentOptions` | Automatic (both Postgres drivers); see [Instance assignment](#instance-assignment) |
 | `Whizbang:Capabilities` | `CapabilityOptions` | Automatic (registered by every capability provider, both Postgres drivers among them); see [Capabilities](#capabilities-options) |
 | `Whizbang:WorkCoordinatorGate` | `WorkCoordinatorGateOptions` | Automatic (worker pipeline); a Postgres driver's `MaxInFlightCommands` fills `MaxConcurrent` when the section leaves it unset |
 | `Whizbang:ServiceName` (falls back to `ServiceName`) | — (string) | Automatic |
@@ -364,7 +365,7 @@ Bound by the Postgres driver, which holds every duty (`maintainer`, `migrator`, 
 | `OwedWorkRetryBase` | `TimeSpan` | `00:00:30` | `Whizbang__Database__RoleAssignment__OwedWorkRetryBase` | Backoff after owed duty work fails, doubled per failure, capped at one hour |
 | `MigratorStallLimit` | `TimeSpan` | `00:00:00` | `Whizbang__Database__RoleAssignment__MigratorStallLimit` | How long the migrator's startup work may report no progress before its keepalive stops renewing its role, so the lease lapses and another instance takes the schema work over. `00:00:00` derives it: the `db-init` [command timeout](#command-timeouts) plus the migrator's progress window, 12 minutes by default. Negative is refused. EF Core driver only. See [a stuck migrator loses its role](../infrastructure/migrations#a-stuck-migrator-loses-its-role) {verified: MigratorStallLimitTests.MigratorStallLimit_DefaultsToZero_AndANegativeOneIsRefusedAsync, MigratorStallLimitTests.TheStallLimit_IsTheSchemaCommandBudgetPlusTheMigratorsProgressWindow_ByDefaultAsync, MigratorStallLimitTests.AConfiguredStallLimit_IsUsedAsItIsAsync} |
 
-Code-only (through `AddWhizbangRoleAssignment(o => ...)`): `Roles` (the duties the holder loop holds and the `roles` health component reports; a duty not listed is still held by assignment when asked for) and `RoleLeases` (a lease per duty; the migrator's default is 30 seconds).
+Code-only (through `AddWhizbangRoleAssignment(o => ...)`): `Roles` (the duties the holder loop holds and the `roles` health component reports; a duty not listed is still held by assignment when asked for, if the [role catalog](../startup/capabilities-and-duties#the-role-catalog) declares it) and `RoleLeases` (a lease per duty; the migrator's default is 30 seconds).
 
 ### Whizbang:Database:PartitionAssigner → PartitionAssignerOptions {#partition-assigner}
 {verified: PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_BindsEveryAssignerKeyFromConfigurationAsync, PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_WithNoAssignerKeys_KeepsTheDefaultsAsync, PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_AHostsOwnConfigureOfTheAssigner_StillWinsAsync, PartitionAssignerRegistrationTests.TheRemovedEnabledKey_SetToFalse_TurnsNothingOffAsync, PartitionAssignerWorkerTests.Options_HandoverDeadline_DefaultsToThirtySeconds_AndANonPositiveOneIsRefusedAsync, PartitionAssignerWorkerTests.Options_OwnershipByMap_DefaultsOn_AndTheDefaultStillWaitsForEveryInstanceAsync}
@@ -383,6 +384,19 @@ reflection; a key that is absent or does not parse keeps its default, and a host
 | `OwnershipByMap` | `bool` | `true` | `Whizbang__Database__PartitionAssigner__OwnershipByMap` | Ask for the service's one-way [ownership-by-map switch](../../fundamentals/work-coordinator/partition-assignment#ownership-switch), which turns on once every live instance of the service supports it. `false` keeps the stored-owner rules while the switch is still off; it only stops the assigner asking, so a switch already on stays on |
 
 `Enabled` is a [removed key](#removed-keys): the assigner always runs.
+
+### Whizbang:Database:InstanceAssignment → InstanceAssignmentOptions {#instance-assignment}
+{verified: InstanceAssignmentDriverParityTests.TheOptions_BindFromConfiguration_AndKeepTheirDefaultsWithoutItAsync, InstanceAssignmentMonitorTests.TheGrace_IsTwoSettleWindowsAndARenewInterval_UnlessSetAsync, InstanceAssignmentMonitorTests.TheOptions_RefuseANonPositiveInterval_AndANegativeGrace_AndTheMonitorRefusesNullsAsync}
+
+Bound by both Postgres drivers, which run each instance's assignment monitor (#2595). Parsed by hand, without
+reflection; a key that is absent or does not parse keeps its default. Readiness never waits for a share; these
+settings only decide how often an instance reads its own assignment and when a missing share reads `Degraded`.
+**Details:** [Instance assignments](../startup/startup-status#instance-assignments).
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `ObserveInterval` | `TimeSpan` | `00:00:30` | `Whizbang__Database__InstanceAssignment__ObserveInterval` | How often the instance reads its own assignment, logs it when it changes, and refreshes the `assignment` health component. Must be positive |
+| `AwaitingShareGrace` | `TimeSpan` | `00:00:00` | `Whizbang__Database__InstanceAssignment__AwaitingShareGrace` | How long an instance eligible for work may own no partition before the `assignment` health component reports it `Degraded`. `00:00:00` derives it: two partition-assigner `SettleWindow`s plus one role `RenewInterval`, 15 seconds with the defaults. Negative is refused |
 
 ### Whizbang:Capabilities → CapabilityOptions {#capabilities-options}
 
