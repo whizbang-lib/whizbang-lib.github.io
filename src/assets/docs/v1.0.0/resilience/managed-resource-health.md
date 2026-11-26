@@ -221,6 +221,13 @@ Before that the tables it reads may not exist yet, so it reads nothing and repor
 state, that is HTTP 200 on readiness under the default policy and never fails liveness.
 {verified: RoleAssignmentHealthSourceTests.BeforeTheElectionStage_NothingIsRead_AndTheRolesAreDegradedAsync, RoleAssignmentHealthSourceTests.FromTheElectionStageOn_TheAssignmentsAreReadAsync, StartupStageWiringTests.TheRolesHealthComponent_ReadsNothingBeforeElectAsync}
 
+A role whose sole holder is stalled (past its lease and its progress window, kept only because no peer can take it)
+reads `Degraded` with the detail `role stalled: ...`; see
+[a lapse needs a successor](../operations/startup/capabilities-and-duties#a-lapse-needs-a-successor). A healthy sole
+holder reads `Healthy`. Each instance's own assignment is reported by the separate
+[`assignment` component](../operations/startup/startup-status#instance-assignments).
+{verified: RoleAssignmentHealthSourceTests.AStalledSoleHolder_IsDegraded_StalledWithNoPeerToTakeOverAsync, RoleAssignmentHealthSourceTests.AHealthySoleHolder_IsOperationalAsync}
+
 ## A slow or blocked source {#slow-sources}
 
 The probe always answers. Each source is asked on its own thread-pool thread and given

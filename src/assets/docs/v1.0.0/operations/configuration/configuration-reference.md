@@ -230,6 +230,7 @@ DbContext), the latest registration is used and startup logs a warning naming th
 | `Whizbang:Database:Stamper` | `CommitOrderStamperOptions` | Automatic (Postgres driver) |
 | `Whizbang:Database:RoleAssignment` | `RoleAssignmentOptions` | Automatic (Postgres driver) |
 | `Whizbang:Database:PartitionAssigner` | `PartitionAssignerOptions` | Automatic (both Postgres drivers); see [Partition assigner](#partition-assigner) |
+| `Whizbang:Database:InstanceAssignment` | `InstanceAssignmentOptions` | Automatic (both Postgres drivers); see [Instance assignment](#instance-assignment) |
 | `Whizbang:Capabilities` | `CapabilityOptions` | Automatic (registered by every capability provider, both Postgres drivers among them); see [Capabilities](#capabilities-options) |
 | `Whizbang:WorkCoordinatorGate` | `WorkCoordinatorGateOptions` | Automatic (worker pipeline); a Postgres driver's `MaxInFlightCommands` fills `MaxConcurrent` when the section leaves it unset |
 | `Whizbang:ServiceName` (falls back to `ServiceName`) | — (string) | Automatic |
@@ -364,7 +365,7 @@ Bound by the Postgres driver, which holds every duty (`maintainer`, `migrator`, 
 | `OwedWorkRetryBase` | `TimeSpan` | `00:00:30` | `Whizbang__Database__RoleAssignment__OwedWorkRetryBase` | Backoff after owed duty work fails, doubled per failure, capped at one hour |
 | `MigratorStallLimit` | `TimeSpan` | `00:00:00` | `Whizbang__Database__RoleAssignment__MigratorStallLimit` | How long the migrator's startup work may report no progress before its keepalive stops renewing its role, so the lease lapses and another instance takes the schema work over. `00:00:00` derives it: the `db-init` [command timeout](#command-timeouts) plus the migrator's progress window, 12 minutes by default. Negative is refused. EF Core driver only. See [a stuck migrator loses its role](../infrastructure/migrations#a-stuck-migrator-loses-its-role) {verified: MigratorStallLimitTests.MigratorStallLimit_DefaultsToZero_AndANegativeOneIsRefusedAsync, MigratorStallLimitTests.TheStallLimit_IsTheSchemaCommandBudgetPlusTheMigratorsProgressWindow_ByDefaultAsync, MigratorStallLimitTests.AConfiguredStallLimit_IsUsedAsItIsAsync} |
 
-Code-only (through `AddWhizbangRoleAssignment(o => ...)`): `Roles` (the duties the holder loop holds and the `roles` health component reports; a duty not listed is still held by assignment when asked for) and `RoleLeases` (a lease per duty; the migrator's default is 30 seconds).
+Code-only (through `AddWhizbangRoleAssignment(o => ...)`): `Roles` (the duties the holder loop holds and the `roles` health component reports; a duty not listed is still held by assignment when asked for, if the [role catalog](../startup/capabilities-and-duties#the-role-catalog) declares it) and `RoleLeases` (a lease per duty; the migrator's default is 30 seconds).
 
 ### Whizbang:Database:PartitionAssigner → PartitionAssignerOptions {#partition-assigner}
 {verified: PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_BindsEveryAssignerKeyFromConfigurationAsync, PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_WithNoAssignerKeys_KeepsTheDefaultsAsync, PartitionAssignerRegistrationTests.AddWhizbangPostgresNotifications_AHostsOwnConfigureOfTheAssigner_StillWinsAsync, PartitionAssignerRegistrationTests.TheRemovedEnabledKey_SetToFalse_TurnsNothingOffAsync, PartitionAssignerWorkerTests.Options_HandoverDeadline_DefaultsToThirtySeconds_AndANonPositiveOneIsRefusedAsync, PartitionAssignerWorkerTests.Options_OwnershipByMap_DefaultsOn_AndTheDefaultStillWaitsForEveryInstanceAsync}
@@ -383,6 +384,19 @@ reflection; a key that is absent or does not parse keeps its default, and a host
 | `OwnershipByMap` | `bool` | `true` | `Whizbang__Database__PartitionAssigner__OwnershipByMap` | Ask for the service's one-way [ownership-by-map switch](../../fundamentals/work-coordinator/partition-assignment#ownership-switch), which turns on once every live instance of the service supports it. `false` keeps the stored-owner rules while the switch is still off; it only stops the assigner asking, so a switch already on stays on |
 
 `Enabled` is a [removed key](#removed-keys): the assigner always runs.
+
+### Whizbang:Database:InstanceAssignment → InstanceAssignmentOptions {#instance-assignment}
+{verified: InstanceAssignmentDriverParityTests.TheOptions_BindFromConfiguration_AndKeepTheirDefaultsWithoutItAsync, InstanceAssignmentMonitorTests.TheGrace_IsTwoSettleWindowsAndARenewInterval_UnlessSetAsync, InstanceAssignmentMonitorTests.TheOptions_RefuseANonPositiveInterval_AndANegativeGrace_AndTheMonitorRefusesNullsAsync}
+
+Bound by both Postgres drivers, which run each instance's assignment monitor (#2595). Parsed by hand, without
+reflection; a key that is absent or does not parse keeps its default. Readiness never waits for a share; these
+settings only decide how often an instance reads its own assignment and when a missing share reads `Degraded`.
+**Details:** [Instance assignments](../startup/startup-status#instance-assignments).
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `ObserveInterval` | `TimeSpan` | `00:00:30` | `Whizbang__Database__InstanceAssignment__ObserveInterval` | How often the instance reads its own assignment, logs it when it changes, and refreshes the `assignment` health component. Must be positive |
+| `AwaitingShareGrace` | `TimeSpan` | `00:00:00` | `Whizbang__Database__InstanceAssignment__AwaitingShareGrace` | How long an instance eligible for work may own no partition before the `assignment` health component reports it `Degraded`. `00:00:00` derives it: two partition-assigner `SettleWindow`s plus one role `RenewInterval`, 15 seconds with the defaults. Negative is refused |
 
 ### Whizbang:Capabilities → CapabilityOptions {#capabilities-options}
 
@@ -1404,6 +1418,10 @@ Re-delivery (repair) pump bounds. **Configure:** bound automatically from `Whizb
 | `PollingIntervalMilliseconds` | `int` | `1000` | `Whizbang__Workers__Perspective__PollingIntervalMilliseconds` | Wake cadence when no NOTIFY signal is in flight and the listener is unavailable |
 | `NotifyHealthyPollingIntervalMilliseconds` | `int` | `1000` | `Whizbang__Workers__Perspective__NotifyHealthyPollingIntervalMilliseconds` | Safety-net cadence when LISTEN/NOTIFY is verified healthy |
 | `MaxPerspectiveEventAttempts` | `int?` | `10` | `Whizbang__Workers__Perspective__MaxPerspectiveEventAttempts` | Apply failures (`failures` column) before moving to `wh_dead_letters`; `attempts` counts leases and is diagnostic only |
+| `LeasedWithoutFailureWarningAttempts` | `int?` | `25` | `Whizbang__Workers__Perspective__LeasedWithoutFailureWarningAttempts` | Leases after which a queued row with no failure recorded is warned about once and counted; `null` turns it off. **Details:** [rows leased without a failure](../workers/perspective-worker#rows-leased-without-a-failure) |
+| `UnregisteredPerspectiveCleanup:Enabled` | `bool` | `true` | `Whizbang__Workers__Perspective__UnregisteredPerspectiveCleanup__Enabled` | Remove the cursors, queued rows and snapshots of a perspective no service runs. **Details:** [perspectives no longer registered](../../fundamentals/perspectives/rewind#perspectives-no-longer-registered) |
+| `UnregisteredPerspectiveCleanup:BatchCursors` | `int` | `1000` | `Whizbang__Workers__Perspective__UnregisteredPerspectiveCleanup__BatchCursors` | Cursors one cleanup batch removes |
+| `UnregisteredPerspectiveCleanup:MaxBatchesPerCycle` | `int` | `10` | `Whizbang__Workers__Perspective__UnregisteredPerspectiveCleanup__MaxBatchesPerCycle` | Cleanup batches one maintenance cycle runs |
 | `LeaseSeconds` | `int` | `300` | `Whizbang__Workers__Perspective__LeaseSeconds` | Lease duration for claimed perspective cursors |
 | `AbandonStaleInstanceThresholdSeconds` | `int` | `30` | `Whizbang__Workers__Perspective__AbandonStaleInstanceThresholdSeconds` | Grace period before a non-heartbeating instance is abandoned |
 | `DebugMode` | `bool` | `false` | `Whizbang__Workers__Perspective__DebugMode` | Keep completed checkpoints for debugging |
@@ -2075,7 +2093,7 @@ Which system events are enabled and how audit records ship. **Configure:** the s
 
 ### TemporalOptions
 
-The temporal engine's schedule worker. **Configure:** bound automatically from `Whizbang:Temporal` — no registration call needed. `services.Configure<TemporalOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** no dedicated page yet.
+The temporal engine's schedule worker. **Configure:** bound automatically from `Whizbang:Temporal` — no registration call needed. `services.Configure<TemporalOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Temporal Engine](/v1.0.0/fundamentals/temporal/temporal-engine).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
@@ -2083,6 +2101,7 @@ The temporal engine's schedule worker. **Configure:** bound automatically from `
 | `BackstopIntervalMilliseconds` | `int` | `5000` | `Whizbang__Temporal__BackstopIntervalMilliseconds` | Reconcile cadence for due schedules absent a doorbell |
 | `ClaimBatchLimit` | `int` | `100` | `Whizbang__Temporal__ClaimBatchLimit` | Max schedules claimed per call |
 | `LeaseDurationSeconds` | `int` | `300` | `Whizbang__Temporal__LeaseDurationSeconds` | Outbox lease granted to a spawned occurrence |
+| `OverdueWarningMilliseconds` | `int` | `60000` | `Whizbang__Temporal__OverdueWarningMilliseconds` | How long past due an Active schedule may stay unfired before a warning and the `Whizbang.Temporal` gauges report it; `0` or less turns the check off ([details](/v1.0.0/fundamentals/temporal/temporal-engine#a-schedule-that-does-not-fire-is-reported)) |
 
 ## Resilience Primitives
 

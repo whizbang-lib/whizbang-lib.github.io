@@ -67,12 +67,12 @@ Whizbang provides audit logging through **System Events** - internal events emit
 
 ## Core Concept
 
-```mermaid{caption="System-audit emit path: a domain event is audited to its tenant's audit ledger only when audit is enabled; nothing is emitted when it is off." tests=["SystemEventEmitterTests.EmitEventAuditedAsync_WithEnabledAudit_EmitsEventAuditedToTheAuditLedgerAsync", "SystemEventStreamRoutingTests.EmitEventAudited_AppendsToTheTenantsAuditLedgerAsync", "SystemEventEmitterTests.EmitEventAuditedAsync_WhenEventAuditDisabled_DoesNotEmitAsync"]}
+```mermaid{caption="System-audit emit path: a domain event is audited, as a record stored on its own id, only when audit is enabled; nothing is emitted when it is off." tests=["SystemEventEmitterTests.EmitEventAuditedAsync_WithEnabledAudit_EmitsEventAuditedOnTheRecordsOwnIdAsync", "SystemEventStreamRoutingTests.EmitEventAudited_AppendsOnTheRecordsOwnIdAsync", "SystemEventEmitterTests.EmitEventAuditedAsync_WhenEventAuditDisabled_DoesNotEmitAsync"]}
 flowchart TD
     Appended["Domain Event Appended<br/>(OrderCreated, PaymentProcessed, ...)"]
     Enabled{"System Audit Enabled?"}
     Nothing["(nothing emitted)"]
-    Emit["Emit EventAudited to the tenant's audit ledger"]
+    Emit["Emit EventAudited, stored on its own id"]
     Perspective["AuditPerspective : IPerspectiveFor&lt;AuditLogEntry, EventAudited&gt;"]
     Table["Perspective store (queryable via ILensQuery&lt;AuditLogEntry&gt;)"]
 
@@ -89,7 +89,7 @@ flowchart TD
 - **Opt-in per host**: Enable audit in BFF, skip in background workers
 - **Same infrastructure**: Events, perspectives, and lenses work identically
 - **Exclude by exception**: All events audited by default, opt-out specific types
-- **Dedicated streams**: audit records on one ledger stream per tenant, the global system events on `$wb-system`
+- **Dedicated streams**: each audit record stored on its own id (it travels on its tenant's ledger), the global system events on `$wb-system`
 
 ---
 
@@ -225,7 +225,7 @@ Set `SlideSeconds = 0` on the binding to restore immediate per-record shipping.
 
 ## System Events
 
-System events are internal Whizbang events stored apart from domain events: audit records on their tenant's [audit ledger](#audit-ledger), the global kinds (security and advisory) on the dedicated `$wb-system` stream.
+System events are internal Whizbang events stored apart from domain events: audit records each on its own id (they travel on their tenant's [audit ledger](#audit-ledger)), the global kinds (security and advisory) on the dedicated `$wb-system` stream.
 
 ### ISystemEvent Interface
 
@@ -286,15 +286,25 @@ public static class SystemEventStreams {
 }
 ```
 
-`SystemEventStreams.StreamId` holds only the global kinds: security records and advisories. Audit records never use it, whichever path produced them: the work coordinator's outbox path and the `SystemEventEmitter` (`EmitEventAuditedAsync`, `EmitCommandAuditedAsync`, or an audit record given to `EmitAsync`) all write them on the tenant's audit ledger, below. `SystemEventStreams.StreamFor(systemEvent)` is the one place that decides. Earlier versions of the emitter wrote its audit records on `$wb-system`; a reader that looked for them there reads the ledger instead.
+`SystemEventStreams.StreamId` holds only the global kinds: security records and advisories. Audit records never use it. Each audit record is stored on a stream of its own, its own id, whichever path produced it: the outbox path and the event store decorator ship it on the tenant's [audit ledger](#audit-ledger) and the receiver stores it on its id; the `SystemEventEmitter` (`EmitEventAuditedAsync`, `EmitCommandAuditedAsync`, or an audit record given to `EmitAsync`, which is how every command audit is emitted) stores it on its id directly. `SystemEventStreams.StreamFor(systemEvent)` is the one place that decides. Earlier versions of the emitter wrote its audit records on `$wb-system`. See [Where a record is stored](#record-storage).
 
 ### The per-tenant audit ledger {#audit-ledger}
 
-{verified: AuditLedgerTests.For_SameTenant_IsTheSameStreamAsync, AuditLedgerTests.For_DifferentTenants_AreDifferentStreamsAsync, AuditLedgerTests.For_NoTenant_IsTheEmptyTenantLedgerAsync, AuditRecordStreamPositionSqlTests.Store_RecordOnTheTenantLedger_IsStoredOnTheLedgerStreamAsync}
+{verified: AuditLedgerTests.For_SameTenant_IsTheSameStreamAsync, AuditLedgerTests.For_DifferentTenants_AreDifferentStreamsAsync, AuditLedgerTests.For_NoTenant_IsTheEmptyTenantLedgerAsync}
 
-Each tenant's audit records share one stream, `AuditLedger.StreamFor(tenantId)`. It is a name-based (version 5) UUID of the tenant id under the namespace `UUIDv5(nil, "sys-audit")`, so every service derives the same id without coordination; records with no tenant share the empty-tenant ledger. Publishing on one stream per tenant keeps a tenant's audit trail ordered and owned by one instance at a time.
+Each tenant's audit records travel on one stream, `AuditLedger.StreamFor(tenantId)`. It is a name-based (version 5) UUID of the tenant id under the namespace `UUIDv5(nil, "sys-audit")`, so every service derives the same id without coordination; records with no tenant share the empty-tenant ledger. Publishing on one stream per tenant keeps a tenant's audit trail ordered and owned by one instance at a time.
 
-A coalesced bundle of audit records rides the ledger stream. Each record fanned out of it keeps its own id as its stream, so the audit perspective still holds one row per record rather than folding a tenant's whole trail into one row.
+A coalesced bundle of audit records rides the ledger stream. Each record fanned out of it keeps its own id as its stream, so the audit perspective still holds one row per record rather than folding a tenant's whole trail into one row; see [Where a record is stored](#record-storage).
+
+### Where a record is stored {#record-storage}
+
+{verified: AuditRecordStorageStreamTests.ARecordShippedAlone_TravelsOnTheLedger_AndIsStoredOnItsOwnIdAsync, AuditRecordStorageStreamTests.RecordsShippedInABundle_TravelOnTheLedger_AndEachIsStoredOnItsOwnIdAsync, AuditRecordStorageStreamTests.ARecordFromTheEventStoreDecorator_TravelsOnTheLedger_AndIsStoredOnItsOwnIdAsync, AuditRecordStorageStreamTests.AnEventAuditTheEmitterStoresLocally_IsStoredOnItsOwnIdAsync, AuditRecordStorageStreamTests.ACommandAuditTheEmitterStoresLocally_IsStoredOnItsOwnIdAsync, AuditRecordStorageStreamTests.AnAuditRecordGivenToEmitAsync_IsStoredOnItsOwnIdAsync}
+
+The ledger is the lane a record travels and is ordered on; the record is **stored** on a stream of its own, its own `Id`, never on the ledger and never on the audited event's stream.
+
+**Why.** A perspective row is keyed by the stream an event is stored on, so an `IPerspectiveFor<AuditLogEntry, EventAudited>` over records stored on the ledger would hold one row per tenant, overwritten by every record, and every audit append of a tenant would wait on one stream's version lock and perspective lease. Stored on its own id, each record is one row.
+
+Records written before the record id became the stored stream are stored on the audited events' streams and stay there; a perspective or read that selects audit records by type finds both.
 
 ### One record per audited event {#record-ids}
 
