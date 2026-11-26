@@ -694,6 +694,7 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ701 | Info | [EF Core Perspective Discovery](whiz701.md) |
 | WHIZ702 | Info | [EF Core Migration Files Discovery](whiz702.md) |
 | WHIZ703 | Info | [No DbContext Found](whiz703.md) |
+| WHIZ704 | Error | [DbContext overrides OnConfiguring](whiz704.md) |
 | WHIZ801 | Error | [VectorField Invalid Type](whiz801.md) |
 | WHIZ802 | Error | [VectorField Invalid Dimensions](whiz802.md) |
 | WHIZ803 | Retired | [PhysicalField Complex Type](whiz803.md) (retired: never reported, ID never reused) |

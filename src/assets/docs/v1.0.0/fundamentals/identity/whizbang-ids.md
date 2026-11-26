@@ -1,7 +1,7 @@
 ---
 title: "WhizbangIds: Strongly-Typed Identity Values"
 pageType: concept
-verifiedAgainstCommit: '8b593d37b'
+verifiedAgainstCommit: '9ea505e81'
 verifiedDate: 2026-11-25
 version: 1.0.0
 category: "Core Concepts"
@@ -37,6 +37,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/StrongIdDocumentGateStep.cs
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdSetterFormRewriter.cs
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdDocumentTarget.cs
+  - src/Whizbang.Data.Postgres/PostgresServerDatabase.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/ServerDatabaseNameInterceptor.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/WhizbangIdMigrationsModelDiffer.cs
   - src/Whizbang.Generators/Templates/Snippets/WhizbangIdJsonSnippets.cs
   - src/Whizbang.Generators/Templates/Snippets/WhizbangIdRuleSnippets.cs
   - src/Whizbang.Core/SuppressGuidInterceptionAttribute.cs
@@ -73,6 +76,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/WhizbangIdEntityColumnTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStrongIdDocumentGateTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveUpsertStrongIdFormTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/StrongIdPooledDatabaseNameTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/StrongIdTrackedSaveFormTests.cs
   - tests/Whizbang.Core.Tests/WhizbangIdJsonConverterReadTests.cs
   - tests/Whizbang.Core.Tests/Validation/GuidOrderingStreamIdByTypeTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderTests.cs
@@ -96,7 +101,7 @@ testReferences:
   - tests/Whizbang.Generators.Tests/ThirdPartyGuidInterceptionTests.cs
   - tests/Whizbang.Generators.Tests/GuidUsageAnalyzerTests.cs
   - tests/Whizbang.Migrate.Tests/Transformers/GuidToTrackedGuidTransformerTests.cs
-lastMaintainedCommit: '8b593d37b'
+lastMaintainedCommit: '9ea505e81'
 ---
 
 # WhizbangIds: Strongly-Typed Identity Values
@@ -1039,12 +1044,20 @@ An `ExecuteUpdate` that sets an id writes it in the form the fleet reads, as Sav
 [switch](#stored-form-switch) is off, the UUID string once it is on, decided each time the statement runs (a compiled
 query is cached for the life of the process), and JSON `null` for no id
 {verified: WhizbangIdDocumentStorageTests.Whizbang_ExecuteUpdateWhileTheGateIsClosed_SetsAnIdInTheObjectFormAsync, WhizbangIdDocumentStorageTests.Whizbang_OneCompiledExecuteUpdate_FollowsTheGateWhenItRunsAsync}.
-That holds on a generated context built from options without the Whizbang extension too: its `OnConfiguring` gives
-the options the framework's query postprocessor when they lack one
-{verified: WhizbangIdDocumentStorageTests.Convention_ExecuteUpdateWhileTheGateIsClosed_SetsAnIdInTheObjectFormAsync, WhizbangIdDocumentStorageTests.Configure_LeavesOptionsWithAPostprocessorOrFrozen_AsTheyAreAsync}.
-A pooled context's options cannot be changed there, so a pooled context needs the extension (`UseWhizbangFunctions`),
-which the generated registration always adds. A partial class of yours that overrode `OnConfiguring` moves its body to
-`OnConfiguringExtended`.
+That holds on a generated context built from options without the Whizbang extension too. Its `OnConfiguring` calls
+the base context's, then `OnConfiguringExtended`, then gives the options the framework's query postprocessor when they
+lack one, last, so it sees the provider wherever it was set
+{verified: WhizbangIdDocumentStorageTests.Convention_ExecuteUpdateWhileTheGateIsClosed_SetsAnIdInTheObjectFormAsync, WhizbangIdDocumentStorageTests.Convention_AProviderSetBeforeConfigureInOnConfiguring_GetsThePostprocessorAsync, WhizbangIdDocumentStorageTests.Configure_LeavesOptionsWithAPostprocessorOrFrozen_AsTheyAreAsync, EFCoreServiceRegistrationGeneratorTests.Generator_WithDiscoveredDbContext_GeneratesOnConfiguringThatConfiguresAfterTheBaseAndTheHookAsync}.
+A partial class of yours that overrode `OnConfiguring` moves its body to `OnConfiguringExtended`; an override of your
+own is [WHIZ704](../../operations/diagnostics/whiz704)
+{verified: EFCoreServiceRegistrationGeneratorTests.Generator_WithDbContextThatOverridesOnConfiguring_ReportsWhiz704Async}.
+A hand-written context calls `WhizbangIdConvention.Apply(modelBuilder, this)` in `OnModelCreating` and
+`WhizbangIdConvention.Configure(optionsBuilder)` at the end of `OnConfiguring`, unless its options call
+`UseWhizbangFunctions()`. A context the postprocessor cannot reach fails when its model is built, naming the fix,
+rather than write an id in a form the fleet cannot read yet: a hand-written context that never calls `Configure`, or a
+pooled context without the extension, whose options are frozen before `OnConfiguring` runs (the generated registration
+always adds the extension)
+{verified: WhizbangIdDocumentStorageTests.Convention_OnOptionsWithoutThePostprocessor_FailsWhenTheModelIsBuiltAsync}.
 A collective setter does the same, and a collective comparison on an id matches a row in either form
 {verified: CollectiveSettersRewriterTests.CollectAssignments_AStrongIdWhileTheGateIsClosed_IsSerializedInTheObjectFormAsync, CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_AComparisonOnAStrongId_MatchesItInEitherStoredFormAsync}.
 Reads take either form and count the object form on `whizbang.perspective.identifier_form_fallbacks`. SQL of your own
@@ -1073,9 +1086,19 @@ instance can read it. It takes one package; there is no ordered pair of releases
    A schema with no gate at all (not yet migrated, or migrated by an earlier release) is held, so nothing writes the
    UUID string into it; the gate is asked again each maintenance cycle
    {verified: StrongIdDocumentGateTests.ASchemaWithoutTheGate_IsUnavailable_AndHeld_SoNothingWritesTheUuidStringIntoItAsync}.
+   A save that writes rows into several schemas (a context that maps perspectives in two) writes the UUID string only
+   while every one of their gates is open
+   {verified: StrongIdTrackedSaveFormTests.ASaveIntoAnOpenAndAHeldSchema_WritesTheObjectFormIntoBoth_AndAloneTheOpenOneWritesTheUuidStringAsync}.
    A write of your own that names no schema (SaveChanges on a context of yours) writes the UUID string only once every
-   schema the process knows is open. The [Dapper driver](#stored-form-drivers) says it writes the UUID string from its
+   schema the process knows is open. The [Dapper driver](#stored-form-drivers) says which form it writes from its
    first beat.
+
+   A schema is known by the name the server gives its database (`current_database()`, asked once for each host and
+   database name a connection string names), not by the connection string's name. Behind a pooler such as pgbouncer
+   the writers' connection string names an alias, and a coordinator can have a connection string of its own; both still
+   see the gate the check opened, and the heartbeat says the UUID string
+   {verified: StrongIdPooledDatabaseNameTests.AWriterThroughAPoolerAlias_SeesTheGateOpenedOnADirectConnection_AndSaysSoInItsHeartbeatAsync, StrongIdDocumentGateTests.HoldUnasked_HoldsTheSchema_AndTheHoldFollowsTheServersNameAsync}.
+   Until a process has asked, it writes the object form through that connection.
 4. **The rewrite starts once every live instance writes it.** So no instance writes the object form behind the rewrite
    {verified: StrongIdDocumentGateTests.TheRewrite_WaitsUntilEveryLiveInstanceWritesTheUuidString_ThenRunsAsync}. It
    asks again before every batch, so an instance that cannot read the new form and joins during a run stops it before
@@ -1089,9 +1112,11 @@ wrote and read only the UUID string, so each failed on the other's rows. This re
 generated id's JSON converter, which the Dapper store reads with, takes `{"Value": "..."}` as well as the UUID string,
 through the id's own rule {verified: WhizbangIdJsonConverterReadTests.Read_TakesTheUuidString_AndTheObjectForm_AndWritesTheUuidStringAsync, WhizbangIdJsonConverterReadTests.Read_TheObjectForm_IsCheckedByTheIdsRule_AsTheUuidStringIsAsync}.
 
-The Dapper store keeps writing the UUID string. The gate governs the Entity Framework writer only, since that is the
-only writer an earlier release's reader cannot follow, and the Dapper heartbeat says it writes the UUID string from its
-first beat {verified: DapperStrongIdDocumentGateTests.TheDapperHeartbeat_SaysItWritesTheUuidString_FromItsFirstBeatAsync}.
+The Dapper store keeps writing whatever its serializer options write: the UUID string with Whizbang's options. The gate
+governs the Entity Framework writer only, since that is the only writer an earlier release's reader cannot follow, and
+the Dapper heartbeat says which form the store writes from its first beat. A store built with an application's own
+options, which lack Whizbang's id converters, writes the object form, and its heartbeat says so, which holds the rewrite
+{verified: DapperStrongIdDocumentGateTests.TheDapperHeartbeat_SaysItWritesTheUuidString_FromItsFirstBeatAsync, DapperStrongIdDocumentGateTests.TheDapperHeartbeat_WithAnApplicationsOwnOptions_SaysWhatThoseOptionsWriteAsync, WhizbangIdJsonConverterReadTests.WritesUuidStringWith_TellsWhizbangsOptionsFromAnApplicationsOwnAsync}.
 The Dapper driver also asks the gate, at host start and each maintenance cycle, so it latches the switch, opens the
 form for any Entity Framework writer in the same process, and names instances that cannot read the new form; a schema
 with Entity Framework and Dapper instances reaches the rewrite
@@ -1161,10 +1186,17 @@ A strong-id property of your own entity, outside a perspective document, is a `u
 An id you configured keeps what you configured: a `ComplexProperty`, a `HasColumnName` or a converter of your own
 (`HasConversion`).
 
-An earlier release mapped an unconfigured id inside a table-split complex type as a complex type of its own, so its
-column was the one its `Value` had, `Depot_DepotId_Value`. Run `migrations add`: Entity Framework scaffolds the move as
-a rename, never a drop and an add, so the values stay
-{verified: WhizbangIdEntityColumnTests.MigrationsAdd_FromAnEarlierModel_RenamesTheValueColumn_AndKeepsItsDataAsync, WhizbangIdEntityColumnTests.MigrationsAdd_OnAContextWithoutTheExtension_RenamesTooAsync}:
+An earlier release mapped an unconfigured id as a complex type of its own, inside a table-split complex type or on a
+context without the Whizbang extension, so its column was the one its `Value` had: `Depot_DepotId_Value`, or
+`OrderId_Value`. Run `migrations add`: it scaffolds the move as a rename, never a drop and an add, so the values stay
+{verified: WhizbangIdEntityColumnTests.MigrationsAdd_FromAnEarlierModel_RenamesTheValueColumn_AndKeepsItsDataAsync, WhizbangIdEntityColumnTests.MigrationsAdd_OnAContextWithoutTheExtension_RenamesTooAsync}.
+Whizbang's migrations model differ pairs each `<column>_Value` with `<column>` by name. Entity Framework alone pairs the
+two by shape, since the old column belongs to a property named `Value`, and two ids of one shape (`Route.From` and
+`Route.FromHub`) would be paired in name order, swapping their values with no error. A pair the differ cannot make by
+name, because the two columns differ in type or nullability, fails `migrations add`, naming the columns; write those
+renames by hand
+{verified: WhizbangIdEntityColumnTests.MigrationsAdd_PairsEachValueColumnWithItsOwnId_NeverSwappingTwoOfOneShapeAsync, WhizbangIdEntityColumnTests.MigrationsAdd_RefusesAPairingItCannotMakeByName_RatherThanSwapAsync}.
+`UseWhizbangFunctions()` and the generated `OnConfiguring` register the differ, unless your options replace it:
 
 ```csharp{title="The migration for an id's column" description="migrations add scaffolds the move from the complex id's Value column as a rename" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "EF Core", "Migrations"] tests=["WhizbangIdEntityColumnTests.MigrationsAdd_FromAnEarlierModel_RenamesTheValueColumn_AndKeepsItsDataAsync"]}
 migrationBuilder.RenameColumn(
