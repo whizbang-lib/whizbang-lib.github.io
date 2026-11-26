@@ -1661,12 +1661,6 @@
     "symbol": "EphemeralConsumption",
     "docs": "fundamentals/events/ephemeral-events#snapshots-follow-what-a-read-model-consumes"
   },
-  "KeepsTipSnapshot": {
-    "file": "src/Whizbang.Generators.Shared/Utilities/EphemeralConsumption.cs",
-    "line": 43,
-    "symbol": "KeepsTipSnapshot",
-    "docs": "fundamentals/events/ephemeral-events#the-tip-snapshot"
-  },
   "EquatableArray": {
     "file": "src/Whizbang.Generators.Shared/Utilities/EquatableArray.cs",
     "line": 31,
@@ -3359,6 +3353,12 @@
     "symbol": "MisattributedOriginCorrectionStep",
     "docs": "resilience/stream-integrity#an-origin-that-does-not-own-the-type"
   },
+  "MissingEventBodySql": {
+    "file": "src/Whizbang.Data.Postgres/MissingEventBodySql.cs",
+    "line": 21,
+    "symbol": "MissingEventBodySql",
+    "docs": "operations/workers/perspective-worker#unreadable-stored-events"
+  },
   "MixedStreamRefusal": {
     "file": "src/Whizbang.Data.Postgres/MixedStreamRefusal.cs",
     "line": 18,
@@ -3409,13 +3409,19 @@
   },
   "OriginPositionFillResult": {
     "file": "src/Whizbang.Data.Postgres/OriginPositionStore.cs",
-    "line": 31,
+    "line": 35,
     "symbol": "OriginPositionFillResult",
     "docs": "resilience/stream-integrity#filling-missing-origin-positions"
   },
+  "OriginPositionSkippedRewind": {
+    "file": "src/Whizbang.Data.Postgres/OriginPositionStore.cs",
+    "line": 44,
+    "symbol": "OriginPositionSkippedRewind",
+    "docs": "resilience/stream-integrity#a-rewind-never-reaches-below-the-reap-floor"
+  },
   "OriginPositionStore": {
     "file": "src/Whizbang.Data.Postgres/OriginPositionStore.cs",
-    "line": 39,
+    "line": 52,
     "symbol": "OriginPositionStore",
     "docs": "resilience/stream-integrity#filling-missing-origin-positions"
   },
@@ -3640,12 +3646,6 @@
     "line": 30,
     "symbol": "PostgresFanoutChildRefiler",
     "docs": "operations/infrastructure/purging-streams#refiling-composite-children"
-  },
-  "PostgresFleetStatus": {
-    "file": "src/Whizbang.Data.Postgres/PostgresFleetStatus.cs",
-    "line": 13,
-    "symbol": "PostgresFleetStatus",
-    "docs": "operations/startup/startup-status#instance-assignments"
   },
   "PostgresObjectArchiveStore": {
     "file": "src/Whizbang.Data.Postgres/PostgresObjectArchiveStore.cs",
@@ -4139,12 +4139,6 @@
     "symbol": "TenureFill",
     "docs": "fundamentals/work-coordinator/partition-assignment#fencing"
   },
-  "TipSnapshotSql": {
-    "file": "src/Whizbang.Data.Postgres/TipSnapshotSql.cs",
-    "line": 26,
-    "symbol": "TipSnapshotSql",
-    "docs": "fundamentals/events/ephemeral-events#the-tip-snapshot"
-  },
   "TypeHistoryTarget": {
     "file": "src/Whizbang.Data.Postgres/TypeHistoryWalker.cs",
     "line": 13,
@@ -4168,6 +4162,12 @@
     "line": 32,
     "symbol": "UnauditedSealReportStep",
     "docs": "resilience/stream-integrity#a-seal-nothing-audits"
+  },
+  "UnregisteredPerspectiveCleanupStep": {
+    "file": "src/Whizbang.Data.Postgres/UnregisteredPerspectiveCleanupStep.cs",
+    "line": 48,
+    "symbol": "UnregisteredPerspectiveCleanupStep",
+    "docs": "fundamentals/perspectives/rewind#perspectives-no-longer-registered"
   },
   "UnsequencedDigestCompaction": {
     "file": "src/Whizbang.Data.Postgres/UnsequencedDigestCompaction.cs",
@@ -4427,18 +4427,6 @@
     "symbol": "INotificationDataSourceFallback",
     "docs": "data/drivers#bring-your-own-dbcontext"
   },
-  "InstanceAssignmentRegistration": {
-    "file": "src/Whizbang.Data.Postgres/Notifications/InstanceAssignmentRegistration.cs",
-    "line": 21,
-    "symbol": "InstanceAssignmentRegistration",
-    "docs": "operations/startup/startup-status#instance-assignments"
-  },
-  "ConfigureInstanceAssignmentOptionsFromConfiguration": {
-    "file": "src/Whizbang.Data.Postgres/Notifications/InstanceAssignmentRegistration.cs",
-    "line": 52,
-    "symbol": "ConfigureInstanceAssignmentOptionsFromConfiguration",
-    "docs": "operations/configuration/configuration-reference#instance-assignment"
-  },
   "ListenConnectionLifetime": {
     "file": "src/Whizbang.Data.Postgres/Notifications/ListenConnectionLifetime.cs",
     "line": 31,
@@ -4519,19 +4507,19 @@
   },
   "_markAsync": {
     "file": "src/Whizbang.Data.Postgres/Notifications/PgRoleElector.cs",
-    "line": 229,
+    "line": 198,
     "symbol": "_markAsync",
     "docs": "proposals/duty-role-assignment"
   },
   "AssertEpochAsync": {
     "file": "src/Whizbang.Data.Postgres/Notifications/PgRoleElector.cs",
-    "line": 252,
+    "line": 221,
     "symbol": "AssertEpochAsync",
     "docs": "proposals/duty-role-assignment"
   },
   "PgScheduleDuePollSource": {
     "file": "src/Whizbang.Data.Postgres/Notifications/PgScheduleDuePollSource.cs",
-    "line": 21,
+    "line": 22,
     "symbol": "PgScheduleDuePollSource",
     "docs": "fundamentals/temporal/temporal-engine"
   },
@@ -4609,7 +4597,7 @@
   },
   "DriverConnectionStringFallback": {
     "file": "src/Whizbang.Data.Postgres/Notifications/PostgresCoordinationRegistration.cs",
-    "line": 57,
+    "line": 55,
     "symbol": "DriverConnectionStringFallback",
     "docs": "fundamentals/work-coordinator/partition-assignment"
   },
@@ -4627,7 +4615,7 @@
   },
   "AddWhizbangNotificationDataSource": {
     "file": "src/Whizbang.Data.Postgres/Notifications/PostgresNotificationsServiceCollectionExtensions.cs",
-    "line": 401,
+    "line": 405,
     "symbol": "AddWhizbangNotificationDataSource",
     "docs": "fundamentals/work-coordinator/notifications-and-pgbouncer"
   },
@@ -4645,21 +4633,27 @@
   },
   "ConfigureRoleAssignmentOptionsFromConfiguration": {
     "file": "src/Whizbang.Data.Postgres/Notifications/RoleAssignmentServiceCollectionExtensions.cs",
-    "line": 149,
+    "line": 146,
     "symbol": "ConfigureRoleAssignmentOptionsFromConfiguration",
     "docs": "proposals/duty-role-assignment"
   },
   "CommitOrderStamperRoleOptions": {
     "file": "src/Whizbang.Data.Postgres/Notifications/RoleAssignmentServiceCollectionExtensions.cs",
-    "line": 180,
+    "line": 177,
     "symbol": "CommitOrderStamperRoleOptions",
     "docs": "proposals/duty-role-assignment"
   },
   "DeferredRoleAssignmentReader": {
     "file": "src/Whizbang.Data.Postgres/Notifications/RoleAssignmentServiceCollectionExtensions.cs",
-    "line": 196,
+    "line": 193,
     "symbol": "DeferredRoleAssignmentReader",
     "docs": "proposals/duty-role-assignment"
+  },
+  "SchedulePredicate": {
+    "file": "src/Whizbang.Data.Postgres/Notifications/SchedulePredicate.cs",
+    "line": 15,
+    "symbol": "SchedulePredicate",
+    "docs": "fundamentals/temporal/temporal-engine#which-instance-fires-a-schedule"
   },
   "WhizbangNotificationOptionsValidator": {
     "file": "src/Whizbang.Data.Postgres/Notifications/WhizbangNotificationOptionsValidator.cs",
@@ -5035,33 +5029,15 @@
   },
   "EFCorePerspectiveSnapshotStore": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCorePerspectiveSnapshotStore.cs",
-    "line": 17,
+    "line": 18,
     "symbol": "EFCorePerspectiveSnapshotStore",
     "docs": "fundamentals/perspectives/snapshots"
   },
   "CreateSnapshotAsync": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCorePerspectiveSnapshotStore.cs",
-    "line": 42,
+    "line": 43,
     "symbol": "CreateSnapshotAsync",
     "docs": "fundamentals/perspectives/snapshots#collectives"
-  },
-  "PruneOldSnapshotsAsync": {
-    "file": "src/Whizbang.Data.EFCore.Postgres/EFCorePerspectiveSnapshotStore.cs",
-    "line": 239,
-    "symbol": "PruneOldSnapshotsAsync",
-    "docs": "fundamentals/events/ephemeral-events#the-tip-snapshot"
-  },
-  "CreateTipSnapshotAsync": {
-    "file": "src/Whizbang.Data.EFCore.Postgres/EFCorePerspectiveSnapshotStore.cs",
-    "line": 253,
-    "symbol": "CreateTipSnapshotAsync",
-    "docs": "fundamentals/events/ephemeral-events#the-tip-snapshot"
-  },
-  "DeleteTipSnapshotFromAsync": {
-    "file": "src/Whizbang.Data.EFCore.Postgres/EFCorePerspectiveSnapshotStore.cs",
-    "line": 270,
-    "symbol": "DeleteTipSnapshotFromAsync",
-    "docs": "fundamentals/events/ephemeral-events#the-tip-snapshot"
   },
   "EFCorePerspectiveTableSwapperFactory": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCorePerspectiveTableSwapperFactory.cs",
@@ -5149,7 +5125,7 @@
   },
   "EFCorePostgresStartupFleetStatusSource": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCorePostgresStartupFleetStatusSource.cs",
-    "line": 20,
+    "line": 19,
     "symbol": "EFCorePostgresStartupFleetStatusSource",
     "docs": "operations/startup/startup-status"
   },
@@ -5233,7 +5209,7 @@
   },
   "here": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-    "line": 6504,
+    "line": 6515,
     "symbol": "here",
     "docs": "messaging/work-coordinator#local-service-identity"
   },
@@ -5353,7 +5329,7 @@
   },
   "OriginPositionReceptorRegistrar": {
     "file": "src/Whizbang.Data.EFCore.Postgres/OriginPositionReceptors.cs",
-    "line": 137,
+    "line": 147,
     "symbol": "OriginPositionReceptorRegistrar",
     "docs": "resilience/stream-integrity#filling-missing-origin-positions"
   },
@@ -5425,55 +5401,61 @@
   },
   "defaultSchema": {
     "file": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
-    "line": 343,
+    "line": 338,
     "symbol": "defaultSchema",
     "docs": "operations/infrastructure/purging-streams"
   },
   "traces": {
     "file": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
-    "line": 379,
+    "line": 374,
     "symbol": "traces",
     "docs": "fundamentals/events/archive-store#restore-requests"
   },
   "default": {
     "file": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
-    "line": 389,
+    "line": 384,
     "symbol": "default",
     "docs": "data/event-store#history-conversion"
   },
   "rule": {
     "file": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
-    "line": 397,
+    "line": 392,
     "symbol": "rule",
     "docs": "fundamentals/events/system-events#audit-body"
   },
   "types": {
     "file": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
-    "line": 402,
+    "line": 397,
     "symbol": "types",
     "docs": "fundamentals/events/superseding-events#history-stored-before-the-declaration"
   },
+  "more": {
+    "file": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
+    "line": 407,
+    "symbol": "more",
+    "docs": "fundamentals/events/retired-event-types"
+  },
   "owner": {
     "file": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
-    "line": 412,
+    "line": 413,
     "symbol": "owner",
-    "docs": "fundamentals/events/retired-event-types"
+    "docs": "fundamentals/perspectives/rewind#perspectives-no-longer-registered"
   },
   "lane": {
     "file": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
-    "line": 417,
+    "line": 418,
     "symbol": "lane",
     "docs": "resilience/stream-integrity#an-origin-that-does-not-own-the-type"
   },
   "audit": {
     "file": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
-    "line": 422,
+    "line": 423,
     "symbol": "audit",
     "docs": "resilience/stream-integrity#events-written-here-returned"
   },
   "one": {
     "file": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
-    "line": 427,
+    "line": 428,
     "symbol": "one",
     "docs": "resilience/stream-integrity#a-seal-nothing-audits"
   },
@@ -6061,13 +6043,13 @@
   },
   "DapperPerspectiveSnapshotStore": {
     "file": "src/Whizbang.Data.Dapper.Postgres/DapperPerspectiveSnapshotStore.cs",
-    "line": 16,
+    "line": 17,
     "symbol": "DapperPerspectiveSnapshotStore",
     "docs": "fundamentals/perspectives/snapshots"
   },
   "NpgsqlConnection": {
     "file": "src/Whizbang.Data.Dapper.Postgres/DapperPerspectiveSnapshotStore.cs",
-    "line": 85,
+    "line": 111,
     "symbol": "NpgsqlConnection",
     "docs": "fundamentals/events/archive-store#rewind-past-an-archived-snapshot"
   },
@@ -6131,12 +6113,6 @@
     "symbol": "DapperPostgresStartupAssessor",
     "docs": "operations/startup/rolling-upgrades#one-verdict"
   },
-  "DapperPostgresStartupFleetStatusSource": {
-    "file": "src/Whizbang.Data.Dapper.Postgres/DapperPostgresStartupFleetStatusSource.cs",
-    "line": 16,
-    "symbol": "DapperPostgresStartupFleetStatusSource",
-    "docs": "operations/startup/startup-status#instance-assignments"
-  },
   "DapperSchemaInitializationRunner": {
     "file": "src/Whizbang.Data.Dapper.Postgres/DapperSchemaInitializationRunner.cs",
     "line": 33,
@@ -6181,7 +6157,7 @@
   },
   "_prefixAsync": {
     "file": "src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.cs",
-    "line": 1471,
+    "line": 1476,
     "symbol": "_prefixAsync",
     "docs": "fundamentals/perspectives/perspective-sync#applied-ledger"
   },
@@ -6211,31 +6187,31 @@
   },
   "_addUnsupportedFeatureRefusals": {
     "file": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-    "line": 525,
+    "line": 520,
     "symbol": "_addUnsupportedFeatureRefusals",
     "docs": "data/drivers#what-dapper-refuses-at-startup"
   },
   "AddStreamPurge": {
     "file": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-    "line": 564,
+    "line": 559,
     "symbol": "AddStreamPurge",
     "docs": "operations/infrastructure/purging-streams"
   },
   "ProbeDatabaseName": {
     "file": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-    "line": 659,
+    "line": 657,
     "symbol": "ProbeDatabaseName",
     "docs": "operations/infrastructure/postgres-extensions#startup-report"
   },
   "_addTableStatistics": {
     "file": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-    "line": 727,
+    "line": 725,
     "symbol": "_addTableStatistics",
     "docs": "operations/observability/metrics#table-statistics"
   },
   "_addDeadLetterRecoveryService": {
     "file": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-    "line": 774,
+    "line": 772,
     "symbol": "_addDeadLetterRecoveryService",
     "docs": "operations/dead-letter-queue/recovery"
   },
@@ -8383,13 +8359,13 @@
   },
   "PartitionHandoverWorker": {
     "file": "src/Whizbang.Core/Workers/PartitionHandoverWorker.cs",
-    "line": 76,
+    "line": 75,
     "symbol": "PartitionHandoverWorker",
     "docs": "fundamentals/work-coordinator/partition-assignment#handover"
   },
   "ReleaseHeldWorkAsync": {
     "file": "src/Whizbang.Core/Workers/PartitionHandoverWorker.cs",
-    "line": 117,
+    "line": 116,
     "symbol": "ReleaseHeldWorkAsync",
     "docs": "fundamentals/work-coordinator/partition-assignment#graceful-leave"
   },
@@ -8519,6 +8495,18 @@
     "symbol": "PerspectiveStreamAffinityOptions",
     "docs": "operations/workers/perspective-worker"
   },
+  "_rewindFlaggedPairsWithNothingToApplyAsync": {
+    "file": "src/Whizbang.Core/Workers/PerspectiveWorker.FlaggedRewinds.cs",
+    "line": 31,
+    "symbol": "_rewindFlaggedPairsWithNothingToApplyAsync",
+    "docs": "fundamentals/perspectives/rewind#a-flagged-rewind-with-nothing-to-apply"
+  },
+  "_warnRowsLeasedWithoutFailure": {
+    "file": "src/Whizbang.Core/Workers/PerspectiveWorker.LeasedWithoutFailure.cs",
+    "line": 26,
+    "symbol": "_warnRowsLeasedWithoutFailure",
+    "docs": "operations/workers/perspective-worker#rows-leased-without-a-failure"
+  },
   "PerspectiveWorker": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.WriteBehind.cs",
     "line": 32,
@@ -8545,133 +8533,139 @@
   },
   "over": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 141,
+    "line": 142,
     "symbol": "over",
     "docs": "fundamentals/perspectives/rewind#startup-modes"
   },
   "ClampWidthToGate": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 184,
+    "line": 185,
     "symbol": "ClampWidthToGate",
     "docs": "operations/workers/perspective-worker"
   },
   "RequestImmediatePoll": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 502,
+    "line": 503,
     "symbol": "RequestImmediatePoll",
     "docs": "operations/workers/perspective-worker#immediate-poll"
   },
   "_processInitialCheckpoints": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 1001,
+    "line": 1002,
     "symbol": "_processInitialCheckpoints",
     "docs": "operations/workers/perspective-worker#unhandled-collective-events"
   },
   "StartupRewindSet": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 1196,
+    "line": 1197,
     "symbol": "StartupRewindSet",
     "docs": "fundamentals/perspectives/rewind#startup-scan"
   },
   "_awaitStartupRewindsAsync": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 1239,
+    "line": 1240,
     "symbol": "_awaitStartupRewindsAsync",
     "docs": "fundamentals/perspectives/rewind#startup-scan"
   },
   "ProcessChannelBatchAsync": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 1314,
+    "line": 1315,
     "symbol": "ProcessChannelBatchAsync",
     "docs": "fundamentals/work-coordinator/claim-loop"
   },
   "_processDrainModeStreamsAsync": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 1911,
+    "line": 1913,
     "symbol": "_processDrainModeStreamsAsync",
     "docs": "operations/workers/perspective-worker#the-perspective-work-pipeline"
   },
   "_failUnreadableDrainRowsAsync": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 2057,
+    "line": 2178,
     "symbol": "_failUnreadableDrainRowsAsync",
     "docs": "operations/workers/perspective-worker#unreadable-stored-events"
   },
   "_completeUnhandledCollectiveRows": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 2170,
+    "line": 2291,
     "symbol": "_completeUnhandledCollectiveRows",
     "docs": "operations/workers/perspective-worker#unhandled-collective-events"
   },
   "if": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 2214,
+    "line": 2335,
     "symbol": "if",
     "docs": "operations/workers/perspective-worker#cooled-rows-are-not-parsed"
   },
   "at": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 2647,
+    "line": 2768,
     "symbol": "at",
     "docs": "operations/infrastructure/migrations"
   },
   "_retireDroppedStragglers": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 3010,
+    "line": 3131,
     "symbol": "_retireDroppedStragglers",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "PerspectiveCursorCompletion": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 4327,
+    "line": 4448,
     "symbol": "PerspectiveCursorCompletion",
     "docs": "operations/workers/perspective-worker#rewind-failures"
   },
   "_fireTerminalStagesAndEndAsync": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 4881,
+    "line": 5002,
     "symbol": "_fireTerminalStagesAndEndAsync",
     "docs": "fundamentals/lifecycle/lifecycle-coordinator#live-tracking"
   },
   "_establishSecurityContextAsync": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 5229,
+    "line": 5350,
     "symbol": "_establishSecurityContextAsync",
     "docs": "operations/workers/perspective-worker#security-context"
   },
   "PerspectiveStartupScanLog": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 5870,
+    "line": 5991,
     "symbol": "PerspectiveStartupScanLog",
     "docs": "fundamentals/perspectives/rewind#startup-scan"
   },
+  "UnregisteredPerspectiveCleanup": {
+    "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+    "line": 6095,
+    "symbol": "UnregisteredPerspectiveCleanup",
+    "docs": "operations/workers/perspective-worker#rows-leased-without-a-failure"
+  },
   "CollectiveLockBusyCountsAsFailure": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 5976,
+    "line": 6120,
     "symbol": "CollectiveLockBusyCountsAsFailure",
     "docs": "fundamentals/messaging/collective-events"
   },
   "CollectivePredecessorWaitSeconds": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 5991,
+    "line": 6135,
     "symbol": "CollectivePredecessorWaitSeconds",
     "docs": "fundamentals/messaging/collective-events#ordering-across-services"
   },
   "WriteMode": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 6050,
+    "line": 6194,
     "symbol": "WriteMode",
     "docs": "fundamentals/perspectives/write-modes#selection"
   },
   "WriteBehind": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 6060,
+    "line": 6204,
     "symbol": "WriteBehind",
     "docs": "fundamentals/perspectives/write-modes#write-behind"
   },
   "DrainBatcher": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 6134,
+    "line": 6278,
     "symbol": "DrainBatcher",
     "docs": "operations/workers/perspective-worker#sliding-window-drain-batching"
   },
@@ -9196,6 +9190,12 @@
     "line": 171,
     "symbol": "TransportDeadLetterDrainWorkerOptions",
     "docs": "operations/dead-letter-queue/transport-recovery"
+  },
+  "UnregisteredPerspectiveCleanupOptions": {
+    "file": "src/Whizbang.Core/Workers/UnregisteredPerspectiveCleanupOptions.cs",
+    "line": 13,
+    "symbol": "UnregisteredPerspectiveCleanupOptions",
+    "docs": "fundamentals/perspectives/rewind#perspectives-no-longer-registered"
   },
   "VacuumFullTableRewriter": {
     "file": "src/Whizbang.Core/Workers/VacuumFullTableRewriter.cs",
@@ -9893,11 +9893,29 @@
     "symbol": "ScheduleWorker",
     "docs": "fundamentals/temporal/temporal-engine"
   },
+  "ours": {
+    "file": "src/Whizbang.Core/Temporal/ScheduleWorker.cs",
+    "line": 169,
+    "symbol": "ours",
+    "docs": "fundamentals/temporal/temporal-engine#a-schedule-that-does-not-fire-is-reported"
+  },
+  "TemporalMetrics": {
+    "file": "src/Whizbang.Core/Temporal/TemporalMetrics.cs",
+    "line": 15,
+    "symbol": "TemporalMetrics",
+    "docs": "fundamentals/temporal/temporal-engine#a-schedule-that-does-not-fire-is-reported"
+  },
   "TemporalOptions": {
     "file": "src/Whizbang.Core/Temporal/TemporalOptions.cs",
     "line": 11,
     "symbol": "TemporalOptions",
     "docs": "fundamentals/temporal/temporal-engine"
+  },
+  "OverdueWarningMilliseconds": {
+    "file": "src/Whizbang.Core/Temporal/TemporalOptions.cs",
+    "line": 30,
+    "symbol": "OverdueWarningMilliseconds",
+    "docs": "fundamentals/temporal/temporal-engine#a-schedule-that-does-not-fire-is-reported"
   },
   "CoalesceFoldBatch": {
     "file": "src/Whizbang.Core/Tags/CoalesceFoldBatch.cs",
@@ -10135,13 +10153,13 @@
   },
   "AuditLedger": {
     "file": "src/Whizbang.Core/SystemEvents/AuditLedger.cs",
-    "line": 29,
+    "line": 28,
     "symbol": "AuditLedger",
-    "docs": "fundamentals/security/audit-logging#record-storage"
+    "docs": "fundamentals/security/audit-logging#dedicated-system-stream"
   },
   "RecordIdFor": {
     "file": "src/Whizbang.Core/SystemEvents/AuditLedger.cs",
-    "line": 60,
+    "line": 59,
     "symbol": "RecordIdFor",
     "docs": "fundamentals/security/audit-logging#rebuilding-the-audit-ledger"
   },
@@ -10363,15 +10381,15 @@
   },
   "SystemEventStreams": {
     "file": "src/Whizbang.Core/SystemEvents/SystemEventStream.cs",
-    "line": 27,
+    "line": 24,
     "symbol": "SystemEventStreams",
     "docs": "fundamentals/events/system-events#stream"
   },
   "StreamFor": {
     "file": "src/Whizbang.Core/SystemEvents/SystemEventStream.cs",
-    "line": 58,
+    "line": 55,
     "symbol": "StreamFor",
-    "docs": "fundamentals/security/audit-logging#record-storage"
+    "docs": "fundamentals/events/system-events#stream"
   },
   "SystemEventTransportFilter": {
     "file": "src/Whizbang.Core/SystemEvents/SystemEventTransportFilter.cs",
@@ -10595,42 +10613,6 @@
     "symbol": "IStartupStepObserver",
     "docs": "operations/startup/startup-pipeline#hooks"
   },
-  "InstanceAssignmentKind": {
-    "file": "src/Whizbang.Core/Startup/InstanceAssignment.cs",
-    "line": 12,
-    "symbol": "InstanceAssignmentKind",
-    "docs": "operations/startup/startup-status#instance-assignments"
-  },
-  "InstanceAssignment": {
-    "file": "src/Whizbang.Core/Startup/InstanceAssignment.cs",
-    "line": 50,
-    "symbol": "InstanceAssignment",
-    "docs": "operations/startup/startup-status#instance-assignments"
-  },
-  "IInstanceAssignmentReader": {
-    "file": "src/Whizbang.Core/Startup/InstanceAssignment.cs",
-    "line": 56,
-    "symbol": "IInstanceAssignmentReader",
-    "docs": "operations/startup/startup-status#instance-assignments"
-  },
-  "InstanceAssignmentObservation": {
-    "file": "src/Whizbang.Core/Startup/InstanceAssignmentMonitor.cs",
-    "line": 22,
-    "symbol": "InstanceAssignmentObservation",
-    "docs": "operations/startup/startup-status#instance-assignments"
-  },
-  "InstanceAssignmentMonitor": {
-    "file": "src/Whizbang.Core/Startup/InstanceAssignmentMonitor.cs",
-    "line": 35,
-    "symbol": "InstanceAssignmentMonitor",
-    "docs": "operations/startup/startup-status#instance-assignments"
-  },
-  "InstanceAssignmentOptions": {
-    "file": "src/Whizbang.Core/Startup/InstanceAssignmentOptions.cs",
-    "line": 14,
-    "symbol": "InstanceAssignmentOptions",
-    "docs": "operations/configuration/configuration-reference#instance-assignment"
-  },
   "InstanceTransition": {
     "file": "src/Whizbang.Core/Startup/InstanceTransition.cs",
     "line": 19,
@@ -10721,41 +10703,11 @@
     "symbol": "RoleAssignmentSnapshot",
     "docs": "proposals/duty-role-assignment"
   },
-  "StalledWithoutSuccessor": {
-    "file": "src/Whizbang.Core/Startup/RoleAssignmentSnapshot.cs",
-    "line": 64,
-    "symbol": "StalledWithoutSuccessor",
-    "docs": "operations/startup/capabilities-and-duties#a-lapse-needs-a-successor"
-  },
   "IRoleAssignmentReader": {
     "file": "src/Whizbang.Core/Startup/RoleAssignmentSnapshot.cs",
-    "line": 69,
+    "line": 61,
     "symbol": "IRoleAssignmentReader",
     "docs": "proposals/duty-role-assignment"
-  },
-  "RoleKind": {
-    "file": "src/Whizbang.Core/Startup/RoleCatalog.cs",
-    "line": 14,
-    "symbol": "RoleKind",
-    "docs": "operations/startup/capabilities-and-duties#the-role-catalog"
-  },
-  "RoleDeclaration": {
-    "file": "src/Whizbang.Core/Startup/RoleCatalog.cs",
-    "line": 24,
-    "symbol": "RoleDeclaration",
-    "docs": "operations/startup/capabilities-and-duties#the-role-catalog"
-  },
-  "RoleCatalog": {
-    "file": "src/Whizbang.Core/Startup/RoleCatalog.cs",
-    "line": 55,
-    "symbol": "RoleCatalog",
-    "docs": "operations/startup/capabilities-and-duties#the-role-catalog"
-  },
-  "RoleCatalogServiceCollectionExtensions": {
-    "file": "src/Whizbang.Core/Startup/RoleCatalogServiceCollectionExtensions.cs",
-    "line": 12,
-    "symbol": "RoleCatalogServiceCollectionExtensions",
-    "docs": "operations/startup/capabilities-and-duties#the-role-catalog"
   },
   "SchemaReadyGatedService": {
     "file": "src/Whizbang.Core/Startup/SchemaReadyGatedService.cs",
@@ -10807,13 +10759,13 @@
   },
   "FleetStatusReport": {
     "file": "src/Whizbang.Core/Startup/StartupFleetStatus.cs",
-    "line": 40,
+    "line": 45,
     "symbol": "FleetStatusReport",
-    "docs": "operations/startup/startup-status#instance-assignments"
+    "docs": "operations/startup/startup-status"
   },
   "IStartupFleetStatusSource": {
     "file": "src/Whizbang.Core/Startup/StartupFleetStatus.cs",
-    "line": 69,
+    "line": 58,
     "symbol": "IStartupFleetStatusSource",
     "docs": "operations/startup/startup-status"
   },
@@ -13207,15 +13159,9 @@
   },
   "PerspectiveSnapshotFloor": {
     "file": "src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs",
-    "line": 341,
+    "line": 283,
     "symbol": "PerspectiveSnapshotFloor",
     "docs": "fundamentals/events/archive-store#rewind-past-an-archived-snapshot"
-  },
-  "IsTip": {
-    "file": "src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs",
-    "line": 347,
-    "symbol": "IsTip",
-    "docs": "fundamentals/perspectives/snapshots#collectives"
   },
   "IPerspectiveStateSource": {
     "file": "src/Whizbang.Core/Perspectives/IPerspectiveStateSource.cs",
@@ -13639,49 +13585,49 @@
   },
   "elsewhere": {
     "file": "src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs",
-    "line": 378,
+    "line": 369,
     "symbol": "elsewhere",
     "docs": "fundamentals/perspectives/rebuild#batched-reads"
   },
   "reads": {
     "file": "src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs",
-    "line": 540,
+    "line": 531,
     "symbol": "reads",
     "docs": "fundamentals/perspectives/perspectives#concurrent-writers"
   },
   "_readBatchAsync": {
     "file": "src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs",
-    "line": 667,
+    "line": 658,
     "symbol": "_readBatchAsync",
     "docs": "fundamentals/perspectives/write-modes#prepare-and-commit"
   },
   "_isPurgedForApplyAsync": {
     "file": "src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs",
-    "line": 1217,
+    "line": 1208,
     "symbol": "_isPurgedForApplyAsync",
     "docs": "fundamentals/perspectives/perspectives-with-actions#purge-stays-purged"
   },
   "EvictedRowFloor": {
     "file": "src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs",
-    "line": 2580,
+    "line": 2573,
     "symbol": "EvictedRowFloor",
     "docs": "fundamentals/events/superseding-events#what-a-rebuild-keeps"
   },
   "_runFromModelAsync": {
     "file": "src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs",
-    "line": 2984,
+    "line": 2957,
     "symbol": "_runFromModelAsync",
     "docs": "fundamentals/perspectives/perspectives#concurrent-writers"
   },
   "full": {
     "file": "src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs",
-    "line": 3078,
+    "line": 3051,
     "symbol": "full",
     "docs": "fundamentals/perspectives/rewind#overwrite-only"
   },
   "ReplayOutcome": {
     "file": "src/Whizbang.Core/Perspectives/PerspectiveRunnerBase.cs",
-    "line": 3712,
+    "line": 3689,
     "symbol": "ReplayOutcome",
     "docs": "fundamentals/perspectives/rewind#overwrite-only"
   },
@@ -15133,7 +15079,7 @@
   },
   "SetWriteBehindSize": {
     "file": "src/Whizbang.Core/Observability/PerspectiveMetrics.cs",
-    "line": 182,
+    "line": 200,
     "symbol": "SetWriteBehindSize",
     "docs": "fundamentals/perspectives/rewind#metrics"
   },
@@ -15211,211 +15157,211 @@
   },
   "RecordRepairedEvents": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 840,
+    "line": 848,
     "symbol": "RecordRepairedEvents",
     "docs": "resilience/stream-integrity#repaired-events-and-receptors"
   },
   "UpdateUnfilledOriginPositions": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 870,
+    "line": 878,
     "symbol": "UpdateUnfilledOriginPositions",
     "docs": "resilience/stream-integrity#filling-missing-origin-positions"
   },
   "UpdateUnauditedSeals": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 880,
+    "line": 888,
     "symbol": "UpdateUnauditedSeals",
     "docs": "resilience/stream-integrity#a-seal-nothing-audits"
   },
   "UpdateBackfillGauges": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 886,
+    "line": 894,
     "symbol": "UpdateBackfillGauges",
     "docs": "resilience/stream-integrity#paced-backfill"
   },
   "UpdateLedgerBacklog": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 901,
+    "line": 909,
     "symbol": "UpdateLedgerBacklog",
     "docs": "resilience/stream-integrity#repair-backlog-and-eta"
   },
   "RecordBucketsMarkedUnhealable": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 914,
+    "line": 922,
     "symbol": "RecordBucketsMarkedUnhealable",
     "docs": "resilience/stream-integrity#repair-backlog-and-eta"
   },
   "UpdateVerifiedPercent": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 931,
+    "line": 939,
     "symbol": "UpdateVerifiedPercent",
     "docs": "resilience/stream-integrity#derived-completion-meters"
   },
   "UpdateRepairRates": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 946,
+    "line": 954,
     "symbol": "UpdateRepairRates",
     "docs": "resilience/stream-integrity#derived-completion-meters"
   },
   "RecordSealLowered": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 999,
+    "line": 1007,
     "symbol": "RecordSealLowered",
     "docs": "resilience/stream-integrity#integrity-instruments"
   },
   "UpdateChecksEnabled": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1043,
+    "line": 1051,
     "symbol": "UpdateChecksEnabled",
     "docs": "resilience/stream-integrity#integrity-instruments"
   },
   "RecordCheckRan": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1051,
+    "line": 1059,
     "symbol": "RecordCheckRan",
     "docs": "resilience/stream-integrity#integrity-instruments"
   },
   "UpdateSealReading": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1060,
+    "line": 1068,
     "symbol": "UpdateSealReading",
     "docs": "resilience/stream-integrity#integrity-instruments"
   },
   "LedgerGaugeSnapshot": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1085,
+    "line": 1093,
     "symbol": "LedgerGaugeSnapshot",
     "docs": "resilience/stream-integrity"
   },
   "AnswerPendingBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1100,
+    "line": 1108,
     "symbol": "AnswerPendingBuckets",
     "docs": "resilience/stream-integrity#integrity-gauges"
   },
   "AnsweredBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1104,
+    "line": 1112,
     "symbol": "AnsweredBuckets",
     "docs": "resilience/stream-integrity#integrity-gauges"
   },
   "IntegrityDeliveriesPending": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1108,
+    "line": 1116,
     "symbol": "IntegrityDeliveriesPending",
     "docs": "resilience/stream-integrity#integrity-gauges"
   },
   "OldestIntegrityDeliveryAgeSeconds": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1112,
+    "line": 1120,
     "symbol": "OldestIntegrityDeliveryAgeSeconds",
     "docs": "resilience/stream-integrity#integrity-gauges"
   },
   "UnhealedDeficitEvents": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1117,
+    "line": 1125,
     "symbol": "UnhealedDeficitEvents",
     "docs": "resilience/stream-integrity#integrity-gauges"
   },
   "UnhealableBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1122,
+    "line": 1130,
     "symbol": "UnhealableBuckets",
     "docs": "resilience/stream-integrity#integrity-gauges"
   },
   "DeficitBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1128,
+    "line": 1136,
     "symbol": "DeficitBuckets",
     "docs": "resilience/stream-integrity#unhealed-buckets-by-kind"
   },
   "SurplusBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1133,
+    "line": 1141,
     "symbol": "SurplusBuckets",
     "docs": "resilience/stream-integrity#unhealed-buckets-by-kind"
   },
   "DigestMismatchBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1138,
+    "line": 1146,
     "symbol": "DigestMismatchBuckets",
     "docs": "resilience/stream-integrity#unhealed-buckets-by-kind"
   },
   "UnknownKindBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1143,
+    "line": 1151,
     "symbol": "UnknownKindBuckets",
     "docs": "resilience/stream-integrity#unhealed-buckets-by-kind"
   },
   "OriginSeal": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1156,
+    "line": 1164,
     "symbol": "OriginSeal",
     "docs": "resilience/stream-integrity"
   },
   "BackfillGaugeSnapshot": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1160,
+    "line": 1168,
     "symbol": "BackfillGaugeSnapshot",
     "docs": "resilience/stream-integrity#paced-backfill"
   },
   "BackfillRemaining": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1175,
+    "line": 1183,
     "symbol": "BackfillRemaining",
     "docs": "resilience/stream-integrity#paced-backfill"
   },
   "LedgerBacklogSnapshot": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1182,
+    "line": 1190,
     "symbol": "LedgerBacklogSnapshot",
     "docs": "resilience/stream-integrity#repair-backlog-and-eta"
   },
   "LedgerBacklogCount": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1202,
+    "line": 1210,
     "symbol": "LedgerBacklogCount",
     "docs": "resilience/stream-integrity#repair-backlog-and-eta"
   },
   "LedgerBacklogStates": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1209,
+    "line": 1217,
     "symbol": "LedgerBacklogStates",
     "docs": "resilience/stream-integrity#repair-backlog-and-eta"
   },
   "LedgerBucketKinds": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1231,
+    "line": 1239,
     "symbol": "LedgerBucketKinds",
     "docs": "resilience/stream-integrity#unhealed-buckets-by-kind"
   },
   "IntegrityVerifiedReading": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1253,
+    "line": 1261,
     "symbol": "IntegrityVerifiedReading",
     "docs": "resilience/stream-integrity#derived-completion-meters"
   },
   "OriginVerifiedPercent": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1271,
+    "line": 1279,
     "symbol": "OriginVerifiedPercent",
     "docs": "resilience/stream-integrity#derived-completion-meters"
   },
   "RepairRatesReading": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1278,
+    "line": 1286,
     "symbol": "RepairRatesReading",
     "docs": "resilience/stream-integrity#derived-completion-meters"
   },
   "IntegritySealReading": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1299,
+    "line": 1307,
     "symbol": "IntegritySealReading",
     "docs": "resilience/stream-integrity#integrity-instruments"
   },
   "LaneSeal": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1332,
+    "line": 1340,
     "symbol": "LaneSeal",
     "docs": "resilience/stream-integrity#integrity-instruments"
   },
@@ -17077,607 +17023,607 @@
   },
   "ReportFailuresAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 689,
+    "line": 687,
     "symbol": "ReportFailuresAsync",
     "docs": "fundamentals/work-coordinator/batched-flushers"
   },
   "CommitHandlerResultAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 705,
+    "line": 703,
     "symbol": "CommitHandlerResultAsync",
     "docs": "fundamentals/work-coordinator/handler-commit"
   },
   "FlushCompletionsAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 751,
+    "line": 749,
     "symbol": "FlushCompletionsAsync",
     "docs": "fundamentals/work-coordinator/batched-flushers"
   },
   "StoreInboxMessagesAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 783,
+    "line": 781,
     "symbol": "StoreInboxMessagesAsync",
     "docs": "fundamentals/perspectives/perspective-sync#applied-ledger"
   },
   "PartitionRecomputeResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 871,
+    "line": 869,
     "symbol": "PartitionRecomputeResult",
     "docs": "extending/internals/outbox-batch-strategy#when-a-flush-fails"
   },
   "ReportPerspectiveCompletionAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 971,
+    "line": 969,
     "symbol": "ReportPerspectiveCompletionAsync",
     "docs": "operations/workers/perspective-worker"
   },
   "ReportPerspectiveFailureAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 991,
+    "line": 989,
     "symbol": "ReportPerspectiveFailureAsync",
     "docs": "operations/workers/perspective-worker"
   },
   "RecordLifecycleCompletionAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1023,
+    "line": 1021,
     "symbol": "RecordLifecycleCompletionAsync",
     "docs": "fundamentals/perspectives/write-modes#batch-formation"
   },
   "RecordDefinitionLineageAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1062,
+    "line": 1060,
     "symbol": "RecordDefinitionLineageAsync",
     "docs": "fundamentals/lifecycle/lifecycle-reconciliation"
   },
   "SyncMixedStreamAllowancesAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1171,
+    "line": 1169,
     "symbol": "SyncMixedStreamAllowancesAsync",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "SyncEphemeralTypeGraceAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1219,
+    "line": 1217,
     "symbol": "SyncEphemeralTypeGraceAsync",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "SyncPerspectiveRetentionAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1231,
+    "line": 1229,
     "symbol": "SyncPerspectiveRetentionAsync",
     "docs": "fundamentals/perspectives/row-retention"
   },
   "RegisterConsumedTypesAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1245,
+    "line": 1243,
     "symbol": "RegisterConsumedTypesAsync",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "MarkConsumedTypeBackfillRequestedAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1344,
+    "line": 1342,
     "symbol": "MarkConsumedTypeBackfillRequestedAsync",
     "docs": "resilience/stream-integrity"
   },
   "EnqueueSubscriptionBackfillsAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1356,
+    "line": 1354,
     "symbol": "EnqueueSubscriptionBackfillsAsync",
     "docs": "resilience/stream-integrity#paced-backfill"
   },
   "MarkSubscriptionBackfillWindowRequestedAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1365,
+    "line": 1363,
     "symbol": "MarkSubscriptionBackfillWindowRequestedAsync",
     "docs": "resilience/stream-integrity#paced-backfill"
   },
   "WithdrawSubscriptionBackfillWindowRequestAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1399,
+    "line": 1397,
     "symbol": "WithdrawSubscriptionBackfillWindowRequestAsync",
     "docs": "resilience/stream-integrity#paced-backfill"
   },
   "EndSubscriptionBackfillAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1415,
+    "line": 1413,
     "symbol": "EndSubscriptionBackfillAsync",
     "docs": "resilience/stream-integrity#paced-backfill"
   },
   "ComputeStreamDigestsAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1442,
+    "line": 1440,
     "symbol": "ComputeStreamDigestsAsync",
     "docs": "resilience/stream-integrity#paced-backfill"
   },
   "HoldPerspectiveRowDestructionAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1625,
+    "line": 1623,
     "symbol": "HoldPerspectiveRowDestructionAsync",
     "docs": "fundamentals/perspectives/pre-destruction-holds#guards"
   },
   "ReleasePerspectiveRowHoldsAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1653,
+    "line": 1651,
     "symbol": "ReleasePerspectiveRowHoldsAsync",
     "docs": "fundamentals/perspectives/pre-destruction-holds#decisions"
   },
   "PerspectiveRowReapResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1671,
+    "line": 1669,
     "symbol": "PerspectiveRowReapResult",
     "docs": "fundamentals/perspectives/pre-destruction-holds#failures"
   },
   "AcknowledgeRetentionEnforcementAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1711,
+    "line": 1709,
     "symbol": "AcknowledgeRetentionEnforcementAsync",
     "docs": "fundamentals/perspectives/row-retention#how-rows-are-evicted"
   },
   "RequeueRowEvictionsAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1736,
+    "line": 1734,
     "symbol": "RequeueRowEvictionsAsync",
     "docs": "fundamentals/perspectives/row-retention#adoption-is-automatic"
   },
   "DigestVerificationResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1881,
+    "line": 1879,
     "symbol": "DigestVerificationResult",
     "docs": "fundamentals/perspectives/row-retention#stream-groups"
   },
   "TableRewriteQueueStatus": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2013,
+    "line": 2011,
     "symbol": "TableRewriteQueueStatus",
     "docs": "resilience/stream-integrity#full-history-compare"
   },
   "RequestMeasuredTableRewriteAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2051,
+    "line": 2049,
     "symbol": "RequestMeasuredTableRewriteAsync",
     "docs": "operations/observability/metrics#table-rewrites"
   },
   "CompleteTableRewriteAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2158,
+    "line": 2156,
     "symbol": "CompleteTableRewriteAsync",
     "docs": "operations/infrastructure/storage-maintenance#rewrite-history"
   },
   "EvictInstanceAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2206,
+    "line": 2204,
     "symbol": "EvictInstanceAsync",
     "docs": "operations/startup/capabilities-and-duties#vacuum-on-acquiring-the-maintainer-duty"
   },
   "IntegrityMarkHealedAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2308,
+    "line": 2306,
     "symbol": "IntegrityMarkHealedAsync",
     "docs": "operations/startup/instance-exits#the-exit-record"
   },
   "IntegrityRecordPairHaltAlertAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2343,
+    "line": 2341,
     "symbol": "IntegrityRecordPairHaltAlertAsync",
     "docs": "resilience/stream-integrity"
   },
   "IntegrityRecordPairResumedAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2411,
+    "line": 2409,
     "symbol": "IntegrityRecordPairResumedAsync",
     "docs": "resilience/stream-integrity#the-pair-guard"
   },
   "IntegrityRecordOriginCheckpointAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2422,
+    "line": 2420,
     "symbol": "IntegrityRecordOriginCheckpointAsync",
     "docs": "resilience/stream-integrity#the-gap-tracker-survives-a-restart"
   },
   "IntegrityReplacePendingGapsAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2453,
+    "line": 2451,
     "symbol": "IntegrityReplacePendingGapsAsync",
     "docs": "resilience/stream-integrity#the-gap-tracker-survives-a-restart"
   },
   "IntegritySaveDrillCursorAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2469,
+    "line": 2467,
     "symbol": "IntegritySaveDrillCursorAsync",
     "docs": "resilience/stream-integrity#a-large-window-is-walked-across-audits"
   },
   "IntegrityRecordMissingEventsAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2502,
+    "line": 2500,
     "symbol": "IntegrityRecordMissingEventsAsync",
     "docs": "resilience/stream-integrity#one-missing-event-is-named"
   },
   "RecordCutAwaitingSealAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2518,
+    "line": 2516,
     "symbol": "RecordCutAwaitingSealAsync",
     "docs": "resilience/stream-integrity#integrity-instruments"
   },
   "IntegrityRecordTraceAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2546,
+    "line": 2544,
     "symbol": "IntegrityRecordTraceAsync",
     "docs": "resilience/stream-integrity#integrity-instruments"
   },
   "IntegrityStampRepairWindowsAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2588,
+    "line": 2586,
     "symbol": "IntegrityStampRepairWindowsAsync",
     "docs": "proposals/paced-repair-drain"
   },
   "CompleteIntegrityDeliveryAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2927,
+    "line": 2925,
     "symbol": "CompleteIntegrityDeliveryAsync",
     "docs": "operations/infrastructure/operational-retention"
   },
   "FailIntegrityDeliveryAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 3029,
+    "line": 3027,
     "symbol": "FailIntegrityDeliveryAsync",
     "docs": "resilience/stream-integrity#integrity-work-runs-on-the-maintainer"
   },
   "EphemeralPointerPruneResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 3101,
+    "line": 3099,
     "symbol": "EphemeralPointerPruneResult",
     "docs": "resilience/stream-integrity#repair-backlog-and-eta"
   },
   "SetCutGatesAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 3192,
+    "line": 3190,
     "symbol": "SetCutGatesAsync",
     "docs": "resilience/stream-integrity"
   },
   "RecordConsumerSealAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 3241,
+    "line": 3239,
     "symbol": "RecordConsumerSealAsync",
     "docs": "resilience/stream-integrity#a-cut-waits-for-the-seal"
   },
   "AdvanceIntegritySealAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 3289,
+    "line": 3287,
     "symbol": "AdvanceIntegritySealAsync",
     "docs": "resilience/stream-integrity"
   },
   "IntegrityRecordCompareOutcomeAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 3399,
+    "line": 3397,
     "symbol": "IntegrityRecordCompareOutcomeAsync",
     "docs": "resilience/stream-integrity#unchanged-origins-are-not-asked"
   },
   "EpochVerificationResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 3414,
+    "line": 3412,
     "symbol": "EpochVerificationResult",
     "docs": "resilience/stream-integrity#unchanged-origins-are-not-asked"
   },
   "StreamTruncateResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 3458,
+    "line": 3456,
     "symbol": "StreamTruncateResult",
     "docs": "resilience/stream-integrity"
   },
   "HoldEphemeralDestructionAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 3561,
+    "line": 3559,
     "symbol": "HoldEphemeralDestructionAsync",
     "docs": "fundamentals/lifecycle/lifecycle-stages#destruction"
   },
   "FetchCollectiveSinkQueueAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 3903,
+    "line": 3901,
     "symbol": "FetchCollectiveSinkQueueAsync",
     "docs": "fundamentals/work-coordinator/per-stream-drain"
   },
   "CompleteCoalesceFoldAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4130,
+    "line": 4128,
     "symbol": "CompleteCoalesceFoldAsync",
     "docs": "fundamentals/sagas/completion-orchestration#stranded-sagas"
   },
   "PurgedOrphanInboxRow": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4230,
+    "line": 4228,
     "symbol": "PurgedOrphanInboxRow",
     "docs": "fundamentals/messages/message-tags#coalescing"
   },
   "MaintenanceResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4276,
+    "line": 4274,
     "symbol": "MaintenanceResult",
     "docs": "operations/maintenance"
   },
   "RewindCursorInfo": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4288,
+    "line": 4286,
     "symbol": "RewindCursorInfo",
     "docs": "fundamentals/perspectives/rewind"
   },
   "OrphanedLifecycleEvent": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4301,
+    "line": 4299,
     "symbol": "OrphanedLifecycleEvent",
     "docs": "fundamentals/lifecycle/lifecycle-reconciliation"
   },
   "EphemeralReclassificationResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4309,
+    "line": 4307,
     "symbol": "EphemeralReclassificationResult",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "EphemeralTypeGrace": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4322,
+    "line": 4320,
     "symbol": "EphemeralTypeGrace",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "PerspectiveRetentionDeclaration": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4334,
+    "line": 4332,
     "symbol": "PerspectiveRetentionDeclaration",
     "docs": "fundamentals/perspectives/row-retention"
   },
   "OffloadClaimRecord": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4348,
+    "line": 4346,
     "symbol": "OffloadClaimRecord",
     "docs": "fundamentals/messaging/body-offload"
   },
   "PerspectiveRetentionAdoption": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4365,
+    "line": 4363,
     "symbol": "PerspectiveRetentionAdoption",
     "docs": "fundamentals/perspectives/row-retention"
   },
   "PerspectiveTableName": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4371,
+    "line": 4369,
     "symbol": "PerspectiveTableName",
     "docs": "fundamentals/perspectives/row-retention#stream-groups"
   },
   "EphemeralSnapshotTarget": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4386,
+    "line": 4384,
     "symbol": "EphemeralSnapshotTarget",
     "docs": "fundamentals/events/ephemeral-events#the-reap-boundary-snapshot"
   },
   "StreamTruncateStatus": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4414,
+    "line": 4412,
     "symbol": "StreamTruncateStatus",
     "docs": "fundamentals/events/stream-end-of-life#dispositions"
   },
   "ArchivedEvent": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4431,
+    "line": 4429,
     "symbol": "ArchivedEvent",
     "docs": "fundamentals/events/archive-store#reading-an-archive"
   },
   "EphemeralDestructionTarget": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4464,
+    "line": 4462,
     "symbol": "EphemeralDestructionTarget",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "TypeDefinitionInfo": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4471,
+    "line": 4469,
     "symbol": "TypeDefinitionInfo",
     "docs": "fundamentals/events/type-definition-fingerprint"
   },
   "TypeDefinitionRegistration": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4483,
+    "line": 4481,
     "symbol": "TypeDefinitionRegistration",
     "docs": "fundamentals/events/type-definition-fingerprint"
   },
   "DefinitionRelationship": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4493,
+    "line": 4491,
     "symbol": "DefinitionRelationship",
     "docs": "fundamentals/events/type-definition-fingerprint"
   },
   "WorkCoordinatorStatistics": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4551,
+    "line": 4549,
     "symbol": "WorkCoordinatorStatistics",
     "docs": "fundamentals/perspectives/rewind#one-order-for-a-stream"
   },
   "InboxStreamFold": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4581,
+    "line": 4579,
     "symbol": "InboxStreamFold",
     "docs": "fundamentals/messaging/message-priority#hooks"
   },
   "OutboxAcquisitionFull": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4606,
+    "line": 4604,
     "symbol": "OutboxAcquisitionFull",
     "docs": "fundamentals/messaging/message-priority#hooks"
   },
   "InstanceRegistrationStale": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4645,
+    "line": 4643,
     "symbol": "InstanceRegistrationStale",
     "docs": "fundamentals/work-coordinator/claim-loop"
   },
   "PartitionAssignmentStale": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4654,
+    "line": 4652,
     "symbol": "PartitionAssignmentStale",
     "docs": "fundamentals/work-coordinator/partition-assignment"
   },
   "PartitionMapUnavailable": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4665,
+    "line": 4663,
     "symbol": "PartitionMapUnavailable",
     "docs": "fundamentals/work-coordinator/partition-assignment#fencing"
   },
   "OutboxMessage": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4706,
+    "line": 4704,
     "symbol": "OutboxMessage",
     "docs": "fundamentals/perspectives/sync"
   },
   "Flags": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4797,
+    "line": 4795,
     "symbol": "Flags",
     "docs": "fundamentals/messaging/collective-events"
   },
   "RaiseOnMixedStream": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4847,
+    "line": 4845,
     "symbol": "RaiseOnMixedStream",
     "docs": "fundamentals/messages/message-tags#coalescing"
   },
   "CoalesceGroupStats": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 4898,
+    "line": 4896,
     "symbol": "CoalesceGroupStats",
     "docs": "fundamentals/messages/message-tags#coalescing"
   },
   "RestoreIfMissing": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5018,
+    "line": 5016,
     "symbol": "RestoreIfMissing",
     "docs": "operations/dead-letter-queue/transport-recovery"
   },
   "IHasMessageIdAndStatus": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5112,
+    "line": 5110,
     "symbol": "IHasMessageIdAndStatus",
     "docs": "fundamentals/work-coordinator/partition-assignment#fencing"
   },
   "RowChanged": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5371,
+    "line": 5369,
     "symbol": "RowChanged",
     "docs": "fundamentals/work-coordinator/commit-sequence"
   },
   "UnchangedReason": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5430,
+    "line": 5428,
     "symbol": "UnchangedReason",
     "docs": "fundamentals/perspectives/rebuild#reading-the-result"
   },
   "EventsProcessed": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5444,
+    "line": 5442,
     "symbol": "EventsProcessed",
     "docs": "fundamentals/perspectives/rewind#metrics"
   },
   "PerspectiveCursorFailure": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5454,
+    "line": 5452,
     "symbol": "PerspectiveCursorFailure",
     "docs": "fundamentals/perspectives/rebuild#terminal-purges"
   },
   "CollectiveSinkQueueEntry": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5584,
+    "line": 5582,
     "symbol": "CollectiveSinkQueueEntry",
     "docs": "fundamentals/messaging/collective-events"
   },
   "Attempts": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5628,
+    "line": 5626,
     "symbol": "Attempts",
     "docs": "fundamentals/work-coordinator/commit-sequence"
   },
   "Failures": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5650,
+    "line": 5648,
     "symbol": "Failures",
     "docs": "operations/dead-letter-queue/perspective-events"
   },
   "IsFirstInStream": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5659,
+    "line": 5657,
     "symbol": "IsFirstInStream",
     "docs": "fundamentals/perspectives/perspectives-with-actions#no-row-contract"
   },
   "PerspectiveEventCompletion": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5669,
+    "line": 5667,
     "symbol": "PerspectiveEventCompletion",
     "docs": "fundamentals/event-store/version-ordering#dispatch-order"
   },
   "PendingPerspectiveEvent": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5704,
+    "line": 5727,
     "symbol": "PendingPerspectiveEvent",
     "docs": "fundamentals/work-coordinator/per-stream-drain"
   },
   "OutboxStreamCursor": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5714,
+    "line": 5737,
     "symbol": "OutboxStreamCursor",
     "docs": "fundamentals/work-coordinator/per-stream-drain"
   },
   "LastPublishedPosition": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5720,
+    "line": 5743,
     "symbol": "LastPublishedPosition",
     "docs": "fundamentals/event-store/version-ordering#dispatch-order"
   },
   "OutboxBatchRow": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5729,
+    "line": 5752,
     "symbol": "OutboxBatchRow",
     "docs": "fundamentals/work-coordinator/per-stream-drain"
   },
   "StreamPosition": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5735,
+    "line": 5758,
     "symbol": "StreamPosition",
     "docs": "fundamentals/event-store/version-ordering#dispatch-order"
   },
   "InboxBatchRow": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5773,
+    "line": 5796,
     "symbol": "InboxBatchRow",
     "docs": "fundamentals/work-coordinator/commit-sequence"
   },
   "Method": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5877,
+    "line": 5900,
     "symbol": "Method",
     "docs": "operations/infrastructure/storage-maintenance#how-bloat-is-measured"
   },
   "RewriteThreshold": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5885,
+    "line": 5908,
     "symbol": "RewriteThreshold",
     "docs": "operations/infrastructure/storage-maintenance#how-bloat-is-measured"
   },
   "Reason": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5893,
+    "line": 5916,
     "symbol": "Reason",
     "docs": "operations/infrastructure/storage-maintenance#fillfactor-decrease"
   },
   "TableRewriteOutcome": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5906,
+    "line": 5929,
     "symbol": "TableRewriteOutcome",
     "docs": "operations/infrastructure/storage-maintenance#rewrite-history"
   },
   "TableRewriteReason": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5928,
+    "line": 5951,
     "symbol": "TableRewriteReason",
     "docs": "operations/infrastructure/storage-maintenance#fillfactor-decrease"
   },
   "QueueIndexNames": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 5996,
+    "line": 6019,
     "symbol": "QueueIndexNames",
     "docs": "operations/infrastructure/storage-maintenance#queue-index-leftovers"
   },
@@ -19828,12 +19774,6 @@
     "line": 14,
     "symbol": "IWhizbangHealthSource",
     "docs": "resilience/managed-resource-health"
-  },
-  "InstanceAssignmentHealthSource": {
-    "file": "src/Whizbang.Core/Health/InstanceAssignmentHealthSource.cs",
-    "line": 21,
-    "symbol": "InstanceAssignmentHealthSource",
-    "docs": "operations/startup/startup-status#instance-assignments"
   },
   "PoisonDetectionHealthSource": {
     "file": "src/Whizbang.Core/Health/PoisonDetectionHealthSource.cs",

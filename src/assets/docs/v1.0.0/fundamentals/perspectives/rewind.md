@@ -135,6 +135,36 @@ for the cases and the counter, and [unreadable stored events](../../operations/w
 for what the worker does with a row queued without its body by any other path.
 {verified: OriginPositionFillSqlTests.Fill_ThatReordersAStreamWhoseBodiesWereAllReaped_QueuesNoReplay_AndLeavesTheCursorAndItsSnapshotAsync, OriginPositionFillSqlTests.Fill_ThatReordersAStreamWhoseEarliestBodiesWereReaped_RewindsFromTheFirstEventWithABodyAsync, OriginPositionFillSqlTests.Rewind_FromAReapedTrigger_WithNothingReadableAfterIt_FlagsDeletesAndQueuesNothingAsync}
 
+### A rewind starts only from an event the perspective reads {#read-floor}
+
+The reap floor counts only events of a type the perspective's association rows name (#2601, migration 660). A trigger the
+perspective does not read moves up to the first event at or after it that it does read, and a perspective with no
+association rows reads nothing, so no rewind is raised for it. A rewind flagged from an unread event used to be queued
+for a perspective no drain pair ever formed for, so it never ran. See
+[the read floor](../../resilience/stream-integrity#a-rewind-starts-only-from-an-event-the-perspective-reads) for the
+rules, why a perspective with no association rows reads nothing, and the one-off repair of what a database already holds.
+
+### A flagged rewind with nothing to apply {#a-flagged-rewind-with-nothing-to-apply}
+{verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_AFlaggedCursorWhoseRowHoldsATypeThisServiceDoesNotRegister_IsRewound_AndItsRowCompletedAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_AFlaggedCursorWhoseRowHoldsAKnownTypeItDoesNotRead_IsRewound_AndItsRowCompletedAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_AnUnflaggedCursorsRowItDoesNotRead_IsLeftAsBefore_WithNoRewindAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_AFlaggedCursorWhoseRewindThrows_FailsItsRowsForTheBoundedRetryAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_AFlaggedCursorWhoseRewindDoesNotComplete_LeavesItsRowsPendingAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_AFlaggedCursorOfAPerspectiveWithNoRunnerHere_IsNotRewoundHereAsync, ReapedBodyBatchIsolationTests.ARewindFromAnEventThePerspectiveDoesNotRead_Completes_AndTheCursorIsNoLongerFlaggedAsync}
+
+A drain pair forms only for an event its perspective applies, so a cursor flagged RewindRequired whose queued rows hold
+no such event (a type this service does not register, or one it registers that the perspective does not read) would
+never be rewound by the pair path. The drain therefore looks, after reading a batch, for the (stream, perspective) rows
+their perspective does not apply, reads those streams' stored cursors in one batch, and for each one flagged with a
+trigger runs the rewind from the stored trigger, in its own scope and under the pair's affinity gate, as a drain pair's
+rewind runs (EventId 93, Information):
+
+| The rewind | Its rows |
+| --- | --- |
+| Completes | Completed, and the cursor's completion reported, which clears the flag |
+| Throws | Failed (EventId 58), so the bounded retry and the dead-letter bound apply |
+| Does not complete (a stream lock held elsewhere) | Left for the next lease |
+
+Only a flagged cursor takes this path, so a batch in which every row's perspective applies its event pays one lookup per
+row and nothing else. An unflagged row of a type the perspective does not read is left as before: a newer instance may
+read it during a rolling deploy. A perspective with no runner here is left to
+[the cleanup step](#perspectives-no-longer-registered).
+
 ### Execution
 
 The `PerspectiveWorker` picks up a stream whose cursor carries the RewindRequired flag and runs `_executeRewindPathAsync`:
@@ -577,6 +607,34 @@ models.
 
 **An explicit rebuild still folds every event.** The marker shortens a rewind only. A [rebuild](rebuild.md) of an overwrite-only perspective reads and applies every event, because it must read every event anyway to route re-keyed ones.
 
+## Perspectives no longer registered {#perspectives-no-longer-registered}
+{verified: UnregisteredPerspectiveCleanupStepTests.Clean_RemovesTheCursorsRowsAndSnapshotsOfAPerspectiveNothingRuns_AndLeavesTheRestAsync, UnregisteredPerspectiveCleanupStepTests.Clean_TakesBatchesWithinTheCycleBudget_AndTheNextCycleTakesTheRestAsync, UnregisteredPerspectiveCleanupStepTests.Clean_IsSkipped_WhenTurnedOff_OrWithoutAPerspectiveRegistryAsync, UnregisteredPerspectiveCleanupStepTests.ThePostgresDriver_RegistersTheStepAsync}
+
+A perspective removed from its service leaves its cursors, queued rows and snapshots behind, and a flagged one among
+them holds a Blocking startup to its cap on every start, since nothing will ever rewind it (#2601). The Postgres
+drivers register a maintenance step, `UnregisteredPerspectiveCleanupStep`, that removes them, a bounded batch at a time
+(`wh_remove_unregistered_perspective_cursors`).
+
+A perspective counts as **no longer registered** only when both hold:
+
+- the running service's perspective registry does not list it, and
+- no service's association rows name it.
+
+Each service writes its perspectives' association rows at its startup and deletes the rest, so a name with none is one
+no running service in the schema registers. This is not the rolling-deploy hedge for an unknown event type: an older
+instance cannot tell an event type a newer instance reads, but a newer instance that runs a perspective has written its
+association rows before it processes anything, so its cursors are never taken. The collective sink (`__collective__`) is
+never touched, and a service with no perspective registry runs no perspectives and is skipped. The step runs in the
+maintenance cycle, after startup, idle-gated like every step, and logs each cycle that removed anything at Warning
+(`UnregisteredPerspectiveCleanupStep` EventId 1), naming the perspectives, and counts the cursors on
+`whizbang.perspective.unregistered_cursors_removed`.
+
+| Setting (`Whizbang:Workers:Perspective:UnregisteredPerspectiveCleanup:`) | Default | Meaning |
+| --- | --- | --- |
+| `Enabled` | `true` | Run the step; `false` keeps every leftover cursor |
+| `BatchCursors` | `1000` | Cursors one batch removes, with their queued rows and snapshots |
+| `MaxBatchesPerCycle` | `10` | Batches one maintenance cycle runs |
+
 ## Configuration
 
 Rewind detection and execution are governed by `PerspectiveRewindOptions`:
@@ -635,12 +693,12 @@ On startup the worker runs `_scanAndRepairRewindsOnStartupAsync`, which queries 
   - **this worker finishes its rewind**, leaving the cursor completed and no longer flagged: a signal, so the barrier opens without waiting for a poll when that was the last one;
   - **a by-key re-read finds it cleared**: once per polling interval (`PollingIntervalMilliseconds`), the worker re-reads only the streams still pending (`GetPerspectiveCursorsBatchAsync`), and a cursor no longer flagged, or gone because its stream was purged, leaves the set. This is what catches a rewind another instance performed.
 
-  When the set is empty the barrier opens and EventId 55 reports how many of the flagged cursors cleared and how long that took. A cursor flagged **after** the scan never joins the set, so later flags cannot extend the wait; they are rewound by the consumer loops like any other. The wait is bounded: after **100 re-reads** without the set emptying, reads open anyway with a Warning (EventId 62) naming up to 20 of the stream/perspective pairs still rewinding and counting the rest. A re-read that fails is logged (EventId 56) and opens reads, as a failed scan does. A worker stopped while waiting settles the barrier as canceled rather than opening it on unrepaired cursors.
+  When the set is empty the barrier opens and EventId 55 reports how many of the flagged cursors cleared and how long that took. A cursor flagged **after** the scan never joins the set, so later flags cannot extend the wait; they are rewound by the consumer loops like any other. The wait is bounded: after **100 re-reads** without the set emptying, reads open anyway with a Warning (EventId 62) naming up to 20 of the stream/perspective pairs still rewinding and counting the rest. A pair whose queued row the drain fetched during the wait is named with how often that row was leased and how often it failed (`stream/perspective (queued row leased 62 times, 0 failures)`), so a rewind nothing runs is told from a slow one (#2601). A re-read that fails is logged (EventId 56) and opens reads, as a failed scan does. A worker stopped while waiting settles the barrier as canceled rather than opening it on unrepaired cursors.
 - **Background mode**: the worker logs the summary and the barrier opens after the scan; the consumer loops pick the rewinds up with no re-read. Reads start sooner, but a projection may be briefly stale until its rewind runs. Unchanged by #2214.
 
 **Why start the consumers and hold only the barrier.** The rewinds run on the existing path: a flagged cursor is rewound by the consumer loops, the same code that rewinds a cursor flagged at runtime, so startup has no second rewind mechanism to keep correct. Reads stay protected, because the read-model barrier is the seam lens resolution already waits on, and it does not open until every cursor that was flagged when the service started has been repaired or the cap is reached. And there is no dead wait: before [#2214](https://github.com/whizbang-lib/whizbang/issues/2214) the scan re-polled for flagged cursors **before** the consumer loops had started, so nothing could rewind them, and any flagged cursor held every lens read for the full bound of about 100 polling intervals on every start, with nothing rewound. Fixing the set at scan time is what keeps the wait finite on a busy service: new late events keep flagging cursors, and a wait for "no flagged cursors anywhere" could last as long as the traffic does. The cap of 100 is the bound the scan's re-poll loop always had.
 
-{verified: StartupRewindSetTests.Construction_CountsDistinctKeysAndStreams_AndIsNotClearedAsync, StartupRewindSetTests.Construction_WithNothingFlagged_IsClearedAtOnceAsync, StartupRewindSetTests.MarkRewound_Completed_RemovesTheKey_AndTheLastOneClearsTheSetAsync, StartupRewindSetTests.MarkRewound_ForAKeyTheScanDidNotFlag_IsIgnoredAsync, StartupRewindSetTests.MarkRewound_ThatDidNotComplete_LeavesTheKeyAsync, StartupRewindSetTests.RemainingStreamIds_NamesEachRemainingStreamOnceAsync, StartupRewindSetTests.ClearUnflagged_RemovesKeysNoLongerFlaggedOrGone_KeepsFlagged_AndIgnoresNewFlagsAsync, StartupRewindSetTests.DescribeRemaining_ListsStreamAndPerspective_UpToTheLimitAsync}
+{verified: StartupRewindSetTests.Construction_CountsDistinctKeysAndStreams_AndIsNotClearedAsync, StartupRewindSetTests.Construction_WithNothingFlagged_IsClearedAtOnceAsync, StartupRewindSetTests.MarkRewound_Completed_RemovesTheKey_AndTheLastOneClearsTheSetAsync, StartupRewindSetTests.MarkRewound_ForAKeyTheScanDidNotFlag_IsIgnoredAsync, StartupRewindSetTests.MarkRewound_ThatDidNotComplete_LeavesTheKeyAsync, StartupRewindSetTests.RemainingStreamIds_NamesEachRemainingStreamOnceAsync, StartupRewindSetTests.ClearUnflagged_RemovesKeysNoLongerFlaggedOrGone_KeepsFlagged_AndIgnoresNewFlagsAsync, StartupRewindSetTests.DescribeRemaining_ListsStreamAndPerspective_UpToTheLimitAsync, StartupRewindSetTests.DescribeRemaining_NamesHowOftenTheQueuedRowWasLeased_ForAKeyThatRecordedLeasesAsync}
 
 ## Observability
 
@@ -656,6 +714,8 @@ Rewind logs are split across **two logger categories** so their levels can be tu
 | Warning | 53 | `Perspective rewind completed for {PerspectiveName} stream {StreamId} — replayed {EventsReplayed} events in {DurationMs}ms (from {ReplaySource})` |
 | Warning | 58 | `Perspective rewind failed for {PerspectiveName} stream {StreamId}, trigger event {TriggerEventId}. Its rows are failed and retried with backoff, and dead-lettered once their failures pass MaxPerspectiveEventAttempts.` See [Error Handling](#error-handling). |
 | Warning | 43 | `Failed to acquire stream lock for rewind on {PerspectiveName} stream {StreamId}, deferring` |
+| Information | 93 | `Cursor for stream {StreamId} / perspective {PerspectiveName} is flagged for a rewind (trigger {TriggerEventId}) and its {RowCount} queued row(s) hold no event it applies: rewinding from the stored trigger`. See [A flagged rewind with nothing to apply](#a-flagged-rewind-with-nothing-to-apply) |
+| Warning | 94 | A queued row leased `LeasedWithoutFailureWarningAttempts` times with no failure. See [rows leased without a failure](../../operations/workers/perspective-worker#rows-leased-without-a-failure) |
 
 > The EventId 53 `{ReplaySource}` token resolves to `"snapshot store available"` or `"no snapshot store"` — it reflects whether a snapshot store is configured, **not** whether this rewind actually restored from a snapshot (see [Snapshot-usage caveat](#snapshot-usage-caveat)). The *actual* snapshot-vs-full decision is on the runner's own Warning lines described under [Snapshot selection](#snapshot-selection).
 
@@ -687,6 +747,8 @@ Meter: **`Whizbang.Perspectives`** (defined in `PerspectiveMetrics`).
 | `whizbang.perspective.rewind.duration` | Histogram (ms) | `perspective_name` | Replay duration |
 | `whizbang.perspective.rewind.events_replayed` | Histogram | `perspective_name` | Events replayed per rewind |
 | `whizbang.perspective.rewind.events_behind` | Histogram | `perspective_name` | Events behind the cursor when the rewind triggered |
+| `whizbang.perspective.rows_leased_without_failure` | Counter | `perspective_name` | Queued rows leased past the warning bound with no failure recorded, each once per process ([rows leased without a failure](../../operations/workers/perspective-worker#rows-leased-without-a-failure)) |
+| `whizbang.perspective.unregistered_cursors_removed` | Counter | | Cursors of perspectives no service runs that the maintenance cycle removed ([perspectives no longer registered](#perspectives-no-longer-registered)) |
 | `whizbang.perspective.stragglers_dropped` | Counter | `perspective_name` | Late events a rewind dropped instead of replaying: an ephemeral perspective's, because no readable snapshot floor preceded them, or any perspective's, because the replay needed an archive that was [deleted](#deleted-archive) |
 
 The `has_snapshot` tag on the `rewinds` counter reflects snapshot-**store** availability, not actual usage (see [Snapshot-usage caveat](#snapshot-usage-caveat)). A failed rewind also increments the shared `whizbang.perspective.errors` counter.
