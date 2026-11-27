@@ -101,7 +101,9 @@ The framework's own `queue-index-reindex` step rebuilds a bloated index on a que
 service, a ready schema, and the maintainer duty. Each run drops any invalid leftover of an interrupted rebuild
 first, then rebuilds at most one index, the one with the most bytes to give back among those more than
 `Whizbang:Workers:Maintenance:ReindexBloatThreshold` times their expected size (default `3.0`; `0` turns it off).
-A claim per window keeps it to one rebuild per window across the fleet. `AddWhizbangWorkers` registers it once.
+A claim per window keeps it to one rebuild per window across the fleet. Each lock the rebuild and the drops wait for is
+bounded by `Whizbang:Workers:Maintenance:ReindexLockTimeout` (default one minute): a rebuild stuck behind an old
+transaction gives up, names it, drops its copy and is tried on a later cycle. `AddWhizbangWorkers` registers it once.
 
 [Storage maintenance: rebuilding queue-table indexes](../../operations/infrastructure/storage-maintenance#queue-index-rebuild)
 has the survey, the threshold, the leftovers and the reason for each rule.

@@ -1156,13 +1156,19 @@ Registering is Preflight's last step, logged as `Stage 1 of 7: Preflight - the b
 An instance that lost the vote waits for the result instead of queuing behind the schema lock. It watches the migrator itself (`MigratorWatch`): the migrator's assignment row, plus any holding of the duty recorded outside the table by a migrator on an older release that held it by its own session lock, counted only while [the one liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule) calls that instance live. No lock is read: the watch never uses the lock probe, so a waiter sees an older migrator through the record it writes, and a dead one's record does not hold the waiter up. The migrator's lease is 30 seconds by default (`RoleAssignmentOptions.RoleLeases`), and it marks the backend running its DDL as a backstop. If the migrator dies, its assignment lapses and a waiter goes on to do the schema work itself, still under the schema lock, which keeps DDL to one instance at a time whatever the duty says.
 {verified: MigratorWatchTests.AMigratorHoldingTheRole_IsMigrating_UntilItReleasesItAsync, MigratorWatchTests.AMigratorOnAnOlderRelease_IsSeenByItsRecordedHolding_WhileTheRuleCallsItLiveAsync, MigratorWatchTests.NothingHeld_IsNotMigratingAsync, CoordinationSourceGuardTests.NoDuty_IsHeldByAnAdvisoryLockAnywhereAsync, SchemaMigratorDeferralGenerationTests.AWaiterWatchesTheMigratorAsync, SchemaMigratorDeferralGenerationTests.TheMigratorRenewsItsRole_AndMarksTheBackendRunningTheMigrationAsync}
 
-#### Every start checks the perspective registry {#registry-check}
+#### Each build checks the perspective registry {#registry-check}
 {verified: PerspectiveRegistryRestartTests.ACleanHashRestart_AgainstAMatchingRegistry_TouchesNothingAsync, PerspectiveRegistryRestartTests.ACleanHashRestart_AgainstARegistryNoHashCovers_ReconcilesItAsync, DapperMigratorElectionTests.ACurrentStart_AgainstAMatchingRegistry_TouchesNothingAsync, DapperMigratorElectionTests.ACurrentStart_AgainstARegistryNoHashCovers_ReconcilesItAsync, DapperMigratorElectionTests.AWaiterBehindASameBuildMigrator_DoesNoRegistryReconcileAsync, DapperMigratorElectionTests.AWaiterBehindAMigratorWithAnotherRegistry_ReconcilesItAsync, DapperMigratorElectionTests.AWaiterThatWaitsForAnothersReconcile_ChecksAgainUnderTheLock_AndDoesNothingAsync, DapperMigratorElectionTests.ARegistryThatCannotBeReconciled_IsNotFatalAsync, DapperMigratorElectionTests.AWaitersConverge_AgainstARegistryNoHashCovers_ReconcilesItAsync, DapperMigratorElectionTests.AStartHoldingTheApplication_LeavesTheRegistryAsItIsAsync}
 
 No content hash covers the stored perspective registry, so a start that skips the pass (a hash-clean restart, a schema
 Assess found current, a waiter whose migrator may have been another build, a restored database) would otherwise keep
-whatever registry it found. So on either driver **every start** checks the stored registry against what its build
-declares (`PerspectiveRegistryCurrency`), and reconciles it **only when it differs**:
+whatever registry it found. So on either driver the **first start of each build** checks the stored registry against
+what its build declares (`PerspectiveRegistryCurrency`), and reconciles it **only when it differs**:
+
+- **Once per schema per build** ([#2596](https://github.com/whizbang-lib/whizbang/issues/2596)). The check is
+  [heavy startup work](../startup/startup-pipeline#heavy-startup-work) declared `PerSchemaPerBuild`: the first start of
+  a build runs it and records it done, and the other starts of that build skip it. Another build, a rollback included,
+  runs it again, and so does any start whose own schema pass applied something. A check that failed is not recorded
+  done, so the next start runs it. Earlier releases ran it on every start.
 
 - **The check takes no lock.** It reads exactly what `reconcile_perspective_registry` writes for each entry (the table
   name, the schema JSON, the schema hash, and the perspectives that fold the model), so a registry it reads as current

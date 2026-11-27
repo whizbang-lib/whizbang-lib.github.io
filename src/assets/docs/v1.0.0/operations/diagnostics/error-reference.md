@@ -639,9 +639,12 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ115 | Error | [Apply returns a shape its interface does not declare](whiz115.md) |
 | WHIZ116 | Error | [Collective Apply does not match the shape the framework binds](whiz116.md) |
 | WHIZ117 | Error | [Event is listed only by an interface that declares no Apply for it](whiz117.md) |
+| WHIZ118 | Error | [DeriveFrom on a strong id with no pinned id](whiz118.md) |
+| WHIZ119 | Error | [A strong id's pinned id is gone from the compilation](whiz119.md) |
 | WHIZ120 | Error | [Pinned Type Renamed Without Ledger Acknowledgment](whiz120.md) |
 | WHIZ121 | Warning | [Pinned-Type Ledger Entry Has No Living Type](whiz121.md) |
 | WHIZ122 | Warning | [Pinned-Type Ledger Could Not Be Parsed](whiz122.md) |
+| WHIZ123 | Error | [A strong id is pinned two ways](whiz123.md) |
 | WHIZ130 | Warning | [Perspective mixes ephemeral and Sourced Apply methods](whiz130.md) |
 | WHIZ131 | Error | [Rebuild or rewind of an ephemeral-only perspective](whiz131.md) |
 | WHIZ132 | Warning | [Receptor turns an ephemeral message into a Sourced event](whiz132.md) |
@@ -691,6 +694,7 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ608 | Error | [Type-Naming Exception Without a Reason](whiz608.md) (repository check) |
 | WHIZ609 | Error | [Test Fixture Tears Down Twice](whiz609.md) (repository check) |
 | WHIZ610 | Error | [Type Name Read Before the Log Level Is Checked](whiz610.md) (repository check) |
+| WHIZ611 | Error | [Channel Wait Raced in Task.WhenAny Is Never Released](whiz611.md) (repository check) |
 | WHIZ701 | Info | [EF Core Perspective Discovery](whiz701.md) |
 | WHIZ702 | Info | [EF Core Migration Files Discovery](whiz702.md) |
 | WHIZ703 | Info | [No DbContext Found](whiz703.md) |

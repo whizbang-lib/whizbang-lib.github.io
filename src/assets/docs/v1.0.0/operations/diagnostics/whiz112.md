@@ -4,7 +4,8 @@ pageType: troubleshooting
 verifiedAgainstCommit: 9a416b5b
 verifiedDate: 2026-10-17
 description: >-
-  Error diagnostic when the value passed to [PinnedId] on a message or perspective is not a parseable GUID string.
+  Error diagnostic when the value passed to [PinnedId] on a message or perspective, or the pin of a strong id, is not a
+  parseable GUID string.
 version: 1.0.0
 category: Diagnostics
 severity: Error
@@ -20,6 +21,7 @@ codeReferences:
   - src/Whizbang.Core/Attributes/PinnedIdAttribute.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/Analyzers/PinnedIdAnalyzerTests.cs
+  - tests/Whizbang.Generators.Tests/Analyzers/PinnedIdAnalyzerStrongIdTests.cs
 lastMaintainedCommit: '9a416b5b'
 ---
 
@@ -38,6 +40,12 @@ type's permanent identity across services and environments, and it is required t
 
 The check runs only on types the pinned-id analyzer covers: non-abstract classes and structs that implement `IEvent`,
 `ICommand`, `IMessage`, `IPerspectiveFor<...>` or `IPerspectiveWithActionsFor<...>`.
+
+It also checks the pin of every **strong id** (a `[WhizbangId]` type, #2604), on each way it can be pinned:
+`[PinnedId("...")]` on the struct, and `[WhizbangId(PinnedId = "...")]` on a struct, a property or a parameter. A
+strong id's pin is the input its [derived ids](../../fundamentals/identity/whizbang-ids#derived-ids) are fixed by, so a
+value that is not a GUID pins nothing. A blank `PinnedId` is not reported and pins nothing.
+{verified: PinnedIdAnalyzerStrongIdTests.AStrongIdPinThatIsNotAGuid_ReportsWhiz112OnEveryRouteAsync, PinnedIdAnalyzerStrongIdTests.ValidStrongIdPins_ReportNothingAsync, PinnedIdAnalyzerStrongIdTests.AnEmptyOrMalformedPin_PinsNothingAsync, WhizbangIdDeriveFromTests.APinThatIsNotAGuid_LeavesTheIdUnpinnedAsync}
 
 ## Diagnostic Message
 
@@ -86,4 +94,5 @@ public record OrderPlacedEvent : IEvent;
 - [WHIZ110: Message Missing [PinnedId]](whiz110)
 - [WHIZ111: Perspective Missing [PinnedId]](whiz111)
 - [Pinned Identity](../../fundamentals/identity/pinned-identity)
+- [WHIZ123: A Strong Id Is Pinned Two Ways](whiz123)
 - [PinnedId Attribute](../../extending/attributes/pinned-id)

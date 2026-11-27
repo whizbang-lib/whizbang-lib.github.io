@@ -1090,8 +1090,8 @@ rows are inserted and never updated.
 
 ### Removed settings {#removed-storage-settings}
 
-The model is the authority for a perspective table's fillfactor and autovacuum settings. At every
-start, each instance compares every perspective table with its model and brings it in line: a
+The model is the authority for a perspective table's fillfactor and autovacuum settings. On the
+first start of each build, one instance compares every perspective table with its model and brings it in line: a
 declared value the table does not hold is set, and one of the seven parameters below that the model
 does not declare (the property removed, set back to its negative default, or the whole attribute
 removed) is reset to the server's value. Both drivers do the same.
@@ -1105,7 +1105,13 @@ removed) is reset to the server's value. Both drivers do the same.
 
 How it runs, and why:
 
-- **At every start, not only when the schema changes.** A perspective's schema statements run only
+- **Once per build, not only when the schema changes.** The pass is
+  [heavy startup work](../../operations/startup/startup-pipeline#heavy-startup-work) declared `PerSchemaPerBuild`
+  (#2596): the first start of a build runs it and the other starts of that build skip it. Another build, a rollback
+  included, runs it again, as does any start whose own schema pass applied something. A pass that left a table behind
+  (a busy table, an unreadable catalog) is not recorded done, so the next start runs it again. Earlier releases ran it
+  on every instance at every start.
+- **Not only when the schema changes.** A perspective's schema statements run only
   when its generated schema changes, which would leave a removed property, a value changed by hand or a
   table taken off the [manual list](#manually-managed-tables) unseen until some unrelated change. So
   the generated schema only declares these seven parameters, in a comment line
@@ -1127,8 +1133,9 @@ How it runs, and why:
 **A value set by hand is reset too.** The catalog does not record who set a storage parameter, and
 Whizbang keeps no record of the values it set, so it cannot tell one it set from one an operator set
 with `ALTER TABLE`. On a perspective table, set these seven through `[PerspectiveTableStorage]`, or
-list the table as [managed by hand](#manually-managed-tables); otherwise the next start resets a
-hand-set value. That includes the first start on the release that introduced this.
+list the table as [managed by hand](#manually-managed-tables); otherwise the first start of the next build resets a
+hand-set value (restarts of the same build no longer do, since the pass runs once per build). That includes the first
+start on the release that introduced this.
 
 A parameter the attribute cannot set, such as `autovacuum_analyze_threshold`, `autovacuum_enabled` or
 `toast.autovacuum_vacuum_cost_delay`, is never touched. `toast_tuple_target`, `DataCompression` and

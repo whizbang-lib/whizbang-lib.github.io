@@ -35,6 +35,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/171_OutboxStreamRuns.sql
   - src/Whizbang.Data.Postgres/Migrations/204_DirectInstancesAreLiveByTheirAliveLock.sql
   - src/Whizbang.Data.Postgres/Migrations/207_ClaimRefreshesStaleQueueStatistics.sql
+  - src/Whizbang.Data.Postgres/Migrations/661_AClaimNeverWaitsToRefreshStatistics.sql
+  - src/Whizbang.Data.Postgres/QueueStatisticsRefreshNotices.cs
   - src/Whizbang.Data.Postgres/Migrations/229_OnlyReadyInstancesAreEligibleForWork.sql
   - src/Whizbang.Data.Postgres/Migrations/278_OneWriterOfTheInstancePhase.sql
   - src/Whizbang.Data.Postgres/Migrations/300_AnIneligibleCallerClaimsNothing.sql
@@ -363,13 +365,14 @@ Before it acquires anything, `claim_work` calls `wh_refresh_stale_queue_statisti
   1,000 rows and more than four times what the planner believes it holds since its last analyze.
   Autovacuum analyzes at 50 rows plus a tenth of the table, so on a healthy database it always gets
   there first and the check is a catalog read per table.
-- **One claimant per table.** A transaction-scoped advisory lock per table; a claimant that waited
-  reads the counters again and analyzes nothing a peer already did.
+- **One claimant per table, and no one waits for it.** A transaction-scoped advisory lock per table,
+  taken with `pg_try_advisory_xact_lock`: a claimant that finds it taken leaves the table to its
+  holder and claims at once (migration 661).
 - **It ends a stuck autovacuum rather than waiting it out.** `ANALYZE` needs no cleanup lock, and
   Postgres cancels an autovacuum that is not preventing wraparound once another session has waited
-  on it for `deadlock_timeout`.
-- **It never stops a claim.** Everything runs under a five second lock timeout. A claimant that cannot
-  analyze in time logs a warning and claims on the statistics it has.
+  on it for `deadlock_timeout`. This is the one wait the refresh keeps, and only for an autovacuum:
+  see [the refresh never waits](#the-statistics-refresh-never-waits).
+- **It never stops a claim.** A table it cannot analyze is skipped, not waited for, and backed off.
 - **It runs as the schema's owner.** Only a table's owner may analyze it, and a service can run as a
   role with data rights only, with the owner on the `-init` connection. The refresh does not borrow
   that connection, which stays schema-only: it is `SECURITY DEFINER`, created by the role that migrates
@@ -381,6 +384,48 @@ and no rows (a table that never had a page does not reproduce it, because the pl
 from its pages), autovacuum off the table, then 180,000 pending rows. One claim ran past a 60 second
 command timeout before the change; after it, the claim reads a few batches and leaves the statistics
 describing the table.
+
+### The statistics refresh never waits {#the-statistics-refresh-never-waits}
+{verified: ClaimWorkStaleStatisticsTests.RefreshStaleQueueStatistics_WhileAReindexWaitsOnAnIdleTransaction_NeverWaits_AndBacksOffAsync, ClaimWorkStaleStatisticsTests.RefreshStaleQueueStatistics_OnASmallTableThatChurns_AnalyzesItAtMostOncePerIntervalAsync, ClaimWorkStaleStatisticsTests.RefreshStaleQueueStatistics_WhileAPeerRefreshesTheTable_WaitsAndDoesNotAnalyzeAgainAsync, ClaimWorkStaleStatisticsTests.RefreshStaleQueueStatistics_WhileAnotherSessionHoldsTheTable_GivesUpWithinTheLockTimeoutAsync, ClaimWorkStaleStatisticsTests.RefreshStaleQueueStatistics_WhenTheAnalyzeFails_BacksOff_AndSaysWhatFailedAsync, ClaimWorkStaleStatisticsTests.RefreshStaleQueueStatistics_WhenOnlyAutovacuumHoldsTheTable_WaitsForItBoundedByTheDeadlockTimeoutAsync, ClaimWorkStaleStatisticsTests.OnlyAutovacuumBlocksAnalyze_IsTrueOnlyWhenEveryConflictingHolderIsAnAutovacuumWorkerAsync, ClaimWorkStaleStatisticsTests.ClaimWork_WhileTheRefreshCannotAnalyze_NeverWaits_CountsTheSkip_AndWarnsOncePerBackoffAsync, DapperClaimNeverWaitsOnMaintenanceTests.AClaimWhoseRefreshCannotAnalyze_CountsTheSkip_AndWarnsOncePerBackoffAsync}
+
+A lock timeout bounds one claimant's wait, not the fleet's. Before migration 661 the turn was a
+blocking advisory lock: while one claimant sat in `ANALYZE` behind a lock, every other claimant of the
+service queued behind the turn and then waited out its own five seconds. A deployed service met
+exactly that. A concurrent rebuild of a queue index (the [maintenance rebuild](../../operations/infrastructure/storage-maintenance#queue-index-rebuild))
+waited for hours on an application transaction left idle, holding the `ShareUpdateExclusiveLock` that
+blocks `ANALYZE` the whole time; the table's statistics stayed stale, and the service's claims took
+8.2 seconds each, against 20 to 40 ms everywhere else.
+
+The refresh now pays nothing when it cannot run:
+
+| Step | What it does |
+|---|---|
+| Back-off | A table the refresh analyzed, skipped or failed on in the last 60 seconds is left alone, however stale it reads. The time is a row of `wh_queue_statistics_backoff`, read by key, never locked by a reader. |
+| Turn | `pg_try_advisory_xact_lock`; a claimant that finds the turn taken moves on and writes nothing. |
+| Analyze | `ANALYZE (SKIP_LOCKED)`: a conflicting lock skips the table instead of waiting. A one second lock timeout stays as a backstop for any other lock. |
+| Autovacuum | When the only sessions holding a conflicting lock are autovacuum workers, the turn's holder runs the plain `ANALYZE` under a lock timeout of `deadlock_timeout` plus one second, so Postgres cancels the worker. One claimant pays that wait, once per back-off at most. |
+| Back off and say so | Every attempt writes the table's back-off: an analyze (`analyzed`) silently; a skip (`lock_not_available`), a lock timeout (`lock_timeout`) or an `ANALYZE` that raised (`failed`) also raises one warning, `whizbang.queue_statistics_refresh_skipped`, with the table and the reason. Only the turn's holder writes, so the warning is raised once per back-off. |
+
+The coordinators of both drivers read that warning: they log it at Warning, naming the table, the
+reason and what happened, and count it on
+[`whizbang.work_coordinator.queue_statistics.refresh_skipped`](../../operations/observability/metrics#queue-statistics-refresh).
+Claims meanwhile go on with the statistics they have, which is never worse than before.
+
+An autovacuum worker reports its type only to a role allowed to read other sessions; for one that is
+not, the refresh counts a session connected to the database with no user, which only an autovacuum
+worker is. A client session is never waited for.
+
+**An analyze backs off too.** A small queue table that churns hard (a few dozen live rows, thousands of
+changes a minute) reads as stale again right after every analyze: the rule compares changes since the
+last analyze to the rows the table holds, and a churning queue always fails it. Once the reindex was
+gone, the same service's claims took 387 ms each, nearly all of it the refresh analyzing that table
+about 90 times a minute. Backed off after an analyze as well, a table is analyzed at most once per
+60 seconds across every claimant, the default `autovacuum_naptime`: a table analyzed within it is as
+fresh as autovacuum keeps any table.
+
+**Cost.** The healthy path is unchanged: one catalog read per table. The stale path adds a key probe of
+the five-row back-off table per stale table, and `ANALYZE` runs at most once a minute per table. Each
+attempt adds one upsert; a skip also a `pg_locks` read and a `pg_stat_activity` read.
 
 ## The re-offer is bounded by the batch too
 {verified: ClaimWorkPlanShapeTests.ClaimWork_ReofferingWhatItHolds_IsPricedByTheBatchNotTheHoldingsAsync}
