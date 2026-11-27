@@ -17,12 +17,16 @@ codeReferences:
   - src/Whizbang.Core/Policies/IPolicyEngine.cs
   - src/Whizbang.Testing/Lifecycle/PerspectiveCompletionWaiter.cs
   - src/Whizbang.Testing/Lifecycle/LifecycleStageAwaiter.cs
+  - src/Whizbang.Testing/Receptors/TestHandling.cs
+  - src/Whizbang.Testing/Receptors/TestHandlingScope.cs
   - samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
   - samples/ECommerce/ECommerce.InventoryWorker/Perspectives/ProductCatalogPerspective.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
   - tests/Whizbang.Core.Tests/Receptors/VoidReceptorTests.cs
   - tests/Whizbang.Policies.Tests/PolicyEngineTests.cs
+  - tests/Whizbang.Testing.Tests/Receptors/TestHandlingTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/TestHandlingDispatchTests.cs
   - samples/ECommerce/tests/ECommerce.OrderService.Tests/CreateOrderReceptorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
@@ -139,6 +143,85 @@ public class CreateOrderReceptorTests {
 ```
 
 The `TestDispatcher` fake implements `IDispatcher`, adds published events to a `PublishedMessages` list, and throws `NotImplementedException` from members the test never touches. See `samples/ECommerce/tests/ECommerce.OrderService.Tests/CreateOrderReceptorTests.cs` for the full implementation.
+
+### Receptors that derive ids {#derived-ids}
+
+{verified: TestHandlingDispatchTests.TestHandling_DerivesTheIdARealHandlingOfTheSameEnvelopeDerivesAsync, TestHandlingDispatchTests.TestHandling_AMessage_ThenARealHandlingOfItsEnvelope_DeriveTheSameIdAsync, TestHandlingDispatchTests.TestHandling_InAnotherService_DerivesAnotherId_AsARealHandlingThereDoesAsync, TestHandlingTests.Enter_AnEnvelope_EntersTheHandlingOfTheRegisteredReceptorInItsServiceAsync}
+
+A receptor that creates a strong id with [`DeriveFrom(Handling.Current, purpose)`](../../fundamentals/identity/whizbang-ids#derived-ids)
+needs a handling to derive from, and a test that calls `HandleAsync` directly is outside any handling, so the call throws.
+`TestHandling.Enter` from `Whizbang.Testing.Receptors` enters the handling the dispatcher would enter for the same message
+and receptor ([#2609](https://github.com/whizbang-lib/whizbang/issues/2609)). Inside the scope, `DeriveFrom` returns the
+**same id** a real handling derives.
+
+It takes the service provider your service registers its receptors in, the receptor instance under test, and the message
+(or its envelope). The receptor's id comes from the receptor registry and the service name from the service instance, the
+same places the receptor invoker reads them, so nothing in the test spells a type name that could drift from the host.
+
+```csharp{
+title: "A test handling derives the id a real handling derives"
+description: "The receptor invoker handles an envelope, then the test enters the same handling and calls HandleAsync directly; both derive one id."
+framework: "NET10"
+category: "Testing"
+difficulty: "INTERMEDIATE"
+tags: ["testing", "receptors", "WhizbangId", "DeriveFrom"]
+testFile: "tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/TestHandlingDispatchTests.cs"
+testMethod: "TestHandling_DerivesTheIdARealHandlingOfTheSameEnvelopeDerivesAsync"
+githubUrl: "https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/TestHandlingDispatchTests.cs"
+tests: ["TestHandlingDispatchTests.TestHandling_DerivesTheIdARealHandlingOfTheSameEnvelopeDerivesAsync"]
+}
+var receptor = new TestHandlingProbeReceptor();
+await using var services = _host(receptor);
+var envelope = _inboundEnvelope();
+
+await _dispatchAsync(services, envelope);
+using (TestHandling.Enter(services, receptor, envelope)) {
+  await receptor.HandleAsync(envelope.Payload);
+}
+
+await Assert.That(receptor.Derived).Count().IsEqualTo(2)
+  .Because("the real handling and the test's direct call each ran the receptor body once");
+await Assert.That(receptor.Derived[1]).IsEqualTo(receptor.Derived[0])
+  .Because("the test handling names the message, handler, service and receptor the invoker named");
+```
+
+In your own test the provider is the one your service builds, usually just its receptor registrations:
+
+```csharp{title="Unit test a receptor that derives an id" description="Enter the receptor's handling, then call HandleAsync directly" framework="NET10" category="Testing" difficulty="INTERMEDIATE" tags=["testing", "receptors", "WhizbangId", "DeriveFrom"] tests=["TestHandlingDispatchTests.TestHandling_AMessage_ThenARealHandlingOfItsEnvelope_DeriveTheSameIdAsync", "TestHandlingTests.Enter_AMessage_EntersAFreshLocalEnvelopeOfItAsync"]}
+using Microsoft.Extensions.DependencyInjection;
+using Whizbang.Testing.Receptors;
+
+[Test]
+public async Task HandleAsync_DerivesTheOrderIdAsync() {
+  var receptor = new PlaceOrderReceptor();
+  await using var services = new ServiceCollection()
+    .AddWhizbangReceptorRegistry()   // the generated registrations your host makes
+    .BuildServiceProvider();
+
+  var command = new PlaceOrder(CustomerId.New());
+
+  await using var handling = TestHandling.Enter(services, receptor, command);
+  var placed = await receptor.HandleAsync(command);
+
+  await Assert.That(placed.OrderId.GetIsTimeOrdered()).IsTrue();
+}
+```
+
+- **A message** enters a handling of a fresh local dispatch of it: a new message id and no handler. Entering the scope's
+  `Envelope` again is a **retry** of that handling and derives the same ids. {verified: TestHandlingTests.Enter_TheScopesEnvelopeAgain_IsARetry_AndDerivesTheSameIdAsync}
+- **An envelope** enters the handling of that exact delivery, including the handler an inbound row names. {verified: TestHandlingTests.Enter_AnEnvelope_EntersTheHandlingOfTheRegisteredReceptorInItsServiceAsync}
+- **The receptor must be registered** for the message. A compiled receptor is matched by its class, a runtime
+  registration by the instance registered. Otherwise `Enter` throws, since the dispatcher would never run it for that
+  message. A receptor registered under two ids (a runtime registration at two stages) needs the `stage` argument. {verified: TestHandlingTests.Enter_AReceptorRegisteredForAnotherMessage_IsRefusedAsync, TestHandlingTests.Enter_ARuntimeRegistration_IsMatchedByItsInstanceAsync, TestHandlingTests.Enter_AReceptorUnderTwoIds_NeedsTheStage_AndTakesThatStagesIdAsync}
+- **The service** is the provider's `IServiceInstanceProvider`, none without one, as in the invoker. Register the one your
+  host uses when the test compares ids with stored ones. {verified: TestHandlingTests.Enter_NoServiceInstance_NamesNoService_AsTheInvokerDoesAsync}
+- **Disposing** the scope ends the handling, as a receptor body returning does, and restores the one before it; a second
+  dispose does nothing. {verified: TestHandlingTests.Dispose_EndsTheHandling_AndRestoresTheOneBeforeItAsync, TestHandlingTests.Dispose_ASecondTime_DoesNotUndoAHandlingEnteredSinceAsync}
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The receptor id comes from the registry, never a type name. | A rendered name could drift from the generator's, and the test would pass on ids production never derives. | {verified: TestHandlingDispatchTests.TestHandling_DerivesTheIdARealHandlingOfTheSameEnvelopeDerivesAsync} |
+| There is no overload without a service provider. | Without the registry and the service the ids could not match the dispatcher's, so the easy call would be the wrong one. | {verified: TestHandlingTests.Enter_NoReceptorRegistry_IsRefusedNamingHowToAddOneAsync} |
 
 ---
 

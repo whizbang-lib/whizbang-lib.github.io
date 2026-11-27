@@ -40,6 +40,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/MetadataTrimGateStep.cs
   - src/Whizbang.Data.Postgres/MetadataHistoryConversionStep.cs
   - src/Whizbang.Data.Postgres/PostgresRouteTraceStore.cs
+  - src/Whizbang.Core/Serialization/StoredVectorConverters.cs
+  - src/Whizbang.Core/Attributes/StoredAsJsonArrayAttribute.cs
+  - src/Whizbang.Generators/MessageJsonContextGenerator.StoredVectors.cs
 testReferences:
   - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/InMemoryEventStoreTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreEventStoreTests.cs
@@ -55,6 +58,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/EnvelopeMetadataRowValuesTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StoredMetadataTrimGateSqlTests.cs
   - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/HeartbeatRequestStoredFormLevelTests.cs
+  - tests/Whizbang.Core.Tests/Serialization/StoredVectorConvertersTests.cs
+  - tests/Whizbang.Core.Tests/Serialization/StoredVectorEventReadTests.cs
+  - tests/Whizbang.Generators.Tests/MessageJsonContextStoredVectorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -1000,6 +1006,44 @@ UPDATE wh_event_store
 SET event_type = 'OrderCreatedV2'
 WHERE event_type = 'OrderCreatedV1';
 ```
+
+---
+
+## Packed vectors
+
+A stored event body can hold a vector in either of two forms, and every reader accepts both:
+
+| Form | In the stored JSON | Where it appears |
+|---|---|---|
+| Array | `"Embedding": [0.1, -0.25, ...]` | the wire, the outbox and inbox, and every body stored today |
+| Packed | `"Embedding": "PczMzb6AAAA..."` | stored bodies only, once a later release starts packing |
+
+The packed form is one JSON string: base64, without line breaks, of the big-endian IEEE-754 binary32 bits of each
+element in order. It is lossless by construction, so every value a `float` can hold reads back with the same bits,
+including `-0`, subnormals and NaN payloads. A 3,072-dimension vector takes about 16 KB this way instead of about
+24 KB as JSON numbers, so a vector event body shrinks by about a third.
+
+**What is a vector.** A property of type `float[]` or `IReadOnlyList<float>`, at the top level, inside a nested
+object or inside a collection element. `double[]`, `float?[]`, `List<float>` and every other type are never read as
+packed: a `double` does not fit binary32 exactly. The generated message JSON context attaches a converter to each
+vector property that reads either form and always writes the array, so the bytes it writes are unchanged.
+
+**Opting out.** Mark a property `[StoredAsJsonArray]` when something outside the framework, such as a SQL query or a
+report, reads it out of the stored body as numbers. It gets no packed-form reader, so it is never stored packed.
+
+```csharp{title="A vector event with an opted-out property" description="Embedding reads either stored form; Centroid always stays JSON numbers" category="Implementation" difficulty="BEGINNER" tags=["Data", "Event Store", "Vectors"] testFile="tests/Whizbang.Core.Tests/Serialization/StoredVectorEventReadTests.cs" testMethod="ABodyWithPackedVectors_ReadsBackBitExactAsync"}
+public sealed record PassageEmbedded(
+    [property: StreamId] Guid PassageId,
+    float[] Embedding,
+    [property: StoredAsJsonArray] float[] Centroid) : IEvent;
+```
+
+:::new
+**Readers first.** This release reads the packed form and writes only arrays: no body is packed yet. Packing at the
+stored body ships in a later release behind a gate that opens only once every live instance can read the packed form,
+so a rolling deploy never stores a body an older instance cannot read. The wire form never changes: other services and
+transport consumers always see JSON numbers.
+:::
 
 ---
 
