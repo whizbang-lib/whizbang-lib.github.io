@@ -1430,8 +1430,14 @@ as a [migration constant](../operations/infrastructure/migrations#constants) tha
 
 | Constant | Counts an event when | Used by |
 | --- | --- | --- |
-| `__DIGEST_ELIGIBLE__(alias)` | It is not ephemeral (`flags & 8`), not delivered at most once (`flags & 32`), and not an [exempt type](#audit-records-not-digested) | Every digest fold, answer, heal, seal, unfold and the [held fold](#the-held-fold-is-maintained-as-rows-change) |
-| `__INTEGRITY_COUNTED__(alias)` | It is not delivered at most once and not an exempt type | Both halves of a continuity checkpoint count |
+| `__DIGEST_ELIGIBLE_V2__(alias)` | It is not ephemeral (`flags & 8`), not delivered at most once (`flags & 32`), not [excluded from integrity](./integrity-exclusions) by an operator (`flags & 256`), and not an [exempt type](#audit-records-not-digested) | Every digest fold, answer, heal, seal, unfold and the [held fold](#the-held-fold-is-maintained-as-rows-change) |
+| `__INTEGRITY_COUNTED_V2__(alias)` | It is not delivered at most once, not excluded from integrity, and not an exempt type | Both halves of a continuity checkpoint count |
+
+This is version 2 of the rule (#2588). Version 1, without the exclusion test, is `__DIGEST_ELIGIBLE__` and
+`__INTEGRITY_COUNTED__`: every shipped migration writes it, and a migration is never edited, so its text is frozen and
+migration 662 redefines every reader with the version 2 tokens. A guard test fails any function whose latest
+definition still reads version 1. Changing the rule bumps `RuleSemantics.ELIGIBILITY_SQL_VERSION`, which
+[halts a pair on mixed versions](./integrity-exclusions#the-mixed-version-pause).
 
 ```sql{
 title: "The rule written as its constant"
@@ -1443,10 +1449,10 @@ tags: ["stream-integrity", "migrations", "constants", "digests"]
 -- a migration
 FROM __SCHEMA__.wh_event_store es
 WHERE es.stream_id = ANY(p_streams)
-  AND __DIGEST_ELIGIBLE__(es)
+  AND __DIGEST_ELIGIBLE_V2__(es)
 
 -- what runs
-  AND (COALESCE(es.flags, 0) & 8 = 0 AND COALESCE(es.flags, 0) & 32 = 0
+  AND (COALESCE(es.flags, 0) & 8 = 0 AND COALESCE(es.flags, 0) & 32 = 0 AND COALESCE(es.flags, 0) & 256 = 0
        AND split_part(es.event_type, ',', 1) <> ALL(ARRAY['Whizbang.Core.SystemEvents.EventAudited', ...]))
 ```
 
@@ -1561,7 +1567,12 @@ Why each choice:
 {verified: RuleSetTests.CompareWith_ADifferenceOnlyInATypeNotShared_AgreesAsync, RuleSetTests.CompareWith_NoPeerRules_IsHaltedForNoFingerprintAsync, IntegrityPairGuardTests.Admit_ADifferentSharedType_HaltsWithOneErrorNamingBothSidesAndTheTypeAsync, IntegrityPairGuardTests.Admit_StillHaltedPastTheThreshold_AlertsOnce_ThenResumesOnItsOwnAsync, IntegrityPairGuardTests.Gauges_ReportEachPairsState_HaltedAge_AndTheServiceFingerprintAsync, TwoServicePairGuardTests.TheSameRules_ThePairProceeds_AndTheLossIsRepairedAsync, TwoServicePairGuardTests.ASharedTypesRulesDiffer_ThePairIsHaltedOnBothSides_WithTheReason_AndResumesOnceTheyMatchAsync, TwoServicePairGuardTests.AConsumerWithNoFingerprint_IsNotAnswered_AndThePairIsHaltedAsync, TwoServicePairGuardTests.AnOriginWithNoFingerprint_IsNotCompared_AndThePairIsHaltedAsync, TwoServicePairGuardTests.RulesDifferOnlyForATypeThePairDoesNotShare_ThePairProceedsAsync}
 
 Integrity runs for a service pair only while both apply the same rules to the event types they share. Every receptor
-asks the guard before it acts:
+asks the guard before it acts. The guard compares what the rules mean (the rules versions and each shared type's rule
+hash), never a package version, so an ordinary upgrade halts nothing. Two services on different rules versions are
+**paused** rather than halted: an expected state while service types upgrade separately, reported as a Warning with its
+own metrics and never the Critical halt alert ([the pause](./integrity-exclusions#the-mixed-version-pause), #2588).
+Shipping the rules library on its own version is #2378, and comparing a mixed pair under the older rule is open
+question #2615:
 
 ```mermaid {caption="The pair guard: an integrity message is acted on only while both services apply the same rules to the types they share" tests=["TwoServicePairGuardTests.ASharedTypesRulesDiffer_ThePairIsHaltedOnBothSides_WithTheReason_AndResumesOnceTheyMatchAsync","TwoServicePairGuardTests.TheSameRules_ThePairProceeds_AndTheLossIsRepairedAsync"]}
 flowchart LR
@@ -1578,11 +1589,14 @@ flowchart LR
 | Consumer, a checkpoint | Keeps the origin known (address, ownership, liveness) and verifies nothing |
 | Origin, a redelivery request the comparison made | Refuses it (`redelivery_requests_ignored{reason=pair_halted}`) |
 
-A halt is logged once at Error, naming the peer, this service's side, the reason (`no_fingerprint`,
-`semantics_version`, `eligibility_sql_version` or `type_rules`), both sides' versions and fingerprints, and the types
-whose rules differ. It is logged again only when the reason or the types change. A pair still halted after
-`Whizbang:StreamIntegrity:PairGuard:HaltedAlertAfter` (default 2 hours) is logged once at Critical. The first message
-whose rules match resumes the pair, with an information line; nothing has to be reset.
+A halt is logged once at Error, naming the peer, this service's side, the reason (`no_fingerprint` or `type_rules`),
+both sides' versions and fingerprints, and the types whose rules differ. It is logged again only when the reason or the
+types change. A pair still halted after `Whizbang:StreamIntegrity:PairGuard:HaltedAlertAfter` (default 2 hours) is
+logged once at Critical. A pair whose two services run different rules versions (`semantics_version` or
+`eligibility_sql_version`) is **paused** instead (#2588): a Warning, `pair_rules_version_pauses`, the `paused` state, and
+one Warning reminder (`pair_rules_version_pause_alerts`) past the threshold, never the Critical alert, because services
+that deploy separately run two rules versions until both upgrade ([the pause](./integrity-exclusions#the-mixed-version-pause)).
+The first message whose rules match resumes the pair, with an information line; nothing has to be reset.
 
 #### A halt survives a restart {#pair-halts-survive-a-restart}
 

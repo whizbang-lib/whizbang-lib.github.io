@@ -911,6 +911,18 @@
     "symbol": "WorkCoordinatorPumpAdapter",
     "docs": "fundamentals/work-coordinator/claim-loop"
   },
+  "TestHandling": {
+    "file": "src/Whizbang.Testing/Receptors/TestHandling.cs",
+    "line": 33,
+    "symbol": "TestHandling",
+    "docs": "operations/testing/testing-receptors#derived-ids"
+  },
+  "TestHandlingScope": {
+    "file": "src/Whizbang.Testing/Receptors/TestHandlingScope.cs",
+    "line": 14,
+    "symbol": "TestHandlingScope",
+    "docs": "operations/testing/testing-receptors#derived-ids"
+  },
   "StaticOptionsMonitor": {
     "file": "src/Whizbang.Testing/Options/StaticOptionsMonitor.cs",
     "line": 16,
@@ -1459,7 +1471,7 @@
   },
   "EligibilitySql": {
     "file": "src/Whizbang.Rules/EligibilitySql.cs",
-    "line": 12,
+    "line": 17,
     "symbol": "EligibilitySql",
     "docs": "resilience/stream-integrity#rule-fingerprint"
   },
@@ -1582,6 +1594,12 @@
     "line": 54,
     "symbol": "DeadLetterOperatorEndpoints",
     "docs": "operations/dead-letter-queue/operator-api"
+  },
+  "IntegrityExclusionEndpoints": {
+    "file": "src/Whizbang.Hosting.AspNet/IntegrityExclusionEndpoints.cs",
+    "line": 51,
+    "symbol": "IntegrityExclusionEndpoints",
+    "docs": "resilience/integrity-exclusions#the-operator-endpoints"
   },
   "SchemaReadyHealthCheck": {
     "file": "src/Whizbang.Hosting.AspNet/SchemaReadyHealthCheck.cs",
@@ -2189,39 +2207,45 @@
     "symbol": "governance",
     "docs": "operations/diagnostics/whiz122"
   },
+  "or": {
+    "file": "src/Whizbang.Generators/DiagnosticDescriptors.cs",
+    "line": 900,
+    "symbol": "or",
+    "docs": "operations/diagnostics/whiz123"
+  },
   "TypeNameFormatter": {
     "file": "src/Whizbang.Generators/DiagnosticDescriptors.cs",
-    "line": 880,
+    "line": 927,
     "symbol": "TypeNameFormatter",
     "docs": "operations/diagnostics/whiz160"
   },
   "TypeNameUtilities": {
     "file": "src/Whizbang.Generators/DiagnosticDescriptors.cs",
-    "line": 896,
+    "line": 943,
     "symbol": "TypeNameUtilities",
     "docs": "operations/diagnostics/whiz161"
   },
   "result": {
     "file": "src/Whizbang.Generators/DiagnosticDescriptors.cs",
-    "line": 912,
+    "line": 959,
     "symbol": "result",
     "docs": "operations/diagnostics/whiz162"
   },
   "heuristic": {
     "file": "src/Whizbang.Generators/DiagnosticDescriptors.cs",
-    "line": 948,
+    "line": 995,
     "symbol": "heuristic",
     "docs": "operations/diagnostics/whiz180"
   },
   "make": {
     "file": "src/Whizbang.Generators/DiagnosticDescriptors.cs",
-    "line": 1124,
+    "line": 1171,
     "symbol": "make",
     "docs": "operations/diagnostics/whiz019"
   },
   "properties": {
     "file": "src/Whizbang.Generators/DiagnosticDescriptors.cs",
-    "line": 1158,
+    "line": 1205,
     "symbol": "properties",
     "docs": "operations/diagnostics/whiz035"
   },
@@ -2298,26 +2322,26 @@
     "docs": "extending/source-generators/polymorphic-serialization"
   },
   "MessageJsonContextGenerator": {
-    "file": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-    "line": 47,
+    "file": "src/Whizbang.Generators/MessageJsonContextGenerator.StoredVectors.cs",
+    "line": 16,
     "symbol": "MessageJsonContextGenerator",
-    "docs": "extending/source-generators/json-contexts"
+    "docs": "data/event-store#packed-vectors"
   },
   "_generateRenameAliasRegistrations": {
     "file": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-    "line": 4011,
+    "line": 4021,
     "symbol": "_generateRenameAliasRegistrations",
     "docs": "fundamentals/identity/pinned-type-ledger"
   },
   "chain": {
     "file": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-    "line": 4086,
+    "line": 4096,
     "symbol": "chain",
     "docs": "extending/source-generators/polymorphic-serialization"
   },
   "PolymorphicTypeInfo": {
     "file": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-    "line": 4168,
+    "line": 4178,
     "symbol": "PolymorphicTypeInfo",
     "docs": "extending/source-generators/polymorphic-serialization"
   },
@@ -2389,7 +2413,7 @@
   },
   "PinnedTypeLedgerGenerator": {
     "file": "src/Whizbang.Generators/PinnedTypeLedgerGenerator.cs",
-    "line": 28,
+    "line": 30,
     "symbol": "PinnedTypeLedgerGenerator",
     "docs": "fundamentals/identity/pinned-type-ledger"
   },
@@ -2785,13 +2809,13 @@
   },
   "PinnedIdAnalyzer": {
     "file": "src/Whizbang.Generators/Analyzers/PinnedIdAnalyzer.cs",
-    "line": 27,
+    "line": 29,
     "symbol": "PinnedIdAnalyzer",
     "docs": "fundamentals/identity/pinned-type-ledger"
   },
   "PinnedTypeRenameAnalyzer": {
     "file": "src/Whizbang.Generators/Analyzers/PinnedTypeRenameAnalyzer.cs",
-    "line": 28,
+    "line": 30,
     "symbol": "PinnedTypeRenameAnalyzer",
     "docs": "fundamentals/identity/pinned-type-ledger"
   },
@@ -2818,6 +2842,12 @@
     "line": 25,
     "symbol": "StreamIdInheritFromAnalyzer",
     "docs": "extending/attributes/streamid#inheriting-a-stream-of-another-id-type"
+  },
+  "StrongIdDeriveFromAnalyzer": {
+    "file": "src/Whizbang.Generators/Analyzers/StrongIdDeriveFromAnalyzer.cs",
+    "line": 20,
+    "symbol": "StrongIdDeriveFromAnalyzer",
+    "docs": "operations/diagnostics/whiz118"
   },
   "TopicFilterTargetAnalyzer": {
     "file": "src/Whizbang.Generators/Analyzers/TopicFilterTargetAnalyzer.cs",
@@ -3191,6 +3221,24 @@
     "symbol": "InstanceExitSql",
     "docs": "operations/startup/instance-exits#the-exit-record"
   },
+  "IntegrityExclusionStep": {
+    "file": "src/Whizbang.Data.Postgres/IntegrityExclusionStep.cs",
+    "line": 34,
+    "symbol": "IntegrityExclusionStep",
+    "docs": "resilience/integrity-exclusions#requests-and-the-maintenance-step"
+  },
+  "IntegrityExclusionAdjustmentRow": {
+    "file": "src/Whizbang.Data.Postgres/IntegrityExclusionStore.cs",
+    "line": 17,
+    "symbol": "IntegrityExclusionAdjustmentRow",
+    "docs": "resilience/integrity-exclusions#cross-service-agreement"
+  },
+  "IntegrityExclusionStore": {
+    "file": "src/Whizbang.Data.Postgres/IntegrityExclusionStore.cs",
+    "line": 25,
+    "symbol": "IntegrityExclusionStore",
+    "docs": "resilience/integrity-exclusions#cross-service-agreement"
+  },
   "LibpqEnvironment": {
     "file": "src/Whizbang.Data.Postgres/LibpqEnvironment.cs",
     "line": 20,
@@ -3439,25 +3487,25 @@
   },
   "OriginPositionLookup": {
     "file": "src/Whizbang.Data.Postgres/OriginPositionStore.cs",
-    "line": 22,
+    "line": 25,
     "symbol": "OriginPositionLookup",
     "docs": "resilience/stream-integrity#filling-missing-origin-positions"
   },
   "OriginPositionFillResult": {
     "file": "src/Whizbang.Data.Postgres/OriginPositionStore.cs",
-    "line": 35,
+    "line": 39,
     "symbol": "OriginPositionFillResult",
     "docs": "resilience/stream-integrity#filling-missing-origin-positions"
   },
   "OriginPositionSkippedRewind": {
     "file": "src/Whizbang.Data.Postgres/OriginPositionStore.cs",
-    "line": 44,
+    "line": 48,
     "symbol": "OriginPositionSkippedRewind",
     "docs": "resilience/stream-integrity#a-rewind-never-reaches-below-the-reap-floor"
   },
   "OriginPositionStore": {
     "file": "src/Whizbang.Data.Postgres/OriginPositionStore.cs",
-    "line": 52,
+    "line": 56,
     "symbol": "OriginPositionStore",
     "docs": "resilience/stream-integrity#filling-missing-origin-positions"
   },
@@ -3539,6 +3587,12 @@
     "symbol": "PerspectiveRegistryCurrency",
     "docs": "operations/infrastructure/migrations#which-instance-migrates"
   },
+  "PerspectiveRegistryConvergence": {
+    "file": "src/Whizbang.Data.Postgres/PerspectiveRegistryCurrency.cs",
+    "line": 255,
+    "symbol": "PerspectiveRegistryConvergence",
+    "docs": "operations/startup/startup-pipeline#heavy-startup-work"
+  },
   "PerspectiveRowRetentionSql": {
     "file": "src/Whizbang.Data.Postgres/PerspectiveRowRetentionSql.cs",
     "line": 28,
@@ -3550,6 +3604,12 @@
     "line": 51,
     "symbol": "PgSqueezePrerequisites",
     "docs": "operations/infrastructure/storage-maintenance#online-rewrite-prerequisites"
+  },
+  "PgStartupWorkLedger": {
+    "file": "src/Whizbang.Data.Postgres/PgStartupWorkLedger.cs",
+    "line": 15,
+    "symbol": "PgStartupWorkLedger",
+    "docs": "operations/startup/startup-pipeline#heavy-startup-work"
   },
   "PhysicalColumnFill": {
     "file": "src/Whizbang.Data.Postgres/PhysicalColumnFill.cs",
@@ -3688,6 +3748,12 @@
     "line": 13,
     "symbol": "PostgresFleetStatus",
     "docs": "operations/startup/startup-status#instance-assignments"
+  },
+  "PostgresIntegrityExclusions": {
+    "file": "src/Whizbang.Data.Postgres/PostgresIntegrityExclusions.cs",
+    "line": 30,
+    "symbol": "PostgresIntegrityExclusions",
+    "docs": "resilience/integrity-exclusions#the-api"
   },
   "PostgresObjectArchiveStore": {
     "file": "src/Whizbang.Data.Postgres/PostgresObjectArchiveStore.cs",
@@ -4043,6 +4109,24 @@
     "symbol": "SchemaStandDownException",
     "docs": "operations/startup/rolling-upgrades#standing-down"
   },
+  "StartupWorkSessions": {
+    "file": "src/Whizbang.Data.Postgres/StartupWorkSessions.cs",
+    "line": 22,
+    "symbol": "StartupWorkSessions",
+    "docs": "operations/startup/startup-pipeline#heavy-startup-work"
+  },
+  "ConfigureStartupWorkOptionsFromConfiguration": {
+    "file": "src/Whizbang.Data.Postgres/StartupWorkSessions.cs",
+    "line": 65,
+    "symbol": "ConfigureStartupWorkOptionsFromConfiguration",
+    "docs": "operations/configuration/configuration-reference#startup-work"
+  },
+  "StartupWorkInputs": {
+    "file": "src/Whizbang.Data.Postgres/StartupWorkSessions.cs",
+    "line": 86,
+    "symbol": "StartupWorkInputs",
+    "docs": "operations/startup/startup-pipeline#heavy-startup-work"
+  },
   "StoredFormApplier": {
     "file": "src/Whizbang.Data.Postgres/StoredFormApplier.cs",
     "line": 26,
@@ -4261,7 +4345,7 @@
   },
   "ManagedSchemaFleet": {
     "file": "src/Whizbang.Data.Postgres/Schema/ManagedSchemaFleet.cs",
-    "line": 24,
+    "line": 25,
     "symbol": "ManagedSchemaFleet",
     "docs": "fundamentals/perspectives/managed-schema-objects#settings"
   },
@@ -4345,7 +4429,7 @@
   },
   "PerspectiveStorageParameters": {
     "file": "src/Whizbang.Data.Postgres/Schema/PerspectiveStorageParameters.cs",
-    "line": 66,
+    "line": 75,
     "symbol": "PerspectiveStorageParameters",
     "docs": "fundamentals/perspectives/physical-fields#removed-storage-settings"
   },
@@ -4663,7 +4747,7 @@
   },
   "DriverConnectionStringFallback": {
     "file": "src/Whizbang.Data.Postgres/Notifications/PostgresCoordinationRegistration.cs",
-    "line": 57,
+    "line": 59,
     "symbol": "DriverConnectionStringFallback",
     "docs": "fundamentals/work-coordinator/partition-assignment"
   },
@@ -4915,7 +4999,7 @@
   },
   "GetManagedSchemaObjects": {
     "file": "src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs",
-    "line": 1547,
+    "line": 1566,
     "symbol": "GetManagedSchemaObjects",
     "docs": "fundamentals/perspectives/managed-schema-objects"
   },
@@ -5333,6 +5417,12 @@
     "symbol": "IntegrityCheckpointReceptorRegistrar",
     "docs": "resilience/stream-integrity"
   },
+  "IntegrityExclusionAdjustment": {
+    "file": "src/Whizbang.Data.EFCore.Postgres/IntegrityExclusionAdjustment.cs",
+    "line": 40,
+    "symbol": "IntegrityExclusionAdjustment",
+    "docs": "resilience/integrity-exclusions#cross-service-agreement"
+  },
   "IntegrityManifestTags": {
     "file": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
     "line": 30,
@@ -5353,13 +5443,13 @@
   },
   "_healProvenTypeLanesAsync": {
     "file": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
-    "line": 1449,
+    "line": 1469,
     "symbol": "_healProvenTypeLanesAsync",
     "docs": "resilience/stream-integrity#a-matching-type-heals-its-type-lane"
   },
   "IntegrityManifestReceptorRegistrar": {
     "file": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
-    "line": 1815,
+    "line": 1835,
     "symbol": "IntegrityManifestReceptorRegistrar",
     "docs": "resilience/stream-integrity"
   },
@@ -5389,7 +5479,7 @@
   },
   "ManagedSchemaReconcile": {
     "file": "src/Whizbang.Data.EFCore.Postgres/ManagedSchemaReconcile.cs",
-    "line": 18,
+    "line": 19,
     "symbol": "ManagedSchemaReconcile",
     "docs": "fundamentals/perspectives/managed-schema-objects"
   },
@@ -5407,13 +5497,13 @@
   },
   "OriginPositionsAnswerReceptor": {
     "file": "src/Whizbang.Data.EFCore.Postgres/OriginPositionReceptors.cs",
-    "line": 88,
+    "line": 91,
     "symbol": "OriginPositionsAnswerReceptor",
     "docs": "resilience/stream-integrity#filling-missing-origin-positions"
   },
   "OriginPositionReceptorRegistrar": {
     "file": "src/Whizbang.Data.EFCore.Postgres/OriginPositionReceptors.cs",
-    "line": 147,
+    "line": 166,
     "symbol": "OriginPositionReceptorRegistrar",
     "docs": "resilience/stream-integrity#filling-missing-origin-positions"
   },
@@ -5542,6 +5632,12 @@
     "line": 433,
     "symbol": "one",
     "docs": "resilience/stream-integrity#a-seal-nothing-audits"
+  },
+  "checks": {
+    "file": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
+    "line": 438,
+    "symbol": "checks",
+    "docs": "resilience/stream-integrity#filling-missing-origin-positions"
   },
   "PostgresNotifyDebounceStatsProvider": {
     "file": "src/Whizbang.Data.EFCore.Postgres/PostgresNotifyDebounceStatsProvider.cs",
@@ -6289,19 +6385,19 @@
   },
   "ProbeDatabaseName": {
     "file": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-    "line": 662,
+    "line": 667,
     "symbol": "ProbeDatabaseName",
     "docs": "operations/infrastructure/postgres-extensions#startup-report"
   },
   "_addTableStatistics": {
     "file": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-    "line": 730,
+    "line": 735,
     "symbol": "_addTableStatistics",
     "docs": "operations/observability/metrics#table-statistics"
   },
   "_addDeadLetterRecoveryService": {
     "file": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-    "line": 777,
+    "line": 782,
     "symbol": "_addDeadLetterRecoveryService",
     "docs": "operations/dead-letter-queue/recovery"
   },
@@ -6445,109 +6541,109 @@
   },
   "_generatedStreamOf": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 3471,
+    "line": 3470,
     "symbol": "_generatedStreamOf",
     "docs": "fundamentals/dispatcher/message-cascade#every-dispatch-path-derives"
   },
   "_newMessageIdFor": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 3524,
+    "line": 3523,
     "symbol": "_newMessageIdFor",
     "docs": "fundamentals/dispatcher/message-cascade#every-dispatch-path-derives"
   },
   "ProcessTagsIfEnabledAsync": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 3904,
+    "line": 3903,
     "symbol": "ProcessTagsIfEnabledAsync",
     "docs": "fundamentals/messages/message-tags#processing"
   },
   "_invokeImmediateDetachedReceptorsAsync": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 3963,
+    "line": 3962,
     "symbol": "_invokeImmediateDetachedReceptorsAsync",
     "docs": "fundamentals/lifecycle/lifecycle-stages#immediate-async"
   },
   "_invokePostLifecycleReceptorsAsync": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 4039,
+    "line": 4038,
     "symbol": "_invokePostLifecycleReceptorsAsync",
     "docs": "fundamentals/lifecycle/lifecycle-stages#post-lifecycle"
   },
   "ArgumentNullException": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 4297,
+    "line": 4296,
     "symbol": "ArgumentNullException",
     "docs": "fundamentals/sagas/completion-orchestration"
   },
   "CascadeMessageAsync": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 4474,
+    "line": 4473,
     "symbol": "CascadeMessageAsync",
     "docs": "fundamentals/dispatcher/message-cascade#cascade-to-outbox"
   },
   "_recordLocalDispatchAsync": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 4745,
+    "line": 4744,
     "symbol": "_recordLocalDispatchAsync",
     "docs": "fundamentals/receptors/exactly-once-firing"
   },
   "FanOutCompositeLocallyAtPublishAsync": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 4820,
+    "line": 4819,
     "symbol": "FanOutCompositeLocallyAtPublishAsync",
     "docs": "fundamentals/messaging/composite-events#publish-time-local-fan-out"
   },
   "PublishToOutboxDynamicAsync": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 5055,
+    "line": 5054,
     "symbol": "PublishToOutboxDynamicAsync",
     "docs": "fundamentals/dispatcher/message-cascade#auto-cascade-to-outbox"
   },
   "_declarePriority": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 5192,
+    "line": 5191,
     "symbol": "_declarePriority",
     "docs": "fundamentals/messaging/message-priority#declaration"
   },
   "CascadeMessageIdFor": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 5315,
+    "line": 5314,
     "symbol": "CascadeMessageIdFor",
     "docs": "fundamentals/dispatcher/message-cascade#every-dispatch-path-derives"
   },
   "CascadeByRuntimeTypeAsync": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 5330,
+    "line": 5329,
     "symbol": "CascadeByRuntimeTypeAsync",
     "docs": "fundamentals/dispatcher/message-cascade#auto-cascade-to-outbox"
   },
   "DispatchOptions": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 6306,
+    "line": 6305,
     "symbol": "DispatchOptions",
     "docs": "fundamentals/dispatcher/dispatcher#publishmanyasync"
   },
   "saw": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 6439,
+    "line": 6438,
     "symbol": "saw",
     "docs": "fundamentals/dispatcher/dispatcher#deferred-publishing"
   },
   "MessageDispatchContext": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 6655,
+    "line": 6654,
     "symbol": "MessageDispatchContext",
     "docs": "fundamentals/security/security#receptor-permission-gate"
   },
   "return": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 6741,
+    "line": 6740,
     "symbol": "return",
     "docs": "fundamentals/dispatcher/message-cascade#cascade-security-context"
   },
   "Log": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 6855,
+    "line": 6854,
     "symbol": "Log",
     "docs": "fundamentals/dispatcher/dispatcher#synchronous-invocation"
   },
@@ -11153,6 +11249,54 @@
     "symbol": "StartupStepOrderResolver",
     "docs": "operations/startup/startup-pipeline"
   },
+  "StartupWorkScope": {
+    "file": "src/Whizbang.Core/Startup/StartupWork.cs",
+    "line": 19,
+    "symbol": "StartupWorkScope",
+    "docs": "operations/startup/startup-pipeline#heavy-startup-work"
+  },
+  "StartupWorkDeclaration": {
+    "file": "src/Whizbang.Core/Startup/StartupWork.cs",
+    "line": 37,
+    "symbol": "StartupWorkDeclaration",
+    "docs": "operations/startup/startup-pipeline#heavy-startup-work"
+  },
+  "FrameworkStartupWork": {
+    "file": "src/Whizbang.Core/Startup/StartupWork.cs",
+    "line": 67,
+    "symbol": "FrameworkStartupWork",
+    "docs": "operations/startup/startup-pipeline#heavy-startup-work"
+  },
+  "StartupWorkClaim": {
+    "file": "src/Whizbang.Core/Startup/StartupWork.cs",
+    "line": 104,
+    "symbol": "StartupWorkClaim",
+    "docs": "operations/startup/startup-pipeline#heavy-startup-work"
+  },
+  "IStartupWorkLedger": {
+    "file": "src/Whizbang.Core/Startup/StartupWork.cs",
+    "line": 126,
+    "symbol": "IStartupWorkLedger",
+    "docs": "operations/startup/startup-pipeline#heavy-startup-work"
+  },
+  "StartupWorkOutcome": {
+    "file": "src/Whizbang.Core/Startup/StartupWork.cs",
+    "line": 166,
+    "symbol": "StartupWorkOutcome",
+    "docs": "operations/startup/startup-pipeline#heavy-startup-work"
+  },
+  "StartupWorkOptions": {
+    "file": "src/Whizbang.Core/Startup/StartupWorkOptions.cs",
+    "line": 12,
+    "symbol": "StartupWorkOptions",
+    "docs": "operations/configuration/configuration-reference#startup-work"
+  },
+  "StartupWorkSession": {
+    "file": "src/Whizbang.Core/Startup/StartupWorkSession.cs",
+    "line": 39,
+    "symbol": "StartupWorkSession",
+    "docs": "operations/startup/startup-pipeline#heavy-startup-work"
+  },
   "TableRewriteStartupStep": {
     "file": "src/Whizbang.Core/Startup/TableRewriteStartupStep.cs",
     "line": 50,
@@ -11398,6 +11542,12 @@
     "line": 24,
     "symbol": "SerializationVersion",
     "docs": "fundamentals/events/event-upcasting"
+  },
+  "StoredVectorConverters": {
+    "file": "src/Whizbang.Core/Serialization/StoredVectorConverters.cs",
+    "line": 29,
+    "symbol": "StoredVectorConverters",
+    "docs": "data/event-store#packed-vectors"
   },
   "VersionedJsonEnvelope": {
     "file": "src/Whizbang.Core/Serialization/VersionedJsonEnvelope.cs",
@@ -11947,7 +12097,7 @@
   },
   "ProcessExitCode": {
     "file": "src/Whizbang.Core/RunControl/WhizbangInstanceExit.cs",
-    "line": 386,
+    "line": 389,
     "symbol": "ProcessExitCode",
     "docs": "operations/startup/instance-exits#exit-codes"
   },
@@ -15325,211 +15475,217 @@
   },
   "RecordRepairedEvents": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 848,
+    "line": 870,
     "symbol": "RecordRepairedEvents",
     "docs": "resilience/stream-integrity#repaired-events-and-receptors"
   },
+  "UpdateExclusions": {
+    "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
+    "line": 902,
+    "symbol": "UpdateExclusions",
+    "docs": "resilience/integrity-exclusions#metrics"
+  },
   "UpdateUnfilledOriginPositions": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 878,
+    "line": 922,
     "symbol": "UpdateUnfilledOriginPositions",
     "docs": "resilience/stream-integrity#filling-missing-origin-positions"
   },
   "UpdateUnauditedSeals": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 888,
+    "line": 932,
     "symbol": "UpdateUnauditedSeals",
     "docs": "resilience/stream-integrity#a-seal-nothing-audits"
   },
   "UpdateBackfillGauges": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 894,
+    "line": 938,
     "symbol": "UpdateBackfillGauges",
     "docs": "resilience/stream-integrity#paced-backfill"
   },
   "UpdateLedgerBacklog": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 909,
+    "line": 953,
     "symbol": "UpdateLedgerBacklog",
     "docs": "resilience/stream-integrity#repair-backlog-and-eta"
   },
   "RecordBucketsMarkedUnhealable": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 922,
+    "line": 966,
     "symbol": "RecordBucketsMarkedUnhealable",
     "docs": "resilience/stream-integrity#repair-backlog-and-eta"
   },
   "UpdateVerifiedPercent": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 939,
+    "line": 983,
     "symbol": "UpdateVerifiedPercent",
     "docs": "resilience/stream-integrity#derived-completion-meters"
   },
   "UpdateRepairRates": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 954,
+    "line": 998,
     "symbol": "UpdateRepairRates",
     "docs": "resilience/stream-integrity#derived-completion-meters"
   },
   "RecordSealLowered": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1007,
+    "line": 1051,
     "symbol": "RecordSealLowered",
     "docs": "resilience/stream-integrity#integrity-instruments"
   },
   "UpdateChecksEnabled": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1051,
+    "line": 1095,
     "symbol": "UpdateChecksEnabled",
     "docs": "resilience/stream-integrity#integrity-instruments"
   },
   "RecordCheckRan": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1059,
+    "line": 1103,
     "symbol": "RecordCheckRan",
     "docs": "resilience/stream-integrity#integrity-instruments"
   },
   "UpdateSealReading": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1068,
+    "line": 1112,
     "symbol": "UpdateSealReading",
     "docs": "resilience/stream-integrity#integrity-instruments"
   },
   "LedgerGaugeSnapshot": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1093,
+    "line": 1137,
     "symbol": "LedgerGaugeSnapshot",
     "docs": "resilience/stream-integrity"
   },
   "AnswerPendingBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1108,
+    "line": 1152,
     "symbol": "AnswerPendingBuckets",
     "docs": "resilience/stream-integrity#integrity-gauges"
   },
   "AnsweredBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1112,
+    "line": 1156,
     "symbol": "AnsweredBuckets",
     "docs": "resilience/stream-integrity#integrity-gauges"
   },
   "IntegrityDeliveriesPending": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1116,
+    "line": 1160,
     "symbol": "IntegrityDeliveriesPending",
     "docs": "resilience/stream-integrity#integrity-gauges"
   },
   "OldestIntegrityDeliveryAgeSeconds": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1120,
+    "line": 1164,
     "symbol": "OldestIntegrityDeliveryAgeSeconds",
     "docs": "resilience/stream-integrity#integrity-gauges"
   },
   "UnhealedDeficitEvents": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1125,
+    "line": 1169,
     "symbol": "UnhealedDeficitEvents",
     "docs": "resilience/stream-integrity#integrity-gauges"
   },
   "UnhealableBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1130,
+    "line": 1174,
     "symbol": "UnhealableBuckets",
     "docs": "resilience/stream-integrity#integrity-gauges"
   },
   "DeficitBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1136,
+    "line": 1180,
     "symbol": "DeficitBuckets",
     "docs": "resilience/stream-integrity#unhealed-buckets-by-kind"
   },
   "SurplusBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1141,
+    "line": 1185,
     "symbol": "SurplusBuckets",
     "docs": "resilience/stream-integrity#unhealed-buckets-by-kind"
   },
   "DigestMismatchBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1146,
+    "line": 1190,
     "symbol": "DigestMismatchBuckets",
     "docs": "resilience/stream-integrity#unhealed-buckets-by-kind"
   },
   "UnknownKindBuckets": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1151,
+    "line": 1195,
     "symbol": "UnknownKindBuckets",
     "docs": "resilience/stream-integrity#unhealed-buckets-by-kind"
   },
   "OriginSeal": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1164,
+    "line": 1208,
     "symbol": "OriginSeal",
     "docs": "resilience/stream-integrity"
   },
   "BackfillGaugeSnapshot": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1168,
+    "line": 1212,
     "symbol": "BackfillGaugeSnapshot",
     "docs": "resilience/stream-integrity#paced-backfill"
   },
   "BackfillRemaining": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1183,
+    "line": 1227,
     "symbol": "BackfillRemaining",
     "docs": "resilience/stream-integrity#paced-backfill"
   },
   "LedgerBacklogSnapshot": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1190,
+    "line": 1234,
     "symbol": "LedgerBacklogSnapshot",
     "docs": "resilience/stream-integrity#repair-backlog-and-eta"
   },
   "LedgerBacklogCount": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1210,
+    "line": 1254,
     "symbol": "LedgerBacklogCount",
     "docs": "resilience/stream-integrity#repair-backlog-and-eta"
   },
   "LedgerBacklogStates": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1217,
+    "line": 1261,
     "symbol": "LedgerBacklogStates",
     "docs": "resilience/stream-integrity#repair-backlog-and-eta"
   },
   "LedgerBucketKinds": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1239,
+    "line": 1283,
     "symbol": "LedgerBucketKinds",
     "docs": "resilience/stream-integrity#unhealed-buckets-by-kind"
   },
   "IntegrityVerifiedReading": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1261,
+    "line": 1305,
     "symbol": "IntegrityVerifiedReading",
     "docs": "resilience/stream-integrity#derived-completion-meters"
   },
   "OriginVerifiedPercent": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1279,
+    "line": 1323,
     "symbol": "OriginVerifiedPercent",
     "docs": "resilience/stream-integrity#derived-completion-meters"
   },
   "RepairRatesReading": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1286,
+    "line": 1330,
     "symbol": "RepairRatesReading",
     "docs": "resilience/stream-integrity#derived-completion-meters"
   },
   "IntegritySealReading": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1307,
+    "line": 1351,
     "symbol": "IntegritySealReading",
     "docs": "resilience/stream-integrity#integrity-instruments"
   },
   "LaneSeal": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
-    "line": 1340,
+    "line": 1384,
     "symbol": "LaneSeal",
     "docs": "resilience/stream-integrity#integrity-instruments"
   },
@@ -16660,6 +16816,12 @@
     "line": 42,
     "symbol": "HandlerInboxCompletion",
     "docs": "fundamentals/work-coordinator/handler-commit"
+  },
+  "Handling": {
+    "file": "src/Whizbang.Core/Messaging/Handling.cs",
+    "line": 24,
+    "symbol": "Handling",
+    "docs": "fundamentals/identity/whizbang-ids#derived-ids"
   },
   "HeartbeatRequest": {
     "file": "src/Whizbang.Core/Messaging/HeartbeatRequest.cs",
@@ -18353,57 +18515,63 @@
     "symbol": "OriginPositionFill",
     "docs": "resilience/stream-integrity#filling-missing-origin-positions"
   },
+  "Exclusions": {
+    "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
+    "line": 897,
+    "symbol": "Exclusions",
+    "docs": "resilience/integrity-exclusions#configuration"
+  },
   "ReattributionEnabled": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 927,
+    "line": 935,
     "symbol": "ReattributionEnabled",
     "docs": "resilience/stream-integrity#re-attribution"
   },
   "ReattributionIntervalSeconds": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 931,
+    "line": 939,
     "symbol": "ReattributionIntervalSeconds",
     "docs": "resilience/stream-integrity#re-attribution"
   },
   "ReattributionBatchSize": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 935,
+    "line": 943,
     "symbol": "ReattributionBatchSize",
     "docs": "resilience/stream-integrity#re-attribution"
   },
   "MaxReattributionBatchesPerPass": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 940,
+    "line": 948,
     "symbol": "MaxReattributionBatchesPerPass",
     "docs": "resilience/stream-integrity#re-attribution"
   },
   "VerifiedPercentGaugeEnabled": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 949,
+    "line": 957,
     "symbol": "VerifiedPercentGaugeEnabled",
     "docs": "resilience/stream-integrity#derived-completion-meters"
   },
   "RepairCloseRatioGaugeEnabled": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 956,
+    "line": 964,
     "symbol": "RepairCloseRatioGaugeEnabled",
     "docs": "resilience/stream-integrity#configuration-aliases"
   },
   "CompletionWindowMinutes": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 966,
+    "line": 974,
     "symbol": "CompletionWindowMinutes",
     "docs": "resilience/stream-integrity#configuration-aliases"
   },
   "BacklogEtaGaugeEnabled": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 991,
+    "line": 999,
     "symbol": "BacklogEtaGaugeEnabled",
     "docs": "resilience/stream-integrity#derived-completion-meters"
   },
   "RepairReceptorLookback": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 1020,
+    "line": 1028,
     "symbol": "RepairReceptorLookback",
     "docs": "resilience/stream-integrity#repaired-events-and-receptors"
   },
@@ -18515,6 +18683,66 @@
     "symbol": "IntegrityDrainContext",
     "docs": "resilience/stream-integrity#integrity-work-runs-on-the-maintainer"
   },
+  "IIntegrityExclusions": {
+    "file": "src/Whizbang.Core/Messaging/IntegrityExclusions.cs",
+    "line": 23,
+    "symbol": "IIntegrityExclusions",
+    "docs": "resilience/integrity-exclusions"
+  },
+  "IntegrityExclusionRequest": {
+    "file": "src/Whizbang.Core/Messaging/IntegrityExclusions.cs",
+    "line": 56,
+    "symbol": "IntegrityExclusionRequest",
+    "docs": "resilience/integrity-exclusions#the-api"
+  },
+  "IntegrityExclusionSelection": {
+    "file": "src/Whizbang.Core/Messaging/IntegrityExclusions.cs",
+    "line": 78,
+    "symbol": "IntegrityExclusionSelection",
+    "docs": "resilience/integrity-exclusions#selections"
+  },
+  "IntegrityUnresolvedKinds": {
+    "file": "src/Whizbang.Core/Messaging/IntegrityExclusions.cs",
+    "line": 97,
+    "symbol": "IntegrityUnresolvedKinds",
+    "docs": "resilience/integrity-exclusions#the-past-everything-unresolved-before-a-time"
+  },
+  "IntegrityUnexclusionRequest": {
+    "file": "src/Whizbang.Core/Messaging/IntegrityExclusions.cs",
+    "line": 120,
+    "symbol": "IntegrityUnexclusionRequest",
+    "docs": "resilience/integrity-exclusions#the-api"
+  },
+  "IntegrityExclusionOutcome": {
+    "file": "src/Whizbang.Core/Messaging/IntegrityExclusions.cs",
+    "line": 148,
+    "symbol": "IntegrityExclusionOutcome",
+    "docs": "resilience/integrity-exclusions#the-api"
+  },
+  "IntegrityExclusionResult": {
+    "file": "src/Whizbang.Core/Messaging/IntegrityExclusions.cs",
+    "line": 152,
+    "symbol": "IntegrityExclusionResult",
+    "docs": "resilience/integrity-exclusions#the-api"
+  },
+  "IntegrityExclusionOriginSummary": {
+    "file": "src/Whizbang.Core/Messaging/IntegrityExclusions.cs",
+    "line": 176,
+    "symbol": "IntegrityExclusionOriginSummary",
+    "docs": "resilience/integrity-exclusions#the-summary"
+  },
+  "IntegrityExclusionSummary": {
+    "file": "src/Whizbang.Core/Messaging/IntegrityExclusions.cs",
+    "line": 181,
+    "symbol": "IntegrityExclusionSummary",
+    "docs": "resilience/integrity-exclusions#the-summary"
+  },
+  "IntegrityExclusionOptions": {
+    "file": "src/Whizbang.Core/Messaging/IntegrityExclusions.cs",
+    "line": 191,
+    "symbol": "IntegrityExclusionOptions",
+    "docs": "resilience/integrity-exclusions#configuration"
+  },
   "IntegrityGapTracker": {
     "file": "src/Whizbang.Core/Messaging/IntegrityGapTracker.cs",
     "line": 19,
@@ -18565,7 +18793,7 @@
   },
   "Admit": {
     "file": "src/Whizbang.Core/Messaging/IntegrityPairGuard.cs",
-    "line": 165,
+    "line": 187,
     "symbol": "Admit",
     "docs": "resilience/stream-integrity#the-pair-guard"
   },
@@ -18745,13 +18973,13 @@
   },
   "OriginPositionsAnswer": {
     "file": "src/Whizbang.Core/Messaging/OriginPositions.cs",
-    "line": 48,
+    "line": 46,
     "symbol": "OriginPositionsAnswer",
-    "docs": "resilience/stream-integrity#filling-missing-origin-positions"
+    "docs": "resilience/integrity-exclusions#where-the-origin-holds-it"
   },
   "OriginPositionFillOptions": {
     "file": "src/Whizbang.Core/Messaging/OriginPositions.cs",
-    "line": 77,
+    "line": 93,
     "symbol": "OriginPositionFillOptions",
     "docs": "resilience/stream-integrity#filling-missing-origin-positions"
   },
@@ -18835,7 +19063,7 @@
   },
   "ReceptorHandling": {
     "file": "src/Whizbang.Core/Messaging/ReceptorHandling.cs",
-    "line": 25,
+    "line": 29,
     "symbol": "ReceptorHandling",
     "docs": "fundamentals/dispatcher/message-cascade#every-dispatch-path-derives"
   },
@@ -19222,6 +19450,12 @@
     "line": 24,
     "symbol": "StreamSealedException",
     "docs": "fundamentals/events/stream-end-of-life#a-sealed-stream-refuses-appends"
+  },
+  "StrongIdDerivation": {
+    "file": "src/Whizbang.Core/Messaging/StrongIdDerivation.cs",
+    "line": 40,
+    "symbol": "StrongIdDerivation",
+    "docs": "fundamentals/identity/whizbang-ids#derived-ids"
   },
   "StuckRow": {
     "file": "src/Whizbang.Core/Messaging/StuckRow.cs",
@@ -21538,6 +21772,12 @@
     "line": 35,
     "symbol": "SignalTagAttribute",
     "docs": "fundamentals/messages/message-tags#signal-tag"
+  },
+  "StoredAsJsonArrayAttribute": {
+    "file": "src/Whizbang.Core/Attributes/StoredAsJsonArrayAttribute.cs",
+    "line": 23,
+    "symbol": "StoredAsJsonArrayAttribute",
+    "docs": "data/event-store#packed-vectors"
   },
   "StoredMetadataForm": {
     "file": "src/Whizbang.Core/Attributes/StoredMetadataAttribute.cs",
