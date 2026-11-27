@@ -33,11 +33,13 @@ testReferences:
 
 A perspective's model declares database objects: indexes (`[Indexed]`, `[PerspectiveIndex]`, `[PerspectiveQueries]`), the whole-document and scope indexes, and length constraints. Whizbang creates those objects at startup. It also **removes** them once the model stops declaring them, so an index you no longer need doesn't keep costing every write in every environment.
 
-To do that safely, Whizbang keeps a **ledger** of what it manages, in each schema's `wh_managed_objects` table, and reconciles it against the model at every start.
+To do that safely, Whizbang keeps a **ledger** of what it manages, in each schema's `wh_managed_objects` table, and reconciles it against the model once per build, and between starts.
 
 ## What happens at startup
 
-The reconcile runs at every start, after schema initialization commits, on a connection of its own and under the schema lock. The lock is transaction-scoped: the plan and its ledger rows commit in one transaction, and each drop runs in a transaction of its own that takes the lock again, so a commit or rollback always releases the lock on the backend that took it, even behind a transaction-pooling pooler. A restart where the schema didn't change runs it too, so an object removed by a release, or dropped by hand, is noticed either way. It never fails a start: a reconcile that can't finish logs a warning, leaves everything in place, and tries again next time. It is [heavy startup work](../../operations/startup/startup-pipeline#heavy-startup-work) declared per instance, so it runs within the fleet's [heavy-start cap](../../operations/startup/startup-pipeline#the-heavy-start-cap) but is never skipped: each run records what its instance declares, which the [drop gate](#rolling-deploys) needs from every live instance ([why it stays per instance](../../operations/startup/startup-pipeline#reconcile-stays-per-instance)).
+The reconcile runs after schema initialization commits, on a connection of its own and under the schema lock. The lock is transaction-scoped: the plan and its ledger rows commit in one transaction, and each drop runs in a transaction of its own that takes the lock again, so a commit or rollback always releases the lock on the backend that took it, even behind a transaction-pooling pooler. It is [heavy startup work](../../operations/startup/startup-pipeline#heavy-startup-work) declared per schema per build: the first start of a build runs it, and so does any start whose schema pass applied something or whose reconcile settings changed; every other start of the build skips it. Between starts, a maintenance step re-runs it every 15 minutes, so an object added or dropped by hand is noticed either way. It never fails a start: a reconcile that can't finish, or finds the schema lock taken, logs or leaves everything in place, and is not recorded done, so the next start runs it.
+
+Every start, whether or not it reconciles, **reports** what its instance declares, which the [drop gate](#rolling-deploys) needs from every live instance ([the managed-object report](../../operations/startup/startup-pipeline#the-managed-object-report)).
 
 ### The first time an object is seen
 
@@ -59,7 +61,7 @@ So the first deploy of a release with the ledger drops nothing, and neither does
 | — | has a `foreign` object | leaves it alone |
 | — | has a **pinned** object | leaves it alone, always |
 
-A restart with unchanged code changes nothing.
+A restart with unchanged code and settings changes nothing, and skips the reconcile.
 
 ### Index drops need a direct connection {#index-drops-need-a-direct-connection}
 
@@ -78,9 +80,9 @@ forgotten on the same read. The rule is in Preflight's bootstrap region, so the 
 reconcile reaches.
 {verified: ManagedSchemaReconcilerTests.AnObjectARunningInstanceStillDeclares_IsKeptUntilItStopsAsync, ManagedSchemaReconcilerTests.WhileAnInstanceThatHasNotReportedIsRunning_NothingIsDroppedAsync}
 
-A drop held back this way isn't left for the next deploy. A maintenance step re-runs the reconcile on one instance of the fleet every 15 minutes, so the drop happens once the previous release has stopped.
+A drop held back this way isn't left for the next deploy. A maintenance step re-runs the reconcile on one instance of the fleet every 15 minutes, so the drop happens once the previous release has stopped. It also happens once a newly started instance of this release has reported: every start reports what its instance declares, including the starts of a build that skip the reconcile, so the gate is never left waiting on an instance that will never report.
 
-{verified: StartupParityTests.WithSeveralInstancesRunning_ARetiredObjectIsDroppedAsync, StartupParityTests.TheFleetGate_HoldsTheDropWhileALivePeerDeclaresIt_AndThePeriodicReRunDropsItOnceThePeerStopsAsync, StartupParityTests.ThePeriodicReRun_IsRegisteredAsync}
+{verified: StartupParityTests.WithSeveralInstancesRunning_ARetiredObjectIsDroppedAsync, StartupParityTests.TheFleetGate_HoldsTheDropWhileALivePeerDeclaresIt_AndThePeriodicReRunDropsItOnceThePeerStopsAsync, StartupParityTests.ThePeriodicReRun_IsRegisteredAsync, StartupParityTests.ASecondStartOfTheBuild_ReportsWithoutReconciling_AndTheDropLandsOnceEveryLiveInstanceHasReportedAsync, StartupParityTests.AnOlderReleaseThatReconcilesAtEveryStart_AndThisReleaseThatReportsOnly_DropNothingTheOtherDeclaresAsync}
 
 Both drivers behave the same way here. Each instance registers itself in `wh_service_instances` at start and records
 its declarations under its own instance id, with the configured settings and the host's logger, so several
@@ -187,7 +189,7 @@ Whizbang__Schema__Reconcile__Drop__Index=false
 
 ## Reading the startup report
 
-Each start logs one line for every object it drops, keeps or finds missing:
+Each reconcile (the first start of a build, or the periodic re-run) logs one line for every object it drops, keeps or finds missing:
 
 ```
 Schema reconcile (public.wh_per_job): dropped Index idx_job_data_gin (no longer declared)
