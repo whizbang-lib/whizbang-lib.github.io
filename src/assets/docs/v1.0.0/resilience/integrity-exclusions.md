@@ -103,7 +103,7 @@ var result = await exclusions.ExcludeAsync(new IntegrityExclusionRequest {
   Reason = "pre-1.0 history recorded under older rules",
   RequestedBy = "operator-a",
   Selection = new IntegrityExclusionSelection {
-    Unresolved = IntegrityUnresolved.All,
+    Unresolved = IntegrityUnresolvedKinds.All,
     Until = new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.Zero),
   },
   DryRun = true,
