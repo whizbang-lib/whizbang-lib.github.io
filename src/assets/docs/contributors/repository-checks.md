@@ -4,7 +4,7 @@ pageType: reference
 audience: [contributor]
 status: current
 order: 5
-description: The build errors this repository raises on its own code and tests (WHIZ600 to WHIZ610), what each one protects, and how a new diagnostic gets its ID from the one registry of every WHIZ ID
+description: The build errors this repository raises on its own code and tests (WHIZ600 to WHIZ611), what each one protects, and how a new diagnostic gets its ID from the one registry of every WHIZ ID
 tags: contributing, analyzers, diagnostics, testing, sharding, ci
 ---
 
@@ -27,6 +27,7 @@ Every build diagnostic in this repository has one ID form, `WHIZ` and three digi
 | [WHIZ608](../v1.0.0/operations/diagnostics/whiz608.md) | `Whizbang.RepoAnalyzers` | A suppression of WHIZ607 that does not say why. |
 | [WHIZ609](../v1.0.0/operations/diagnostics/whiz609.md) | `Whizbang.TestAnalyzers` | A test class with an `[After(Test)]` hook that is also disposable, so TUnit tears it down twice. |
 | [WHIZ610](../v1.0.0/operations/diagnostics/whiz610.md) | `Whizbang.RepoAnalyzers` | Library code reads a type's name for a log call at `Information` or below, or for an activity's name, before the log level or a listener is checked. |
+| [WHIZ611](../v1.0.0/operations/diagnostics/whiz611.md) | `Whizbang.RepoAnalyzers` | Library code races a channel wait in `Task.WhenAny` and nothing cancels it when another task wins, so the channel keeps the waiter for the life of its token. |
 
 WHIZ600 to WHIZ604 were `WHZ0001` to `WHZ0005` until they moved into the single ID form. A suppression or severity setting that names an old ID no longer applies.
 
