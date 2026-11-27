@@ -1,11 +1,10 @@
 ---
-title: 'WHIZ611: Channel Wait Raced in Task.WhenAny Is Never Released'
+title: 'WHIZ611: Channel Wait Raced in Task.WhenAny Is Never Released (retired)'
 pageType: troubleshooting
 version: 1.0.0
 description: >-
-  A repository check: library code races a channel wait in Task.WhenAny and
-  nothing cancels it when another task wins, so the channel keeps the waiter
-  for as long as its token lives
+  Retired. WHIZ611 was a repository check on channel waits raced in Task.WhenAny. It was folded into WHIZ612,
+  which reports every wait raced by hand; the ID is never reused.
 category: Diagnostics
 severity: Error
 tags:
@@ -14,64 +13,41 @@ tags:
   - channels
   - memory
   - analyzer
+  - retired
 codeReferences:
-  - tools/Whizbang.RepoAnalyzers/AbandonedChannelWaitAnalyzer.cs
-  - src/Whizbang.Core/Async/PendingChannelWait.cs
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
+  - tools/Whizbang.RepoAnalyzers/HandWrittenWaitRaceAnalyzer.cs
 testReferences:
-  - tests/Whizbang.RepoAnalyzers.Tests/AbandonedChannelWaitAnalyzerTests.cs
-  - tests/Whizbang.Core.Component.Tests/Workers/ChannelWaitReleaseTests.cs
+  - tests/Whizbang.Generators.Tests/DiagnosticDescriptorsTests.cs
+  - tests/Whizbang.RepoAnalyzers.Tests/HandWrittenWaitRaceAnalyzerTests.cs
 ---
 
-# WHIZ611: Channel Wait Raced in Task.WhenAny Is Never Released
+# WHIZ611: Channel Wait Raced in Task.WhenAny Is Never Released (retired)
 
-**Severity**: Error
-**Raised by**: `Whizbang.RepoAnalyzers` (Roslyn analyzer)
+**Status**: Retired in [#2617](https://github.com/whizbang-lib/whizbang/issues/2617). No longer reported.
+**Former severity**: Error (repository check)
 
-This is a check on the Whizbang repository's own library code. It runs only in this repository's builds and never ships in a package, so an application that uses Whizbang never sees it. Tests, tools, samples and benchmarks are outside it. See [Repository Checks and Diagnostic IDs](../../../contributors/repository-checks.md) for the whole block.
+## Retired
 
-## What it means
+WHIZ611 is **retired**. It was folded into [WHIZ612](whiz612.md), which reports a `Task.WhenAny` or `Task.WaitAny` over
+any wait in the library (a delay, a channel wait, a semaphore wait, a completion source's task, a wake signal or a
+readiness gate), not only a channel wait. Every such race in the library now goes through a
+[WakeSet](../../../contributors/loop-waits.md).
 
-A wait on a channel (`WaitToReadAsync`, `ReadAsync`, `WaitToWriteAsync` or `WriteAsync` on a `ChannelReader<T>` or `ChannelWriter<T>`) is turned into a task with `AsTask()` and raced in `Task.WhenAny`, directly or through a local, and its token is not one the method cancels once the race is decided:
+The ID is **never reused**: it will not be given a new meaning, so a search or a suppression for it can never match a
+different diagnostic. A test keeps every retired ID from being declared again
+(`DiagnosticDescriptorsTests.RetiredDiagnosticIds_AreNeverDeclaredAgainAsync`).
 
-```csharp{title="The race WHIZ611 reports" description="Each pass that the delay wins abandons a wait the channel keeps until the stopping token is canceled." category="Diagnostics" difficulty="ADVANCED" tags=["whiz611", "repository-check", "channels", "analyzer"] tests=["AbandonedChannelWaitAnalyzerTests.WaitHeldInALocal_ThenRaced_ReportsAsync", "AbandonedChannelWaitAnalyzerTests.WaitRacedDirectly_OnALongLivedToken_ReportsAsync"]}
-while (!stopping.IsCancellationRequested) {
-  var wait = reader.WaitToReadAsync(stopping).AsTask();
-  await Task.WhenAny(wait, Task.Delay(idle, stopping));
-  // ...
-}
-```
+## What It Described
 
-## Why it matters
-
-When another task wins the race, the channel wait is abandoned, but the channel does not know that. An unbounded or bounded channel keeps every waiting reader queued until an item is written or the reader's token is canceled. A loop that asks for a fresh wait on the host's stopping token every pass, and is woken by a timeout or a signal, queues one more waiter per idle pass for the life of the process. Each one keeps a few small objects alive, and an idle worker passing about twice a second grows by several megabytes an hour without bound (#2613).
-
-Disposing a linked `CancellationTokenSource` does not cancel its token, so a `using` declaration alone does not release the wait. The source has to be canceled.
-
-## How to fix it
-
-Keep one pending wait across passes and ask for a new one only once it has completed. `PendingChannelWait<T>` does exactly that, the way `WakeSignal` does for the wake signal:
-
-```csharp{title="Clearing WHIZ611 by reusing one wait" description="The pending wait carries over to the next pass, so the channel never holds more than one waiter from this loop." category="Diagnostics" difficulty="ADVANCED" tags=["whiz611", "repository-check", "channels", "analyzer"] tests=["AbandonedChannelWaitAnalyzerTests.WaitHeldInAFieldThenRaced_ReportsNothingAsync", "PendingChannelWaitTests.WaitAsync_RepeatedWhilePending_ReturnsTheSameTaskAsync"]}
-var waits = new PendingChannelWait<int>(reader);
-while (!stopping.IsCancellationRequested) {
-  await Task.WhenAny(waits.WaitAsync(stopping), Task.Delay(idle, stopping));
-  // ...
-}
-```
-
-Or give each race a token of its own and cancel it once `WhenAny` returns, which suits a batching window that ends for good when its deadline passes:
-
-```csharp{title="Clearing WHIZ611 with a per-race token" description="Canceling the linked source takes the losing wait off the channel's queue; disposing it alone would not." category="Diagnostics" difficulty="ADVANCED" tags=["whiz611", "repository-check", "channels", "analyzer"] tests=["AbandonedChannelWaitAnalyzerTests.WaitOnALinkedToken_CanceledWithCancelAsync_ReportsNothingAsync", "AbandonedChannelWaitAnalyzerTests.WaitOnALinkedToken_WhoseSourceIsOnlyDisposed_ReportsAsync"]}
-using var waitCts = CancellationTokenSource.CreateLinkedTokenSource(stopping);
-var arrival = reader.WaitToReadAsync(waitCts.Token).AsTask();
-await Task.WhenAny(arrival, Task.Delay(window, timeProvider, waitCts.Token));
-await waitCts.CancelAsync();
-```
-
-## What it cannot see
-
-The rule follows a wait from the call that makes it to `Task.WhenAny` within one method. A wait stored in a field, returned from a helper, or held as a `ValueTask` before `AsTask()` is not traced, and a token is accepted only when it is the `Token` of a local source that the same method cancels.
+WHIZ611 reported a channel wait (`WaitToReadAsync`, `ReadAsync`, `WaitToWriteAsync` or `WriteAsync`) turned into a task
+and raced in `Task.WhenAny`, unless its token was the `Token` of a local `CancellationTokenSource` the method canceled.
+A wait that lost the race stayed queued in the channel until its token was canceled, which on a worker's stopping token
+is the life of the process (#2613). It accepted two fixes: one pending wait kept across passes, or a per-race token
+canceled once the race was decided. WHIZ612 accepts neither: the race is written once, in `WakeSet`.
 
 ## Related
 
+- [WHIZ612: Wait Raced in Task.WhenAny by Hand Instead of on a WakeSet](whiz612.md)
+- [Loop Waits and the WakeSet](../../../contributors/loop-waits.md)
 - [Repository Checks and Diagnostic IDs](../../../contributors/repository-checks.md)
