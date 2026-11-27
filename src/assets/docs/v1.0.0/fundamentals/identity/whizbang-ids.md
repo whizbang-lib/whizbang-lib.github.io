@@ -794,6 +794,9 @@ one purpose in a loop would give every item the same id and silently merge them.
 - the **handled message has no id** to derive from.
 - the purpose was **already derived** for this type in this handling.
 
+A unit test that calls a receptor's `HandleAsync` directly enters its handling first with `TestHandling.Enter`, which
+derives the same ids a real handling does (see [Testing receptors: receptors that derive ids](../../operations/testing/testing-receptors#derived-ids)).
+
 A purpose that is empty or white space is refused with `ArgumentException`. {verified: StrongIdDerivationTests.Derive_OutsideAHandling_ThrowsNamingWhyAsync, StrongIdDerivationTests.Derive_AfterTheHandlingEnded_ThrowsNamingWhyAsync, StrongIdDerivationTests.Derive_AHandledMessageWithNoId_ThrowsAsync, StrongIdDerivationTests.Derive_InvalidArguments_AreRefusedAsync, WhizbangIdDeriveFromTests.DeriveFrom_OutsideAHandling_ThrowsNamingTheTypeAsync}
 
 **It needs a pinned id.** Pin the type with `[PinnedId("<guid>")]` on its struct, or `[WhizbangId(PinnedId = "<guid>")]`

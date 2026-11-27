@@ -550,7 +550,7 @@ Whizbang:OperationalRetention:MaxBatchesPerCycle must be at least 1 (was 0); a c
 
 ## Build-time diagnostics (WHIZ###)
 
-Compile-time errors, warnings and notices from Whizbang's source generators and analyzers use `WHIZ###` IDs and surface in build output and the IDE, not at runtime. Every ID has its own page; each ID means one thing. WHIZ060 to WHIZ063 are also covered together on the [Serializable Property Analyzer](serializable-property-analyzer.md) page. Twelve IDs are **retired** and never reused. Ten (WHIZ003, WHIZ005, WHIZ020, WHIZ023, WHIZ042, WHIZ050, WHIZ051, WHIZ052, WHIZ057 and WHIZ803) were declared but never reported and are no longer in the generator package. WHIZ017 was reported until #1905 made the case it warned about impossible, and is no longer reported. WHIZ810 was reported until dictionary members became supported ([Dictionary Members](../../fundamentals/perspectives/dictionary-members.md)), and its analyzer is removed. Their pages explain what each described; delete any suppression of them.
+Compile-time errors, warnings and notices from Whizbang's source generators and analyzers use `WHIZ###` IDs and surface in build output and the IDE, not at runtime. Every ID has its own page; each ID means one thing. WHIZ060 to WHIZ063 are also covered together on the [Serializable Property Analyzer](serializable-property-analyzer.md) page. Thirteen IDs are **retired** and never reused. Ten (WHIZ003, WHIZ005, WHIZ020, WHIZ023, WHIZ042, WHIZ050, WHIZ051, WHIZ052, WHIZ057 and WHIZ803) were declared but never reported and are no longer in the generator package. WHIZ017 was reported until #1905 made the case it warned about impossible, and is no longer reported. WHIZ810 was reported until dictionary members became supported ([Dictionary Members](../../fundamentals/perspectives/dictionary-members.md)), and its analyzer is removed. WHIZ611, a repository check on channel waits raced in `Task.WhenAny`, was folded into WHIZ612, which covers every wait. Their pages explain what each described; delete any suppression of them.
 
 WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests and never ship in a package; they have pages like every other ID and are listed together in [Repository Checks and Diagnostic IDs](../../../contributors/repository-checks.md), with the registry every new ID is taken from.
 
@@ -689,7 +689,8 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ608 | Error | [Type-Naming Exception Without a Reason](whiz608.md) (repository check) |
 | WHIZ609 | Error | [Test Fixture Tears Down Twice](whiz609.md) (repository check) |
 | WHIZ610 | Error | [Type Name Read Before the Log Level Is Checked](whiz610.md) (repository check) |
-| WHIZ611 | Error | [Channel Wait Raced in Task.WhenAny Is Never Released](whiz611.md) (repository check) |
+| WHIZ611 | Retired | [Channel Wait Raced in Task.WhenAny Is Never Released](whiz611.md) (retired in #2617: folded into WHIZ612, ID never reused) |
+| WHIZ612 | Error | [Wait Raced in Task.WhenAny by Hand Instead of on a WakeSet](whiz612.md) (repository check) |
 | WHIZ701 | Info | [EF Core Perspective Discovery](whiz701.md) |
 | WHIZ702 | Info | [EF Core Migration Files Discovery](whiz702.md) |
 | WHIZ703 | Info | [No DbContext Found](whiz703.md) |
