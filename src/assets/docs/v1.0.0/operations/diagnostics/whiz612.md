@@ -22,7 +22,7 @@ codeReferences:
   - src/Whizbang.Core/Async/WaitSourceAttribute.cs
 testReferences:
   - tests/Whizbang.RepoAnalyzers.Tests/HandWrittenWaitRaceAnalyzerTests.cs
-  - tests/Whizbang.Core.Tests/Async/WakeSetTests.cs
+  - tests/Whizbang.Core.Component.Tests/Async/WakeSetTests.cs
 ---
 
 # WHIZ612: Wait Raced in Task.WhenAny by Hand Instead of on a WakeSet

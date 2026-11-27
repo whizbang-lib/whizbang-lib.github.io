@@ -12,8 +12,8 @@ codeReferences:
   - src/Whizbang.Core/Async/WaitSourceAttribute.cs
   - tools/Whizbang.RepoAnalyzers/HandWrittenWaitRaceAnalyzer.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Async/WakeSetTests.cs
-  - tests/Whizbang.Core.Tests/Async/WakeSetPermitTests.cs
+  - tests/Whizbang.Core.Component.Tests/Async/WakeSetTests.cs
+  - tests/Whizbang.Core.Component.Tests/Async/WakeSetPermitTests.cs
   - tests/Whizbang.RepoAnalyzers.Tests/HandWrittenWaitRaceAnalyzerTests.cs
 ---
 
