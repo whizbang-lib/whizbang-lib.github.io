@@ -1567,9 +1567,12 @@ Why each choice:
 {verified: RuleSetTests.CompareWith_ADifferenceOnlyInATypeNotShared_AgreesAsync, RuleSetTests.CompareWith_NoPeerRules_IsHaltedForNoFingerprintAsync, IntegrityPairGuardTests.Admit_ADifferentSharedType_HaltsWithOneErrorNamingBothSidesAndTheTypeAsync, IntegrityPairGuardTests.Admit_StillHaltedPastTheThreshold_AlertsOnce_ThenResumesOnItsOwnAsync, IntegrityPairGuardTests.Gauges_ReportEachPairsState_HaltedAge_AndTheServiceFingerprintAsync, TwoServicePairGuardTests.TheSameRules_ThePairProceeds_AndTheLossIsRepairedAsync, TwoServicePairGuardTests.ASharedTypesRulesDiffer_ThePairIsHaltedOnBothSides_WithTheReason_AndResumesOnceTheyMatchAsync, TwoServicePairGuardTests.AConsumerWithNoFingerprint_IsNotAnswered_AndThePairIsHaltedAsync, TwoServicePairGuardTests.AnOriginWithNoFingerprint_IsNotCompared_AndThePairIsHaltedAsync, TwoServicePairGuardTests.RulesDifferOnlyForATypeThePairDoesNotShare_ThePairProceedsAsync}
 
 Integrity runs for a service pair only while both apply the same rules to the event types they share. Every receptor
-asks the guard before it acts. A release that changes the eligibility rule halts every pair until both sides run it;
-version 2 ([integrity exclusions](./integrity-exclusions#the-mixed-version-pause), #2588) is such a release, and
-comparing a mixed pair under the older rule instead is open question #2615:
+asks the guard before it acts. The guard compares what the rules mean (the rules versions and each shared type's rule
+hash), never a package version, so an ordinary upgrade halts nothing. Two services on different rules versions are
+**paused** rather than halted: an expected state while service types upgrade separately, reported as a Warning with its
+own metrics and never the Critical halt alert ([the pause](./integrity-exclusions#the-mixed-version-pause), #2588).
+Shipping the rules library on its own version is #2378, and comparing a mixed pair under the older rule is open
+question #2615:
 
 ```mermaid {caption="The pair guard: an integrity message is acted on only while both services apply the same rules to the types they share" tests=["TwoServicePairGuardTests.ASharedTypesRulesDiffer_ThePairIsHaltedOnBothSides_WithTheReason_AndResumesOnceTheyMatchAsync","TwoServicePairGuardTests.TheSameRules_ThePairProceeds_AndTheLossIsRepairedAsync"]}
 flowchart LR
@@ -1586,11 +1589,14 @@ flowchart LR
 | Consumer, a checkpoint | Keeps the origin known (address, ownership, liveness) and verifies nothing |
 | Origin, a redelivery request the comparison made | Refuses it (`redelivery_requests_ignored{reason=pair_halted}`) |
 
-A halt is logged once at Error, naming the peer, this service's side, the reason (`no_fingerprint`,
-`semantics_version`, `eligibility_sql_version` or `type_rules`), both sides' versions and fingerprints, and the types
-whose rules differ. It is logged again only when the reason or the types change. A pair still halted after
-`Whizbang:StreamIntegrity:PairGuard:HaltedAlertAfter` (default 2 hours) is logged once at Critical. The first message
-whose rules match resumes the pair, with an information line; nothing has to be reset.
+A halt is logged once at Error, naming the peer, this service's side, the reason (`no_fingerprint` or `type_rules`),
+both sides' versions and fingerprints, and the types whose rules differ. It is logged again only when the reason or the
+types change. A pair still halted after `Whizbang:StreamIntegrity:PairGuard:HaltedAlertAfter` (default 2 hours) is
+logged once at Critical. A pair whose two services run different rules versions (`semantics_version` or
+`eligibility_sql_version`) is **paused** instead (#2588): a Warning, `pair_rules_version_pauses`, the `paused` state, and
+one Warning reminder (`pair_rules_version_pause_alerts`) past the threshold, never the Critical alert, because services
+that deploy separately run two rules versions until both upgrade ([the pause](./integrity-exclusions#the-mixed-version-pause)).
+The first message whose rules match resumes the pair, with an information line; nothing has to be reset.
 
 #### A halt survives a restart {#pair-halts-survive-a-restart}
 

@@ -52,6 +52,9 @@ Only **received history this service stores**. A mark is refused, with its reaso
 | `superseding` | A superseding event's digest counts its key, not the event, so the event alone cannot be removed from its origin's answer. |
 | `already_excluded` | Nothing to do. |
 
+A mark is local to the service that made it. An envelope's flags are not part of what goes on the wire, so a mark
+never reaches another service, and nothing another service sends can mark an event here.
+
 ## How both sides agree {#cross-service-agreement}
 
 Both sides of a comparison fold the same events by identity: an event's digest lanes depend on its id only. An
@@ -203,27 +206,32 @@ their reasons. Exclusions are not emitted as audited system events.
   probe that returns nothing.
 - **Marking** is batched, bounded and idle-gated.
 
-## The pause while services run different versions {#the-mixed-version-pause}
+## The pause while services run different rules versions {#the-mixed-version-pause}
 
-Testing the flag changes the eligibility rule, so `RuleSemantics.ELIGIBILITY_SQL_VERSION` moved from 1 to 2. The
-[pair guard](/v1.0.0/resilience/stream-integrity#the-pair-guard) halts every pair whose two sides run different
-versions, so **while one service of a pair runs a release before this one and the other runs this one or later, the
-pair does not compare at all**: no audit, no checkpoint verification, no repair. Nothing is lost and nothing is
-falsely repaired; the pair resumes on its own with the first message after both sides upgrade.
+Testing the flag changes the eligibility rule, so `RuleSemantics.ELIGIBILITY_SQL_VERSION` moved from 1 to 2 and the
+rules library's own version track (`src/Whizbang.Rules/rules-version.txt`) moved to `4.0.0`. The
+[pair guard](/v1.0.0/resilience/stream-integrity#the-pair-guard) compares what the rules mean (the rules versions and
+each shared type's rule hash), never the package version, so an ordinary upgrade pauses nothing. Only a real change in
+the rules, like this one, does.
 
-Services are deployed independently, so this pause can last days. An operator sees it as:
+All instances of one service deploy together; different services may not. So while one service of a pair runs a
+release before this one and the other runs this one or later, **the pair is paused**: nothing is compared, verified,
+repaired or redelivered, so nothing is falsely repaired, and it resumes on its own with the first message after both
+sides run the same rules version. This is an expected state between services that upgrade separately, not a fault, so
+it is reported apart from a real halt:
 
-- one **Error** log line per halted pair, "Integrity halted for the pair with '...'", with reason
-  `eligibility_sql_version` and both sides' versions;
-- `whizbang.stream_integrity.pair_halts` counting the halt with `reason="eligibility_sql_version"`,
-  `whizbang.stream_integrity.pair_state` reporting the pair `halted`, and `whizbang.stream_integrity.pair_halted_seconds`
-  growing;
-- a **Critical** log line and `pair_halt_alerts` once the halt outlasts `PairGuard:HaltedAlertAfter` (two hours by
-  default). During a planned, staggered upgrade, expect this alert, or raise the threshold for its duration.
+- one **Warning** per paused pair, "Integrity paused for the pair with '...'", naming both sides' rules versions;
+- `whizbang.stream_integrity.pair_rules_version_pauses` counting the pause (tagged by side), and
+  `whizbang.stream_integrity.pair_state` reporting the pair `paused` (a real halt reports `halted`);
+- once the pause outlasts `PairGuard:HaltedAlertAfter` (two hours by default), one more **Warning**, "still paused", and
+  `whizbang.stream_integrity.pair_rules_version_pause_alerts`. **Never** the Critical pair-halt alert or
+  `pair_halt_alerts`, which stay for pairs that disagree on a type's rules or send no rules at all.
 
-It lasts until both services of the pair run version 2. Comparing such a pair under the older rule instead of pausing
-is open question [#2615](https://github.com/whizbang-lib/whizbang/issues/2615); every version's rule text is kept in
-`Whizbang.Rules` so that option can be added.
+It lasts until both services of the pair run version 2. Shipping the rules library on its own version, so a rules
+change can be rolled out ahead of everything else, is the remaining packaging step:
+[#2378](https://github.com/whizbang-lib/whizbang/issues/2378). Comparing a mixed pair under the older rule instead of
+pausing is open question [#2615](https://github.com/whizbang-lib/whizbang/issues/2615); every version's rule text is
+kept in `Whizbang.Rules` so that option can be added.
 
 ## Configuration {#configuration}
 
