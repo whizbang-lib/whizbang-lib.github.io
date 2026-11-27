@@ -533,7 +533,9 @@ the document test, in the row form and after `Select(r => r.Data)`
 The document test is kept, so a filter never finds a row by its id that it would not find by its document
 {verified: StreamIdPrimaryKeySqlTests.ProjectedForm_StreamIdEquality_KeepsTheDocumentPredicateAsync}. A comparison
 with null, a stream-id test under `OR`, and an inequality are left to the document
-{verified: StreamIdPrimaryKeySqlTests.NullableStreamId_EqualsNull_IsLeftAloneAsync, StreamIdPrimaryKeySqlTests.StreamIdUnderOr_IsLeftAloneAsync, StreamIdPrimaryKeySqlTests.StreamIdInequality_IsLeftAloneAsync}.
+{verified: StreamIdPrimaryKeySqlTests.NullableStreamId_EqualsNull_IsLeftAloneAsync, StreamIdPrimaryKeySqlTests.StreamIdUnderOr_IsLeftAloneAsync, StreamIdPrimaryKeySqlTests.StreamIdInequality_IsLeftAloneAsync}. A stream id that is a `string` or a strongly-typed id is left to the document as well: the row's
+`id` is a `Guid`, so only a `Guid` or `Guid?` `[StreamId]` is registered for the rewrite
+{verified: StreamIdPrimaryKeySqlTests.UnregisteredModel_IsLeftAloneAsync}.
 
 ### Reads of the stream id {#stream-id-reads}
 
