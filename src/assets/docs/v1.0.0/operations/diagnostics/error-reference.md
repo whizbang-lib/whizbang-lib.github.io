@@ -689,6 +689,7 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ608 | Error | [Type-Naming Exception Without a Reason](whiz608.md) (repository check) |
 | WHIZ609 | Error | [Test Fixture Tears Down Twice](whiz609.md) (repository check) |
 | WHIZ610 | Error | [Type Name Read Before the Log Level Is Checked](whiz610.md) (repository check) |
+| WHIZ611 | Error | [Channel Wait Raced in Task.WhenAny Is Never Released](whiz611.md) (repository check) |
 | WHIZ701 | Info | [EF Core Perspective Discovery](whiz701.md) |
 | WHIZ702 | Info | [EF Core Migration Files Discovery](whiz702.md) |
 | WHIZ703 | Info | [No DbContext Found](whiz703.md) |
