@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "46034850770",
-    "sha": "7412a96966dad791ba959eea4e83ae55720832ed",
+    "runId": "46071066490",
+    "sha": "61c12d6cbbe36e933ca64cd3c9a9b9fa3d63e506",
     "branch": "develop",
-    "libraryVersion": "0.4522.0-alpha.759",
-    "completedAt": "2026-11-27T16:48:05.952Z"
+    "libraryVersion": "0.4522.0-alpha.780",
+    "completedAt": "2026-11-27T21:46:11.856Z"
   },
   "total": {
-    "passed": 46002,
+    "passed": 46091,
     "failed": 0,
     "skipped": 12
   },
@@ -18,7 +18,7 @@
       "skipped": 0
     },
     "component": {
-      "passed": 6442,
+      "passed": 6452,
       "failed": 0,
       "skipped": 0
     },
@@ -33,12 +33,12 @@
       "skipped": 3
     },
     "postgres-dapper": {
-      "passed": 1755,
+      "passed": 1757,
       "failed": 0,
       "skipped": 0
     },
     "postgres-efcore-": {
-      "passed": 11809,
+      "passed": 11874,
       "failed": 0,
       "skipped": 0
     },
@@ -58,7 +58,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 24904,
+      "passed": 24916,
       "failed": 0,
       "skipped": 8
     }
@@ -162,7 +162,7 @@
     },
     "Whizbang.Core.Component.Tests": {
       "file": "Whizbang.Core.Component.Tests.json",
-      "passed": 5063,
+      "passed": 5067,
       "failed": 0,
       "skipped": 0
     },
@@ -186,7 +186,7 @@
     },
     "Whizbang.Core.Unit.Messaging.Tests": {
       "file": "Whizbang.Core.Unit.Messaging.Tests.json",
-      "passed": 3709,
+      "passed": 3721,
       "failed": 0,
       "skipped": 0
     },
@@ -204,13 +204,13 @@
     },
     "Whizbang.Data.Dapper.Postgres.Tests": {
       "file": "Whizbang.Data.Dapper.Postgres.Tests.json",
-      "passed": 1755,
+      "passed": 1757,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.EFCore.Postgres.Tests": {
       "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
-      "passed": 11807,
+      "passed": 11872,
       "failed": 0,
       "skipped": 0
     },
@@ -264,7 +264,7 @@
     },
     "Whizbang.Hosting.AspNet.Component.Tests": {
       "file": "Whizbang.Hosting.AspNet.Component.Tests.json",
-      "passed": 60,
+      "passed": 66,
       "failed": 0,
       "skipped": 0
     },
