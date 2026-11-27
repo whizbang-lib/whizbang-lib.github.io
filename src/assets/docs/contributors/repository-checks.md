@@ -4,7 +4,7 @@ pageType: reference
 audience: [contributor]
 status: current
 order: 5
-description: The build errors this repository raises on its own code and tests (WHIZ600 to WHIZ611), what each one protects, and how a new diagnostic gets its ID from the one registry of every WHIZ ID
+description: The build errors this repository raises on its own code and tests (WHIZ600 to WHIZ612), what each one protects, and how a new diagnostic gets its ID from the one registry of every WHIZ ID
 tags: contributing, analyzers, diagnostics, testing, sharding, ci
 ---
 
@@ -27,7 +27,7 @@ Every build diagnostic in this repository has one ID form, `WHIZ` and three digi
 | [WHIZ608](../v1.0.0/operations/diagnostics/whiz608.md) | `Whizbang.RepoAnalyzers` | A suppression of WHIZ607 that does not say why. |
 | [WHIZ609](../v1.0.0/operations/diagnostics/whiz609.md) | `Whizbang.TestAnalyzers` | A test class with an `[After(Test)]` hook that is also disposable, so TUnit tears it down twice. |
 | [WHIZ610](../v1.0.0/operations/diagnostics/whiz610.md) | `Whizbang.RepoAnalyzers` | Library code reads a type's name for a log call at `Information` or below, or for an activity's name, before the log level or a listener is checked. |
-| [WHIZ611](../v1.0.0/operations/diagnostics/whiz611.md) | `Whizbang.RepoAnalyzers` | Library code races a channel wait in `Task.WhenAny` and nothing cancels it when another task wins, so the channel keeps the waiter for the life of its token. |
+| [WHIZ612](../v1.0.0/operations/diagnostics/whiz612.md) | `Whizbang.RepoAnalyzers` | Library code races a wait in `Task.WhenAny` or `Task.WaitAny` by hand instead of on a `WakeSet`, so the loser stays registered wherever it waits. Replaces WHIZ611 (retired). |
 
 WHIZ600 to WHIZ604 were `WHZ0001` to `WHZ0005` until they moved into the single ID form. A suppression or severity setting that names an old ID no longer applies.
 
@@ -71,6 +71,18 @@ applies to every project under `src/`, because nothing in the code says which me
 [WHIZ610](../v1.0.0/operations/diagnostics/whiz610.md) lists the checks it recognizes and what it cannot see.
 
 {verified: EagerLogTypeNameAnalyzerTests.Descriptor_IsARepositoryRuleReportedAsAnErrorAsync, EagerLogTypeNameAnalyzerTests.UnguardedLogArgument_IsReportedAsync, EagerLogTypeNameAnalyzerTests.GuardedOrNotALowLevelLogArgument_IsNotReportedAsync}
+
+## WHIZ612: loops wait through one primitive {#whiz612}
+
+A wait that loses a hand-written `Task.WhenAny` race stays registered wherever it waits until its token is canceled, so
+a worker loop that races fresh waits on its stopping token grows for the life of the process (#728, #2613). Every such
+race in the library goes through `WakeSet`, and WHIZ612 fails a library build on any `Task.WhenAny` or `Task.WaitAny`
+over a wait anywhere else. No shape of a hand-written race is accepted and there is no suppression; the one exemption
+is `src/Whizbang.Core/Async/WakeSet.cs`, by exact path, locked by a test. It applies to every project under `src/`.
+[WHIZ612](../v1.0.0/operations/diagnostics/whiz612.md) lists the waits it recognizes and what it cannot see;
+[Loop Waits and the WakeSet](loop-waits.md) explains the primitive.
+
+{verified: HandWrittenWaitRaceAnalyzerTests.Descriptor_IsTheRepositoryRuleReportedAsAnErrorAsync, HandWrittenWaitRaceAnalyzerTests.AWaitOnALinkedTokenTheMethodCancels_StillReportsAsync, HandWrittenWaitRaceAnalyzerTests.TheRaceInWakeSetsOwnFile_IsTheOneExemptionAsync}
 
 ## Docs tags point at published pages {#docs-tag-targets}
 
