@@ -18701,10 +18701,10 @@
     "symbol": "IntegrityExclusionSelection",
     "docs": "resilience/integrity-exclusions#selections"
   },
-  "IntegrityUnresolved": {
+  "IntegrityUnresolvedKinds": {
     "file": "src/Whizbang.Core/Messaging/IntegrityExclusions.cs",
     "line": 97,
-    "symbol": "IntegrityUnresolved",
+    "symbol": "IntegrityUnresolvedKinds",
     "docs": "resilience/integrity-exclusions#the-past-everything-unresolved-before-a-time"
   },
   "IntegrityUnexclusionRequest": {
