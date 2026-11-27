@@ -13481,6 +13481,11 @@
       },
       {
         "testFile": "tests/Whizbang.Testing.Tests/Async/LoopWaitProbeTests.cs",
+        "testMethod": "CountingClock_Disarmed_CompletesOnceThatManyArmedTimersWereStoppedFiredOrDisposedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Testing.Tests/Async/LoopWaitProbeTests.cs",
         "testMethod": "CountingClock_KeepsTheInnerClocksTimeAsync",
         "linkSource": "XmlTag"
       },
@@ -13589,6 +13594,11 @@
       {
         "testFile": "tests/Whizbang.Testing.Tests/Async/LoopWaitProbeTests.cs",
         "testMethod": "CountingClock_AOneShotTimerThatFires_IsNoLongerArmed_AndAPeriodicOneStaysArmedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Testing.Tests/Async/LoopWaitProbeTests.cs",
+        "testMethod": "CountingClock_Disarmed_CompletesOnceThatManyArmedTimersWereStoppedFiredOrDisposedAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -13705,6 +13715,11 @@
       },
       {
         "testFile": "tests/Whizbang.Testing.Tests/Async/LoopWaitProbeTests.cs",
+        "testMethod": "CountingClock_Disarmed_CompletesOnceThatManyArmedTimersWereStoppedFiredOrDisposedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Testing.Tests/Async/LoopWaitProbeTests.cs",
         "testMethod": "CountingClock_KeepsTheInnerClocksTimeAsync",
         "linkSource": "XmlTag"
       },
@@ -13813,6 +13828,11 @@
       {
         "testFile": "tests/Whizbang.Testing.Tests/Async/LoopWaitProbeTests.cs",
         "testMethod": "CountingClock_AOneShotTimerThatFires_IsNoLongerArmed_AndAPeriodicOneStaysArmedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Testing.Tests/Async/LoopWaitProbeTests.cs",
+        "testMethod": "CountingClock_Disarmed_CompletesOnceThatManyArmedTimersWereStoppedFiredOrDisposedAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -43344,6 +43364,16 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "ATimeoutStartedBeforeTheWork_CountsTheWorkAgainstThePassAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "WaitWithNoTimeoutStarted_WaitsForASource_AndAStartedTimeoutIsOverWithItsPassAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
         "testMethod": "Dispose_CancelsTheSetsToken_AndSoAWaitMadeOnItAsync",
         "linkSource": "XmlTag"
       },
@@ -69236,6 +69266,156 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
         "testMethod": "TheDeadline_IsArmedBeforeTheSources_SoTimeSpentArmingThemCountsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "ATimeoutStartedBeforeTheWork_CountsTheWorkAgainstThePassAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "WaitWithNoTimeoutStarted_WaitsForASource_AndAStartedTimeoutIsOverWithItsPassAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "Dispose_CancelsTheSetsToken_AndSoAWaitMadeOnItAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "AChannelSourcesLastWait_GivesTheWaitsAnswer_AsAwaitingTheWhenAnyWinnerDidAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "AnIdlePark_AllocatesNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "Misuse_IsRefusedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "MoreThanSixtyFourSources_AreRefusedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "WaitAsync_AnItemOnOneChannel_WakesWithThatChannelOnlyAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "WaitAsync_SourcesAlreadyReady_ReturnsAtOnceWithEveryReadySourceAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "WaitAsync_AnItemLeftUnread_WakesTheNextPassTooAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "WaitAsync_NothingFires_EndsOnTheTimeoutOfTheInjectedClockAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "WaitAsync_AZeroTimeout_ReturnsATimeoutWithoutParkingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "WaitAsync_AnInfiniteTimeout_WaitsForASourceAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "WaitAsync_AChannelItsWriterCompleted_ReportsItCompletedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "IdlePasses_EndedByTheTimeout_KeepOneWaitOnTheChannelAndOneTimerAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "Passes_WonByAChannel_StopTheTimerSoNoStaleTimeoutEndsALaterPassAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "Dispose_ReleasesEveryWaitTheSetMadeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "Dispose_ReleasesTheSetFromAGateThatNeverOpensAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "ASignal_WakesTheSet_AndIsConsumedOnEveryWakeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "ASignal_IsConsumedOnATimeoutToo_AndKeepsOneWaiterAcrossPassesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "AGate_WakesTheSetOnceOpen_AndOnEveryPassAfterAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "AGateAlreadyOpen_IsReadyOnTheFirstPassAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "TheStoppingToken_WakesAPendingWaitAsStopped_AndEveryWaitAfterAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "AStoppingTokenAlreadyCanceled_StopsTheFirstWaitAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "ATimerFire_EndsTheParkedPassAsATimeout_AndArmsAndStopsTheOneTimerAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "ATimerFireWithNoPassParked_OrAnInfinitePass_DoesNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "ASetThatNeverWaitsWithATimeout_MakesNoTimerAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "TheDeadline_IsArmedBeforeTheSources_SoTimeSpentArmingThemCountsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "ATimeoutStartedBeforeTheWork_CountsTheWorkAgainstThePassAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "WaitWithNoTimeoutStarted_WaitsForASource_AndAStartedTimeoutIsOverWithItsPassAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -210386,6 +210566,16 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "ATimeoutStartedBeforeTheWork_CountsTheWorkAgainstThePassAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "WaitWithNoTimeoutStarted_WaitsForASource_AndAStartedTimeoutIsOverWithItsPassAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
         "testMethod": "Dispose_CancelsTheSetsToken_AndSoAWaitMadeOnItAsync",
         "linkSource": "XmlTag"
       },
@@ -210466,6 +210656,13 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetPermitTests.cs",
         "testMethod": "APermitHandedBackByOneSet_IsAcquiredByTheNext_AndNeverDoubleCountedAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "StartTimeout": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Async/WakeSetTests.cs",
+        "testMethod": "ATimeoutStartedBeforeTheWork_CountsTheWorkAgainstThePassAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -261294,6 +261491,36 @@
       }
     ],
     "LoopWaitProbeTests.CountingClock_AOneShotTimerThatFires_IsNoLongerArmed_AndAPeriodicOneStaysArmedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Testing/Async/CountingChannelReader.cs",
+        "sourceLine": 33,
+        "sourceSymbol": "CountingChannelReader",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Testing/Async/CountingTimeProvider.cs",
+        "sourceLine": 28,
+        "sourceSymbol": "CountingTimeProvider",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Testing/Async/LoopWaitBudget.cs",
+        "sourceLine": 25,
+        "sourceSymbol": "LoopWaitBudget",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Testing/Async/ReleaseCheck.cs",
+        "sourceLine": 29,
+        "sourceSymbol": "ReleaseCheck",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "LoopWaitProbeTests.CountingClock_Disarmed_CompletesOnceThatManyArmedTimersWereStoppedFiredOrDisposedAsync": [
       {
         "sourceFile": "src/Whizbang.Testing/Async/CountingChannelReader.cs",
         "sourceLine": 33,
@@ -555571,21 +555798,28 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 85,
+        "sourceLine": 86,
         "sourceSymbol": "ChannelWakeSource",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -555601,14 +555835,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -555624,14 +555865,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -555647,14 +555895,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -555670,14 +555925,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -555693,14 +555955,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -555716,14 +555985,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -555739,14 +556015,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -555762,14 +556045,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -555785,7 +556075,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -555793,13 +556083,20 @@
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
         "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 208,
         "sourceSymbol": "Dispose",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -555815,14 +556112,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -555838,21 +556142,28 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 94,
+        "sourceLine": 95,
         "sourceSymbol": "Add",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -555868,14 +556179,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -555891,21 +556209,28 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 107,
+        "sourceLine": 108,
         "sourceSymbol": "Add",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -555921,14 +556246,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -555944,14 +556276,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -555967,14 +556306,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -555990,14 +556336,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -556013,14 +556366,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -556036,14 +556396,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -556059,14 +556426,88 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
+        "sourceSymbol": "struct",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "WakeSetTests.ATimeoutStartedBeforeTheWork_CountsTheWorkAgainstThePassAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 45,
+        "sourceSymbol": "WakeSet",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 136,
+        "sourceSymbol": "StartTimeout",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 162,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
+        "sourceSymbol": "struct",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "WakeSetTests.WaitWithNoTimeoutStarted_WaitsForASource_AndAStartedTimeoutIsOverWithItsPassAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 45,
+        "sourceSymbol": "WakeSet",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 162,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -556082,14 +556523,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -556105,14 +556553,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -556128,14 +556583,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -556151,21 +556613,28 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 64,
+        "sourceLine": 65,
         "sourceSymbol": "WakeSet",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -556181,14 +556650,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 135,
+        "sourceLine": 162,
         "sourceSymbol": "ValueTask",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 306,
+        "sourceLine": 175,
+        "sourceSymbol": "ValueTask",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
+        "sourceLine": 372,
         "sourceSymbol": "struct",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -556197,14 +556673,14 @@
     "WakeSetPermitTests.APermitThatFrees_WakesTheSet_AndIsTakenExactlyOnceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 120,
+        "sourceLine": 121,
         "sourceSymbol": "Add",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 424,
+        "sourceLine": 490,
         "sourceSymbol": "PermitWakeSource",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -556213,14 +556689,14 @@
     "WakeSetPermitTests.AFreePermit_IsReadyOnTheFirstPass_AndAfterATake_TheNextPassAcquiresAnotherAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 120,
+        "sourceLine": 121,
         "sourceSymbol": "Add",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 424,
+        "sourceLine": 490,
         "sourceSymbol": "PermitWakeSource",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -556229,14 +556705,14 @@
     "WakeSetPermitTests.AHeldPermitNotTaken_StaysHeldAndReady_UntilTakenAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 120,
+        "sourceLine": 121,
         "sourceSymbol": "Add",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 424,
+        "sourceLine": 490,
         "sourceSymbol": "PermitWakeSource",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -556245,14 +556721,14 @@
     "WakeSetPermitTests.TwoSourcesBothAcquired_TheOneNotTaken_IsHandedBackOnDisposeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 120,
+        "sourceLine": 121,
         "sourceSymbol": "Add",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 424,
+        "sourceLine": 490,
         "sourceSymbol": "PermitWakeSource",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -556261,14 +556737,14 @@
     "WakeSetPermitTests.AQueuedAcquireThatLandsAfterTheSetIsDisposed_IsHandedBackAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 120,
+        "sourceLine": 121,
         "sourceSymbol": "Add",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 424,
+        "sourceLine": 490,
         "sourceSymbol": "PermitWakeSource",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -556277,14 +556753,14 @@
     "WakeSetPermitTests.AnAcquireStillQueuedWhenTheSetIsDisposed_IsCanceled_AndHoldsNoPermitAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 120,
+        "sourceLine": 121,
         "sourceSymbol": "Add",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 424,
+        "sourceLine": 490,
         "sourceSymbol": "PermitWakeSource",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -556293,14 +556769,14 @@
     "WakeSetPermitTests.APermitHandedBackByOneSet_IsAcquiredByTheNext_AndNeverDoubleCountedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 120,
+        "sourceLine": 121,
         "sourceSymbol": "Add",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Async/WakeSet.cs",
-        "sourceLine": 424,
+        "sourceLine": 490,
         "sourceSymbol": "PermitWakeSource",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -599809,12 +600285,12 @@
     }
   ],
   "metadata": {
-    "generated": "2026-11-27T06:43:18.226Z",
+    "generated": "2026-11-27T08:16:10.035Z",
     "sourceFiles": 2657,
     "testFiles": 4720,
-    "totalLinks": 28118,
-    "codeSymbols": 3969,
-    "testMethods": 24149,
+    "totalLinks": 28122,
+    "codeSymbols": 3970,
+    "testMethods": 24152,
     "linkHealthFindings": 120
   }
 }

@@ -21631,25 +21631,25 @@
   },
   "WakeReason": {
     "file": "src/Whizbang.Core/Async/WakeSet.cs",
-    "line": 290,
+    "line": 356,
     "symbol": "WakeReason",
     "docs": "contributors/loop-waits"
   },
   "WakeSource": {
     "file": "src/Whizbang.Core/Async/WakeSet.cs",
-    "line": 325,
+    "line": 391,
     "symbol": "WakeSource",
     "docs": "contributors/loop-waits"
   },
   "ChannelWakeSource": {
     "file": "src/Whizbang.Core/Async/WakeSet.cs",
-    "line": 366,
+    "line": 432,
     "symbol": "ChannelWakeSource",
     "docs": "contributors/loop-waits"
   },
   "PermitWakeSource": {
     "file": "src/Whizbang.Core/Async/WakeSet.cs",
-    "line": 423,
+    "line": 489,
     "symbol": "PermitWakeSource",
     "docs": "contributors/loop-waits"
   },
