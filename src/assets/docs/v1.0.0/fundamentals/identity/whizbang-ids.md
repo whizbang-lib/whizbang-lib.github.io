@@ -25,6 +25,23 @@ codeReferences:
   - src/Whizbang.Core/Uuid7IdProvider.cs
   - src/Whizbang.Core/WhizbangIdServiceCollectionExtensions.cs
   - src/Whizbang.Core/WhizbangIdAttribute.cs
+  - src/Whizbang.Core/UuidVersions.cs
+  - src/Whizbang.Core/WhizbangIdForms.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/WhizbangIdTypeMapping.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdScalarRewrite.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdToleranceRewriter.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdScalarRewriteStep.cs
+  - src/Whizbang.Data.Postgres/BatchedRewriteRunner.cs
+  - src/Whizbang.Data.Postgres/StrongIdDocumentGate.cs
+  - src/Whizbang.Core/Perspectives/WhizbangIdDocumentForm.cs
+  - src/Whizbang.Data.Postgres/StrongIdDocumentGateStep.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdSetterFormRewriter.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/StrongIdDocumentTarget.cs
+  - src/Whizbang.Data.Postgres/PostgresServerDatabase.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/ServerDatabaseNameInterceptor.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/WhizbangIdMigrationsModelDiffer.cs
+  - src/Whizbang.Generators/Templates/Snippets/WhizbangIdJsonSnippets.cs
+  - src/Whizbang.Generators/Templates/Snippets/WhizbangIdRuleSnippets.cs
   - src/Whizbang.Core/Messaging/StrongIdDerivation.cs
   - src/Whizbang.Core/Messaging/Handling.cs
   - src/Whizbang.Generators/WhizbangIdDeclaration.cs
@@ -52,6 +69,21 @@ testReferences:
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdVersionAcceptanceTests.cs
   - tests/Whizbang.Generators.Tests/WhizbangIdAcceptAnyVersionTests.cs
+  - tests/Whizbang.Generators.Tests/WhizbangIdVersionsTests.cs
+  - tests/Whizbang.Generators.Tests/WhizbangIdGrandfatheredTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdGrandfatheredTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/WhizbangIdDocumentStorageTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/StrongIdScalarRewriteIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/WhizbangIdModelTimingTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GraphQLWhizbangIdFilterIndexTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/StrongIdDocumentGateTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/WhizbangIdEntityColumnTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStrongIdDocumentGateTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveUpsertStrongIdFormTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/StrongIdPooledDatabaseNameTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/StrongIdTrackedSaveFormTests.cs
+  - tests/Whizbang.Core.Tests/WhizbangIdJsonConverterReadTests.cs
+  - tests/Whizbang.Core.Tests/Validation/GuidOrderingStreamIdByTypeTests.cs
   - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/StrongIdDerivationTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdDeriveFromTests.cs
   - tests/Whizbang.Generators.Tests/WhizbangIdDeriveFromTests.cs
@@ -77,7 +109,7 @@ testReferences:
   - tests/Whizbang.Generators.Tests/ThirdPartyGuidInterceptionTests.cs
   - tests/Whizbang.Generators.Tests/GuidUsageAnalyzerTests.cs
   - tests/Whizbang.Migrate.Tests/Transformers/GuidToTrackedGuidTransformerTests.cs
-lastMaintainedCommit: 'bf8517ac'
+lastMaintainedCommit: '9ea505e81'
 ---
 
 # WhizbangIds: Strongly-Typed Identity Values
@@ -826,7 +858,7 @@ public readonly partial struct CustomerId;
 The `[WhizbangId]` attribute triggers source generation that creates:
 - Value object with `Value` property (Guid)
 - `New()` static method for creating new IDs (uses `TrackedGuid.New()` internally)
-- `From(Guid)` / `From(TrackedGuid)` static methods for wrapping existing GUIDs: **both validate UUIDv7** and throw `ArgumentException` for non-v7 values (unless the id is declared with [`AcceptAnyVersion`](#accept-any-version))
+- `From(Guid)` / `From(TrackedGuid)` static methods for wrapping existing GUIDs: **both validate UUIDv7** and throw `ArgumentException` for non-v7 values (unless the id lists other [`Versions`](#accepted-versions), is declared with [`AcceptAnyVersion`](#accept-any-version), or [grandfathers](#grandfathered-values) the value)
 - `Parse(string)` method for deserialization (validates UUIDv7)
 - Equality operators and `IComparable<T>`
 - Implicit conversion to Guid (explicit conversion from Guid)
@@ -871,8 +903,11 @@ Guid underlyingGuid = orderId.Value;
 
 ### Ids that are not UUIDv7 {#accept-any-version}
 
-Some identities are not UUIDv7 and never will be: name-derived ids (UUIDv5 or v8), ids derived from a hash, and
-v4 ids issued by an external identity provider. Declare those ids with `AcceptAnyVersion = true`:
+Ids your application makes are UUIDv7: `New()` mints one, and the framework's derivations
+(`GeneratedStreamIdentity.Derive`, `EmissionIdentity.Derive`, `CompositeChildIdentity.ForChild`) all produce v7. Some
+values an id must hold are not: ids already in stored data from before the application used UUIDv7, and ids another
+system issues. When you know which versions those are, list them with [`Versions`](#accepted-versions) and keep the
+id strict. For ids issued outside your system, whose version you do not control, declare `AcceptAnyVersion = true`:
 
 ```csharp{title="Accepting any Guid version" description="An id that takes any non-empty Guid, such as one issued by an external identity provider" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "AcceptAnyVersion"] tests=["WhizbangIdVersionAcceptanceTests.AnyVersion_FromGuid_RoundTripsAsync", "WhizbangIdVersionAcceptanceTests.AnyVersion_New_StillProducesUuidV7Async", "WhizbangIdVersionAcceptanceTests.AnyVersion_EmptyGuid_IsRejectedByTheCheckedEntryPointsAsync", "WhizbangIdVersionAcceptanceTests.Strict_NonV7_IsRejectedByFromParseCastAndJsonAsync"]}
 using Whizbang.Core;
@@ -937,9 +972,363 @@ creates, keep the default, so they stay UUIDv7 and sort by creation time.
 #### Declare the option the same way everywhere
 
 An id can be declared through more than one `[WhizbangId]`: on the struct, on a property, or on a constructor
-parameter. When some of those set `AcceptAnyVersion = true` and others do not, the id keeps the UUIDv7 rule, whatever
-order the attributes are found in, and [WHIZ029](../../operations/diagnostics/whiz029) is reported at each
-`AcceptAnyVersion = true` that is ignored.
+parameter. When some of those set `AcceptAnyVersion = true` and others do not, the id keeps the stricter rule of the
+others (UUIDv7, or their `Versions` list), whatever order the attributes are found in, and
+[WHIZ029](../../operations/diagnostics/whiz029) is reported at each `AcceptAnyVersion = true` that is ignored.
+
+### A list of accepted versions {#accepted-versions}
+
+`Versions` sits between the two rules, for an id that must also hold values the application did not make, from a
+source whose versions are known. Customers imported from a previous CRM keep their v4 ids, for example, while new ones
+are minted as v7. `AcceptAnyVersion` would let such an id take anything: a raw hash poured into a Guid, or a value
+pasted from another kind of id. List the versions instead:
+
+```csharp{title="Accepting a list of versions" description="An id that is minted (v7) or imported from another system (v4), and refuses every other version" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "Versions"] tests=["WhizbangIdVersionAcceptanceTests.AllowList_AcceptedVersion_RoundTripsThroughEveryCheckedEntryPointAsync", "WhizbangIdVersionAcceptanceTests.AllowList_VersionNotInTheList_IsRejectedByEveryCheckedEntryPointAsync", "WhizbangIdVersionAcceptanceTests.AllowList_Refusal_NamesTheAcceptedVersionsAndTheOneReceivedAsync", "WhizbangIdVersionAcceptanceTests.AllowList_New_StillProducesUuidV7Async"]}
+using Whizbang.Core;
+
+// New customers are minted here; customers imported from the previous CRM keep their v4 ids.
+[WhizbangId(Versions = UuidVersions.V7 | UuidVersions.V4)]
+public readonly partial struct CustomerId;
+
+var minted = CustomerId.New();                                                      // v7: accepted
+var imported = CustomerId.Parse("3f2504e0-4f89-41d3-9a0c-0305e82c3301");           // v4: accepted
+
+// A v5 hash: throws ArgumentException
+// "CustomerId requires UUIDv4 or UUIDv7 (RFC 9562 variant) but received version 5, variant 9"
+CustomerId.Parse("886313e1-3b8a-5372-9b90-0c9aee199e5d");
+```
+
+A value must have a listed version and the RFC 9562 variant (the top two bits of octet 8 are `10`). Random or hashed
+bytes carry a listed version nibble by chance far more often than they also carry the variant
+{verified: WhizbangIdVersionAcceptanceTests.AllowList_ListedVersionWithAnotherVariant_IsRejectedByEveryCheckedEntryPointAsync}.
+
+`UuidVersions` is a flags enum with one flag per RFC 9562 version, `V1` to `V8`. `Versions` defaults to `V7`, so an
+id that does not write it, or writes `Versions = UuidVersions.V7`, generates the code it always has, plus `IsAccepted`.
+
+Every generated id has `IsAccepted(Guid)`: its rule, including a [grandfathered value](#grandfathered-values), as a
+yes or no that never throws. `From` checks through it, and the stream-id report asks it, so a stream id the id's own
+rule accepts is never reported, and a grandfathered-values hook that throws makes the stream id reported rather than
+failing the append, with a Warning, once per stream id, naming the id type, the stream id and what the hook threw
+{verified: GuidOrderingStreamIdByTypeTests.AcceptsStreamId_AsksTheIdsOwnRule_WithoutAnExceptionAsync, GuidOrderingStreamIdByTypeTests.AcceptsStreamId_AHookThatThrows_ReportsTheStreamIdRatherThanFailingTheAppendAsync, GuidOrderingStreamIdByTypeTests.AcceptsStreamId_AHookThatThrows_IsLoggedAtWarningNamingTheIdTypeAndStreamIdAsync}.
+An id type that declares its own member named `IsAccepted` is the error
+[WHIZ045](../../operations/diagnostics/whiz045) {verified: WhizbangIdVersionsTests.AnIdThatDeclaresIsAccepted_ReportsWhiz045Async}.
+
+```csharp{title="Asking an id's rule without an exception" description="IsAccepted answers what From would accept" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "WhizbangId", "Versions"] tests=["GuidOrderingStreamIdByTypeTests.AcceptsStreamId_AsksTheIdsOwnRule_WithoutAnExceptionAsync"]}
+if (CustomerId.IsAccepted(value)) {
+  var id = CustomerId.From(value);
+}
+```
+
+| Way in | Default | `Versions = V7 \| V4` | `AcceptAnyVersion = true` |
+|--------|---------|----------------------|---------------------------|
+| `From(Guid)`, `From(TrackedGuid)`, `Parse`, explicit cast, transport JSON reader, GraphQL scalar | v7 only | v7 or v4, RFC variant | any non-empty |
+| `Guid.Empty` | refused | refused | refused |
+| Public constructor, `Value` initializer (load path) | not checked | not checked | not checked |
+| `New()` | v7 | v7 | v7 |
+
+Only v7 values are time-ordered, so a value of another version costs what time-ordering gave. It has
+`IsTimeOrdered` `false`, `GetTimestamp()` returns no meaningful time, and `CompareTo` and the ordering operators no
+longer follow creation order ([What the option costs](#what-the-option-costs) applies to the non-v7 values). Used as a
+stream id, it also loses the index locality time-ordered values give a database: its rows land across the index
+rather than at its end. The framework's own ordering is unaffected, since it relies on the message and event ids it
+mints, and a stream id is only hashed for partitioning and sorted for lock ordering.
+
+Do not stamp version 7 over hashed bits to make a value pass the default rule: the timestamp bits would be
+meaningless, so `GetTimestamp()` would lie and ordering would be random. An honest version in the list is better.
+
+The declarations of one id must agree:
+
+- When they list different versions, the id accepts the versions they have in common, whatever order the attributes
+  are found in, and [WHIZ038](../../operations/diagnostics/whiz038) is reported at each list that was narrowed. An
+  omitted `Versions` counts as `V7`.
+- Writing `Versions` together with `AcceptAnyVersion = true` is the error
+  [WHIZ039](../../operations/diagnostics/whiz039).
+- An empty list (`UuidVersions.None`), or declarations with no version in common, is the error
+  [WHIZ043](../../operations/diagnostics/whiz043), reported at a declaration that wrote `Versions`. An ignored
+  `AcceptAnyVersion` opt-in is still [WHIZ029](../../operations/diagnostics/whiz029) then, naming the UUIDv7 fallback.
+- A bit that names no version, such as `(UuidVersions)1` or a bit above 8, is the error
+  [WHIZ044](../../operations/diagnostics/whiz044).
+
+### Grandfathered values {#grandfathered-values}
+
+Applications adopting strong ids on existing data often find a handful of stored values that will never fit the
+rule: seed data with hand-typed constant ids, well-known system identities, a few records created before the
+application minted UUIDv7. Re-keying them means an upcaster for the stream and for every event that mentions the old
+id, and a rebuild of every affected perspective. Opening the type with `AcceptAnyVersion` drops the protection for
+every future value just to admit a few old ones.
+
+Instead, name them. A strict or allow-list id declares a partial method, `_isGrandfathered`, that the id type can
+implement:
+
+```csharp{title="Grandfathering a frozen set of values" description="A strict id that accepts a few seeded values that predate the UUIDv7 rule, and refuses every other non-v7 value" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "Grandfathered"] tests=["WhizbangIdGrandfatheredTests.Grandfathered_IsAcceptedByEveryCheckedEntryPointAsync", "WhizbangIdGrandfatheredTests.NotGrandfathered_IsStillRefusedByEveryCheckedEntryPointAsync", "WhizbangIdGrandfatheredTests.EmptyGuid_IsRefusedByEveryCheckedEntryPointWhateverTheHookSaysAsync"]}
+using System.Collections.Frozen;
+using Whizbang.Core;
+
+[WhizbangId]
+public readonly partial struct ProductCatalogId {
+  // Seeded before ids were UUIDv7. Frozen: new values are always minted.
+  private static readonly FrozenSet<Guid> _grandfatheredValues = new[] {
+    new Guid("3f2504e0-4f89-41d3-9a0c-0305e82c3301"),
+    new Guid("6ba7b810-9dad-41d1-80b4-00c04fd430c8"),
+  }.ToFrozenSet();
+
+  // As declared: no accessibility modifier.
+  static partial void _isGrandfathered(Guid value, ref bool grandfathered) =>
+    grandfathered = _grandfatheredValues.Contains(value);
+}
+```
+
+- `From`, `Parse`, the explicit cast, the transport JSON reader and the GraphQL scalar ask the hook when a value
+  breaks the id's rule (UUIDv7, or its `Versions` list), and accept the value when the hook sets `grandfathered`.
+  Every other value is still refused.
+- The hook is never asked about `Guid.Empty`, which every checked entry point refuses whatever the hook would say,
+  and `New()` mints UUIDv7 as always {verified: WhizbangIdGrandfatheredTests.EmptyGuid_IsRefusedByEveryCheckedEntryPointWhateverTheHookSaysAsync}.
+- An id that does not implement the hook behaves as before: the compiler removes the call
+  {verified: WhizbangIdGrandfatheredTests.Unimplemented_TheCompilerRemovesTheHook_AndTheIdRefusesAsync}.
+- The hook runs for every value that breaks the rule, so keep it a set lookup: no I/O, no large computation.
+- Implement it as declared, without an accessibility modifier: C# lets a partial method go unimplemented only when it
+  has none, and an implementation that adds one (`private`, which IDE0040 may suggest) is CS8799
+  {verified: WhizbangIdGrandfatheredTests.HookImplementedWithAModifier_IsCs8799Async}. Without one the method is
+  private, which is why its name is `_camelCase`. It is a `void` method with a `ref` result for the same reason.
+- It composes with [`Versions`](#accepted-versions). An `AcceptAnyVersion` id refuses only `Guid.Empty`, so it has no
+  hook: it declares none, and an implementation on one is a compile error (CS0759)
+  {verified: WhizbangIdGrandfatheredTests.AnyVersionId_DeclaresNoHook_AndImplementingOneIsCs0759Async}.
+
+Keep the list frozen, and track it down to zero as the old values are retired.
+
+### Ids in a perspective document {#stored-form}
+
+Inside a perspective document a strong id is stored as its UUID string, the same as a `Guid` and as the transport
+writes it, once every live instance of the service reads that form ([the switch](#stored-form-switch), below):
+
+```json{title="A strong id in a stored document" description="Every strong id in a perspective document is its UUID string" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "WhizbangId", "Perspectives"] tests=["WhizbangIdDocumentStorageTests.Whizbang_WritesEveryIdAsAUuidStringAsync"]}
+{ "OrderId": "019e244a-6bda-78a9-a08f-a1011c9c31dd", "ParentId": null, "Lines": [{ "LineId": "019e244a-..." }] }
+```
+
+Both writers of the document agree: Entity Framework, through the `uuid` type mapping every generated perspective
+context gives each `[WhizbangId]` type, and the atomic upsert's serializer. That holds at any depth: a member, a member
+of a nested object, a member of a collection element, and a nullable id.
+
+Because the stored form does not depend on the CLR type, a read-model property can change from `Guid` to a strong id
+with no change to the stored data, so read models can adopt strong ids one property at a time.
+
+Queries compare the id as a uuid, and read it in either stored form: a row may still hold the object `{"Value": "..."}`
+a release before this one wrote, until the [rewrite](#stored-form-rewrite) reaches it. The SQL reads the text, and
+takes the `Value` out of it when it is an object:
+
+```sql{title="How a query reads a strong id in a document" description="An id comparison casts either stored form to uuid" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "WhizbangId", "Perspectives", "SQL"] tests=["WhizbangIdDocumentStorageTests.Whizbang_IdEqualityTranslatesAndMatchesAsync", "WhizbangIdDocumentStorageTests.Whizbang_ContainsOverIdsTranslatesAndMatchesAsync"]}
+-- r.Data.OrderId == orderId
+CAST(CASE
+    WHEN w.data ->> 'OrderId' LIKE '{%' THEN jsonb_extract_path_text(CAST(w.data ->> 'OrderId' AS jsonb), 'Value')
+    ELSE w.data ->> 'OrderId'
+END AS uuid) = @orderId
+
+-- ids.Contains(r.Data.OrderId): the same expression
+... = ANY (@ids)
+```
+
+A model with a whole-document index answers an id equality through it instead, with one containment test per form, so
+the index serves both:
+
+```sql{title="An id equality through the document index" description="Two containment arms, one per stored form" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "WhizbangId", "Perspectives", "SQL", "Indexes"] tests=["GraphQLWhizbangIdFilterIndexTests.IdEquality_FindsBothFormsThroughTheDocumentIndex_InEitherContainmentModeAsync"]}
+-- r.Data.OrderId == orderId
+w.data @> '{"OrderId": "019e244a-..."}' OR w.data @> '{"OrderId": {"Value": "019e244a-..."}}'
+
+-- ids.Contains(r.Data.OrderId)
+w.data @> ANY (jsonb_containment_set('OrderId', @ids))
+  OR w.data @> ANY (jsonb_strong_id_containment_set('OrderId', @ids))
+```
+
+In C#, compare the id itself:
+
+```csharp{title="Querying a strong id in a document" description="Id equality and Contains over ids translate to SQL" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "Perspectives"] tests=["WhizbangIdDocumentStorageTests.Whizbang_IdEqualityTranslatesAndMatchesAsync", "WhizbangIdDocumentStorageTests.Whizbang_ContainsOverIdsTranslatesAndMatchesAsync"]}
+var one = await query.Where(r => r.Data.OrderId == orderId).ToListAsync(ct);
+var some = await query.Where(r => ids.Contains(r.Data.OrderId)).ToListAsync(ct);
+```
+
+Compare the id itself, not its `Value`: inside a document the id is a scalar, so a query on `r.Data.OrderId.Value`
+does not translate {verified: WhizbangIdDocumentStorageTests.Whizbang_QueryOnTheIdsValueDoesNotTranslateAsync}. A
+nullable id compares with `null` and with a nullable variable either way round {verified: WhizbangIdDocumentStorageTests.Whizbang_NullableIdComparedWithNullTranslatesAndMatchesAsync}.
+
+A collection of ids (`List<OrderId>`) is stored as an array of UUID strings, and `Contains` over it translates
+{verified: WhizbangIdDocumentStorageTests.Whizbang_ListOfIdsIsAnArrayOfUuidStringsAndContainsTranslatesAsync}. That
+needs the Whizbang options extension, which every generated perspective context carries: a context registered by hand
+without it cannot build a model that holds a collection of ids {verified: WhizbangIdDocumentStorageTests.Convention_ListOfIdsCannotBuildTheModelAsync}.
+
+Every query that compares an id matches either form: equality, `Contains`, ordering, a collection element, a collection
+of ids, document containment in either containment mode, and the predicates of `ExecuteUpdate` and `ExecuteDelete`
+{verified: WhizbangIdDocumentStorageTests.Whizbang_EveryIdQueryFindsARowStillInTheObjectFormAsync, WhizbangIdDocumentStorageTests.Whizbang_OrderingByAnIdSortsRowsInEitherStoredFormAsync, WhizbangIdDocumentStorageTests.Whizbang_ExecuteUpdateSetsAnIdAsAUuidString_AndItsIdPredicateMatchesBothFormsAsync, StrongIdScalarRewriteIntegrationTests.AnIdPredicate_FindsObjectFormRows_BeforeTheRewriteAndFromAnOldWriterAfterItSettlesAsync, GraphQLWhizbangIdFilterIndexTests.IdEquality_FindsBothFormsThroughTheDocumentIndex_InEitherContainmentModeAsync}.
+An `ExecuteUpdate` that sets an id writes it in the form the fleet reads, as SaveChanges does: the object form while the
+[switch](#stored-form-switch) is off, the UUID string once it is on, decided each time the statement runs (a compiled
+query is cached for the life of the process), and JSON `null` for no id
+{verified: WhizbangIdDocumentStorageTests.Whizbang_ExecuteUpdateWhileTheGateIsClosed_SetsAnIdInTheObjectFormAsync, WhizbangIdDocumentStorageTests.Whizbang_OneCompiledExecuteUpdate_FollowsTheGateWhenItRunsAsync}.
+That holds on a generated context built from options without the Whizbang extension too. Its `OnConfiguring` calls
+the base context's, then `OnConfiguringExtended`, then gives the options the framework's query postprocessor when they
+lack one, last, so it sees the provider wherever it was set
+{verified: WhizbangIdDocumentStorageTests.Convention_ExecuteUpdateWhileTheGateIsClosed_SetsAnIdInTheObjectFormAsync, WhizbangIdDocumentStorageTests.Convention_AProviderSetBeforeConfigureInOnConfiguring_GetsThePostprocessorAsync, WhizbangIdDocumentStorageTests.Configure_LeavesOptionsWithAPostprocessorOrFrozen_AsTheyAreAsync, EFCoreServiceRegistrationGeneratorTests.Generator_WithDiscoveredDbContext_GeneratesOnConfiguringThatConfiguresAfterTheBaseAndTheHookAsync}.
+A partial class of yours that overrode `OnConfiguring` moves its body to `OnConfiguringExtended`; an override of your
+own is [WHIZ704](../../operations/diagnostics/whiz704)
+{verified: EFCoreServiceRegistrationGeneratorTests.Generator_WithDbContextThatOverridesOnConfiguring_ReportsWhiz704Async}.
+A hand-written context calls `WhizbangIdConvention.Apply(modelBuilder, this)` in `OnModelCreating` and
+`WhizbangIdConvention.Configure(optionsBuilder)` at the end of `OnConfiguring`, unless its options call
+`UseWhizbangFunctions()`. A context the postprocessor cannot reach fails when its model is built, naming the fix,
+rather than write an id in a form the fleet cannot read yet: a hand-written context that never calls `Configure`, or a
+pooled context without the extension, whose options are frozen before `OnConfiguring` runs (the generated registration
+always adds the extension)
+{verified: WhizbangIdDocumentStorageTests.Convention_OnOptionsWithoutThePostprocessor_FailsWhenTheModelIsBuiltAsync}.
+A collective setter does the same, and a collective comparison on an id matches a row in either form
+{verified: CollectiveSettersRewriterTests.CollectAssignments_AStrongIdWhileTheGateIsClosed_IsSerializedInTheObjectFormAsync, CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_AComparisonOnAStrongId_MatchesItInEitherStoredFormAsync}.
+Reads take either form and count the object form on `whizbang.perspective.identifier_form_fallbacks`. SQL of your own
+that matched `{"Value": "..."}` (a view, a trigger, a report) has to match both forms, as above, until the rewrite has
+settled, and then the UUID string.
+
+#### The switch waits for the whole fleet {#stored-form-switch}
+
+A release before this one maps a strong id in a document as an object, and its Entity Framework reader throws on a
+UUID string {verified: WhizbangIdDocumentStorageTests.Structural_CannotReadARowInTheUuidStringFormAsync}. During a
+rolling deploy both releases are live against the same tables, so nothing writes the UUID string until every live
+instance can read it. It takes one package; there is no ordered pair of releases to deploy:
+
+1. **Each instance announces what it reads.** Its heartbeat writes `stored_form_level` into its row of
+   `wh_service_instances.metadata`: `2` for this release, which reads the UUID string; `1` or nothing for an earlier
+   one. What an instance announces decides, not its version, so two prereleases of one release are told apart.
+2. **The gate latches once every live instance reads it.** `wh_strong_id_document_gate()`, asked by both drivers (Entity
+   Framework and Dapper) at every start and every maintenance cycle, latches the `wh_settings` row `strong_id_uuid_string_documents` once at least one instance is live
+   and every live instance is at level 2 or higher. Until then both writers write the object form every release reads
+   {verified: StrongIdDocumentGateTests.AnInstanceThatDoesNotReadTheUuidString_HoldsTheWriteFormAndTheRewrite_WhateverItsVersionAsync, StrongIdDocumentGateTests.WhileAnEarlierInstanceIsLive_NeitherWriterWritesTheUuidStringAsync, WhizbangIdDocumentStorageTests.Whizbang_WhileTheGateIsClosed_WritesTheObjectForm_WhichTheEarlierReleaseReadsAsync}.
+3. **Each instance switches its writes and says so, per schema.** The form is decided for each database schema a
+   process writes documents to: the upsert, a collective setter and `ExecuteUpdate` write the UUID string into a schema
+   once its own gate is open, whatever the process's other schemas say, and the heartbeat in that schema adds
+   `strong_id_document_form: "uuid-string"`
+   {verified: PerspectiveUpsertStrongIdFormTests.AnUpsert_WritesTheFormItsSchemasGateAllows_WhileAnotherSchemaIsHeldAsync, WhizbangIdDocumentStorageTests.Whizbang_ExecuteUpdate_FollowsTheGateOfTheSchemaItUpdates_NotTheProcessesAsync, WhizbangIdDocumentFormTests.AWriteToAnOpenSchema_WritesTheUuidString_WhileAnotherIsHeldAsync}.
+   A schema with no gate at all (not yet migrated, or migrated by an earlier release) is held, so nothing writes the
+   UUID string into it; the gate is asked again each maintenance cycle
+   {verified: StrongIdDocumentGateTests.ASchemaWithoutTheGate_IsUnavailable_AndHeld_SoNothingWritesTheUuidStringIntoItAsync}.
+   A save that writes rows into several schemas (a context that maps perspectives in two) writes the UUID string only
+   while every one of their gates is open
+   {verified: StrongIdTrackedSaveFormTests.ASaveIntoAnOpenAndAHeldSchema_WritesTheObjectFormIntoBoth_AndAloneTheOpenOneWritesTheUuidStringAsync}.
+   A write of your own that names no schema (SaveChanges on a context of yours) writes the UUID string only once every
+   schema the process knows is open. The [Dapper driver](#stored-form-drivers) says which form it writes from its
+   first beat.
+
+   A schema is known by the name the server gives its database (`current_database()`, asked once for each host and
+   database name a connection string names), not by the connection string's name. Behind a pooler such as pgbouncer
+   the writers' connection string names an alias, and a coordinator can have a connection string of its own; both still
+   see the gate the check opened, and the heartbeat says the UUID string
+   {verified: StrongIdPooledDatabaseNameTests.AWriterThroughAPoolerAlias_SeesTheGateOpenedOnADirectConnection_AndSaysSoInItsHeartbeatAsync, StrongIdDocumentGateTests.HoldUnasked_HoldsTheSchema_AndTheHoldFollowsTheServersNameAsync}.
+   Until a process has asked, it writes the object form through that connection.
+4. **The rewrite starts once every live instance writes it.** So no instance writes the object form behind the rewrite
+   {verified: StrongIdDocumentGateTests.TheRewrite_WaitsUntilEveryLiveInstanceWritesTheUuidString_ThenRunsAsync}. It
+   asks again before every batch, so an instance that cannot read the new form and joins during a run stops it before
+   the next batch {verified: StrongIdScalarRewriteIntegrationTests.AnEarlierInstanceJoiningDuringARun_StopsItBeforeTheNextBatchAsync}.
+
+##### Entity Framework and Dapper on one table {#stored-form-drivers}
+
+Before this release, an Entity Framework instance and a Dapper instance could not share one perspective table: the
+Entity Framework driver wrote and read only the object form, and the Dapper store, with Whizbang's serializer options,
+wrote and read only the UUID string, so each failed on the other's rows. This release reads both forms everywhere: the
+generated id's JSON converter, which the Dapper store reads with, takes `{"Value": "..."}` as well as the UUID string,
+through the id's own rule {verified: WhizbangIdJsonConverterReadTests.Read_TakesTheUuidString_AndTheObjectForm_AndWritesTheUuidStringAsync, WhizbangIdJsonConverterReadTests.Read_TheObjectForm_IsCheckedByTheIdsRule_AsTheUuidStringIsAsync}.
+
+The Dapper store keeps writing whatever its serializer options write: the UUID string with Whizbang's options. The gate
+governs the Entity Framework writer only, since that is the only writer an earlier release's reader cannot follow, and
+the Dapper heartbeat says which form the store writes from its first beat. A store built with an application's own
+options, which lack Whizbang's id converters, writes the object form, and its heartbeat says so, which holds the rewrite
+{verified: DapperStrongIdDocumentGateTests.TheDapperHeartbeat_SaysItWritesTheUuidString_FromItsFirstBeatAsync, DapperStrongIdDocumentGateTests.TheDapperHeartbeat_WithAnApplicationsOwnOptions_SaysWhatThoseOptionsWriteAsync, WhizbangIdJsonConverterReadTests.WritesUuidStringWith_TellsWhizbangsOptionsFromAnApplicationsOwnAsync}.
+The Dapper driver also asks the gate, at host start and each maintenance cycle, so it latches the switch, opens the
+form for any Entity Framework writer in the same process, and names instances that cannot read the new form; a schema
+with Entity Framework and Dapper instances reaches the rewrite
+{verified: DapperStrongIdDocumentGateTests.AMixedFleet_ReachesTheRewrite_ThroughTheDapperCoordinatorAndStepAsync}.
+An earlier release's Entity Framework instance still cannot read what a Dapper instance writes, as before.
+
+##### The switch is one-way {#stored-form-one-way}
+
+The latch is one-way, like the [stored-metadata trim gate](../../data/event-store#trim-gate): once open it stays open,
+because rows have been written, and rewritten, in a form an earlier release cannot read.
+
+- **Rolling back below this release after the switch is not supported.** An instance of an earlier release fails on
+  every row written or converted since.
+- **An earlier instance that joins after the switch is reported, by name.** Every gate check counts the live instances
+  below level 2: the gate's answer says how many (`; 1 live instances cannot read them`), a Warning names each one
+  (instance, service, host and the level it announces) whenever that set changes, and the
+  `whizbang.perspective.strong_id_unreadable_instances` gauge reports 1 per such instance, tagged by database, schema,
+  instance, service and host, for as long as it is live. Upgrade or stop it
+  {verified: StrongIdDocumentGateTests.OnceOpen_AnEarlierInstanceThatJoins_IsNamedByEveryCheck_AndTheGateStaysOpenAsync, StrongIdDocumentGateTests.OnceTheEarlierInstanceIsGone_TheGaugeNamesNoneAsync, StrongIdScalarRewriteIntegrationTests.TheMaintenanceStep_FinishesWhatStartupLeft_ThenDoesNothingAsync}.
+
+| Gate answer | Meaning | Writes | Rewrite |
+|---|---|---|---|
+| `closed (n of m live instances read strong ids as UUID strings)` | A live instance cannot read the UUID string | Object form | Waits |
+| `opened` | This call latched the gate | UUID string | Waits |
+| `open (n of m live instances write strong ids as UUID strings)` | Every live instance reads it; some still write the object form | UUID string | Waits |
+| `open (...); k live instances cannot read them` | The switch is on, and an instance of an earlier release joined after it ([one-way](#stored-form-one-way)) | UUID string | Waits |
+| `ready` | Every live instance reads and writes it | UUID string | Runs |
+
+To see where a schema stands, ask the read-only status function, which never latches anything, and list the instances
+that cannot read the UUID string:
+
+```sql{title="Where a schema's strong-id switch stands" description="Read-only: neither call flips the switch" category="Operations" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "Perspectives", "SQL", "Operations"] tests=["StrongIdDocumentGateTests.TheStatusFunction_NeverLatchesTheGateAsync"]}
+SELECT wh_strong_id_document_status();
+-- closed (2 of 3 live instances read strong ids as UUID strings)
+
+SELECT * FROM wh_strong_id_document_unreadable_instances();
+-- instance_id | service_name | host_name | stored_form_level
+```
+
+Do not call `wh_strong_id_document_gate()` to look: it is the one that flips the switch, and it does so whenever every
+live instance reads the UUID string {verified: StrongIdDocumentGateTests.TheStatusFunction_NeverLatchesTheGateAsync}.
+
+#### The rewrite {#stored-form-rewrite}
+
+Rows a release before this one stored in the object form, including ids in dictionary keys and values, are rewritten a
+batch at a time. Each batch commits on its own under the rewrite's own advisory lock, not the schema lock, so a starting
+instance's schema pass never waits on a running batch
+{verified: StrongIdScalarRewriteIntegrationTests.AStartingInstance_DoesNotWaitOnARunningSliceAsync}. Each batch records
+in `wh_stored_form_migrations` (as `strong-id-scalar:<table>:<shape>`) the last primary key it reached. Startup runs one
+slice, and the maintenance cycle carries on from the recorded key until every table is settled, so a table of any size
+finishes, a restart redoes nothing, and two instances never convert the same rows
+{verified: StrongIdScalarRewriteIntegrationTests.ATableLargerThanOneRun_SettlesAcrossRuns_EachResumingWhereTheLastStoppedAsync, StrongIdScalarRewriteIntegrationTests.TwoInstances_NeverConvertTheSameRowsAsync, StrongIdScalarRewriteIntegrationTests.TheMaintenanceStep_FinishesWhatStartupLeft_ThenDoesNothingAsync}.
+A table settles on a complete pass that converts nothing, so a row written in the object form behind the recorded key
+is converted by the next pass {verified: StrongIdScalarRewriteIntegrationTests.ARowWrittenBehindTheKeyDuringTheRewrite_IsConvertedByTheNextPassAsync}.
+A slice never runs past its budget by more than the time left in it: the last batch's statement is cut off at what is
+left, and rolled back for the next run to redo {verified: StrongIdScalarRewriteIntegrationTests.ABatchThatOutrunsTheBudget_IsCutOffAtWhatIsLeftOfItAsync}.
+The startup slice runs after the other stored-form steps and on its own, so a failure in it skips none of them. Each
+journal row records the hash of the statement that converted it, so the
+[rollback gate](../../operations/startup/rolling-upgrades#the-rollback-gate) judges it by its content, as every other
+conversion {verified: StrongIdScalarRewriteIntegrationTests.TheMaintenanceStep_RecordsWhoAppliedIt_AndWhatAsync, StoredFormApplierTests.ARestoredDatabase_WhoseConversionsThisBuildDeclares_ServesWhateverApplicationAppliedThemAsync}.
+
+#### Strong ids outside a document {#strong-id-columns}
+
+A strong-id property of your own entity, outside a perspective document, is a `uuid` column named after the property:
+`OrderId`, or `Depot_DepotId` inside a table-split complex type
+{verified: WhizbangIdEntityColumnTests.AnIdOutsideADocument_IsAColumnNamedAfterItsProperty_OnEitherPathAsync}.
+An id you configured keeps what you configured: a `ComplexProperty`, a `HasColumnName` or a converter of your own
+(`HasConversion`).
+
+An earlier release mapped an unconfigured id as a complex type of its own, inside a table-split complex type or on a
+context without the Whizbang extension, so its column was the one its `Value` had: `Depot_DepotId_Value`, or
+`OrderId_Value`. Run `migrations add`: it scaffolds the move as a rename, never a drop and an add, so the values stay
+{verified: WhizbangIdEntityColumnTests.MigrationsAdd_FromAnEarlierModel_RenamesTheValueColumn_AndKeepsItsDataAsync, WhizbangIdEntityColumnTests.MigrationsAdd_OnAContextWithoutTheExtension_RenamesTooAsync}.
+Whizbang's migrations model differ pairs each `<column>_Value` with `<column>` by name. Entity Framework alone pairs the
+two by shape, since the old column belongs to a property named `Value`, and two ids of one shape (`Route.From` and
+`Route.FromHub`) would be paired in name order, swapping their values with no error. A pair the differ cannot make by
+name, because the two columns differ in type or nullability, fails `migrations add`, naming the columns; write those
+renames by hand
+{verified: WhizbangIdEntityColumnTests.MigrationsAdd_PairsEachValueColumnWithItsOwnId_NeverSwappingTwoOfOneShapeAsync, WhizbangIdEntityColumnTests.MigrationsAdd_RefusesAPairingItCannotMakeByName_RatherThanSwapAsync}.
+`UseWhizbangFunctions()` and the generated `OnConfiguring` register the differ, unless your options replace it:
+
+```csharp{title="The migration for an id's column" description="migrations add scaffolds the move from the complex id's Value column as a rename" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WhizbangId", "EF Core", "Migrations"] tests=["WhizbangIdEntityColumnTests.MigrationsAdd_FromAnEarlierModel_RenamesTheValueColumn_AndKeepsItsDataAsync"]}
+migrationBuilder.RenameColumn(
+    name: "Depot_DepotId_Value",
+    table: "shipments",
+    newName: "Depot_DepotId");
+```
+
+The rename is a deploy step, not a rolling one: an instance of the earlier release reads the old column and an
+instance of this release the new one. Deploy in this order:
+
+1. Stop the earlier release's instances that use the table.
+2. Apply the migration.
+3. Start this release.
 
 ## Time-ordering checks {#time-ordering-checks}
 
@@ -1131,9 +1520,12 @@ services.Configure<WhizbangOptions>(options => {
 
 Stream ids that are never reported:
 
-- A stream id whose strong id type is declared with [`[WhizbangId(AcceptAnyVersion = true)]`](#accept-any-version):
-  you declared that its values come from outside and are not UUIDv7
-  {verified: GuidOrderingEntryPointValidationTests.ReportStreamId_AnIdTypeThatAcceptsAnyVersion_IsNeverReportedAsync, GuidOrderingEntryPointValidationTests.ReportStreamId_AStrictIdType_IsReportedAsync}.
+- A stream id whose strong id type's own rule accepts it: one declared with
+  [`[WhizbangId(AcceptAnyVersion = true)]`](#accept-any-version), a version its [`Versions`](#accepted-versions) list
+  holds (with the RFC 9562 variant), or one of its [grandfathered values](#grandfathered-values). You declared that
+  those values are not UUIDv7, so the only cost is index locality; a version the list does not hold is still reported,
+  and refused at `Error`
+  {verified: GuidOrderingEntryPointValidationTests.ReportStreamId_AnIdTypeThatAcceptsAnyVersion_IsNeverReportedAsync, GuidOrderingEntryPointValidationTests.ReportStreamId_AStrictIdType_IsReportedAsync, GuidOrderingStreamIdByTypeTests.ReportStreamId_AVersionTheIdTypeLists_IsNeverReportedAsync, GuidOrderingStreamIdByTypeTests.ReportStreamId_AVersionTheIdTypeDoesNotList_IsRefusedAtErrorAsync, GuidOrderingStreamIdByTypeTests.ReportStreamId_AGrandfatheredValue_IsNeverReported_AndAnotherOfItsVersionIsAsync, GuidOrderingInMemoryAppendTests.Append_AStreamIdItsTypeLists_IsStoredAtError_AndOneItDoesNotIsRefusedAsync}.
 - A UUIDv7, and `Guid.Empty`, which is refused separately as a missing stream id
   {verified: GuidOrderingEntryPointValidationTests.ReportStreamId_V7AndEmpty_AreNeverReportedAsync}.
 
@@ -1149,11 +1541,12 @@ comes from the generated stream id extractors, so the same rules apply as everyw
   and counted in `whizbang.guid_ordering.non_v7_stream_ids`.
 - At `StreamIdOrderingViolationSeverity = Error` the inbox write is refused before any SQL runs, so nothing of the
   batch is stored.
-- A stream id declared with `[WhizbangId(AcceptAnyVersion = true)]` is never reported.
+- A stream id whose strong id type's own rule accepts it (any version, a listed version, a grandfathered value) is
+  never reported.
 - A stored name that does not resolve to a type is reported, not skipped.
 - A UUIDv7 or an empty stream id returns before the name is looked up.
 
-{verified: EFCoreInboxStreamIdReportTests.NonV7StreamId_ByDefault_IsStoredReportedOnceAndCountedAsync, EFCoreInboxStreamIdReportTests.NonV7StreamId_AtError_IsRefusedAndNothingOfTheBatchIsStoredAsync, EFCoreInboxStreamIdReportTests.AnyVersionStrongStreamId_IsStoredAndNeverReportedAsync, EFCoreInboxStreamIdReportTests.UnresolvableMessageType_IsReportedNotSkippedAsync, DapperInboxStreamIdReportTests.NonV7StreamId_ByDefault_IsStoredReportedOnceAndCountedAsync, DapperInboxStreamIdReportTests.NonV7StreamId_AtError_IsRefusedAndNothingOfTheBatchIsStoredAsync, DapperInboxStreamIdReportTests.AnyVersionStrongStreamId_IsStoredAndNeverReportedAsync, DapperInboxStreamIdReportTests.UnresolvableMessageType_IsReportedNotSkippedAsync, GuidOrderingStreamIdByNameTests.V7AndEmpty_AreNeverReportedByNameAsync, GuidOrderingStreamIdByNameTests.UnresolvableName_IsRefusedAtErrorAsync}
+{verified: EFCoreInboxStreamIdReportTests.NonV7StreamId_ByDefault_IsStoredReportedOnceAndCountedAsync, EFCoreInboxStreamIdReportTests.NonV7StreamId_AtError_IsRefusedAndNothingOfTheBatchIsStoredAsync, EFCoreInboxStreamIdReportTests.AnyVersionStrongStreamId_IsStoredAndNeverReportedAsync, EFCoreInboxStreamIdReportTests.UnresolvableMessageType_IsReportedNotSkippedAsync, DapperInboxStreamIdReportTests.NonV7StreamId_ByDefault_IsStoredReportedOnceAndCountedAsync, DapperInboxStreamIdReportTests.NonV7StreamId_AtError_IsRefusedAndNothingOfTheBatchIsStoredAsync, DapperInboxStreamIdReportTests.AnyVersionStrongStreamId_IsStoredAndNeverReportedAsync, DapperInboxStreamIdReportTests.UnresolvableMessageType_IsReportedNotSkippedAsync, EFCoreInboxStreamIdReportTests.VersionsStrongStreamId_AListedVersionIsStored_AndAnUnlistedOneRefusedAtErrorAsync, GuidOrderingStreamIdByNameTests.V7AndEmpty_AreNeverReportedByNameAsync, GuidOrderingStreamIdByNameTests.UnresolvableName_IsRefusedAtErrorAsync}
 
 A service that raised stream ids to `Error` therefore now also refuses such messages at the inbox.
 
