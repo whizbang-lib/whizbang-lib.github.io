@@ -59,6 +59,10 @@ Perspective model uses [VectorField] but Pgvector.EntityFrameworkCore package is
 2. **Package accidentally removed** - Package reference was removed during dependency cleanup
 3. **Wrong package** - Referenced `Pgvector` base package but not the EF Core integration package
 
+**Events are exempt.** On an event's property, `[VectorField]` marks a vector of the stored body, packed binary32
+([packed vectors](../../data/event-store.md#packed-vectors)), not a pgvector column, so no package is needed and
+WHIZ070 is not reported.
+
 ## How to Fix
 
 Add the `Pgvector.EntityFrameworkCore` package reference to your project:

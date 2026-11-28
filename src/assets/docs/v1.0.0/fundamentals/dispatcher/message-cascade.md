@@ -19,6 +19,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/EmissionIdentity.cs
   - src/Whizbang.Core/Messaging/ReceptorHandling.cs
   - src/Whizbang.Core/Messaging/GeneratedStreamIdentity.cs
+  - src/Whizbang.Core/Messaging/LocalInvocationIdentity.cs
   - src/Whizbang.Core/Observability/CascadeEnvelopeWrapper.cs
   - src/Whizbang.Core/Observability/MessageDispatchContext.cs
   - src/Whizbang.Core/Observability/WorkCoordinatorMetrics.cs
@@ -32,6 +33,7 @@ testReferences:
   - tests/Whizbang.Core.Unit.Dispatcher.Tests/Dispatcher/DispatcherDerivedIdentityInHandlingTests.cs
   - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/GeneratedStreamIdentityTests.cs
   - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/ReceptorHandlingTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/LocalReceptorHandlingTests.cs
   - tests/Whizbang.Core.Tests/Observability/MessageEnvelopeHandlerNameTests.cs
   - tests/Whizbang.Core.Tests/Observability/WorkCoordinatorMetricsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreOutboxEmissionDedupTests.cs
@@ -707,6 +709,7 @@ stored copies of the first run absorb the second run's. Before, each run publish
 | Where `PublishAsync` is called | The event's id |
 |---|---|
 | Inside a receptor body, or work the body starts and awaits (the handling flows with the execution context) | Derived from the handling, on the ordinals it shares with what the receptor returns |
+| Inside a receptor reached locally from a handling (`LocalInvokeAsync`, `SendAsync`, a local publish) | Derived from that receptor's own handling, on its own ordinals ([#2633](../identity/whizbang-ids#a-receptor-invoked-locally)) |
 | Outside any receptor (an API endpoint, a background service) | Minted fresh, as before |
 
 **Derived ids carry the cause's time.** A derived id keeps its [source's first bits](#layout-sorts-where-its-source-sorts),
@@ -751,6 +754,16 @@ redelivered handling sends the same messages under the same ids and every receiv
 command, takes ordinals of its own through `SentMessageIdentity`, with the prefix
 `whizbang.sent-message.in-handling.v1` and the same layout as an emission id. Sending a command therefore never shifts
 the ids of the events the handling returns or publishes.
+
+**A receptor reached locally runs in a handling of its own.** When a receptor body reaches another receptor locally
+(`LocalInvokeAsync`, `SendAsync` to a local receptor, a local publish), the generated dispatch runs the inner body in a
+handling of its own, anchored on an id derived for that one call at the outer handling's next **local-invocation**
+ordinal, a sequence of its own (`LocalInvocationIdentity`, prefix `whizbang.local-invoke.in-handling.v1`). What the
+inner body sends, publishes or derives uses that anchor and its own counters. This is the rule a nested local cascade
+follows: the anchor rides on a wrapper envelope. What the inner receptor returns cascades after its handling ends, in
+the caller's handling, as before. An inbox row records the scheme its first run ran under (migration 740), so a handling that started on a build
+before this change keeps its ids when it is retried after it. See [A receptor invoked locally](../identity/whizbang-ids#a-receptor-invoked-locally).
+{verified: LocalInvokeDeriveFromTests.LocalDispatch_FromInsideAHandling_TheInnerReceptorDerivesInItsOwnHandlingAsync, LocalInvokeDeriveFromTests.LocalDispatch_ARetryOfTheOuterHandling_DerivesTheSameIdsAsync, LocalInvokeDeriveFromTests.LocalDispatch_ARowThatFirstRanUnderTheSharedScheme_KeepsItsIds_TheInnerSharesTheOuterHandlingAsync, LocalReceptorHandlingTests.EnterLocalInvocation_NestedTwice_AnchorsOnTheInnerHandlingAsync}
 
 **Outside a handling nothing changes.** An API endpoint, a background service or any other caller with no handling gets
 a fresh UUIDv7 per message, as before.
