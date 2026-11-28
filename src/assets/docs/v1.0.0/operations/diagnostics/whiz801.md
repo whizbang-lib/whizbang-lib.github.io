@@ -39,7 +39,9 @@ any other type has no matching column representation.
 
 An analyzer checks every property that carries `[VectorField]` and reports WHIZ801 at the attribute when the property
 type is anything other than a one-dimensional `float[]`. `double[]`, a single `float`, and collections such as
-`List<float>` are all reported. A nullable `float[]?` is fine. Because WHIZ801 is an error, the build fails until the
+`List<float>` are all reported. A nullable `float[]?` is fine. On an event, where `[VectorField]` marks a vector of the stored body
+rather than a column, `List<float>`, `ReadOnlyMemory<float>` and `IReadOnlyList<float>` are also accepted
+([packed vectors](../../data/event-store.md#packed-vectors)). Because WHIZ801 is an error, the build fails until the
 type is fixed.
 
 The same attribute can also report [WHIZ802](whiz802) when its dimensions are not positive.

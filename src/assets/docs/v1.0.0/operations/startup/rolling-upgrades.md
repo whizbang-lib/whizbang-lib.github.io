@@ -833,6 +833,20 @@ rollout, a scale event or a restart) once every older instance is gone. Until th
 instance wrote in the old form reads as it did before the upgrade: a key in the old spelling, for example,
 reads as its member's default.
 
+## Stored forms a newer release writes {#stored-forms-a-newer-release-writes}
+
+{verified: PackedVectorGateSqlTests.Gate_StaysClosedWhileALiveInstanceReadsNoPackedVectors_AndOpensOnceItIsGoneStaleOrRaisedAsync, PackedVectorGateSqlTests.Rollback_AnOlderLibrary_StandsDownAtAssess_NamingPackedVectorsAsync}
+
+Some releases store a form an earlier release cannot read, written in SQL by every write path. Such a form waits for
+the fleet: each heartbeat records the `stored_form_level` its instance reads, and a maintenance step opens the form
+only once every live instance records the level it needs. This covers deployments where the standby handshake is
+bypassed (`Whizbang:Startup:OverrideIncompatibility`) and instances started without it.
+
+| Form | Level | Opened by | After it opens |
+|---|---|---|---|
+| [Trimmed stored metadata](../../data/event-store.md#trim-gate) | 1 | `metadata-trim-gate` | an earlier release cannot read new rows |
+| [Packed vectors](../../data/event-store.md#packing-gate) | 2 | `vector-packing-gate` | journaled as `stored-form:wh_event_body:packed-vectors`, so an older library [stands down](#the-rollback-gate) at Assess, naming it |
+
 ## Verification
 
 The behaviour above is fleet behaviour, so its tests are multi-instance end-to-end tests: each simulated instance is its own coordinator over its own connection, against a real database. `StandbyHandshakeE2ETests` covers the four paths by name — commit (peers drain, acknowledge, shut down), rollback (peers revive by re-entering the pipeline), a dead migrator (strands nobody), and an unresponsive peer (evicted, and the handshake completes without it).

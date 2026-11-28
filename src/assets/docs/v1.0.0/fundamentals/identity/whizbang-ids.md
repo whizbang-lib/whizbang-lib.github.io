@@ -27,6 +27,10 @@ codeReferences:
   - src/Whizbang.Core/WhizbangIdAttribute.cs
   - src/Whizbang.Core/Messaging/StrongIdDerivation.cs
   - src/Whizbang.Core/Messaging/Handling.cs
+  - src/Whizbang.Core/Messaging/LocalInvocationIdentity.cs
+  - src/Whizbang.Core/Messaging/HandlingDerivationScheme.cs
+  - src/Whizbang.Core/Messaging/LocalReceptorHandlingScope.cs
+  - src/Whizbang.Data.Postgres/Migrations/740_ARetryKeepsTheIdsItsFirstRunDerived.sql
   - src/Whizbang.Generators/WhizbangIdDeclaration.cs
   - src/Whizbang.Generators/Analyzers/StrongIdDeriveFromAnalyzer.cs
   - src/Whizbang.Core/SuppressGuidInterceptionAttribute.cs
@@ -53,6 +57,11 @@ testReferences:
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdVersionAcceptanceTests.cs
   - tests/Whizbang.Generators.Tests/WhizbangIdAcceptAnyVersionTests.cs
   - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/StrongIdDerivationTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/LocalInvokeDeriveFromTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/LocalInvocationIdentityTests.cs
+  - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/LocalReceptorHandlingTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/FetchInboxBatchDerivationSchemeSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimDerivationSchemeSqlTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdDeriveFromTests.cs
   - tests/Whizbang.Generators.Tests/WhizbangIdDeriveFromTests.cs
   - tests/Whizbang.Core.Tests/WhizbangIdAttributeTests.cs
@@ -790,6 +799,11 @@ one purpose in a loop would give every item the same id and silently merge them.
 
 - it is called **outside a receptor body** (an API endpoint, a background service): there is no handled message to derive
   from, so a retry could not derive the same id. Mint with `New()` there.
+- it is called in a receptor reached by **local dispatch outside any handling** (`LocalInvokeAsync`, `SendAsync` or a
+  local publish from an API endpoint or a background service): the receptor handles a fresh in-process call, not a
+  delivered message, so a retry is a new call with nothing to derive the same id from
+  ([#2633](https://github.com/whizbang-lib/whizbang/issues/2633)). The exception names local dispatch. A receptor reached
+  locally from **inside** a handling derives, in a handling of its own ([below](#a-receptor-invoked-locally)).
 - the handling **has ended**: the receptor body returned, so a retry would not reach this call. Derive inside the body.
 - the **handled message has no id** to derive from.
 - the purpose was **already derived** for this type in this handling.
@@ -797,7 +811,7 @@ one purpose in a loop would give every item the same id and silently merge them.
 A unit test that calls a receptor's `HandleAsync` directly enters its handling first with `TestHandling.Enter`, which
 derives the same ids a real handling does (see [Testing receptors: receptors that derive ids](../../operations/testing/testing-receptors#derived-ids)).
 
-A purpose that is empty or white space is refused with `ArgumentException`. {verified: StrongIdDerivationTests.Derive_OutsideAHandling_ThrowsNamingWhyAsync, StrongIdDerivationTests.Derive_AfterTheHandlingEnded_ThrowsNamingWhyAsync, StrongIdDerivationTests.Derive_AHandledMessageWithNoId_ThrowsAsync, StrongIdDerivationTests.Derive_InvalidArguments_AreRefusedAsync, WhizbangIdDeriveFromTests.DeriveFrom_OutsideAHandling_ThrowsNamingTheTypeAsync}
+A purpose that is empty or white space is refused with `ArgumentException`. {verified: LocalInvokeDeriveFromTests.LocalInvokeAsync_AtTopLevel_DeriveFromThrows_NamingLocalDispatchAsync, LocalInvokeDeriveFromTests.SendAsync_AtTopLevel_DeriveFromThrows_NamingLocalDispatchAsync, LocalInvokeDeriveFromTests.PublishAsync_AtTopLevel_DeriveFromThrows_NamingLocalDispatchAsync, StrongIdDerivationTests.Derive_OutsideAHandling_ThrowsNamingWhyAsync, StrongIdDerivationTests.Derive_AfterTheHandlingEnded_ThrowsNamingWhyAsync, StrongIdDerivationTests.Derive_AHandledMessageWithNoId_ThrowsAsync, StrongIdDerivationTests.Derive_InvalidArguments_AreRefusedAsync, WhizbangIdDeriveFromTests.DeriveFrom_OutsideAHandling_ThrowsNamingTheTypeAsync}
 
 **It needs a pinned id.** Pin the type with `[PinnedId("<guid>")]` on its struct, or `[WhizbangId(PinnedId = "<guid>")]`
 where it is declared (see [Pinned identity: strong ids](pinned-identity#strong-ids)). A pin is required only where
@@ -810,7 +824,81 @@ if that is suppressed it throws `NotSupportedException`. `New()` is unchanged an
 | A second call with the same purpose in one handling throws. | Two items given one purpose would get one id and merge without a trace; a throw makes the author name the item. | {verified: StrongIdDerivationTests.Derive_TheSamePurposeTwiceInOneHandling_ThrowsAsync} |
 | Outside a handling it throws instead of minting. | A silent mint would look derived and still change on a retry. | {verified: StrongIdDerivationTests.Derive_OutsideAHandling_ThrowsNamingWhyAsync} |
 | Every generated strong id has `DeriveFrom`. | The derived path is the easy path on every id, not a helper to remember. | {verified: WhizbangIdDeriveFromTests.EveryGeneratedStrongId_HasDeriveFromAsync} |
+| A receptor reached by local dispatch outside any handling throws, naming local dispatch. | It has no delivered message; a retry is a new call, so a derived id would not repeat. | {verified: LocalInvokeDeriveFromTests.LocalInvokeAsync_AtTopLevel_DeriveFromThrows_NamingLocalDispatchAsync} |
 | The layout is fixed (`whizbang.strong-id.in-handling.v1`). | A changed layout would change the id a retry across the deploy derives. | {verified: StrongIdDerivationTests.Derive_FixedInputs_DeriveTheCompatibilityValueAsync} |
+
+### A receptor invoked locally {#a-receptor-invoked-locally}
+
+{verified: LocalInvokeDeriveFromTests.LocalDispatch_FromInsideAHandling_TheInnerReceptorDerivesInItsOwnHandlingAsync, LocalInvokeDeriveFromTests.LocalDispatch_ARetryOfTheOuterHandling_DerivesTheSameIdsAsync, LocalReceptorHandlingTests.EnterLocalInvocation_InsideAHandling_EntersItsOwnHandling_AnchoredOnTheNextLocalInvocationAsync, LocalReceptorHandlingTests.EnterLocalInvocation_NestedTwice_AnchorsOnTheInnerHandlingAsync}
+
+A receptor body that reaches another receptor locally, inside its own handling, gives that receptor a **handling of its
+own** ([#2633](https://github.com/whizbang-lib/whizbang/issues/2633)). This applies to `LocalInvokeAsync` (void, typed and
+synchronous), `SendAsync` to a local receptor, a message two local receptors share, a local publish, the local
+receptors of an event a locally invoked receptor returns, and a receptor registered at runtime. The inner
+receptor's handling names the inner receptor (its registry id, the same id the receptor invoker names it by) and the
+service. `DeriveFrom`, every message it sends and every event it publishes inside it use its own identity and its own
+counters. Before, the inner receptor derived in its caller's handling, under the caller's identity: deriving the same
+type and purpose as the caller threw "already called for purpose", and any other purpose was silently attributed to the
+caller.
+
+```csharp{title="A receptor invoked locally derives in its own handling" description="ReserveStock derives its own ReservationId; a retry of PlaceOrder's handling invokes it again and derives the same id" framework="NET10" category="Identity" difficulty="ADVANCED" tags=["identity", "WhizbangId", "DeriveFrom", "LocalInvokeAsync", "retries"] tests=["LocalInvokeDeriveFromTests.LocalDispatch_FromInsideAHandling_TheInnerReceptorDerivesInItsOwnHandlingAsync", "LocalInvokeDeriveFromTests.LocalDispatch_ARetryOfTheOuterHandling_DerivesTheSameIdsAsync"]}
+[FireAt(LifecycleStage.PostInboxInline)]
+public sealed class PlaceOrderReceptor(IDispatcher dispatcher) : IReceptor<PlaceOrder> {
+  public async ValueTask HandleAsync(PlaceOrder command, CancellationToken cancellationToken = default) {
+    var orderId = OrderId.DeriveFrom(Handling.Current, "order");
+    // ReserveStockReceptor runs in a handling of its own: its "reservation" id is its own, and a retry of this
+    // handling invokes it again in the same order, so it derives the same one
+    await dispatcher.LocalInvokeAsync(new ReserveStock(orderId, command.Sku));
+  }
+}
+
+public sealed class ReserveStockReceptor : IReceptor<ReserveStock> {
+  public ValueTask HandleAsync(ReserveStock command, CancellationToken cancellationToken = default) {
+    var reservationId = ReservationId.DeriveFrom(Handling.Current, "reservation");
+    return ValueTask.CompletedTask;
+  }
+}
+```
+
+**The anchor.** The inner handling anchors on an id derived for that one call, `LocalInvocationIdentity`: the shared
+derived layout at the outer anchor's position (its first 80 bits, then the call's ordinal, then the low 36 bits of
+SHA-256 over the UTF-8 string `whizbang.local-invoke.in-handling.v1\n{outerAnchor:N}\n{service}\n{handler}\n{outerReceptor}\n{ordinal}`).
+The ordinal is the call's position among the **local invocations** the outer handling makes, a sequence of its own, as
+emissions and sends have theirs. A retry materializes a fresh envelope, invokes in the same order, and derives the same
+anchors. A local invocation inside an inner handling anchors on the inner handling's anchor, so the rule is the same at
+every depth, and it is the rule a nested local cascade already follows: a wrapper envelope that carries an anchor of its
+own. The layout is a compatibility contract: every id the inner receptor derives starts from it. {verified: LocalInvocationIdentityTests.Derive_FixedInputs_DeriveTheCompatibilityValueAsync, LocalInvocationIdentityTests.Derive_TheLayout_IsTheDocumentedCanonicalStringAtTheOuterAnchorAsync, LocalInvocationIdentityTests.Derive_EachInput_SeparatesTheAnchorsAsync, LocalInvocationIdentityTests.NextOrdinal_CountsPerHandlingEnvelope_AndIsNotTheSendOrdinalsAsync}
+
+**A result cascades after the body.** What the inner receptor returns cascades after its handling ends, as the receptor
+invoker cascades a result after the body's handling ends, so it derives in the caller's handling as it did before.
+{verified: LocalReceptorHandlingEmissionTests.AResult_CascadesAfterTheBodysHandlingEndsAsync}
+
+**Only inside a handling.** At top level nothing is entered: entering reads one ambient value and allocates nothing,
+so a top-level local invoke pays nothing for it. Nothing is entered either when the outer handling has
+ended, or when its message has no id. {verified: LocalReceptorHandlingTests.EnterLocalInvocation_AtTopLevel_AllocatesNothingAsync, LocalReceptorHandlingTests.EnterLocalInvocation_AtTopLevel_EntersNothingAsync, LocalReceptorHandlingTests.EnterLocalInvocation_AnEndedOuterHandling_EntersNothingAsync, LocalReceptorHandlingTests.EnterLocalInvocation_AnOuterHandlingWithNoMessageId_EntersNothingAsync}
+
+**Across a rolling deploy.** The change moves some ids once: the inner receptor's, and the ids of the caller's sends
+after a local invoke (the inner receptor's sends no longer take the caller's send ordinals). So the scheme a handling
+first ran under is recorded on its inbox row (`wh_inbox_state.derivation_scheme`, migration 740), and every retry runs
+under the recorded scheme. The **claim** records it, in the update it already makes to lease the row, so it adds no write
+to the claim: a row's first claim (no attempt before it, nothing recorded) stores the claiming build's scheme, and every
+later claim keeps it. The inbox fetch returns it. A build before the change passes no scheme, so a row it claims first
+records nothing and reads as `SharedWithCaller`, the old behavior: its retry on the new build derives its first run's ids.
+A row the new build claims first records `OwnHandling`. A refund that hands a claim back unrun (attempts back to 0)
+un-records the scheme, so the row's real first claim records its own. A lease an instance renews without a claim keeps
+its record: the same build renews it. A build before the change that retries a row the new build claimed first derives
+its own ids: a build cannot honor a scheme it does not know. A handling that is not an inbox row runs under the new
+scheme. {verified: LocalInvokeDeriveFromTests.LocalDispatch_ARowThatFirstRanUnderTheSharedScheme_KeepsItsIds_TheInnerSharesTheOuterHandlingAsync, LocalInvokeDeriveFromTests.LocalDispatch_TheTwoSchemes_DeriveDifferentInnerIdsAsync, ClaimDerivationSchemeSqlTests.AFirstClaim_RecordsTheCallingBuildsSchemeAsync, ClaimDerivationSchemeSqlTests.AFirstClaimByAnEarlierBuild_RecordsNothing_AndNoLaterClaimRecordsOneAsync, ClaimDerivationSchemeSqlTests.ARecordedScheme_IsKept_ByEveryLaterClaimAsync, ClaimDerivationSchemeSqlTests.ARefundToNoClaim_UnrecordsTheScheme_SoTheRealFirstClaimRecordsItsOwnAsync, FetchInboxBatchDerivationSchemeSqlTests.ARowThatRecordsNothing_ReturnsTheSharedScheme_AndTheFetchWritesNothingAsync}
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A receptor reached locally inside a handling gets a handling of its own. | Its ids are its own: in the caller's, one purpose in both threw, and any other was attributed to the caller. | {verified: LocalInvokeDeriveFromTests.LocalDispatch_FromInsideAHandling_TheInnerReceptorDerivesInItsOwnHandlingAsync} |
+| The anchor takes a local-invocation ordinal of its own, not a send ordinal. | A void local invoke mints no id; a send ordinal would shift every later send of the caller. | {verified: LocalInvocationIdentityTests.NextOrdinal_CountsPerHandlingEnvelope_AndIsNotTheSendOrdinalsAsync} |
+| The generated local dispatch enters the handling for every path. | No author has to remember it; a generator change that drops it from a path fails by name. | {verified: LocalReceptorHandlingEmissionTests.EveryReceptorBodyTheDispatcherRuns_RunsInsideItsLocalHandlingAsync, LocalReceptorHandlingEmissionTests.EachKindOfReceptor_NamesItselfInItsLocalHandlingAsync} |
+| A handling is entered only when one is active. | The top-level fast path stays one ambient read and allocates nothing. | {verified: LocalReceptorHandlingTests.EnterLocalInvocation_AtTopLevel_AllocatesNothingAsync} |
+| A retry runs under the scheme its row recorded; none recorded is the old scheme. | A handling started on the old build keeps its first run's ids when the new build retries it. | {verified: LocalInvokeDeriveFromTests.LocalDispatch_ARowThatFirstRanUnderTheSharedScheme_KeepsItsIds_TheInnerSharesTheOuterHandlingAsync, ClaimDerivationSchemeSqlTests.AFirstClaimByAnEarlierBuild_RecordsNothing_AndNoLaterClaimRecordsOneAsync} |
+| The claim records the scheme, in the update it already makes; the fetch only reads it. | The claim is a hot path that takes no extra write, and its attempt count says exactly which claim is a row's first. | {verified: ClaimDerivationSchemeSqlTests.AFirstClaim_RecordsTheCallingBuildsSchemeAsync, FetchInboxBatchDerivationSchemeSqlTests.ARowThatRecordsNothing_ReturnsTheSharedScheme_AndTheFetchWritesNothingAsync} |
+| The layout is fixed (`whizbang.local-invoke.in-handling.v1`). | Every id the inner receptor derives starts from it; a change would move them on a retry across the deploy. | {verified: LocalInvocationIdentityTests.Derive_FixedInputs_DeriveTheCompatibilityValueAsync} |
 
 ## Quick Start
 

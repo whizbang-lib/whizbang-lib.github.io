@@ -6,6 +6,7 @@ verifiedDate: 2026-10-03
 order: 7
 codeReferences:
   - src/Whizbang.Core/Messaging/ICollectiveEvent.cs
+  - src/Whizbang.Core/Perspectives/CollectiveRoutingAssociations.cs
   - src/Whizbang.Core/Messaging/CollectiveEventBase.cs
   - src/Whizbang.Core/Messaging/CollectiveOrdering.cs
   - src/Whizbang.Core/Messaging/CollectivePredecessorLink.cs
@@ -68,6 +69,8 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/Collective/DapperCollectiveEventApplier.cs
   - src/Whizbang.Data.Postgres/Migrations/279_CollectiveApplyProgress.sql
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/FanOutRoutingSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CollectiveAssociationRegistrationTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.UnreadableRows.cs
   - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/CollectiveEventContractTests.cs
   - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/EventFlagsWireFormTests.cs
@@ -1285,6 +1288,36 @@ Every gap in what the gate knows creates rows; none drops them:
 | A handler is added | The next start writes its type; past events of the type are applied by a [rebuild](#surviving-a-rebuild) |
 
 A row created before the gate was on, or while it was off, is still concluded by the drain as below.
+
+### Fan-out rows {#fan-out-rows}
+{verified: FanOutRoutingSqlTests.Outbox_AFanOutEvent_GetsOneSinkRow_ThoughItCarriesNoCollectiveFlagAsync}
+
+A [perspective fan-out](../perspectives/multi-stream#fan-out-from-another-stream) is the consumer's half of the same
+set update: an ordinary event of another stream (`CustomerRenamed`) changes every row of a perspective whose key holds
+its stream id. It reaches the sink without any change to the emit chains. The startup associations step writes each
+fan-out event type as a `perspective` association whose target is `__collective__`, beside the collective entries,
+and the store's existing perspective insert does the rest:
+
+| Case | Rows | Verified |
+|---|---|---|
+| A fan-out event, outbox or inbox | One `__collective__` row, though the event carries no collective flag | {verified: FanOutRoutingSqlTests.Outbox_AFanOutEvent_GetsOneSinkRow_ThoughItCarriesNoCollectiveFlagAsync}, {verified: FanOutRoutingSqlTests.Inbox_AFanOutEvent_GetsOneSinkRow_ThoughThePassStoredNoCollectiveAsync} |
+| Two perspectives, or two services in the schema, fan out one type | Still one row: the sink dispatches each event once and runs every fan-out of it | {verified: FanOutRoutingSqlTests.Outbox_TwoPerspectivesAndTwoServicesFanningOutOneType_StillGetOneSinkRowAsync} |
+| The service gates collectives and handles none | The fan-out row is still created; the gate applies to collectives only | {verified: FanOutRoutingSqlTests.Outbox_AFanOutEvent_IsNotGatedByTheCollectiveGate_WhichGatesOnlyCollectivesAsync} |
+| A type that is both a collective and fanned out | One row | {verified: FanOutRoutingSqlTests.Outbox_AFanOutEventThatIsAlsoACollective_GetsOneSinkRowAsync} |
+| An ordinary event | Its perspective rows and no sink row, with no extra statement | {verified: FanOutRoutingSqlTests.Outbox_AnOrdinaryEvent_GetsItsPerspectiveRow_AndNoSinkRowAsync} |
+| A fan-out event the foreign stream's own perspective also reads | One row for each | {verified: FanOutRoutingSqlTests.Outbox_AFanOutEventAPerspectiveAlsoReads_GetsOneRowForEachAsync} |
+| A rewind of the sink from a fan-out event | Nothing is flagged or queued, as for a collective: the sink has no runner to replay with | {verified: FanOutRoutingSqlTests.Rewind_OfTheSinkFromAFanOutEvent_FlagsAndQueuesNothing_AsForACollectiveAsync} |
+| An ephemeral fan-out event, consumed and past its grace | Its body is reaped: the entries mark the sink as keeping no rewind floor, so the reap never waits for a snapshot the sink would not take | {verified: FanOutRoutingSqlTests.Reap_AFanOutEphemeralBody_IsNotHeldForASnapshotTheSinkNeverTakesAsync}, {verified: FanOutRoutingSqlTests.Reap_WithoutTheSinksNoFloorMarker_AFanOutEphemeralBodyIsHeldAsync} |
+
+The associations step's hash covers the fan-out set, so a start that adds or removes a fan-out writes the
+associations again, and the migration ledger records the change. The release that first carries a fan-out therefore
+runs the [standby handshake](../../operations/startup/rolling-upgrades): an older instance, whose sink knows nothing of
+the fan-out, stands by instead of claiming its rows. An instance that overrides the stand-down and meets a sink row it
+cannot apply completes it as before, but never silently: it is counted on `whizbang.collectives.unhandled` and named in
+a Warning ([fan-out events](../../operations/workers/perspective-worker#fan-out-events)).
+
+Adding a fan-out to a deployed perspective does not, today, rebuild the perspective: rows written before the fan-out
+existed pick up the foreign events committed earlier only once replay folds fan-out events, in the slice that follows.
 
 ### A service subscribed to a namespace receives its collective events {#unhandled-collective-events}
 {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_CollectiveRowsNoHandlerHereApplies_AreCompletedWithoutApplying_WarnedOncePerTypeAndCountedAsync}

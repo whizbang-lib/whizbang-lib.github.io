@@ -1,11 +1,12 @@
 ---
-title: 'WHIZ106: Collective apply must not query other perspectives at apply time'
+title: 'WHIZ106: Set-based apply must depend only on the row and the event'
 pageType: troubleshooting
 verifiedAgainstCommit: 9a416b5b
 verifiedDate: 2026-10-17
 description: >-
-  Error diagnostic when a [CollectiveApplyFor] method calls a member of ICollectiveQuery, such as query.Of<T>().
-  A collective apply that reads a sibling perspective cannot be replayed one row at a time.
+  Error diagnostic when a set-based apply depends on more than the row and the event: a [CollectiveApplyFor] method
+  that calls ICollectiveQuery.Of<T>(), or a fan-out's Apply that reads the perspective's own state or a static field
+  that can change. Such an apply cannot be replayed one row at a time.
 version: 1.0.0
 category: Diagnostics
 severity: Error
@@ -20,14 +21,16 @@ codeReferences:
   - src/Whizbang.Generators/PerspectivePurityAnalyzer.cs
   - src/Whizbang.Core/Perspectives/CollectiveApplyForAttribute.cs
   - src/Whizbang.Core/Perspectives/ICollectiveQuery.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveFanOutFor.cs
   - src/Whizbang.Data.Postgres/Collective/CollectiveReplayApplier.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/PerspectivePurityAnalyzerTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveFanOutPurityTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/CollectiveReplayApplierGuardTests.cs
 lastMaintainedCommit: '9a416b5b'
 ---
 
-# WHIZ106: Collective apply must not query other perspectives at apply time
+# WHIZ106: Set-based apply must depend only on the row and the event
 
 **Severity**: Error
 **Category**: Perspective Purity (`Whizbang.Purity`)
@@ -49,20 +52,37 @@ It is **not** reported when:
   `Set` refer only to the row's own columns and the event), or
 - the method that uses `ICollectiveQuery` is not marked `[CollectiveApplyFor]`.
 
+### A fan-out's Apply
+
+A perspective fan-out's `Apply` ([Fan-out from another stream](../../fundamentals/perspectives/multi-stream#fan-out-from-another-stream))
+is folded per row on a rebuild in the same way, so the same rule holds it: it depends only on the row (through the
+setters' lambdas) and the event. WHIZ106 is reported inside a fan-out's `Apply`, implicit or explicit, at each read of:
+
+- `this` or `base`, or an instance field, property, event or method of the perspective (an injected service is one);
+- a static field that is neither `const` nor `readonly`.
+
+Locals, local functions, static methods, constants and `static readonly` fields are not reported.
+
 The other determinism checks ([WHIZ100](whiz100) to [WHIZ104](whiz104)) also apply to `[CollectiveApplyFor]`
-methods.
+methods and to a fan-out's `Apply`.
 
 ## Diagnostic Message
 
 ```text
-Collective apply method '{MethodName}' calls ICollectiveQuery.Of<>(), an apply-time cross-perspective query. This makes the spec non-replayable: it can't be re-evaluated per-row during a single-stream replay/rebuild. Resolve the cross-query BEFORE event creation and bake the result into the event as static payload, so the apply depends only on the row's own state and the event.
+Set-based apply '{MethodName}' {Reason}. A set-based apply is folded per row during a replay or rebuild against that row and the event alone, so it must not depend on anything else. Resolve it before the event is created and carry it on the event as payload.
 ```
+
+`{Reason}` names what was read: `calls ICollectiveQuery.Of<>(), an apply-time cross-perspective query`,
+`reads '{Member}', the perspective's own state`, `reads 'this', the perspective's own state`, or
+`reads '{Type}.{Field}', a static field that can change`.
 
 ## Common Causes
 
 1. **Checking a sibling perspective to decide which rows to change**, for example "does any other overlay with
    this template already exist?".
 2. **Reading another perspective's value to copy into the rows** being updated.
+3. **A fan-out's `Apply` reading an injected service or a field of the perspective**, such as a formatter or a
+   cached lookup.
 
 ## How to Fix
 

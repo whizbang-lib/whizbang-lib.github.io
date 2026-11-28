@@ -43,6 +43,11 @@ codeReferences:
   - src/Whizbang.Core/Serialization/StoredVectorConverters.cs
   - src/Whizbang.Core/Attributes/StoredAsJsonArrayAttribute.cs
   - src/Whizbang.Generators/MessageJsonContextGenerator.StoredVectors.cs
+  - src/Whizbang.Core/Serialization/StoredVectorPaths.cs
+  - src/Whizbang.Data.Postgres/VectorPackingGateStep.cs
+  - src/Whizbang.Data.Postgres/StoredVectorReadersStartupStep.cs
+  - src/Whizbang.Data.Postgres/Migrations/720_VectorEventBodiesArePackedOnceEveryInstanceReadsThem.sql
+  - src/Whizbang.Data.Postgres/Migrations/721_StoredBodiesLeaveInTheWireForm.sql
 testReferences:
   - tests/Whizbang.Core.Unit.Messaging.Tests/Messaging/InMemoryEventStoreTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreEventStoreTests.cs
@@ -61,6 +66,13 @@ testReferences:
   - tests/Whizbang.Core.Tests/Serialization/StoredVectorConvertersTests.cs
   - tests/Whizbang.Core.Tests/Serialization/StoredVectorEventReadTests.cs
   - tests/Whizbang.Generators.Tests/MessageJsonContextStoredVectorTests.cs
+  - tests/Whizbang.Core.Tests/Serialization/StoredVectorPathsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PackedVectorStorageSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PackedVectorGateSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PackedVectorReaderGuardSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PackedVectorExportSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PackedVectorExportInventoryTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPackedVectorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -1009,24 +1021,31 @@ WHERE event_type = 'OrderCreatedV1';
 
 ---
 
-## Packed vectors
+## Packed vectors {#packed-vectors}
 
 A stored event body can hold a vector in either of two forms, and every reader accepts both:
 
 | Form | In the stored JSON | Where it appears |
 |---|---|---|
-| Array | `"Embedding": [0.1, -0.25, ...]` | the wire, the outbox and inbox, and every body stored today |
-| Packed | `"Embedding": "PczMzb6AAAA..."` | stored bodies only, once a later release starts packing |
+| Array | `"Embedding": [0.1, -0.25, ...]` | the wire, the outbox and inbox, every body leaving the database, and stored bodies written before the packing gate opened |
+| Packed | `"Embedding": "PczMzb6AAAA..."` | stored bodies (`wh_event_body`) only, once the [packing gate](#packing-gate) is open |
 
 The packed form is one JSON string: base64, without line breaks, of the big-endian IEEE-754 binary32 bits of each
-element in order. It is lossless by construction, so every value a `float` can hold reads back with the same bits,
-including `-0`, subnormals and NaN payloads. A 3,072-dimension vector takes about 16 KB this way instead of about
-24 KB as JSON numbers, so a vector event body shrinks by about a third.
+element in order. It is lossless: the bits are exactly what a C# reader reads from the array the body held. A
+3,072-dimension vector takes about 16 KB this way.
 
-**What is a vector.** A property of type `float[]` or `IReadOnlyList<float>`, at the top level, inside a nested
-object or inside a collection element. `double[]`, `float?[]`, `List<float>` and every other type are never read as
-packed: a `double` does not fit binary32 exactly. The generated message JSON context attaches a converter to each
-vector property that reads either form and always writes the array, so the bytes it writes are unchanged.
+**What is a vector.** On an event, at the top level or inside a nested object:
+
+| Property type | A vector? |
+|---|---|
+| `float[]`, `IReadOnlyList<float>` | Yes |
+| `List<float>`, `ReadOnlyMemory<float>` | Only when marked `[VectorField]`; unmarked, it is an ordinary collection |
+| `double[]`, `float?[]`, every other type | Never: a `double` does not fit binary32 exactly |
+
+On an event, `[VectorField]` marks a vector of the stored body, not a pgvector column, so it needs no pgvector package
+and accepts the four types above (WHIZ070 and WHIZ801 apply to read models). The generated message JSON context
+attaches a converter to each vector property that reads either form and always writes the array, so the bytes it
+writes are unchanged.
 
 **Opting out.** Mark a property `[StoredAsJsonArray]` when something outside the framework, such as a SQL query or a
 report, reads it out of the stored body as numbers. It gets no packed-form reader, so it is never stored packed.
@@ -1035,15 +1054,131 @@ report, reads it out of the stored body as numbers. It gets no packed-form reade
 public sealed record PassageEmbedded(
     [property: StreamId] Guid PassageId,
     float[] Embedding,
+    [property: VectorField(3072)] List<float> Summary,
     [property: StoredAsJsonArray] float[] Centroid) : IEvent;
 ```
 
-:::new
-**Readers first.** This release reads the packed form and writes only arrays: no body is packed yet. Packing at the
-stored body ships in a later release behind a gate that opens only once every live instance can read the packed form,
-so a rolling deploy never stores a body an older instance cannot read. The wire form never changes: other services and
-transport consumers always see JSON numbers.
+**Which vectors are packed.** For each event type the generator registers the paths of its vector properties (the
+JSON names from the payload's root) in `StoredVectorPaths`; packing applies at exactly those paths. A vector inside a
+collection element (`List<Chunk>` where `Chunk` holds a `float[]`), behind a polymorphic member, or in a type that
+refers back to itself has no fixed path, so it stays a JSON array. The generator reports each one as
+[WHIZ064](../operations/diagnostics/whiz064.md) (Info), so nothing is skipped silently.
+
+### How a body is packed {#how-a-body-is-packed}
+
+{verified: PackedVectorStorageSqlTests.Pack_WritesTheBitsACSharpReaderReadsFromTheStoredArray_ForRandomAndEdgeValuesAsync, PackedVectorStorageSqlTests.WritePath_StoresJsonNumbersWhileTheGateIsClosed_AndPackedVectorsOnceItIsOpenAsync, PackedVectorStorageSqlTests.WirePath_TheOutboxAndInboxRowsKeepJsonNumbers_WhileTheStoredBodyIsPackedAsync}
+
+Packing happens in SQL, where the body is written to `wh_event_body`: both emit chains and `wh_append_event`. The
+outbox and inbox rows keep the wire form, so the transport and every other service see JSON numbers.
+
+1. The packing gate's step writes each service's paths to `wh_event_vector_paths`, keyed by the stored event type.
+2. While the gate is open, a write path looks up the event's type there and packs each array at its paths
+   (`_wh_pack_vectors`): each number's stored text is parsed by `float4in`, which rounds correctly, and written by
+   `float4send`, which is big-endian.
+3. A value that is not a non-empty array of numbers that fit binary32 (a null, a string, a nested array, a number out
+   of range) is left as it is.
+
+| Question | Answer | Verified |
+|---|---|---|
+| What does an ordinary event cost? | Nothing new: its type has no paths, and the paths lookup only runs while the gate is open | {verified: PackedVectorStorageSqlTests.EmitChain_AnOrdinaryEvent_NeverRunsThePacking_EvenWithTheGateOpen_AndAVectorEventDoesAsync} |
+| A type no service registered? | Stored as written | {verified: PackedVectorStorageSqlTests.WritePath_AnEventOfATypeWithNoRegisteredPath_IsStoredAsWrittenAsync} |
+| Negative zero? | jsonb holds a JSON number as `numeric`, which has no negative zero, so an array body already stored `-0` as `0`; packing keeps what the body holds | {verified: PackedVectorStorageSqlTests.Pack_WritesTheBitsACSharpReaderReadsFromTheStoredArray_ForRandomAndEdgeValuesAsync} |
+| Several services in one schema? | Each writes its own types' paths and replaces only its own rows; the latest registration of a type wins, and every service derives it from the same declaration | {verified: PackedVectorGateSqlTests.Paths_TheStepWritesThisServicesGeneratedPaths_AndReplacesOnlyItsOwnAsync} |
+
+### When the write paths start packing {#packing-gate}
+
+{verified: PackedVectorGateSqlTests.Gate_StaysClosedWhileALiveInstanceReadsNoPackedVectors_AndOpensOnceItIsGoneStaleOrRaisedAsync, PackedVectorGateSqlTests.Rollback_AnOlderLibrary_StandsDownAtAssess_NamingPackedVectorsAsync}
+
+An instance of the release before this one cannot read a packed vector, and the write paths are SQL, so they would
+pack on behalf of every instance during a rolling update. So packing waits for the whole fleet, the same way the
+[trim gate](#trim-gate) does:
+
+1. **The marker.** Each heartbeat of this release records `stored_form_level` 2 in its instance row's metadata, which
+   reads packed vectors (level 1 reads trimmed rows only).
+2. **The gate.** The `vector-packing-gate` maintenance step asks `wh_open_vector_packing_gate` each cycle. Once at
+   least one instance is live and every live instance records level 2 or higher, it journals the conversion: a
+   `wh_stored_form_migrations` row named `wh_event_body:packed-vectors`, applied by this instance's library version.
+3. **The switch is the journal row.** The write paths pack while that row exists with a known applier, one
+   primary-key read per write call. Nothing can pack without the record the rollback gate reads.
+4. **The latch is one-way.** The rollback gate reads the row like any stored-form conversion, so an older library that
+   starts afterward stands down at Assess with a reason that names
+   `stored-form:wh_event_body:packed-vectors` ([the rollback gate](../operations/startup/rolling-upgrades.md#the-rollback-gate)).
+
+| Question | Answer | Verified |
+|---|---|---|
+| A new service, or a fresh database? | Closed until this instance's first heartbeat is in, then it opens on the next cycle | {verified: PackedVectorGateSqlTests.Gate_AFreshService_OpensOnlyOnceThisInstanceHasRegisteredWithItsMarkerAsync} |
+| An instance of the earlier release is live? | Closed: the step reports `closed (n of m live instances read packed vectors)` until it is gone, stale or upgraded | {verified: PackedVectorGateSqlTests.Gate_StaysClosedWhileALiveInstanceReadsNoPackedVectors_AndOpensOnceItIsGoneStaleOrRaisedAsync} |
+| Can it close again? | No: packed bodies may exist | {verified: PackedVectorGateSqlTests.Gate_OnceOpen_StaysOpen_WhenAnInstanceWithoutTheMarkerAppearsAsync} |
+| The library version is unknown? | Closed: an unjournaled conversion could not stand an older library down | {verified: PackedVectorGateSqlTests.Gate_WithoutALibraryVersion_StaysClosed_SoNothingPacksUnjournaledAsync} |
+| An application rolled back on the same library? | Not stood down: reading packed vectors is a library capability, so no application version is recorded | {verified: PackedVectorGateSqlTests.Rollback_AnOlderApplicationOnTheSameLibrary_IsNotStoodDownByPackingAsync} |
+
+:::warning
+**No rollback below this release once the gate has opened.** An older library stands down rather than meet a body it
+cannot read. A planned downgrade unpacks history first (a later release adds the unpack command).
 :::
+
+### A packed vector stays readable {#packed-vectors-no-longer-read}
+
+{verified: PackedVectorReaderGuardSqlTests.Startup_APackedPathThisBuildNoLongerReads_FailsNamingTheTypeAndThePropertyAsync, PackedVectorReaderGuardSqlTests.Ledger_RecordsTheRegisteredPaths_OnlyOnceTheGateOpens_AndKeepsThemWhenARegistrationDropsThemAsync, DapperPackedVectorTests.AddWhizbangPostgres_RegistersTheStoredVectorReadersStep_WhichRefusesAPackedPathThisBuildNoLongerReadsAsync}
+
+A body packed at a path is read only by a property that is still a vector. Mark that property `[StoredAsJsonArray]`,
+change its type, drop its `[VectorField]` or remove it, and the bodies already packed there would fail to read. So
+nothing is left to fail on a read:
+
+1. **Every packed path is recorded.** Each path registered while the packing gate is open goes into
+   `wh_packed_vector_paths`, at the open for the paths already registered and at each later registration for new
+   ones, in the same transaction as anything that could pack it. A later registration that drops a path never drops
+   its record.
+2. **Startup checks it.** The blocking `StoredVectorReaders` startup step runs on every instance, after `Migrate` and
+   before the instance is ready. For each event type the service reads (the events of its message type catalog, and
+   every type that registers a vector path), it compares the recorded packed paths with the vector paths this build
+   registers.
+3. **A path this build no longer reads stops startup.** The step fails with
+   [`PackedVectorsNoLongerReadException`](../operations/diagnostics/error-reference.md#packed-vectors-no-longer-read),
+   naming each type and property, and the instance never becomes ready, on either driver.
+
+| Question | Answer | Verified |
+|---|---|---|
+| A type whose every vector was removed? | Still checked: the catalog says the service reads it | {verified: PackedVectorReaderGuardSqlTests.Startup_ATypeTheCatalogNamesWithNoVectorLeft_IsCheckedTooAsync} |
+| A packed path of a type this service does not read? | Not its concern: another service reads it, and checks it | {verified: PackedVectorReaderGuardSqlTests.Startup_EveryPackedPathStillRead_Completes_AndAPathOfATypeThisServiceDoesNotReadIsNotItsConcernAsync} |
+| What does it cost? | One query at startup; nothing on a read or a write | {verified: PackedVectorReaderGuardSqlTests.Step_IsABlockingStepAfterMigrate_OnEveryInstanceAsync} |
+
+**Fix:** restore the property as a vector, or unpack the stored bodies first (the unpack command, #2627), then start
+again.
+
+### What leaves the database {#what-leaves-the-database}
+
+{verified: PackedVectorExportSqlTests.Redelivery_APackedEvent_IsSelectedInTheWireForm_WhichAPlainReaderReadsAsync, PackedVectorExportInventoryTests.EverySqlFunctionThatReadsAStoredBody_IsClassified_AndEveryExportReadsTheWireFormAsync}
+
+A stored body that leaves the database carries JSON numbers, never the packed form, so another service, an older
+build or a plain JSON reader reads it. Every such read goes through `wh_event_body_wire_form`, which writes each packed
+vector back as the numbers it was packed from:
+
+| Read | Where the body goes | Form |
+|---|---|---|
+| The redelivery selection | an integrity repair sends an origin's events to a peer; the audit rebuild re-records them; both over the transport | wire form |
+| The trace store (`wh_trace_metadata`) | the payload, as a `JsonElement`, to consumer code | wire form |
+| The transport's publish seam | reads the outbox, never a stored body | wire form by construction |
+| The perspective worker, replay, rebuild, the event stores | typed, through the generated readers | either |
+| The archive tier (`wh_event_archive`, object storage) | storage, read back through the typed readers | stored form |
+
+The inventory is derived by machine: a test finds every SQL function and driver source that reads a stored body,
+each must be classified with its reason, and an export that does not read the wire form fails.
+
+### Design choices {#packed-vector-design-choices}
+
+| Choice | Why | Locked by |
+|---|---|---|
+| Lossless only: no half precision | Full fidelity is required (owner decision, 2026-11-21) | {verified: PackedVectorStorageSqlTests.Pack_WritesTheBitsACSharpReaderReadsFromTheStoredArray_ForRandomAndEdgeValuesAsync} |
+| On by default, with a per-property opt-out | Most of a vector event's body is its vectors (owner decision, 2026-11-25) | {verified: PackedVectorStorageSqlTests.WritePath_StoresJsonNumbersWhileTheGateIsClosed_AndPackedVectorsOnceItIsOpenAsync} |
+| `double[]` is never packed | A double does not fit binary32 exactly | {verified: StoredVectorEventReadTests.AnOptedOutOrDoubleVector_IsNeverReadAsPackedAsync} |
+| `List<float>` and `ReadOnlyMemory<float>` only when marked `[VectorField]` | An unmarked list of floats is an ordinary collection (owner decision, 2026-11-27) | {verified: MessageJsonContextStoredVectorTests.Generator_AListOrMemoryOfFloat_NotMarkedAsAVectorField_IsLeftAloneAsync} |
+| Packed in SQL at the stored body, never on the wire | Another service, on any version, never sees the packed form | {verified: PackedVectorStorageSqlTests.WirePath_TheOutboxAndInboxRowsKeepJsonNumbers_WhileTheStoredBodyIsPackedAsync} |
+| Base64 inside the JSON body, not a `bytea` column | Every read of a body would otherwise reassemble it; the raw form is measured later | {verified: PackedVectorStorageSqlTests.Pack_FollowsEveryPath_NestedAndMissing_AndLeavesTheRestOfTheBodyAsync} |
+| The journal row is the switch | Nothing can pack without the record the rollback gate reads | {verified: PackedVectorGateSqlTests.Switch_IsTheJournalRow_ARowWithNoApplierDoesNotOpenItAsync} |
+| The conversion records the library version, not the application version | An application rolled back on the same library reads packed vectors | {verified: PackedVectorGateSqlTests.Journal_RecordsTheLibraryThatStartedPacking_AndNoApplicationVersionAsync} |
+| An instance refuses to start while it cannot read a packed path | A silent read failure on every body is worse than one loud startup error | {verified: PackedVectorReaderGuardSqlTests.Startup_APackedPathThisBuildNoLongerReads_FailsNamingTheTypeAndThePropertyAsync} |
+| Exports read the wire form in SQL | One function every export reads through, found by a machine-derived inventory, rather than each caller re-serializing | {verified: PackedVectorExportInventoryTests.EveryDriverSourceThatNamesAStoredBodyTable_IsClassified_AndEveryExportReadsTheWireFormAsync} |
 
 ---
 
