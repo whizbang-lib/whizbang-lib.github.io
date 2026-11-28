@@ -17,6 +17,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Workers/PerspectiveStreamAffinityOptions.cs
   - src/Whizbang.Core/Perspectives/CollectiveRouting.cs
+  - src/Whizbang.Core/Perspectives/FanOutCollectiveEvent.cs
   - src/Whizbang.Core/Observability/CompositeMetrics.cs
   - src/Whizbang.Core/Workers/ClaimWorker.cs
   - src/Whizbang.Core/Workers/ProcessedEventCache.cs
@@ -30,6 +31,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/037_CompletePerspectiveEvents.sql
   - src/Whizbang.Data.Postgres/Migrations/005_CreateCompletePerspectiveCheckpointFunction.sql
 testReferences:
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.FanOut.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.FanOut.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerChannelModeTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDedupTests.cs
   - tests/Whizbang.Core.Unit.Workers.Tests/Workers/ProcessedEventCacheTests.cs
@@ -941,6 +944,36 @@ Drain mode skipped for {StreamCount} stream(s): no event store is registered, so
 **What to do about the Warning.** If the service should apply the event, add a `[CollectiveApplyFor]` handler and
 rebuild the affected perspectives. If it should not, the Warning and the counter are the whole cost: each such row
 is completed once and does no further work.
+
+### Fan-out Events {#fan-out-events}
+{verified: PerspectiveWorkerCollectiveSinkTests.FanOut_TheSinkDispatchesTheForeignEvent_WrappedWithItsStreamAndTenantAsync}
+
+A [perspective fan-out](../../fundamentals/perspectives/multi-stream#how-a-fan-out-applies-live) reaches the worker
+on a `__collective__` row of the foreign event's own stream. The sink applies it as it applies a collective: it reads
+the event, wraps it with its stream id and tenant, and dispatches it through `ICollectiveDispatcher`, which runs every
+fan-out of the event type as one keyset-batched update per model. The worker learns the host's fan-out types from the
+`IPerspectiveFanOutRegistry` at startup.
+
+| Case | Outcome | Verified |
+|---|---|---|
+| A fan-out event on its sink row | Dispatched once, scoped to its stream and tenant; the row is completed | {verified: PerspectiveWorkerCollectiveSinkTests.FanOut_TheSinkDispatchesTheForeignEvent_WrappedWithItsStreamAndTenantAsync} |
+| A fan-out event with no tenant (system scoped) | Nothing is dispatched; the row is completed, as a fan-out targets the rows of its event's tenant only | {verified: PerspectiveWorkerCollectiveSinkTests.FanOut_AnEventWithNoTenant_TargetsNothing_AndItsRowIsCompletedAsync} |
+| The apply throws | Reported as a failure of the sink row (retried, dead-lettered at the bound); the host keeps running | {verified: PerspectiveWorkerCollectiveSinkTests.FanOut_AFailingApply_IsReportedAsASinkFailure_AndTheHostKeepsRunningAsync} |
+| A received fan-out event on the drain path | Offered to the sink beside the foreign stream's own perspectives, which receive the event itself | {verified: PerspectiveWorkerCollectiveSinkTests.FanOut_TheDrain_RoutesAFanOutEventToTheSink_BesideThePerspectivesThatReadItAsync} |
+| A fan-out event a perspective here also reads | Its lifecycle is tracked by the drain, as any event's is | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_AFanOutEventAPerspectiveHereReads_IsTrackedAndAppliedAsync} |
+| A fan-out event only the sink applies here | Not tracked by the drain, as a collective is not; the receive path fired its stages | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_AFanOutEventOnlyTheSinkApplies_IsNotTrackedAsync} |
+| A fan-out row whose event cannot be read | Failed toward the dead-letter bound, never completed as an unhandled collective | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_AFanOutsSinkRow_ThatCannotBeRead_IsFailed_NotCompletedAsUnhandledAsync} |
+| A sink row for an event this build neither applies as a collective nor fans out | Completed as before, counted on `whizbang.collectives.unhandled`, and named in a Warning (EventId 95) | {verified: PerspectiveWorkerCollectiveSinkTests.FanOut_ASinkRowForAnEventThisBuildDoesNotApply_IsCompleted_CountedAndNamed_NeverSilentlyAsync} |
+
+```text
+Service {ServiceName} neither applies {EventType} as a collective nor fans it out: completed {Count} queued
+__collective__ row(s) on stream {StreamId} without applying them. An instance of an older release that overrode its
+stand-down, or a fan-out removed since the rows were queued, leaves rows like these
+```
+
+**Why the lifecycle is not the sink's.** A collective's apply is its "all perspectives complete" moment, so the sink
+fires its post-perspective stages. A fan-out event belongs to its own stream: its own perspectives fire them, or, when
+nothing here reads it, the receive path does. The sink fires nothing for it, so a stage never runs twice.
 
 ---
 

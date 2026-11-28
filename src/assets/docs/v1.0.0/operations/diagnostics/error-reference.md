@@ -479,6 +479,23 @@ This instance stood down, so no schema initialization runs on it and nothing is 
 
 ---
 
+### Stored event bodies hold vectors this build no longer reads {#packed-vectors-no-longer-read}
+{verified: PackedVectorReaderGuardSqlTests.Startup_APackedPathThisBuildNoLongerReads_FailsNamingTheTypeAndThePropertyAsync, PackedVectorReaderGuardSqlTests.Startup_ATypeTheCatalogNamesWithNoVectorLeft_IsCheckedTooAsync, DapperPackedVectorTests.AddWhizbangPostgres_RegistersTheStoredVectorReadersStep_WhichRefusesAPackedPathThisBuildNoLongerReadsAsync}
+
+```text
+Stored event bodies hold vectors packed at properties this build no longer reads as vectors, so they cannot be read: {event type}: {property path}[; ...]. Startup stops here rather than fail on each read. Restore each property as a vector (float[] or IReadOnlyList<float>, or a List<float> or ReadOnlyMemory<float> marked [VectorField], without [StoredAsJsonArray]), or unpack the stored bodies first (the unpack command, #2627), then start again.
+```
+
+**Source**: `PackedVectorsNoLongerReadException` (namespace `Whizbang.Data.Postgres`, an `InvalidOperationException`; `Paths` lists each `event type: property path`), thrown by the `StoredVectorReaders` startup step, which logs the same text at Error. The step is blocking, so the instance never becomes ready. Both drivers register it.
+
+**Trigger**: An event type this service reads has a vector path recorded in `wh_packed_vector_paths` (registered while [packing](../../data/event-store.md#packing-gate) was on, so stored bodies may hold it packed) that this build no longer registers as a vector: the property was marked `[StoredAsJsonArray]`, retyped, unmarked (`[VectorField]` removed from a `List<float>` or `ReadOnlyMemory<float>`), renamed or removed.
+
+**What happens next**: Startup stops after `Migrate`; nothing reads a stored body on this instance. **Why not start anyway**: every read of such a body would fail, one event at a time, in perspectives, replay and rebuilds.
+
+**Fix**: Restore the property as a vector under the same JSON name, or unpack the stored bodies first (the unpack command, #2627) so they hold JSON numbers again, then deploy the change. See [a packed vector stays readable](../../data/event-store.md#packed-vectors-no-longer-read).
+
+---
+
 ## Configuration
 
 ### The pair guard's alert threshold is not positive {#pair-guard-alert-threshold-not-positive}
@@ -610,6 +627,7 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ061 | Error | [Property uses non-serializable type 'dynamic'](whiz061.md) |
 | WHIZ062 | Error | [Property Uses Non-Serializable Interface Type](whiz062.md) |
 | WHIZ063 | Error | [Nested type contains non-serializable property](whiz063.md) |
+| WHIZ064 | Info | [Vector Stays a JSON Array in the Stored Event Body](whiz064.md) |
 | WHIZ070 | Error | [Missing Pgvector.EntityFrameworkCore Package](whiz070.md) |
 | WHIZ071 | Error | [Missing Pgvector Package](whiz071.md) |
 | WHIZ072 | Info | [Polymorphic Base Type Discovered](whiz072.md) |
@@ -622,7 +640,7 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ103 | Error | [Apply method cannot call HTTP/network operations](whiz103.md) |
 | WHIZ104 | Warning | [Apply method should use event timestamps instead of reading the clock](whiz104.md) |
 | WHIZ105 | Warning | [Perspective injects non-pure service](whiz105.md) |
-| WHIZ106 | Error | [Collective apply must not query other perspectives at apply time](whiz106.md) |
+| WHIZ106 | Error | [Set-based apply must depend only on the row and the event](whiz106.md) |
 | WHIZ107 | Warning | [Apply never receives a null model](whiz107.md) |
 | WHIZ108 | Warning | [An overwrite-only perspective's Apply must not read its current model](whiz108.md) |
 | WHIZ109 | Error | [Apply handles an event no perspective interface lists](whiz109.md) |
@@ -640,6 +658,12 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ121 | Warning | [Pinned-Type Ledger Entry Has No Living Type](whiz121.md) |
 | WHIZ122 | Warning | [Pinned-Type Ledger Could Not Be Parsed](whiz122.md) |
 | WHIZ123 | Error | [A strong id is pinned two ways](whiz123.md) |
+| WHIZ124 | Error | [Fan-out Targets does not name a key property](whiz124.md) |
+| WHIZ125 | Error | [Fan-out key is not a physical field](whiz125.md) |
+| WHIZ126 | Error | [Fan-out key is not indexed](whiz126.md) |
+| WHIZ127 | Error | [Fan-out key cannot hold a stream id](whiz127.md) |
+| WHIZ128 | Error | [Fan-out key is assigned by a set-based apply](whiz128.md) |
+| WHIZ129 | Error | [Fan-out names a type the generated registry cannot reach](whiz129.md) |
 | WHIZ130 | Warning | [Perspective mixes ephemeral and Sourced Apply methods](whiz130.md) |
 | WHIZ131 | Error | [Rebuild or rewind of an ephemeral-only perspective](whiz131.md) |
 | WHIZ132 | Warning | [Receptor turns an ephemeral message into a Sourced event](whiz132.md) |
@@ -653,6 +677,7 @@ WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests an
 | WHIZ140 | Warning | [Perspective shares stream event types with a group but joins none](whiz140.md) |
 | WHIZ141 | Warning | [Stream group has no announcing member with a row evictor](whiz141.md) |
 | WHIZ142 | Warning | [Bridge on a sole stream-group membership](whiz142.md) |
+| WHIZ143 | Error | [Fan-out of a collective event](whiz143.md) |
 | WHIZ150 | Warning | [Minted composite constructed outside the mint](whiz150.md) |
 | WHIZ151 | Error | [Command type has more than one inbox receptor](whiz151.md) |
 | WHIZ160 | Warning | [Type Name Composed By Hand](whiz160.md) |
